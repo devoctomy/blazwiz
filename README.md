@@ -140,6 +140,7 @@ credentials, you can use a dedicated IAM user with the minimum policy in
 | `blazwiz-aws.yaml` | The CloudFormation template (below). |
 | `deploy.ps1` | Deploys / updates the stack, publishes and uploads the portal, creates a test user. Safe to re-run. |
 | `test-auth.ps1` | Verifies a deployment end to end: portal, sign-in, identity pool credentials, per-user S3 access. |
+| `stack-policy.json` | Stops stack updates from replacing or removing the user pool, identity pool and data bucket. |
 | `remove.ps1` | Empties the buckets and deletes the stack. |
 
 ```powershell
@@ -160,6 +161,12 @@ All scripts take `-AppName` (default `blazwiz`), `-Environment` (default `dev`),
 `-AwsProfile`. The stack is named `<AppName>-<Environment>`, so several environments can share an
 account. `deploy.ps1` and `remove.ps1` show the account, caller and region and ask for confirmation
 before changing anything (`-Force` skips this).
+
+`deploy.ps1` lists the infrastructure changes before applying them and asks before any resource is
+replaced (recreated with a new id). Replacing or removing the user pool, identity pool or data bucket
+would lose users or their data, so it is refused outright (and blocked by `stack-policy.json` for
+deployments from anywhere else) unless you pass `-AllowStatefulReplacement`. Some user pool settings,
+such as `UsernameAttributes`, can only be set on creation, so settle them before real users sign up.
 
 **What gets created** (stack `blazwiz-dev`):
 

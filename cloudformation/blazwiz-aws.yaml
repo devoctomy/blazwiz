@@ -219,8 +219,14 @@ Resources:
   # Cognito: user pool (sign-in) + identity pool (temporary AWS credentials)
   # ---------------------------------------------------------------------------
 
+  # Replacing the user pool deletes every user (passwords cannot be exported) and changes its id, so
+  # stack-policy.json blocks replacement and UpdateReplacePolicy keeps the old pool if it ever happens.
+  # UsernameAttributes, AliasAttributes, UsernameConfiguration and existing Schema attributes cannot be
+  # changed in place - decide them before going live.
   UserPool:
     Type: AWS::Cognito::UserPool
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Retain
     Properties:
       UserPoolName: !Sub '${AppName}-${Environment}-users'
       UsernameAttributes: [email]
@@ -268,8 +274,12 @@ Resources:
         IdToken: minutes
         RefreshToken: days
 
+  # Identity ids are per identity pool and name each user's prefix in the data bucket, so replacing
+  # the pool orphans everyone's data. Protected like the user pool.
   IdentityPool:
     Type: AWS::Cognito::IdentityPool
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Retain
     Properties:
       IdentityPoolName: !Sub '${AppName}_${Environment}_identities'
       AllowUnauthenticatedIdentities: false

@@ -29,6 +29,8 @@ The policy below covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and noth
         "cloudformation:CreateChangeSet",
         "cloudformation:DescribeChangeSet",
         "cloudformation:ExecuteChangeSet",
+        "cloudformation:DeleteChangeSet",
+        "cloudformation:SetStackPolicy",
         "cloudformation:DescribeStacks",
         "cloudformation:DescribeStackEvents",
         "cloudformation:DescribeStackResources",
