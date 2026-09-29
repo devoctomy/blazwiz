@@ -6,6 +6,13 @@
     <File Path="global.json" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/Cloudformation/">
+    <File Path="Cloudformation/_common.ps1" />
+    <File Path="Cloudformation/blazwiz-aws.yaml" />
+    <File Path="Cloudformation/deploy.ps1" />
+    <File Path="Cloudformation/remove.ps1" />
+    <File Path="Cloudformation/test-auth.ps1" />
+  </Folder>
   <Folder Name="/Tests/">
     <Project Path="blazwiz.Core.IntTests/blazwiz.Core.IntTests.csproj" />
     <Project Path="blazwiz.Core.UnitTests/blazwiz.Core.UnitTests.csproj" />
