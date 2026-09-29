@@ -130,8 +130,10 @@ allow. Tokens are only decoded (with `Microsoft.IdentityModel.JsonWebTokens`) to
 
 ## Deploying to AWS
 
-Everything lives in `Cloudformation/`. You need the AWS CLI v2, the .NET 10 SDK and credentials for the
-target account (an AWS CLI profile, or the usual `AWS_*` environment variables).
+Everything lives in `cloudformation/`. You need the AWS CLI v2, the .NET 10 SDK and credentials for the
+target account (an AWS CLI profile, or the usual `AWS_*` environment variables). Rather than full admin
+credentials, you can use a dedicated IAM user with the minimum policy in
+[`cloudformation/README.md`](cloudformation/README.md#minimum-iam-policy-for-running-the-scripts).
 
 | File | Purpose |
 |---|---|
@@ -142,16 +144,16 @@ target account (an AWS CLI profile, or the usual `AWS_*` environment variables).
 
 ```powershell
 # Deploy (asks for confirmation, then for the test user's password)
-./Cloudformation/deploy.ps1 -Region eu-west-2 -TestUserEmail me@example.com
+./cloudformation/deploy.ps1 -Region eu-west-2 -TestUserEmail me@example.com
 
 # Check it all works
-./Cloudformation/test-auth.ps1 -Region eu-west-2 -Email me@example.com
+./cloudformation/test-auth.ps1 -Region eu-west-2 -Email me@example.com
 
 # Re-publish just the portal after code changes
-./Cloudformation/deploy.ps1 -Region eu-west-2 -SkipInfrastructure
+./cloudformation/deploy.ps1 -Region eu-west-2 -SkipInfrastructure
 
 # Tear it down
-./Cloudformation/remove.ps1 -Region eu-west-2
+./cloudformation/remove.ps1 -Region eu-west-2
 ```
 
 All scripts take `-AppName` (default `blazwiz`), `-Environment` (default `dev`), `-Region` and
@@ -186,4 +188,6 @@ deployments show up straight away. The test user is created with a permanent pas
    Cognito identity pool (`CognitoUser.GetCognitoAWSCredentials` in the same library), for direct access to
    the per-user data bucket. The infrastructure is already in place (see [Deploying to AWS](#deploying-to-aws)).
 2. **`dotnet new` template**: add `.template.config/template.json` with `sourceName: "blazwiz"` so every
-   project, namespace, storage key and title is renamed for the new app.
+   project, namespace, storage key and title is renamed for the new app. The name also appears as
+   `Blazwiz` (e.g. `AddBlazwizCoreServices`), `BLAZWIZ_` (test environment variables) and as the
+   lowercase letters-and-numbers CloudFormation `AppName`, which need their own derived template symbols.

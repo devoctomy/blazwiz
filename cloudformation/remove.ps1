@@ -7,7 +7,7 @@ This permanently deletes the portal, all per-user data and all Cognito users for
 You will be asked to type the stack name to confirm unless -Force is given.
 
 .EXAMPLE
-./Cloudformation/remove.ps1 -Region eu-west-2 -Environment dev
+./cloudformation/remove.ps1 -Region eu-west-2 -Environment dev
 #>
 [CmdletBinding()]
 param(
