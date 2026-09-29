@@ -15,7 +15,7 @@ The only thing it creates is a small test object under the user's own prefix, wh
 Exits with code 1 if any check fails.
 
 .EXAMPLE
-./Cloudformation/test-auth.ps1 -Region eu-west-2 -Email me@example.com
+./cloudformation/test-auth.ps1 -Region eu-west-2 -Email me@example.com
 #>
 [CmdletBinding()]
 param(

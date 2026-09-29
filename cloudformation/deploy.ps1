@@ -13,10 +13,10 @@ Needs the AWS CLI v2 and the .NET 10 SDK. Credentials come from your AWS CLI con
 (use -AwsProfile to pick a named profile).
 
 .EXAMPLE
-./Cloudformation/deploy.ps1 -Region eu-west-2 -TestUserEmail me@example.com
+./cloudformation/deploy.ps1 -Region eu-west-2 -TestUserEmail me@example.com
 
 .EXAMPLE
-./Cloudformation/deploy.ps1 -Environment test -AwsProfile work -SkipTestUser
+./cloudformation/deploy.ps1 -Environment test -AwsProfile work -SkipTestUser
 #>
 [CmdletBinding()]
 param(
@@ -258,4 +258,4 @@ Write-Info "Identity pool : $($outputs['IdentityPoolId'])"
 Write-Info "Data bucket   : $($outputs['DataBucketName'])"
 Write-Host ''
 Write-Info "Verify sign-in and per-user AWS access with:"
-Write-Info "  ./Cloudformation/test-auth.ps1 -Environment $Environment -Region $script:AwsRegion -Email <user>"
+Write-Info "  ./cloudformation/test-auth.ps1 -Environment $Environment -Region $script:AwsRegion -Email <user>"
