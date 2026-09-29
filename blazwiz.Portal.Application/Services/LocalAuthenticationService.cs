@@ -7,8 +7,8 @@ namespace blazwiz.Portal.Application.Services;
 
 /// <summary>
 /// Placeholder authentication which accepts any non-empty username and password and keeps the
-/// session in local storage. Replace with a Cognito backed <see cref="IAuthenticationService"/>
-/// once the AWS resources are deployed.
+/// session in local storage. Used when no Cognito user pool is configured (e.g. local development),
+/// otherwise <see cref="CognitoAuthenticationService"/> is used.
 /// </summary>
 public class LocalAuthenticationService(
     ILocalStorageService localStorageService,
@@ -27,6 +27,20 @@ public class LocalAuthenticationService(
 
     private readonly ILocalStorageService localStorageService = ValidationHelpers.VerifiedAssignment(localStorageService);
     private readonly ISystemClock systemClock = ValidationHelpers.VerifiedAssignment(systemClock);
+
+    /// <inheritdoc/>
+    public bool IsPlaceholder => true;
+
+    /// <inheritdoc/>
+    public Task<LoginResult> CompleteNewPasswordAsync(string newPassword)
+    {
+        // The placeholder never asks for a new password.
+        return Task.FromResult(new LoginResult
+        {
+            Success = false,
+            Error = "Please sign in first.",
+        });
+    }
 
     /// <inheritdoc/>
     public async Task<LoginResult> LoginAsync(string username, string password)

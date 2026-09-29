@@ -8,12 +8,27 @@ namespace blazwiz.Portal.Application.Services.Interfaces;
 public interface IAuthenticationService
 {
     /// <summary>
+    /// Gets a value indicating whether this is the placeholder sign-in that accepts any credentials.
+    /// </summary>
+    bool IsPlaceholder { get; }
+
+    /// <summary>
     /// Attempts to sign in with the given credentials.
     /// </summary>
     /// <param name="username">The username.</param>
     /// <param name="password">The password.</param>
-    /// <returns>The result of the login attempt.</returns>
+    /// <returns>
+    /// The result of the login attempt. When <see cref="LoginResult.NewPasswordRequired"/> is set, call
+    /// <see cref="CompleteNewPasswordAsync"/> to finish signing in.
+    /// </returns>
     Task<LoginResult> LoginAsync(string username, string password);
+
+    /// <summary>
+    /// Finishes a sign-in that needs a new password (e.g. the user was invited with a temporary one).
+    /// </summary>
+    /// <param name="newPassword">The new password.</param>
+    /// <returns>The result of the login attempt.</returns>
+    Task<LoginResult> CompleteNewPasswordAsync(string newPassword);
 
     /// <summary>
     /// Signs the current user out and clears their session.

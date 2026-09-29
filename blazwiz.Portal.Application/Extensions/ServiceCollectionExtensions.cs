@@ -15,6 +15,7 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Adds all portal application services to the dependency injection container.
     /// Browser specific services (<see cref="INavigationService"/>, <see cref="IBrowserInteropService"/>) are registered by the portal itself.
+    /// Call <see cref="AddPortalSettings"/> first so the Cognito settings decide which authentication service is used.
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
     /// <returns>The service collection for method chaining.</returns>
@@ -25,7 +26,17 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILocalStorageService, LocalStorageService>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IThemeService, ThemeService>();
-        services.AddScoped<IAuthenticationService, LocalAuthenticationService>();
+        services.AddScoped<ICognitoUserPoolClient>(sp =>
+        {
+            var cognitoConfig = sp.GetRequiredService<AwsCognitoConfig>();
+            return new CognitoUserPoolClient(CognitoUserPoolClient.CreateProvider(cognitoConfig), cognitoConfig);
+        });
+
+        // Cognito when a user pool is configured (deployed), otherwise the placeholder login (local development).
+        services.AddScoped<IAuthenticationService>(sp =>
+            CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
+                ? ActivatorUtilities.CreateInstance<CognitoAuthenticationService>(sp)
+                : ActivatorUtilities.CreateInstance<LocalAuthenticationService>(sp));
         services.AddSingleton<INavigationMenuService, NavigationMenuService>();
 
         return services;

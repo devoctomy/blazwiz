@@ -18,6 +18,9 @@ public partial class LoginViewModel : ViewModelBase
 
     private string username = string.Empty;
     private string password = string.Empty;
+    private string newPassword = string.Empty;
+    private string confirmNewPassword = string.Empty;
+    private bool isNewPasswordRequired;
     private bool isBusy;
     private string? errorMessage;
 
@@ -57,6 +60,38 @@ public partial class LoginViewModel : ViewModelBase
         get => password;
         set => SetProperty(ref password, value);
     }
+
+    /// <summary>
+    /// Gets or sets the new password, when the user must choose one.
+    /// </summary>
+    public string NewPassword
+    {
+        get => newPassword;
+        set => SetProperty(ref newPassword, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the new password again, to catch typos.
+    /// </summary>
+    public string ConfirmNewPassword
+    {
+        get => confirmNewPassword;
+        set => SetProperty(ref confirmNewPassword, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the user must choose a new password to finish signing in.
+    /// </summary>
+    public bool IsNewPasswordRequired
+    {
+        get => isNewPasswordRequired;
+        private set => SetProperty(ref isNewPasswordRequired, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the placeholder login (any credentials) is in use.
+    /// </summary>
+    public bool IsPlaceholderLogin => authService.IsPlaceholder;
 
     /// <summary>
     /// Gets a value indicating whether a login is in progress.
@@ -120,6 +155,11 @@ public partial class LoginViewModel : ViewModelBase
                 Password = string.Empty;
                 navigationService.NavigateTo("/");
             }
+            else if (result.NewPasswordRequired)
+            {
+                Password = string.Empty;
+                IsNewPasswordRequired = true;
+            }
             else
             {
                 ErrorMessage = result.Error ?? "Login failed.";
@@ -136,6 +176,59 @@ public partial class LoginViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Sets the new password and finishes signing in.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task CompleteNewPasswordAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        if (NewPassword != ConfirmNewPassword)
+        {
+            ErrorMessage = "The passwords do not match.";
+            return;
+        }
+
+        ErrorMessage = null;
+        IsBusy = true;
+        try
+        {
+            var result = await authService.CompleteNewPasswordAsync(NewPassword);
+            if (result.Success)
+            {
+                ClearNewPassword();
+                navigationService.NavigateTo("/");
+            }
+            else
+            {
+                ErrorMessage = result.Error ?? "Could not set the new password.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Could not set the new password: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Abandons choosing a new password and goes back to the sign-in form.
+    /// </summary>
+    [RelayCommand]
+    public void CancelNewPassword()
+    {
+        ClearNewPassword();
+        ErrorMessage = null;
+    }
+
+    /// <summary>
     /// Toggles between light and dark themes.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
@@ -144,5 +237,12 @@ public partial class LoginViewModel : ViewModelBase
     {
         await themeService.ToggleThemeAsync();
         OnPropertyChanged(nameof(ThemeIcon));
+    }
+
+    private void ClearNewPassword()
+    {
+        NewPassword = string.Empty;
+        ConfirmNewPassword = string.Empty;
+        IsNewPasswordRequired = false;
     }
 }

@@ -29,4 +29,19 @@ public class UserSession
     /// Gets or sets when the session expires.
     /// </summary>
     public DateTimeOffset ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Cognito ID token, when signed in with Cognito.
+    /// </summary>
+    public string? IdToken { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Cognito access token, when signed in with Cognito.
+    /// </summary>
+    public string? AccessToken { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Cognito refresh token, used to renew the other tokens when they expire.
+    /// </summary>
+    public string? RefreshToken { get; set; }
 }
