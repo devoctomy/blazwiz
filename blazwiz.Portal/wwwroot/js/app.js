@@ -1,5 +1,5 @@
 // Browser helpers called from BrowserInteropService via JS interop.
-window.blazwiz = {
+window.portalInterop = {
     setTheme: function (theme) {
         document.documentElement.setAttribute('data-bs-theme', theme);
     },
@@ -19,5 +19,5 @@ window.blazwiz = {
         // Ignore unreadable settings and fall back to the OS preference.
     }
 
-    window.blazwiz.setTheme(theme === 'dark' || theme === 'light' ? theme : window.blazwiz.getPreferredTheme());
+    window.portalInterop.setTheme(theme === 'dark' || theme === 'light' ? theme : window.portalInterop.getPreferredTheme());
 })();

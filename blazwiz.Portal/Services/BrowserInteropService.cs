@@ -13,12 +13,12 @@ public class BrowserInteropService(IJSRuntime jsRuntime) : IBrowserInteropServic
     /// <inheritdoc/>
     public async Task SetThemeAsync(string theme)
     {
-        await jsRuntime.InvokeVoidAsync("blazwiz.setTheme", theme);
+        await jsRuntime.InvokeVoidAsync("portalInterop.setTheme", theme);
     }
 
     /// <inheritdoc/>
     public async Task<string> GetPreferredThemeAsync()
     {
-        return await jsRuntime.InvokeAsync<string>("blazwiz.getPreferredTheme");
+        return await jsRuntime.InvokeAsync<string>("portalInterop.getPreferredTheme");
     }
 }
