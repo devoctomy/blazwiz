@@ -14,6 +14,10 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.JSInterop" Version="10.0.12" />
+    <!-- AWS -->
+    <PackageVersion Include="Amazon.Extensions.CognitoAuthentication" Version="3.1.5" />
+    <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.105.3" />
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <!-- MVVM -->
     <PackageVersion Include="Blazing.Mvvm" Version="3.2.1" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />

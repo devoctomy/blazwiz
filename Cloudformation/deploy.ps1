@@ -202,12 +202,22 @@ if (-not $SkipTestUser -and $TestUserEmail) {
         throw "Could not look up user: $script:LastAwsError"
     }
 
-    if ($null -ne $existing -and $null -eq $TestUserPassword) {
+    # A user left with a temporary password (e.g. by an earlier failed run) cannot sign in, so set one.
+    if ($null -ne $existing -and $null -eq $TestUserPassword -and $existing.UserStatus -ne 'FORCE_CHANGE_PASSWORD') {
         Write-Ok "User already exists, password left unchanged (pass -TestUserPassword to reset it)"
     }
     else {
         if ($null -eq $TestUserPassword) {
             $TestUserPassword = Read-Host "    Password for $TestUserEmail (min 12 chars, upper, lower, number)" -AsSecureString
+        }
+
+        # Check against the user pool's password policy (see blazwiz-aws.yaml) before creating the user,
+        # so a rejected password does not leave behind a user with no usable password.
+        $plainPassword = ConvertTo-PlainText $TestUserPassword
+        $passwordOk = $plainPassword.Length -ge 12 -and $plainPassword -cmatch '[a-z]' -and $plainPassword -cmatch '[A-Z]' -and $plainPassword -match '[0-9]'
+        $plainPassword = $null
+        if (-not $passwordOk) {
+            throw 'The test user password must be at least 12 characters and contain an upper case letter, a lower case letter and a number.'
         }
 
         if ($null -eq $existing) {

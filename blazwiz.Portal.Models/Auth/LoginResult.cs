@@ -19,4 +19,10 @@ public class LoginResult
     /// Gets or sets the session created by a successful login.
     /// </summary>
     public UserSession? Session { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the user must choose a new password before they can sign in,
+    /// e.g. when they were invited with a temporary password.
+    /// </summary>
+    public bool NewPasswordRequired { get; set; }
 }

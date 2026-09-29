@@ -22,58 +22,124 @@
         }
     </div>
 
-    <EditForm Model="ViewModel" OnSubmit="() => ViewModel.LoginCommand.ExecuteAsync(null)" FormName="login">
-        <div class="mb-3">
-            <label for="username" class="form-label">Username</label>
-            <div class="input-icon">
-                <i class="bi bi-person"></i>
-                <InputText id="username"
-                           class="form-control"
-                           placeholder="you@example.com"
-                           autocomplete="username"
-                           @bind-Value="ViewModel.Username"
-                           disabled="@ViewModel.IsBusy" />
+    @if (ViewModel.IsNewPasswordRequired)
+    {
+        <EditForm Model="ViewModel" OnSubmit="() => ViewModel.CompleteNewPasswordCommand.ExecuteAsync(null)" FormName="new-password">
+            <p class="small mb-3" id="new-password-intro">
+                Please choose a new password to finish signing in. It must be at least 12 characters and contain
+                an upper case letter, a lower case letter and a number.
+            </p>
+            <div class="mb-3">
+                <label for="new-password" class="form-label">New password</label>
+                <div class="input-icon">
+                    <i class="bi bi-lock"></i>
+                    <InputText id="new-password"
+                               type="password"
+                               class="form-control"
+                               autocomplete="new-password"
+                               @bind-Value="ViewModel.NewPassword"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
             </div>
-        </div>
-        <div class="mb-4">
-            <label for="password" class="form-label">Password</label>
-            <div class="input-icon">
-                <i class="bi bi-lock"></i>
-                <InputText id="password"
-                           type="password"
-                           class="form-control"
-                           placeholder="Your password"
-                           autocomplete="current-password"
-                           @bind-Value="ViewModel.Password"
-                           disabled="@ViewModel.IsBusy" />
+            <div class="mb-4">
+                <label for="confirm-new-password" class="form-label">Confirm new password</label>
+                <div class="input-icon">
+                    <i class="bi bi-lock"></i>
+                    <InputText id="confirm-new-password"
+                               type="password"
+                               class="form-control"
+                               autocomplete="new-password"
+                               @bind-Value="ViewModel.ConfirmNewPassword"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
             </div>
-        </div>
 
-        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
-        {
-            <div class="alert alert-danger py-2 small" role="alert" id="login-error">
-                <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
-            </div>
-        }
-
-        <button type="submit" class="btn btn-primary btn-lg w-100" id="login-button" disabled="@ViewModel.IsBusy">
-            @if (ViewModel.IsBusy)
+            @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
             {
-                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                <span>Signing in...</span>
+                <div class="alert alert-danger py-2 small" role="alert" id="login-error">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+                </div>
             }
-            else
-            {
-                <span>Sign in</span>
-                <i class="bi bi-arrow-right ms-1"></i>
-            }
-        </button>
-    </EditForm>
 
-    <p class="auth-hint">
-        <i class="bi bi-info-circle me-1"></i>
-        Placeholder login - any username and password will do until Cognito is connected.
-    </p>
+            <button type="submit" class="btn btn-primary btn-lg w-100" id="new-password-button" disabled="@ViewModel.IsBusy">
+                @if (ViewModel.IsBusy)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                    <span>Saving...</span>
+                }
+                else
+                {
+                    <span>Set password and sign in</span>
+                    <i class="bi bi-arrow-right ms-1"></i>
+                }
+            </button>
+            <button type="button"
+                    class="btn btn-link w-100 mt-2"
+                    id="new-password-cancel"
+                    disabled="@ViewModel.IsBusy"
+                    @onclick="ViewModel.CancelNewPasswordCommand.Execute">
+                Back to sign in
+            </button>
+        </EditForm>
+    }
+    else
+    {
+        <EditForm Model="ViewModel" OnSubmit="() => ViewModel.LoginCommand.ExecuteAsync(null)" FormName="login">
+            <div class="mb-3">
+                <label for="username" class="form-label">Email</label>
+                <div class="input-icon">
+                    <i class="bi bi-person"></i>
+                    <InputText id="username"
+                               class="form-control"
+                               placeholder="you@example.com"
+                               autocomplete="username"
+                               @bind-Value="ViewModel.Username"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-icon">
+                    <i class="bi bi-lock"></i>
+                    <InputText id="password"
+                               type="password"
+                               class="form-control"
+                               placeholder="Your password"
+                               autocomplete="current-password"
+                               @bind-Value="ViewModel.Password"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            {
+                <div class="alert alert-danger py-2 small" role="alert" id="login-error">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary btn-lg w-100" id="login-button" disabled="@ViewModel.IsBusy">
+                @if (ViewModel.IsBusy)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Sign in</span>
+                    <i class="bi bi-arrow-right ms-1"></i>
+                }
+            </button>
+        </EditForm>
+    }
+
+    @if (ViewModel.IsPlaceholderLogin)
+    {
+        <p class="auth-hint">
+            <i class="bi bi-info-circle me-1"></i>
+            Placeholder login - any username and password will do until Cognito is connected.
+        </p>
+    }
 </div>
 
 @if (!string.IsNullOrEmpty(ViewModel.AppSettings.CopyrightMessage))

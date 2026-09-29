@@ -4,8 +4,8 @@ Boilerplate for a **Blazor WebAssembly static PWA** that authenticates with **AW
 optionally use AWS resources directly from the browser. It is intended to become a `dotnet new`
 template, so new apps of this shape can be created in seconds and built out from there.
 
-> **Status: V1.** The app runs locally with a placeholder login (any username / password).
-> Cognito and AWS deployment are the next steps (see [Roadmap](#roadmap)).
+> **Status:** deployed builds sign in with AWS Cognito. Running locally without Cognito settings uses a
+> placeholder login (any username / password). See [Authentication](#authentication).
 
 ## Solution structure
 
@@ -43,6 +43,10 @@ dotnet run --project blazwiz.Portal
 ```
 
 Open <https://localhost:7090> (or <http://localhost:5090>) and sign in with any username and password.
+
+To sign in against a real Cognito user pool locally instead, copy the deployed stack's ids into the
+`AwsCognito` section of `wwwroot/appsettings.Development.json` (the data bucket already allows the local
+origins for CORS).
 
 ## Running the tests
 
@@ -106,6 +110,24 @@ operating system preference.
 `appsettings.Development.json` overrides values when running locally and is not published. When
 deploying, `deploy.ps1` generates `appsettings.Production.json` with the stack's ids (git ignored).
 
+## Authentication
+
+`IAuthenticationService` has two implementations, chosen in `AddPortalApplicationServices`:
+
+- **`CognitoAuthenticationService`** when `AwsCognito` has a region, user pool id and app client id (deployed
+  builds get these from `appsettings.Production.json`). Sign-in uses SRP, so the password is never sent.
+  Invited users with a temporary password are asked to choose a new one. Tokens are kept in local storage
+  and refreshed with the refresh token when they are within 5 minutes of expiring, and signing out revokes
+  the refresh token.
+- **`LocalAuthenticationService`** (placeholder, any credentials) otherwise, e.g. local development and the UI tests.
+
+All Cognito protocol work, including SRP, is done by AWS's
+[`Amazon.Extensions.CognitoAuthentication`](https://github.com/aws/aws-sdk-net-extensions-cognito) library,
+wrapped by `CognitoUserPoolClient` (behind `ICognitoUserPoolClient`, so the service is unit testable). Two
+settings make the AWS SDK work in the browser, see `CognitoUserPoolClient.BrowserHttpClientFactory`: a plain
+`HttpClient`, and buffering responses because the SDK reads them synchronously, which WebAssembly does not
+allow. Tokens are only decoded (with `Microsoft.IdentityModel.JsonWebTokens`) to show the user's name and email.
+
 ## Deploying to AWS
 
 Everything lives in `Cloudformation/`. You need the AWS CLI v2, the .NET 10 SDK and credentials for the
@@ -156,14 +178,12 @@ worker, manifest, settings) and a one day cache for everything else, then invali
 deployments show up straight away. The test user is created with a permanent password (no forced reset).
 
 > The app client also allows `USER_PASSWORD_AUTH`, only so `test-auth.ps1` can sign in from the command
-> line. The portal will use SRP. Remove it from the template if you do not want it.
+> line. The portal itself uses SRP. Remove it from the template if you do not want it.
 
 ## Roadmap
 
-1. **Cognito authentication**: implement `IAuthenticationService` against Cognito (SRP login, new
-   password challenge, token refresh) and swap it for `LocalAuthenticationService` in
-   `AddPortalApplicationServices`. Exchange the ID token for temporary AWS credentials through the
-   Cognito identity pool, for optional direct access to AWS resources. The infrastructure is already
-   in place (see [Deploying to AWS](#deploying-to-aws)).
+1. **AWS credentials in the browser**: exchange the ID token for temporary AWS credentials through the
+   Cognito identity pool (`CognitoUser.GetCognitoAWSCredentials` in the same library), for direct access to
+   the per-user data bucket. The infrastructure is already in place (see [Deploying to AWS](#deploying-to-aws)).
 2. **`dotnet new` template**: add `.template.config/template.json` with `sourceName: "blazwiz"` so every
    project, namespace, storage key and title is renamed for the new app.

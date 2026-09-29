@@ -34,6 +34,23 @@ public class LocalAuthenticationServiceTests
         Assert.Equal("systemClock", exception.ParamName);
     }
 
+    [Fact]
+    public void GivenPlaceholder_WhenGettingIsPlaceholder_ThenTrue()
+    {
+        Assert.True(CreateSut().IsPlaceholder);
+    }
+
+    [Fact]
+    public async Task GivenPlaceholder_WhenCompleteNewPasswordAsync_ThenFails()
+    {
+        // Act
+        var result = await CreateSut().CompleteNewPasswordAsync("NewPassword123");
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.Equal("Please sign in first.", result.Error);
+    }
+
     [Theory]
     [InlineData("", "password")]
     [InlineData("bob", "")]

@@ -73,7 +73,6 @@ The policy below covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and noth
       "Effect": "Allow",
       "Action": [
         "cloudfront:CreateDistribution",
-        "cloudfront:CreateDistributionWithTags",
         "cloudfront:UpdateDistribution",
         "cloudfront:DeleteDistribution",
         "cloudfront:GetDistribution",
@@ -159,10 +158,7 @@ The policy below covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and noth
       "Sid": "IamPassRoleToIdentityPool",
       "Effect": "Allow",
       "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::ACCOUNT_ID:role/blazwiz-*",
-      "Condition": {
-        "StringEquals": { "iam:PassedToService": "cognito-identity.amazonaws.com" }
-      }
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/blazwiz-*"
     },
     {
       "Sid": "CustomDomainCertificate",
@@ -177,6 +173,7 @@ The policy below covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and noth
 Notes:
 
 - **You don't need permissions for some calls.** `sts:GetCallerIdentity` is always allowed. The Cognito sign-in calls in `test-auth.ps1` (`initiate-auth`, `get-id`, `get-credentials-for-identity`) are public APIs. The S3 checks in that script run as the signed-in test user, not as you.
+- **`IamPassRoleToIdentityPool` has no `iam:PassedToService` condition.** A condition of `cognito-identity.amazonaws.com` doesn't match when the role is attached to the identity pool, and the deploy fails at `IdentityPoolRoleAttachment`. It is limited by the `blazwiz-*` role name instead.
 - **`CustomDomainCertificate`** is only needed when you pass `-CustomDomainName` / `-CertificateArn`. You can drop it otherwise.
 - **IAM is the sensitive part.** The template creates an IAM role, so this identity can create and edit any role whose name starts with `blazwiz-`. In principle that lets it create a more powerful role for itself. For throwaway testing that is usually fine. For stronger isolation, use a dedicated sandbox account, or add a permissions boundary condition (`iam:PermissionsBoundary`) to `CreateRole` / `PutRolePolicy`.
 - **If a deploy fails with `AccessDenied`**, the stack events name the exact missing action. Run `aws cloudformation describe-stack-events --stack-name blazwiz-dev`, add that action to the policy and deploy again. A failed first deploy leaves the stack in `ROLLBACK_COMPLETE`. Delete it with `remove.ps1` before you retry.

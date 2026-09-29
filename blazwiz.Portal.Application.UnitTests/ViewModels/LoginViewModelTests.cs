@@ -213,5 +213,152 @@ public class LoginViewModelTests
         Assert.Contains(nameof(LoginViewModel.ThemeIcon), changed);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GivenAuthService_WhenGettingIsPlaceholderLogin_ThenReflectsService(bool isPlaceholder)
+    {
+        // Arrange
+        mockAuth.SetupGet(x => x.IsPlaceholder).Returns(isPlaceholder);
+
+        // Act & Assert
+        Assert.Equal(isPlaceholder, CreateSut().IsPlaceholderLogin);
+    }
+
+    [Fact]
+    public async Task GivenNewPasswordRequired_WhenLogin_ThenShowsNewPasswordFormWithoutError()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.LoginAsync("bob", "temp")).ReturnsAsync(new LoginResult { NewPasswordRequired = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "temp";
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        Assert.True(sut.IsNewPasswordRequired);
+        Assert.Equal(string.Empty, sut.Password);
+        Assert.Null(sut.ErrorMessage);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenMatchingPasswords_WhenCompleteNewPassword_ThenSignsInAndNavigatesHome()
+    {
+        // Arrange
+        var sut = await CreateSutAwaitingNewPasswordAsync();
+        mockAuth.Setup(x => x.CompleteNewPasswordAsync("NewPassword123")).ReturnsAsync(new LoginResult { Success = true });
+        sut.NewPassword = "NewPassword123";
+        sut.ConfirmNewPassword = "NewPassword123";
+
+        // Act
+        await sut.CompleteNewPasswordCommand.ExecuteAsync(null);
+
+        // Assert
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+        Assert.False(sut.IsNewPasswordRequired);
+        Assert.Equal(string.Empty, sut.NewPassword);
+        Assert.Equal(string.Empty, sut.ConfirmNewPassword);
+        Assert.False(sut.IsBusy);
+    }
+
+    [Fact]
+    public async Task GivenMismatchedPasswords_WhenCompleteNewPassword_ThenShowsErrorWithoutCallingService()
+    {
+        // Arrange
+        var sut = await CreateSutAwaitingNewPasswordAsync();
+        sut.NewPassword = "NewPassword123";
+        sut.ConfirmNewPassword = "NewPassword124";
+
+        // Act
+        await sut.CompleteNewPasswordAsync();
+
+        // Assert
+        Assert.Equal("The passwords do not match.", sut.ErrorMessage);
+        mockAuth.Verify(x => x.CompleteNewPasswordAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("Password not long enough", "Password not long enough")]
+    [InlineData(null, "Could not set the new password.")]
+    public async Task GivenRejectedPassword_WhenCompleteNewPassword_ThenShowsErrorAndStaysOnForm(string? error, string expected)
+    {
+        // Arrange
+        var sut = await CreateSutAwaitingNewPasswordAsync();
+        mockAuth.Setup(x => x.CompleteNewPasswordAsync(It.IsAny<string>())).ReturnsAsync(new LoginResult { Error = error });
+
+        // Act
+        await sut.CompleteNewPasswordAsync();
+
+        // Assert
+        Assert.Equal(expected, sut.ErrorMessage);
+        Assert.True(sut.IsNewPasswordRequired);
+        Assert.False(sut.IsBusy);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAuthServiceThrows_WhenCompleteNewPassword_ThenShowsExceptionMessage()
+    {
+        // Arrange
+        var sut = await CreateSutAwaitingNewPasswordAsync();
+        mockAuth.Setup(x => x.CompleteNewPasswordAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("Boom"));
+
+        // Act
+        await sut.CompleteNewPasswordAsync();
+
+        // Assert
+        Assert.Equal("Could not set the new password: Boom", sut.ErrorMessage);
+        Assert.False(sut.IsBusy);
+    }
+
+    [Fact]
+    public async Task GivenBusy_WhenCompleteNewPasswordAgain_ThenSecondAttemptIsIgnored()
+    {
+        // Arrange
+        var sut = await CreateSutAwaitingNewPasswordAsync();
+        var pending = new TaskCompletionSource<LoginResult>();
+        mockAuth.Setup(x => x.CompleteNewPasswordAsync(It.IsAny<string>())).Returns(pending.Task);
+
+        // Act
+        var first = sut.CompleteNewPasswordAsync();
+        await sut.CompleteNewPasswordAsync();
+        pending.SetResult(new LoginResult { Success = true });
+        await first;
+
+        // Assert
+        mockAuth.Verify(x => x.CompleteNewPasswordAsync(It.IsAny<string>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNewPasswordForm_WhenCancelNewPassword_ThenReturnsToSignIn()
+    {
+        // Arrange
+        var sut = await CreateSutAwaitingNewPasswordAsync();
+        sut.NewPassword = "abc";
+        sut.ConfirmNewPassword = "abd";
+        await sut.CompleteNewPasswordAsync();
+
+        // Act
+        sut.CancelNewPasswordCommand.Execute(null);
+
+        // Assert
+        Assert.False(sut.IsNewPasswordRequired);
+        Assert.Equal(string.Empty, sut.NewPassword);
+        Assert.Equal(string.Empty, sut.ConfirmNewPassword);
+        Assert.Null(sut.ErrorMessage);
+    }
+
+    private async Task<LoginViewModel> CreateSutAwaitingNewPasswordAsync()
+    {
+        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { NewPasswordRequired = true });
+        var sut = CreateSut();
+        await sut.LoginAsync();
+        Assert.True(sut.IsNewPasswordRequired);
+        return sut;
+    }
+
     private LoginViewModel CreateSut() => new(mockAuth.Object, mockNavigation.Object, mockTheme.Object, appSettings);
 }

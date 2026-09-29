@@ -44,6 +44,44 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void GivenCognitoConfigured_WhenAddPortalApplicationServices_ThenUsesCognitoAuthentication()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton(Mock.Of<IJSRuntime>());
+        services.AddSingleton(Mock.Of<IBrowserInteropService>());
+        services.AddBlazwizCoreServices();
+        services.AddSingleton(new AwsCognitoConfig { Region = "eu-west-2", UserPoolId = "eu-west-2_Pool", UserPoolClientId = "client" });
+
+        // Act
+        services.AddPortalApplicationServices();
+
+        // Assert
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        using var scope = provider.CreateScope();
+        Assert.IsType<CognitoAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
+        Assert.IsType<CognitoUserPoolClient>(scope.ServiceProvider.GetRequiredService<ICognitoUserPoolClient>());
+    }
+
+    [Fact]
+    public void GivenEmptyCognitoConfig_WhenAddPortalApplicationServices_ThenUsesPlaceholderAuthentication()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton(Mock.Of<IJSRuntime>());
+        services.AddBlazwizCoreServices();
+        services.AddSingleton(new AwsCognitoConfig());
+
+        // Act
+        services.AddPortalApplicationServices();
+
+        // Assert
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
+    }
+
+    [Fact]
     public void GivenNullServices_WhenAddPortalSettings_ThenThrowsArgumentNullException()
     {
         // Act & Assert
