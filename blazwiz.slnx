@@ -9,17 +9,21 @@
   </Folder>
   <Folder Name="/cloudformation/">
     <File Path="cloudformation/_common.ps1" />
-    <File Path="cloudformation/blazwiz-aws.yaml" />
     <File Path="cloudformation/deploy.ps1" />
+    <File Path="cloudformation/README.md" />
     <File Path="cloudformation/remove.ps1" />
+    <File Path="cloudformation/stack-policy.json" />
+    <File Path="cloudformation/stack.yaml" />
     <File Path="cloudformation/test-auth.ps1" />
   </Folder>
+  <!--#if (IncludeTests)-->
   <Folder Name="/Tests/">
     <Project Path="blazwiz.Core.IntTests/blazwiz.Core.IntTests.csproj" />
     <Project Path="blazwiz.Core.UnitTests/blazwiz.Core.UnitTests.csproj" />
     <Project Path="blazwiz.Portal.Application.UnitTests/blazwiz.Portal.Application.UnitTests.csproj" />
     <Project Path="blazwiz.Portal.UITests/blazwiz.Portal.UITests.csproj" />
   </Folder>
+  <!--#endif-->
   <Project Path="blazwiz.Core/blazwiz.Core.csproj" />
   <Project Path="blazwiz.Portal.Application/blazwiz.Portal.Application.csproj" />
   <Project Path="blazwiz.Portal.Models/blazwiz.Portal.Models.csproj" />
