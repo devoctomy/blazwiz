@@ -4,7 +4,9 @@ Deploys blazwiz to AWS: infrastructure (CloudFormation), portal (S3 + CloudFront
 
 .DESCRIPTION
 Safe to run repeatedly. Each run:
-  1. Creates / updates the CloudFormation stack "<AppName>-<Environment>".
+  1. Creates / updates the CloudFormation stack "<AppName>-<Environment>" through a change set. The changes
+     are listed first, replacements need confirming, and replacing the user pool, identity pool or data
+     bucket is refused unless -AllowStatefulReplacement is given (see stack-policy.json).
   2. Writes the stack outputs into wwwroot/appsettings.Production.json and publishes the portal.
   3. Uploads the portal to S3 with sensible Cache-Control headers and invalidates CloudFront.
   4. Creates the test user (or resets their password) if -TestUserEmail is given.
@@ -47,6 +49,10 @@ param(
     # Skip the CloudFormation deployment (just publish the portal / manage the user).
     [switch]$SkipInfrastructure,
 
+    # Let the deployment replace or remove resources protected by stack-policy.json (the user pool, identity
+    # pool and data bucket). This loses their users / data, only use it when that is intended.
+    [switch]$AllowStatefulReplacement,
+
     # Skip publishing and uploading the portal.
     [switch]$SkipPortal,
 
@@ -62,6 +68,7 @@ $ErrorActionPreference = 'Stop'
 
 $stackName = Get-StackName $AppName $Environment
 $templatePath = Join-Path $PSScriptRoot 'blazwiz-aws.yaml'
+$stackPolicyPath = Join-Path $PSScriptRoot 'stack-policy.json'
 $portalProject = Join-Path $script:RepoRoot 'blazwiz.Portal/blazwiz.Portal.csproj'
 $productionSettingsPath = Join-Path $script:RepoRoot 'blazwiz.Portal/wwwroot/appsettings.Production.json'
 $publishDirectory = Join-Path $script:RepoRoot "publish/$stackName"
@@ -88,22 +95,118 @@ Confirm-Action -Force:$Force -Message "This will create / update stack '$stackNa
 # 1. Infrastructure ---------------------------------------------------------------------------
 
 if (-not $SkipInfrastructure) {
-    Write-Step "Deploying CloudFormation stack '$stackName' (first run takes ~5 minutes, mostly CloudFront)"
-    Invoke-Aws -Stream -Arguments @(
-        'cloudformation', 'deploy',
-        '--stack-name', $stackName,
-        '--template-file', $templatePath,
-        '--capabilities', 'CAPABILITY_IAM',
-        '--no-fail-on-empty-changeset',
-        '--parameter-overrides',
-        "AppName=$AppName",
-        "Environment=$Environment",
-        "CustomDomainName=$CustomDomainName",
-        "CertificateArn=$CertificateArn",
-        '--tags',
-        "app=$AppName",
-        "environment=$Environment"
+    $existingStack = Invoke-Aws -Json -AllowFailure -Arguments @('cloudformation', 'describe-stacks', '--stack-name', $stackName)
+    if ($null -eq $existingStack -and $script:LastAwsError -notmatch 'does not exist') {
+        throw "Could not describe stack $stackName`: $script:LastAwsError"
+    }
+    # A stack left in REVIEW_IN_PROGRESS by an earlier, unexecuted create change set is still created with CREATE.
+    $changeSetType = if ($null -eq $existingStack -or $existingStack.Stacks[0].StackStatus -eq 'REVIEW_IN_PROGRESS') { 'CREATE' } else { 'UPDATE' }
+    $changeSetName = "deploy-$(Get-Date -Format 'yyyyMMddHHmmss')"
+
+    Write-Step "Working out changes to stack '$stackName'"
+    $parametersFile = New-TempJsonFile @(
+        @{ ParameterKey = 'AppName'; ParameterValue = $AppName }
+        @{ ParameterKey = 'Environment'; ParameterValue = $Environment }
+        @{ ParameterKey = 'CustomDomainName'; ParameterValue = $CustomDomainName }
+        @{ ParameterKey = 'CertificateArn'; ParameterValue = $CertificateArn }
     )
+    $tagsFile = New-TempJsonFile @(
+        @{ Key = 'app'; Value = $AppName }
+        @{ Key = 'environment'; Value = $Environment }
+    )
+    try {
+        Invoke-Aws -Arguments @(
+            'cloudformation', 'create-change-set',
+            '--stack-name', $stackName,
+            '--change-set-name', $changeSetName,
+            '--change-set-type', $changeSetType,
+            '--template-body', "file://$templatePath",
+            '--capabilities', 'CAPABILITY_IAM',
+            '--parameters', "file://$parametersFile",
+            '--tags', "file://$tagsFile"
+        ) | Out-Null
+    }
+    finally {
+        Remove-Item -Force $parametersFile, $tagsFile -ErrorAction SilentlyContinue
+    }
+
+    # The waiter fails when there is nothing to change, so the change set's status is checked instead.
+    Invoke-Aws -AllowFailure -Arguments @('cloudformation', 'wait', 'change-set-create-complete', '--stack-name', $stackName, '--change-set-name', $changeSetName) | Out-Null
+    $changeSet = Invoke-Aws -Json -Arguments @('cloudformation', 'describe-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName)
+
+    if ($changeSet.Status -eq 'FAILED') {
+        $reason = "$($changeSet.PSObject.Properties['StatusReason'].Value)"
+        if ($reason -notmatch "didn't contain changes|No updates are to be performed") {
+            throw "Could not create change set: $reason"
+        }
+        Invoke-Aws -Arguments @('cloudformation', 'delete-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName) | Out-Null
+        Write-Ok "No infrastructure changes"
+    }
+    else {
+        # Replacement creates a new resource and deletes the old one, losing its data and changing its id.
+        $protected = @((Get-Content -Raw $stackPolicyPath | ConvertFrom-Json).Statement |
+            Where-Object { $_.Effect -eq 'Deny' } |
+            ForEach-Object { $_.Resource } |
+            ForEach-Object { $_ -replace '^LogicalResourceId/', '' })
+        $replacing = @()
+        foreach ($change in @($changeSet.Changes)) {
+            $resource = $change.ResourceChange
+            $replacement = "$($resource.PSObject.Properties['Replacement'].Value)"
+            $line = "$($resource.Action.PadRight(7)) $($resource.LogicalResourceId) ($($resource.ResourceType))"
+            if ($replacement -eq 'True' -or $replacement -eq 'Conditional') {
+                $replacing += $resource.LogicalResourceId
+                Write-Warn "$line - REPLACEMENT ($replacement)"
+            }
+            elseif ($resource.Action -eq 'Remove' -and $protected -contains $resource.LogicalResourceId) {
+                $replacing += $resource.LogicalResourceId
+                Write-Warn $line
+            }
+            else {
+                Write-Info $line
+            }
+        }
+
+        $blocked = @($replacing | Where-Object { $protected -contains $_ })
+        if ($blocked.Count -gt 0 -and -not $AllowStatefulReplacement) {
+            Invoke-Aws -Arguments @('cloudformation', 'delete-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName) | Out-Null
+            throw ("This deployment would replace or remove $($blocked -join ', '), losing users and / or their data. Nothing was changed. " +
+                'Revert the template change, or re-run with -AllowStatefulReplacement if that is really intended.')
+        }
+        if ($replacing.Count -gt 0) {
+            Confirm-Action -Force:$Force -Message "The resources marked REPLACEMENT above will be recreated with new ids. Anything stored in them is not copied across."
+        }
+
+        Write-Step "Applying changes (first run takes ~5 minutes, mostly CloudFront)"
+        $overrideFile = $null
+        try {
+            if ($AllowStatefulReplacement -and $changeSetType -eq 'UPDATE') {
+                # Stack policies cannot be overridden for a change set, so lift it for this update only.
+                $overrideFile = New-TempJsonFile @{ Statement = @(@{ Effect = 'Allow'; Principal = '*'; Action = 'Update:*'; Resource = '*' }) }
+                Invoke-Aws -Arguments @('cloudformation', 'set-stack-policy', '--stack-name', $stackName, '--stack-policy-body', "file://$overrideFile") | Out-Null
+            }
+
+            Invoke-Aws -Arguments @('cloudformation', 'execute-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName) | Out-Null
+            $waiter = if ($changeSetType -eq 'CREATE') { 'stack-create-complete' } else { 'stack-update-complete' }
+            # Invoke-Aws's result cannot tell success from failure here (no output either way), so check the error.
+            Invoke-Aws -AllowFailure -Arguments @('cloudformation', 'wait', $waiter, '--stack-name', $stackName) | Out-Null
+            if ($null -ne $script:LastAwsError) {
+                $events = Invoke-Aws -Json -AllowFailure -Arguments @('cloudformation', 'describe-stack-events', '--stack-name', $stackName, '--max-items', '50')
+                $failedEvents = if ($null -eq $events) { @() } else { @($events.StackEvents) }
+                foreach ($stackEvent in @($failedEvents | Where-Object { $_.ResourceStatus -like '*FAILED' } | Select-Object -First 5)) {
+                    Write-Warn "$($stackEvent.LogicalResourceId): $($stackEvent.PSObject.Properties['ResourceStatusReason'].Value)"
+                }
+                throw "Stack '$stackName' did not deploy (see the events above, or the CloudFormation console)."
+            }
+        }
+        finally {
+            if ($overrideFile) { Remove-Item -Force $overrideFile -ErrorAction SilentlyContinue }
+            # Applied on every run so new stacks get it and -AllowStatefulReplacement's override is undone.
+            Invoke-Aws -AllowFailure -Arguments @('cloudformation', 'set-stack-policy', '--stack-name', $stackName, '--stack-policy-body', "file://$stackPolicyPath") | Out-Null
+            if ($null -ne $script:LastAwsError) {
+                Write-Warn "Could not apply the stack policy: $script:LastAwsError"
+            }
+        }
+    }
     Write-Ok "Stack is up to date"
 }
 
