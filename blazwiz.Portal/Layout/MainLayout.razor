@@ -1,0 +1,98 @@
+@inherits MvvmLayoutComponentBase<MainLayoutViewModel>
+
+@if (!ViewModel.IsReady)
+{
+    <div class="app-splash">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="app-shell @(ViewModel.IsSidebarCollapsed ? "sidebar-collapsed" : null) @(ViewModel.IsMobileMenuOpen ? "mobile-menu-open" : null)">
+        <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+            <div class="sidebar-brand">
+                <img src="images/icon.svg" class="brand-icon" alt="@ViewModel.AppSettings.ApplicationTitle" />
+                <span class="brand-name sidebar-label">@ViewModel.AppSettings.ApplicationTitle</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                @foreach (var item in ViewModel.NavigationItems)
+                {
+                    <NavLink class="sidebar-link"
+                             href="@item.Href"
+                             Match="@(item.ExactMatch ? NavLinkMatch.All : NavLinkMatch.Prefix)"
+                             title="@item.Text"
+                             id="@($"nav-{(string.IsNullOrEmpty(item.Href) ? "dashboard" : item.Href)}")"
+                             @onclick="() => ViewModel.CloseMobileMenuCommand.Execute(null)">
+                        <i class="bi @item.Icon"></i>
+                        <span class="sidebar-label">@item.Text</span>
+                    </NavLink>
+                }
+            </nav>
+
+            <div class="sidebar-footer">
+                <NavLink class="sidebar-link sidebar-user"
+                         href="profile"
+                         id="nav-profile"
+                         title="@ViewModel.CurrentUser?.DisplayName"
+                         @onclick="() => ViewModel.CloseMobileMenuCommand.Execute(null)">
+                    <span class="avatar">@ViewModel.UserInitials</span>
+                    <span class="sidebar-label user-meta">
+                        <span class="user-name">@ViewModel.CurrentUser?.DisplayName</span>
+                        <small class="user-sub">@(ViewModel.CurrentUser?.Email ?? ViewModel.CurrentUser?.Username)</small>
+                    </span>
+                </NavLink>
+                <button type="button"
+                        class="sidebar-link sidebar-logout"
+                        id="logout-button"
+                        title="Log out"
+                        @onclick="() => ViewModel.LogoutCommand.ExecuteAsync(null)">
+                    <i class="bi bi-box-arrow-left"></i>
+                    <span class="sidebar-label">Log out</span>
+                </button>
+            </div>
+        </aside>
+
+        <div class="sidebar-backdrop" @onclick="() => ViewModel.CloseMobileMenuCommand.Execute(null)"></div>
+
+        <div class="app-main">
+            <header class="topbar">
+                <button type="button"
+                        class="icon-btn d-none d-md-inline-flex"
+                        id="sidebar-toggle"
+                        title="@(ViewModel.IsSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")"
+                        aria-controls="sidebar"
+                        aria-expanded="@((!ViewModel.IsSidebarCollapsed).ToString().ToLowerInvariant())"
+                        @onclick="() => ViewModel.ToggleSidebarCommand.ExecuteAsync(null)">
+                    <i class="bi @(ViewModel.IsSidebarCollapsed ? "bi-layout-sidebar" : "bi-layout-sidebar-inset")"></i>
+                </button>
+                <button type="button"
+                        class="icon-btn d-md-none"
+                        id="mobile-menu-toggle"
+                        title="Menu"
+                        aria-controls="sidebar"
+                        aria-expanded="@ViewModel.IsMobileMenuOpen.ToString().ToLowerInvariant()"
+                        @onclick="() => ViewModel.ToggleMobileMenuCommand.Execute(null)">
+                    <i class="bi bi-list"></i>
+                </button>
+                <span class="topbar-title d-md-none">@ViewModel.AppSettings.ApplicationTitle</span>
+
+                <div class="flex-grow-1"></div>
+
+                <button type="button"
+                        class="icon-btn theme-toggle"
+                        id="theme-toggle"
+                        title="Toggle theme"
+                        @onclick="() => ViewModel.ToggleThemeCommand.ExecuteAsync(null)">
+                    <i class="bi @ViewModel.ThemeIcon"></i>
+                </button>
+            </header>
+
+            <main class="app-content">
+                @Body
+            </main>
+        </div>
+    </div>
+}

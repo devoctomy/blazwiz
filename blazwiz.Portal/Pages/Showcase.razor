@@ -1,0 +1,94 @@
+@page "/showcase"
+
+<PageHeader Title="Showcase" Icon="bi-palette" Subtitle="Themed building blocks. Copy what you need, then delete this page.">
+    <button type="button" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Primary action</button>
+</PageHeader>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-6">
+        <div class="panel h-100">
+            <h2 class="panel-title">Buttons</h2>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button type="button" class="btn btn-primary">Primary</button>
+                <button type="button" class="btn btn-outline-primary">Outline</button>
+                <button type="button" class="btn btn-secondary">Secondary</button>
+                <button type="button" class="btn btn-success">Success</button>
+                <button type="button" class="btn btn-danger">Danger</button>
+                <button type="button" class="btn btn-link">Link</button>
+            </div>
+            <h2 class="panel-title">Badges</h2>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge text-bg-primary">Primary</span>
+                <span class="badge text-bg-success">Active</span>
+                <span class="badge text-bg-warning">Pending</span>
+                <span class="badge text-bg-danger">Failed</span>
+                <span class="badge rounded-pill text-bg-secondary">Pill</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="panel h-100">
+            <h2 class="panel-title">Alerts</h2>
+            <div class="alert alert-primary"><i class="bi bi-info-circle me-2"></i>Something worth knowing.</div>
+            <div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>That worked nicely.</div>
+            <div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Proceed with care.</div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="panel h-100">
+            <h2 class="panel-title">Form</h2>
+            <div class="mb-3">
+                <label class="form-label" for="showcase-name">Name</label>
+                <input class="form-control" id="showcase-name" placeholder="Something memorable" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="showcase-type">Type</label>
+                <select class="form-select" id="showcase-type">
+                    <option>Standard</option>
+                    <option>Premium</option>
+                </select>
+            </div>
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" role="switch" id="showcase-switch" checked />
+                <label class="form-check-label" for="showcase-switch">Enabled</label>
+            </div>
+            <button type="button" class="btn btn-primary">Save</button>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="panel h-100">
+            <h2 class="panel-title">Table</h2>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Owner</th>
+                            <th class="text-end">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Aurora</td>
+                            <td>Alice</td>
+                            <td class="text-end"><span class="badge text-bg-success">Live</span></td>
+                        </tr>
+                        <tr>
+                            <td>Borealis</td>
+                            <td>Bob</td>
+                            <td class="text-end"><span class="badge text-bg-warning">Draft</span></td>
+                        </tr>
+                        <tr>
+                            <td>Cosmos</td>
+                            <td>Carol</td>
+                            <td class="text-end"><span class="badge text-bg-secondary">Archived</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

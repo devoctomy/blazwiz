@@ -1,0 +1,39 @@
+@page "/settings"
+@inherits MvvmComponentBase<SettingsViewModel>
+
+<PageHeader Title="Settings" Icon="bi-gear" Subtitle="Preferences are saved in this browser." />
+
+<div class="panel mb-4">
+    <h2 class="panel-title">Appearance</h2>
+    <p class="panel-text">Choose how the app looks. The default follows your operating system.</p>
+    <div class="theme-options">
+        <button type="button"
+                class="theme-option @(ViewModel.CurrentTheme == ThemeNames.Light ? "active" : null)"
+                id="theme-option-light"
+                @onclick="() => ViewModel.SelectThemeCommand.ExecuteAsync(ThemeNames.Light)">
+            <span class="theme-preview theme-preview-light">
+                <span></span><span></span><span></span>
+            </span>
+            <span class="theme-option-label"><i class="bi bi-sun me-1"></i>Light</span>
+        </button>
+        <button type="button"
+                class="theme-option @(ViewModel.CurrentTheme == ThemeNames.Dark ? "active" : null)"
+                id="theme-option-dark"
+                @onclick="() => ViewModel.SelectThemeCommand.ExecuteAsync(ThemeNames.Dark)">
+            <span class="theme-preview theme-preview-dark">
+                <span></span><span></span><span></span>
+            </span>
+            <span class="theme-option-label"><i class="bi bi-moon-stars me-1"></i>Dark</span>
+        </button>
+    </div>
+</div>
+
+<div class="panel">
+    <h2 class="panel-title">About</h2>
+    <dl class="detail-list">
+        <dt>Version</dt>
+        <dd id="app-version">@Globals.Version</dd>
+        <dt>Build</dt>
+        <dd>@(Globals.IsDebugBuild ? "Debug" : "Release")</dd>
+    </dl>
+</div>
