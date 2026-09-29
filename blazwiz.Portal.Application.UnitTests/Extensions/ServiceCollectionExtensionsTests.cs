@@ -71,6 +71,8 @@ public class ServiceCollectionExtensionsTests
                 ["AwsCognito:UserPoolId"] = "pool",
                 ["AwsCognito:UserPoolClientId"] = "client",
                 ["AwsCognito:IdentityPoolId"] = "identity",
+                ["AwsS3:Region"] = "eu-west-1",
+                ["AwsS3:DataBucketName"] = "data-bucket",
             })
             .Build();
         var services = new ServiceCollection();
@@ -90,6 +92,9 @@ public class ServiceCollectionExtensionsTests
         Assert.Equal("pool", cognito.UserPoolId);
         Assert.Equal("client", cognito.UserPoolClientId);
         Assert.Equal("identity", cognito.IdentityPoolId);
+        var s3 = provider.GetRequiredService<AwsS3Config>();
+        Assert.Equal("eu-west-1", s3.Region);
+        Assert.Equal("data-bucket", s3.DataBucketName);
     }
 
     [Fact]

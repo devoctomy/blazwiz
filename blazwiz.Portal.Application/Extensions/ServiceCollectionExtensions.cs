@@ -50,6 +50,10 @@ public static class ServiceCollectionExtensions
         configuration.GetSection("AwsCognito").Bind(cognitoConfig);
         services.AddSingleton(cognitoConfig);
 
+        var s3Config = new AwsS3Config();
+        configuration.GetSection("AwsS3").Bind(s3Config);
+        services.AddSingleton(s3Config);
+
         return appSettings;
     }
 }
