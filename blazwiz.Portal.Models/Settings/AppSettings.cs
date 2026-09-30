@@ -19,4 +19,9 @@ public class AppSettings
     /// Gets or sets the copyright message.
     /// </summary>
     public string CopyrightMessage { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether WebAuthn authentication is enabled for portal login.
+    /// </summary>
+    public bool EnablePortalLoginAuthn { get; set; }
 }

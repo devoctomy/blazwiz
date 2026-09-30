@@ -18,6 +18,8 @@
     <PackageVersion Include="Amazon.Extensions.CognitoAuthentication" Version="3.1.5" />
     <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.105.3" />
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
+    <!-- Cryptography -->
+    <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <!-- MVVM -->
     <PackageVersion Include="Blazing.Mvvm" Version="3.2.1" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
