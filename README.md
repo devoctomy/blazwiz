@@ -1,8 +1,12 @@
 # blazwiz
 
 Boilerplate for a **Blazor WebAssembly static PWA** that authenticates with **AWS Cognito** and can
-optionally use AWS resources directly from the browser. It is intended to become a `dotnet new`
-template, so new apps of this shape can be created in seconds and built out from there.
+optionally use AWS resources directly from the browser.
+<!--#if (false)-->
+
+This repository is also a `dotnet new` template, so new apps of this shape can be created in seconds
+and built out from there. See [Creating a new app from this template](#creating-a-new-app-from-this-template).
+<!--#endif-->
 
 > **Status:** deployed builds sign in with AWS Cognito. Running locally without Cognito settings uses a
 > placeholder login (any username / password). See [Authentication](#authentication).
@@ -12,13 +16,15 @@ template, so new apps of this shape can be created in seconds and built out from
 | Project | Purpose |
 |---|---|
 | `blazwiz.Core` | .NET 10 class library for all backend / domain logic. No UI dependencies. |
-| `blazwiz.Core.UnitTests` | xUnit + Moq. Mirrors the `Core` folder structure, one test file per class. |
-| `blazwiz.Core.IntTests` | Reqnroll (Gherkin) integration tests. Scenarios tagged `@aws` are skipped unless AWS credentials are set. |
 | `blazwiz.Portal` | The Blazor WASM PWA: pages, layouts, components, `wwwroot`. Views only. |
 | `blazwiz.Portal.Application` | Unit testable portal logic: view models (Blazing.Mvvm), services, helpers. |
-| `blazwiz.Portal.Application.UnitTests` | xUnit + Moq. Mirrors the `Portal.Application` folder structure. |
 | `blazwiz.Portal.Models` | DTOs / settings used by the portal. No logic. |
+<!--#if (IncludeTests)-->
+| `blazwiz.Core.UnitTests` | xUnit + Moq. Mirrors the `Core` folder structure, one test file per class. |
+| `blazwiz.Core.IntTests` | Reqnroll (Gherkin) integration tests. Scenarios tagged `@aws` are skipped unless AWS credentials are set. |
+| `blazwiz.Portal.Application.UnitTests` | xUnit + Moq. Mirrors the `Portal.Application` folder structure. |
 | `blazwiz.Portal.UITests` | Playwright (MSTest) end-to-end tests. Starts the portal automatically. |
+<!--#endif-->
 
 Package versions are managed centrally in `Directory.Packages.props`.
 
@@ -48,6 +54,7 @@ To sign in against a real Cognito user pool locally instead, copy the deployed s
 `AwsCognito` section of `wwwroot/appsettings.Development.json` (the data bucket already allows the local
 origins for CORS).
 
+<!--#if (IncludeTests)-->
 ## Running the tests
 
 ```powershell
@@ -72,6 +79,7 @@ To test a portal that is already running (or deployed), set `BLAZWIZ_UITEST_URL`
 
 **Integration tests** tagged `@aws` need these environment variables, otherwise they are skipped:
 `BLAZWIZ_INTTEST_AWS_ACCESSKEY`, `BLAZWIZ_INTTEST_AWS_SECRETACCESSKEY`, `BLAZWIZ_INTTEST_AWS_REGION`.
+<!--#endif-->
 
 ## Building out
 
@@ -84,16 +92,23 @@ To test a portal that is already running (or deployed), set `BLAZWIZ_UITEST_URL`
    for a consistent heading and browser tab title.
 3. **Navigation**: add a `NavigationItem` to `NavigationMenuService`. It appears in the sidebar and as a
    quick link on the dashboard.
+<!--#if (IncludeTests)-->
 4. **Tests**: `blazwiz.Portal.Application.UnitTests/ViewModels/ThingsViewModelTests.cs`.
+<!--#endif-->
+<!--#if (IncludeShowcase)-->
 
 The `Showcase` page contains themed buttons, alerts, forms and tables to copy from. Delete it when you
 no longer need it.
+<!--#endif-->
 
 ### Add a service
 
-Put domain logic in `blazwiz.Core` (interface in an `Interfaces` sub folder), register it in
-`AddBlazwizCoreServices`, and add a matching test file in `blazwiz.Core.UnitTests`. Portal specific
-services go in `blazwiz.Portal.Application/Services` and `AddPortalApplicationServices`.
+Put domain logic in `blazwiz.Core` (interface in an `Interfaces` sub folder) and register it in
+`AddBlazwizCoreServices`. Portal specific services go in `blazwiz.Portal.Application/Services` and
+`AddPortalApplicationServices`.
+<!--#if (IncludeTests)-->
+Add a matching test file in `blazwiz.Core.UnitTests` or `blazwiz.Portal.Application.UnitTests`.
+<!--#endif-->
 
 ### Theming
 
@@ -137,7 +152,7 @@ credentials, you can use a dedicated IAM user with the minimum policy in
 
 | File | Purpose |
 |---|---|
-| `blazwiz-aws.yaml` | The CloudFormation template (below). |
+| `stack.yaml` | The CloudFormation template (below). |
 | `deploy.ps1` | Deploys / updates the stack, publishes and uploads the portal, creates a test user. Safe to re-run. |
 | `test-auth.ps1` | Verifies a deployment end to end: portal, sign-in, identity pool credentials, per-user S3 access. |
 | `stack-policy.json` | Stops stack updates from replacing or removing the user pool, identity pool and data bucket. |
@@ -187,14 +202,64 @@ worker, manifest, settings) and a one day cache for everything else, then invali
 deployments show up straight away. The test user is created with a permanent password (no forced reset).
 
 > The app client also allows `USER_PASSWORD_AUTH`, only so `test-auth.ps1` can sign in from the command
-> line. The portal itself uses SRP. Remove it from the template if you do not want it.
+> line. The portal itself uses SRP. Remove it from `stack.yaml` if you do not want it.
 
 ## Roadmap
 
-1. **AWS credentials in the browser**: exchange the ID token for temporary AWS credentials through the
-   Cognito identity pool (`CognitoUser.GetCognitoAWSCredentials` in the same library), for direct access to
-   the per-user data bucket. The infrastructure is already in place (see [Deploying to AWS](#deploying-to-aws)).
-2. **`dotnet new` template**: add `.template.config/template.json` with `sourceName: "blazwiz"` so every
-   project, namespace, storage key and title is renamed for the new app. The name also appears as
-   `Blazwiz` (e.g. `AddBlazwizCoreServices`), `BLAZWIZ_` (test environment variables) and as the
-   lowercase letters-and-numbers CloudFormation `AppName`, which need their own derived template symbols.
+- **AWS credentials in the browser**: exchange the ID token for temporary AWS credentials through the
+  Cognito identity pool (`CognitoUser.GetCognitoAWSCredentials` in the same library), for direct access to
+  the per-user data bucket. The infrastructure is already in place (see [Deploying to AWS](#deploying-to-aws)).
+<!--#if (false)-->
+
+## Creating a new app from this template
+
+This repository is a working app and a `dotnet new` template at the same time. The template settings are
+in `.template.config/`, and everything else is the app itself, so you keep developing, testing and
+deploying it as normal.
+
+### Install and use
+
+```powershell
+# From this folder (while working on the template)
+dotnet new install .
+
+# Or from the package built by templatepack/ (see below)
+dotnet new install ./templatepack/bin/Release/Devoctomy.Blazwiz.Templates.1.0.0.nupkg
+
+dotnet new blazwiz -n AcmePortal --Title "Acme Portal"
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `-n`, `--name` | output folder name | App name. Keeps your casing for projects, namespaces and the solution (`AcmePortal.Portal`). |
+| `--Title` | the name | Shown in the browser tab, login page, PWA manifest and copyright. Avoid quotes. |
+| `--Description` | `Sign in to continue.` | Shown under the title on the login page. |
+| `--IncludeTests` | `true` | Include the four test projects. |
+| `--IncludeShowcase` | `true` | Include the Showcase page of themed building blocks. |
+
+The name is used in other forms where the context needs them: lower case letters and numbers for AWS
+(stack, bucket and role names, e.g. `acmeportal-dev`) and browser storage keys, `ACMEPORTAL_` for test
+environment variables, and `AcmePortal` in identifiers such as `AddAcmePortalCoreServices`. Characters
+that are not valid in C# names become `_` (`my-app` gives `my_app.Portal`).
+
+### Package and test the template
+
+```powershell
+./templatepack/test-template.ps1              # repo tests, then create, build and test sample apps
+dotnet pack templatepack -c Release           # produce the .nupkg
+dotnet new uninstall Devoctomy.Blazwiz.Templates
+```
+
+`test-template.ps1` checks the repository itself still builds and passes its tests, then installs the
+template into an isolated location, creates apps with awkward names and options, and checks each one
+builds, passes its tests and has no `blazwiz` left in it.
+
+### Keeping the repository a valid template
+
+- Write the app name as `blazwiz`. The only other forms allowed are `Blazwiz` in identifiers and
+  `BLAZWIZ_` in environment variable names.
+- Where the title is displayed (rather than the name), add the text just before it to the `appTitle`
+  symbol's `onlyIf` list in `.template.config/template.json`.
+- Optional content uses comment markers (`//#if (IncludeShowcase)`, `<!--#if (IncludeTests)-->`), so the
+  repository still builds and runs with everything included.
+<!--#endif-->

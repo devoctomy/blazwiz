@@ -67,7 +67,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
 
 $stackName = Get-StackName $AppName $Environment
-$templatePath = Join-Path $PSScriptRoot 'blazwiz-aws.yaml'
+$templatePath = Join-Path $PSScriptRoot 'stack.yaml'
 $stackPolicyPath = Join-Path $PSScriptRoot 'stack-policy.json'
 $portalProject = Join-Path $script:RepoRoot 'blazwiz.Portal/blazwiz.Portal.csproj'
 $productionSettingsPath = Join-Path $script:RepoRoot 'blazwiz.Portal/wwwroot/appsettings.Production.json'
@@ -314,7 +314,7 @@ if (-not $SkipTestUser -and $TestUserEmail) {
             $TestUserPassword = Read-Host "    Password for $TestUserEmail (min 12 chars, upper, lower, number)" -AsSecureString
         }
 
-        # Check against the user pool's password policy (see blazwiz-aws.yaml) before creating the user,
+        # Check against the user pool's password policy (see stack.yaml) before creating the user,
         # so a rejected password does not leave behind a user with no usable password.
         $plainPassword = ConvertTo-PlainText $TestUserPassword
         $passwordOk = $plainPassword.Length -ge 12 -and $plainPassword -cmatch '[a-z]' -and $plainPassword -cmatch '[A-Z]' -and $plainPassword -match '[0-9]'

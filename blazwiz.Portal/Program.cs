@@ -24,6 +24,7 @@ builder.Services.AddPortalApplicationServices();
 // Browser specific implementations of application abstractions
 builder.Services.AddScoped<INavigationService, NavigationService>();
 builder.Services.AddScoped<IBrowserInteropService, BrowserInteropService>();
+builder.Services.AddScoped<IWebAuthnService, WebAuthnService>();
 
 // MVVM - all view models in the application assembly are registered automatically
 builder.Services.AddMvvm(options =>
