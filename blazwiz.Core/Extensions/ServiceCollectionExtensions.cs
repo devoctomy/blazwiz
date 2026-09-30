@@ -1,3 +1,5 @@
+using blazwiz.Core.Cryptography;
+using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Greetings;
 using blazwiz.Core.Greetings.Interfaces;
 using blazwiz.Core.Time;
@@ -22,6 +24,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<ISystemClock, SystemClock>();
         services.AddScoped<IGreetingService, GreetingService>();
+        services.AddScoped<ICryptoService, BouncyCastleAesGcmCryptoService>();
 
         return services;
     }
