@@ -18,6 +18,7 @@ public class NavigationMenuService : INavigationMenuService
             ExactMatch = true,
             Description = "Your home page.",
         },
+//#if (IncludeShowcase)
         new NavigationItem
         {
             Text = "Showcase",
@@ -25,6 +26,7 @@ public class NavigationMenuService : INavigationMenuService
             Icon = "bi-palette",
             Description = "Themed building blocks to copy into new pages.",
         },
+//#endif
         new NavigationItem
         {
             Text = "Settings",

@@ -5,7 +5,7 @@
 | `deploy.ps1` | Creates or updates the CloudFormation stack `<AppName>-<Environment>`, publishes the portal to S3, invalidates CloudFront and sets up a test user in Cognito. |
 | `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials and per-user S3 access. |
 | `remove.ps1` | Empties both buckets and deletes the stack. |
-| `blazwiz-aws.yaml` | The CloudFormation template. |
+| `stack.yaml` | The CloudFormation template. |
 
 All three scripts use the AWS CLI v2 with your normal credential chain. Pass `-AwsProfile` to use a named profile.
 

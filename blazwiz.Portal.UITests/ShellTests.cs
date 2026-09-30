@@ -41,11 +41,13 @@ public class ShellTests : TestBase
     {
         await LoginAsync();
 
+//#if (IncludeShowcase)
         await Page.Locator("#nav-showcase").ClickAsync();
         await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Showcase");
         await Expect(Page.Locator("#nav-showcase")).ToHaveClassAsync(new Regex("active"));
         await ScreenshotAsync("Showcase");
 
+//#endif
         await Page.Locator("#nav-settings").ClickAsync();
         await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Settings");
 

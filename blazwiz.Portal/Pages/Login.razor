@@ -82,9 +82,74 @@
             </button>
         </EditForm>
     }
+    else if (ViewModel.ShowUsersList && ViewModel.SavedUsers.Any())
+    {
+        <div id="saved-users">
+            <div class="d-grid gap-2">
+                @foreach (var user in ViewModel.SavedUsers)
+                {
+                    <div class="input-group saved-user">
+                        <button type="button"
+                                class="btn btn-outline-primary d-flex align-items-center flex-grow-1"
+                                disabled="@ViewModel.IsBusy"
+                                @onclick="() => ViewModel.SelectUserCommand.ExecuteAsync(user)">
+                            @if (ViewModel.LoadingUser == user)
+                            {
+                                <span class="spinner-border spinner-border-sm me-3" aria-hidden="true"></span>
+                            }
+                            else if (user.WebAuthnCredential != null)
+                            {
+                                <i class="bi bi-fingerprint me-3" title="Biometric login available"></i>
+                            }
+                            else
+                            {
+                                <i class="bi bi-person-circle me-3"></i>
+                            }
+                            <span class="text-truncate">@user.Email</span>
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-danger"
+                                title="Remove user"
+                                disabled="@ViewModel.IsBusy"
+                                @onclick="() => ViewModel.RemoveUserCommand.ExecuteAsync(user)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            {
+                <div class="alert alert-danger py-2 small mt-3" role="alert" id="login-error">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+                </div>
+            }
+
+            <button type="button"
+                    class="btn btn-link w-100 mt-2"
+                    id="use-different-account"
+                    disabled="@ViewModel.IsBusy"
+                    @onclick="ViewModel.ShowLoginFormCommand.Execute">
+                Use different account
+            </button>
+        </div>
+    }
     else
     {
         <EditForm Model="ViewModel" OnSubmit="() => ViewModel.LoginCommand.ExecuteAsync(null)" FormName="login">
+            @if (ViewModel.SavedUsers.Any())
+            {
+                <div class="mb-3 text-center">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="show-saved-users"
+                            disabled="@ViewModel.IsBusy"
+                            @onclick="ViewModel.ShowUsersListCommandCommand.Execute">
+                        <i class="bi bi-people me-1"></i>Remembered users
+                    </button>
+                </div>
+            }
+
             <div class="mb-3">
                 <label for="username" class="form-label">Email</label>
                 <div class="input-icon">
@@ -94,10 +159,11 @@
                                placeholder="you@example.com"
                                autocomplete="username"
                                @bind-Value="ViewModel.Username"
+                               readonly="@ViewModel.IsUsernameReadonly"
                                disabled="@ViewModel.IsBusy" />
                 </div>
             </div>
-            <div class="mb-4">
+            <div class="@(ViewModel.ShowRememberMe ? "mb-3" : "mb-4")">
                 <label for="password" class="form-label">Password</label>
                 <div class="input-icon">
                     <i class="bi bi-lock"></i>
@@ -110,6 +176,17 @@
                                disabled="@ViewModel.IsBusy" />
                 </div>
             </div>
+
+            @if (ViewModel.ShowRememberMe)
+            {
+                <div class="form-check mb-4">
+                    <InputCheckbox id="remember-me"
+                                   class="form-check-input"
+                                   @bind-Value="ViewModel.RememberMe"
+                                   disabled="@ViewModel.IsBusy" />
+                    <label class="form-check-label" for="remember-me">Remember me</label>
+                </div>
+            }
 
             @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
             {
@@ -145,4 +222,69 @@
 @if (!string.IsNullOrEmpty(ViewModel.AppSettings.CopyrightMessage))
 {
     <p class="auth-footer">@ViewModel.AppSettings.CopyrightMessage</p>
+}
+
+@if (ViewModel.ShowWebAuthnPrompt)
+{
+    <div class="modal d-block" tabindex="-1" id="webauthn-prompt" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-fingerprint me-2"></i>Enable biometric login
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(ViewModel.WebAuthnErrorMessage))
+                    {
+                        <div class="alert alert-danger small" role="alert" id="webauthn-error">
+                            <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.WebAuthnErrorMessage
+                        </div>
+                        <button type="button"
+                                class="btn btn-primary w-100"
+                                id="webauthn-continue"
+                                @onclick="ViewModel.DismissWebAuthnErrorCommand.Execute">
+                            Continue to app
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="text-center mb-3">
+                            <i class="bi bi-fingerprint" style="font-size: 3rem; color: var(--bw-accent);"></i>
+                        </div>
+                        <p class="text-center mb-4">
+                            Would you like to use <strong>biometrics</strong> for quicker login next time?
+                            <br />
+                            <small class="text-muted">Use Windows Hello, Touch ID, your phone's screen lock or a security key.</small>
+                        </p>
+                        <div class="d-grid gap-2">
+                            <button type="button"
+                                    class="btn btn-primary"
+                                    id="webauthn-enable"
+                                    disabled="@ViewModel.IsWebAuthnProcessing"
+                                    @onclick="() => ViewModel.HandleWebAuthnSetupCommand.ExecuteAsync(null)">
+                                @if (ViewModel.IsWebAuthnProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                                    <span>Setting up biometric login...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-fingerprint me-2"></i>
+                                    <span>Yes, enable biometric login</span>
+                                }
+                            </button>
+                            <button type="button"
+                                    class="btn btn-outline-secondary"
+                                    id="webauthn-skip"
+                                    disabled="@ViewModel.IsWebAuthnProcessing"
+                                    @onclick="ViewModel.SkipWebAuthnSetupCommand.Execute">
+                                <i class="bi bi-skip-forward me-2"></i>Skip for now
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 }

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Packs the repository as a dotnet new template: dotnet pack templatepack -c Release
+    The template settings are in ../.template.config. This project is not part of blazwiz.slnx.
+  -->
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>Devoctomy.Blazwiz.Templates</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Title>blazwiz: Blazor WebAssembly PWA with AWS Cognito</Title>
+    <Authors>Nick Pateman</Authors>
+    <Description>dotnet new template for a Blazor WebAssembly progressive web app that signs in with AWS Cognito, with CloudFormation scripts to host it on S3 and CloudFront.</Description>
+    <PackageTags>dotnet-new;templates;blazor;webassembly;pwa;aws;cognito;cloudformation</PackageTags>
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <!-- Keep dot files such as .template.config, .editorconfig, .gitignore and .gitattributes. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <!-- Template content is not a library, so the lib/ folder warnings do not apply. -->
+    <NoWarn>$(NoWarn);NU5128;NU5110;NU5111</NoWarn>
+    <RepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))</RepositoryRoot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(RepositoryRoot)\**\*"
+          Exclude="$(RepositoryRoot)\.git\**;$(RepositoryRoot)\.vs\**;$(RepositoryRoot)\.idea\**;$(RepositoryRoot)\**\bin\**;$(RepositoryRoot)\**\obj\**;$(RepositoryRoot)\**\TestResults\**;$(RepositoryRoot)\**\*.user;$(RepositoryRoot)\publish\**;$(RepositoryRoot)\templatepack\**;$(RepositoryRoot)\**\appsettings.Production.json"
+          Pack="true"
+          PackagePath="content\blazwiz\" />
+  </ItemGroup>
+</Project>

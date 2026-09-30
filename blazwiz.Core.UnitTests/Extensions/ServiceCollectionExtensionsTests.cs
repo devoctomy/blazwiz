@@ -1,3 +1,5 @@
+using blazwiz.Core.Cryptography;
+using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Extensions;
 using blazwiz.Core.Greetings;
 using blazwiz.Core.Greetings.Interfaces;
@@ -41,9 +43,11 @@ public class ServiceCollectionExtensionsTests
         // Act
         var systemClock = scope.ServiceProvider.GetRequiredService<ISystemClock>();
         var greetingService = scope.ServiceProvider.GetRequiredService<IGreetingService>();
+        var cryptoService = scope.ServiceProvider.GetRequiredService<ICryptoService>();
 
         // Assert
         Assert.IsType<SystemClock>(systemClock);
         Assert.IsType<GreetingService>(greetingService);
+        Assert.IsType<BouncyCastleAesGcmCryptoService>(cryptoService);
     }
 }

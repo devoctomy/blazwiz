@@ -2,6 +2,7 @@ using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Application.ViewModels;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Settings;
+using blazwiz.Portal.Models.WebAuthn;
 using Moq;
 
 namespace blazwiz.Portal.Application.UnitTests.ViewModels;
@@ -11,33 +12,57 @@ public class LoginViewModelTests
     private readonly Mock<IAuthenticationService> mockAuth = new();
     private readonly Mock<INavigationService> mockNavigation = new();
     private readonly Mock<IThemeService> mockTheme = new();
-    private readonly AppSettings appSettings = new() { ApplicationTitle = "Test App" };
+    private readonly Mock<ILocalStorageService> mockLocalStorage = new();
+    private readonly Mock<IWebAuthnService> mockWebAuthn = new();
+    private readonly Mock<IPasswordCryptoService> mockPasswordCrypto = new();
+    private readonly AppSettings appSettings = new() { ApplicationTitle = "Test App", EnablePortalLoginAuthn = true };
 
     [Fact]
     public void GivenNullAuthService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(null!, mockNavigation.Object, mockTheme.Object, appSettings));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(null!, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, appSettings));
         Assert.Equal("authService", exception.ParamName);
     }
 
     [Fact]
     public void GivenNullNavigationService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, null!, mockTheme.Object, appSettings));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, null!, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, appSettings));
         Assert.Equal("navigationService", exception.ParamName);
     }
 
     [Fact]
     public void GivenNullThemeService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, null!, appSettings));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, null!, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, appSettings));
         Assert.Equal("themeService", exception.ParamName);
+    }
+
+    [Fact]
+    public void GivenNullLocalStorageService_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, null!, mockWebAuthn.Object, mockPasswordCrypto.Object, appSettings));
+        Assert.Equal("localStorageService", exception.ParamName);
+    }
+
+    [Fact]
+    public void GivenNullWebAuthnService_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, null!, mockPasswordCrypto.Object, appSettings));
+        Assert.Equal("webAuthnService", exception.ParamName);
+    }
+
+    [Fact]
+    public void GivenNullPasswordCryptoService_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, null!, appSettings));
+        Assert.Equal("passwordCryptoService", exception.ParamName);
     }
 
     [Fact]
     public void GivenNullAppSettings_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, null!));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, null!));
         Assert.Equal("appSettings", exception.ParamName);
     }
 
@@ -351,6 +376,409 @@ public class LoginViewModelTests
         Assert.Null(sut.ErrorMessage);
     }
 
+    [Fact]
+    public void GivenNewInstance_WhenCheckingRememberMeState_ThenDefaultValuesAreCorrect()
+    {
+        // Act
+        var sut = CreateSut();
+
+        // Assert
+        Assert.True(sut.ShowRememberMe);
+        Assert.False(sut.RememberMe);
+        Assert.False(sut.ShowUsersList);
+        Assert.Empty(sut.SavedUsers);
+        Assert.False(sut.ShowWebAuthnPrompt);
+        Assert.Null(sut.LoadingUser);
+    }
+
+    [Fact]
+    public async Task GivenSavedUsers_WhenInitialized_ThenShowsUsersList()
+    {
+        // Arrange
+        SetupSavedUsers(new SavedUser { Email = "user@test.com" });
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.True(sut.ShowUsersList);
+        Assert.False(sut.ShowRememberMe);
+        Assert.Single(sut.SavedUsers);
+    }
+
+    [Fact]
+    public async Task GivenExistingSession_WhenInitialized_ThenSavedUsersAreNotLoaded()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession());
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        mockLocalStorage.Verify(x => x.GetObjectAsync<SavedUsersData>(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenUserWithNoWebAuthn_WhenSelectUser_ThenUsernameIsSetAndListHidden()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = new SavedUser { Email = "user@test.com", WebAuthnCredential = null };
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Equal("user@test.com", sut.Username);
+        Assert.False(sut.ShowUsersList);
+        Assert.False(sut.ShowRememberMe);
+        Assert.Null(sut.LoadingUser);
+        mockWebAuthn.Verify(x => x.AuthenticateAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenUserWithWebAuthnAndAuthFails_WhenSelectUser_ThenFallsBackToManualLogin()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = false, Error = "auth failed" });
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Equal("user@test.com", sut.Username);
+        Assert.False(sut.ShowUsersList);
+        Assert.Equal("auth failed", sut.ErrorMessage);
+        Assert.Null(sut.LoadingUser);
+        Assert.False(sut.IsBusy);
+        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenUserWithWebAuthn_WhenSelectUser_ThenLoadingUserIsThatUserWhileAuthenticating()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        SavedUser? capturedLoadingUser = null;
+        var capturedIsBusy = false;
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).Returns(() =>
+        {
+            capturedLoadingUser = sut.LoadingUser;
+            capturedIsBusy = sut.IsBusy;
+            return Task.FromResult(new WebAuthnAuthenticateResult { Success = false });
+        });
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Same(user, capturedLoadingUser);
+        Assert.True(capturedIsBusy);
+        Assert.Null(sut.LoadingUser);
+        Assert.False(sut.IsBusy);
+    }
+
+    [Fact]
+    public async Task GivenUserWithWebAuthnAndPrf_WhenSelectUser_ThenDecryptsPasswordAndSignsIn()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, PrfOutput = "abcd" });
+        mockPasswordCrypto.Setup(x => x.DecryptWithPrfAsync("enc", "abcd")).ReturnsAsync("secret");
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = true });
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+        Assert.Null(sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GivenDecryptedPasswordRejected_WhenSelectUser_ThenFallsBackToManualLogin()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, PrfOutput = "abcd" });
+        mockPasswordCrypto.Setup(x => x.DecryptWithPrfAsync("enc", "abcd")).ReturnsAsync("stale");
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "stale")).ReturnsAsync(new LoginResult { Success = false });
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Equal("Biometric login failed. Please enter your password manually.", sut.ErrorMessage);
+        Assert.Equal("user@test.com", sut.Username);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenDecryptThrows_WhenSelectUser_ThenFallsBackToManualLogin()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, PrfOutput = "abcd" });
+        mockPasswordCrypto.Setup(x => x.DecryptWithPrfAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("bad tag"));
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
+        Assert.False(sut.ShowUsersList);
+        Assert.False(sut.IsBusy);
+    }
+
+    [Fact]
+    public async Task GivenTwoSavedUsers_WhenRemoveUser_ThenUserIsRemovedAndListPersisted()
+    {
+        // Arrange
+        SetupSavedUsers(new SavedUser { Email = "user1@test.com" }, new SavedUser { Email = "user2@test.com" });
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        await sut.RemoveUserCommand.ExecuteAsync(sut.SavedUsers[0]);
+
+        // Assert
+        Assert.Single(sut.SavedUsers);
+        Assert.True(sut.ShowUsersList);
+        mockLocalStorage.Verify(x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.Is<SavedUsersData>(d => d.Users.Count == 1)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenLastUser_WhenRemoveUser_ThenUsersListIsHidden()
+    {
+        // Arrange
+        SetupSavedUsers(new SavedUser { Email = "only@test.com" });
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        await sut.RemoveUserCommand.ExecuteAsync(sut.SavedUsers[0]);
+
+        // Assert
+        Assert.Empty(sut.SavedUsers);
+        Assert.False(sut.ShowUsersList);
+        Assert.True(sut.ShowRememberMe);
+    }
+
+    [Fact]
+    public void GivenUsersList_WhenShowLoginForm_ThenUsersListIsHidden()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.ShowUsersList = true;
+        sut.Username = "bob";
+
+        // Act
+        sut.ShowLoginFormCommand.Execute(null);
+
+        // Assert
+        Assert.False(sut.ShowUsersList);
+        Assert.True(sut.ShowRememberMe);
+        Assert.Empty(sut.Username);
+        Assert.Empty(sut.Password);
+    }
+
+    [Fact]
+    public void GivenLoginForm_WhenShowUsersList_ThenUsersListIsShown()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        sut.ShowUsersListCommandCommand.Execute(null);
+
+        // Assert
+        Assert.True(sut.ShowUsersList);
+        Assert.False(sut.ShowRememberMe);
+    }
+
+    [Fact]
+    public async Task GivenRememberMe_WhenLoginSucceeds_ThenSavesUserAndShowsWebAuthnPrompt()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.LoginAsync("bob", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "secret";
+        sut.RememberMe = true;
+
+        // Act
+        await sut.LoginCommand.ExecuteAsync(null);
+
+        // Assert
+        mockLocalStorage.Verify(x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.Is<SavedUsersData>(d => d.Users.Single().Email == "bob")), Times.Once);
+        Assert.True(sut.ShowWebAuthnPrompt);
+        Assert.Equal("secret", sut.Password);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenRememberMeAndWebAuthnDisabled_WhenLoginSucceeds_ThenSavesUserAndNavigatesHome()
+    {
+        // Arrange
+        appSettings.EnablePortalLoginAuthn = false;
+        mockAuth.Setup(x => x.LoginAsync("bob", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "secret";
+        sut.RememberMe = true;
+
+        // Act
+        await sut.LoginCommand.ExecuteAsync(null);
+
+        // Assert
+        mockLocalStorage.Verify(x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.IsAny<SavedUsersData>()), Times.Once);
+        Assert.False(sut.ShowWebAuthnPrompt);
+        Assert.Equal(string.Empty, sut.Password);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenRememberMeAndNewPasswordRequired_WhenCompleteNewPassword_ThenShowsWebAuthnPromptWithNewPassword()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.LoginAsync("bob", "temp")).ReturnsAsync(new LoginResult { NewPasswordRequired = true });
+        mockAuth.Setup(x => x.CompleteNewPasswordAsync("NewPassword123")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "temp";
+        sut.RememberMe = true;
+        await sut.LoginAsync();
+        sut.NewPassword = "NewPassword123";
+        sut.ConfirmNewPassword = "NewPassword123";
+
+        // Act
+        await sut.CompleteNewPasswordAsync();
+
+        // Assert
+        Assert.True(sut.ShowWebAuthnPrompt);
+        Assert.Equal("NewPassword123", sut.Password);
+        mockLocalStorage.Verify(x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.IsAny<SavedUsersData>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenSuccessfulRegisterWithPrf_WhenHandleWebAuthnSetup_ThenStoresEncryptedPasswordAndNavigatesHome()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.Username = "user";
+        sut.Password = "pass";
+        sut.ShowWebAuthnPrompt = true;
+        var prfHex = Convert.ToHexString(new byte[32]);
+        mockWebAuthn
+            .Setup(x => x.RegisterAsync("user", null))
+            .ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, PrfOutput = prfHex, CredentialID = "cred1", UserID = "uid1" });
+        mockPasswordCrypto.Setup(x => x.EncryptWithPrfAsync("pass", prfHex)).ReturnsAsync("encrypted");
+
+        // Act
+        await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
+
+        // Assert
+        mockLocalStorage.Verify(
+            x => x.SetObjectAsync(
+                LoginViewModel.SavedUsersStorageKey,
+                It.Is<SavedUsersData>(d => d.Users.Single().WebAuthnCredential!.CredentialID == "cred1" && d.Users.Single().WebAuthnCredential!.EncryptedPassword == "encrypted")),
+            Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+        Assert.False(sut.IsWebAuthnProcessing);
+        Assert.False(sut.ShowWebAuthnPrompt);
+        Assert.Equal(string.Empty, sut.Password);
+    }
+
+    [Fact]
+    public async Task GivenSuccessfulRegisterWithoutPrf_WhenHandleWebAuthnSetup_ThenErrorMessageIsSet()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.Username = "user";
+        mockWebAuthn.Setup(x => x.RegisterAsync("user", null)).ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = false });
+
+        // Act
+        await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.NotNull(sut.WebAuthnErrorMessage);
+        Assert.False(sut.IsWebAuthnProcessing);
+        mockPasswordCrypto.Verify(x => x.EncryptWithPrfAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenRegisterThrows_WhenHandleWebAuthnSetup_ThenErrorMessageIsSet()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.Username = "user";
+        mockWebAuthn.Setup(x => x.RegisterAsync(It.IsAny<string>(), null)).ThrowsAsync(new InvalidOperationException("webauthn error"));
+
+        // Act
+        await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("Error setting up biometric login: webauthn error", sut.WebAuthnErrorMessage);
+        Assert.False(sut.IsWebAuthnProcessing);
+    }
+
+    [Fact]
+    public void GivenWebAuthnPrompt_WhenSkipWebAuthnSetup_ThenNavigatesHomeAndClearsPassword()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.ShowWebAuthnPrompt = true;
+        sut.Password = "secret";
+
+        // Act
+        sut.SkipWebAuthnSetupCommand.Execute(null);
+
+        // Assert
+        Assert.False(sut.ShowWebAuthnPrompt);
+        Assert.Equal(string.Empty, sut.Password);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+    }
+
+    [Fact]
+    public void GivenWebAuthnError_WhenDismissWebAuthnError_ThenErrorIsClearedAndNavigatesHome()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.WebAuthnErrorMessage = "Some error";
+        sut.ShowWebAuthnPrompt = true;
+
+        // Act
+        sut.DismissWebAuthnErrorCommand.Execute(null);
+
+        // Assert
+        Assert.Null(sut.WebAuthnErrorMessage);
+        Assert.False(sut.ShowWebAuthnPrompt);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+    }
+
+    private static SavedUser CreateWebAuthnUser(string email, string credentialId) => new()
+    {
+        Email = email,
+        WebAuthnCredential = new WebAuthnStoredCredential { CredentialID = credentialId, EncryptedPassword = "enc" },
+    };
+
+    private void SetupSavedUsers(params SavedUser[] users)
+    {
+        mockLocalStorage
+            .Setup(x => x.GetObjectAsync<SavedUsersData>(LoginViewModel.SavedUsersStorageKey))
+            .ReturnsAsync(new SavedUsersData { Users = [.. users] });
+    }
+
     private async Task<LoginViewModel> CreateSutAwaitingNewPasswordAsync()
     {
         mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { NewPasswordRequired = true });
@@ -360,5 +788,5 @@ public class LoginViewModelTests
         return sut;
     }
 
-    private LoginViewModel CreateSut() => new(mockAuth.Object, mockNavigation.Object, mockTheme.Object, appSettings);
+    private LoginViewModel CreateSut() => new(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, appSettings);
 }
