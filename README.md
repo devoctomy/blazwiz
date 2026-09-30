@@ -101,6 +101,25 @@ The `Showcase` page contains themed buttons, alerts, forms and tables to copy fr
 no longer need it.
 <!--#endif-->
 
+<!--#if (IncludeNotes)-->
+
+### Notes
+
+The **Files** page and note editor are a working example of an offline-first feature: markdown notes,
+organised into folders, stored in the browser for the signed in user.
+
+- **Storage**: `IndexedDbNoteIndexStore` keeps the file index (folders and note metadata) in IndexedDB,
+  and `IndexedDbNoteContentStore` keeps the note content (see `wwwroot/js/notes.js`). Each note records
+  which storage provider holds its content, so others (e.g. the Origin Private File System, see
+  `docs/wip/opfs-offline-storage.md`) can be added by implementing `INoteContentStore`.
+- **Logic**: `NoteService` validates names and handles creating, renaming, moving and deleting. The
+  first time a user's notes are loaded, it creates a welcome note from the embedded
+  `Resources/WelcomeNote.md`.
+- **Editor**: the toolbar's formatting (`MarkdownFormatHelpers`) toggles, like a word processor. The
+  preview is rendered by [Markdig](https://github.com/xoofx/markdig) with raw HTML disabled and unsafe
+  link URLs removed. `Ctrl+S` saves, and leaving with unsaved changes asks what to do with them.
+<!--#endif-->
+
 ### Add a service
 
 Put domain logic in `blazwiz.Core` (interface in an `Interfaces` sub folder) and register it in
@@ -236,6 +255,7 @@ dotnet new blazwiz -n AcmePortal --Title "Acme Portal"
 | `--Description` | `Sign in to continue.` | Shown under the title on the login page. |
 | `--IncludeTests` | `true` | Include the four test projects. |
 | `--IncludeShowcase` | `true` | Include the Showcase page of themed building blocks. |
+| `--IncludeNotes` | `true` | Include the Files page and markdown note editor (notes stored in IndexedDB). |
 
 The name is used in other forms where the context needs them: lower case letters and numbers for AWS
 (stack, bucket and role names, e.g. `acmeportal-dev`) and browser storage keys, `ACMEPORTAL_` for test

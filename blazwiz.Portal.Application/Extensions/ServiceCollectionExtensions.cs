@@ -40,6 +40,15 @@ public static class ServiceCollectionExtensions
                 : ActivatorUtilities.CreateInstance<LocalAuthenticationService>(sp));
         services.AddSingleton<INavigationMenuService, NavigationMenuService>();
 
+//#if (IncludeNotes)
+        // Notes: the file index and content are kept in IndexedDB. Register more INoteContentStore
+        // implementations to add storage providers (see docs/wip/opfs-offline-storage.md).
+        services.AddScoped<INoteIndexStore, IndexedDbNoteIndexStore>();
+        services.AddScoped<INoteContentStore, IndexedDbNoteContentStore>();
+        services.AddScoped<INoteService, NoteService>();
+        services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();
+
+//#endif
         return services;
     }
 

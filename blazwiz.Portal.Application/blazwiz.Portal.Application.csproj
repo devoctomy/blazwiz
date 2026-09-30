@@ -14,6 +14,9 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Microsoft.JSInterop" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+<!--#if (IncludeNotes)-->
+    <PackageReference Include="Markdig" />
+<!--#endif-->
     <PackageReference Include="StyleCop.Analyzers">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -23,4 +26,9 @@
     <ProjectReference Include="..\blazwiz.Core\blazwiz.Core.csproj" />
     <ProjectReference Include="..\blazwiz.Portal.Models\blazwiz.Portal.Models.csproj" />
   </ItemGroup>
+<!--#if (IncludeNotes)-->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\WelcomeNote.md" LogicalName="WelcomeNote.md" />
+  </ItemGroup>
+<!--#endif-->
 </Project>
