@@ -37,7 +37,8 @@ $cases = @(
     @{ Name = 'AcmePortal'; Options = @('--Title', 'Acme Portal', '--Description', 'Welcome to Acme.'); Tests = $true; UiTests = $true },
     @{ Name = 'my-app'; Options = @(); Tests = $true; UiTests = $false },
     @{ Name = '1stApp'; Options = @('--IncludeShowcase', 'false'); Tests = $true; UiTests = $false },
-    @{ Name = 'Minimal'; Options = @('--IncludeTests', 'false', '--IncludeShowcase', 'false'); Tests = $false; UiTests = $false }
+    @{ Name = 'NoNotes'; Options = @('--IncludeNotes', 'false'); Tests = $true; UiTests = $true },
+    @{ Name = 'Minimal'; Options = @('--IncludeTests', 'false', '--IncludeShowcase', 'false', '--IncludeNotes', 'false'); Tests = $false; UiTests = $false }
 )
 
 function Write-Step([string]$Message) {

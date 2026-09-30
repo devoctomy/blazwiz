@@ -25,6 +25,9 @@ builder.Services.AddPortalApplicationServices();
 builder.Services.AddScoped<INavigationService, NavigationService>();
 builder.Services.AddScoped<IBrowserInteropService, BrowserInteropService>();
 builder.Services.AddScoped<IWebAuthnService, WebAuthnService>();
+//#if (IncludeNotes)
+builder.Services.AddScoped<INoteEditorInteropService, NoteEditorInteropService>();
+//#endif
 
 // MVVM - all view models in the application assembly are registered automatically
 builder.Services.AddMvvm(options =>
