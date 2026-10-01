@@ -10,6 +10,8 @@ namespace blazwiz.Portal.Application.UnitTests.Services;
 
 public class CognitoUserPoolClientTests
 {
+    private const string SessionId = "session-0123456789abcdef";
+
     private readonly Mock<IAmazonCognitoIdentityProvider> mockProvider = new();
     private readonly AwsCognitoConfig config = new() { Region = "eu-west-2", UserPoolId = "eu-west-2_Pool", UserPoolClientId = "client-123" };
 
@@ -136,6 +138,216 @@ public class CognitoUserPoolClientTests
         mockProvider.Verify(
             x => x.InitiateAuthAsync(It.Is<InitiateAuthRequest>(r => r.AuthFlow == AuthFlowType.USER_SRP_AUTH && r.AuthParameters["USERNAME"] == "bob@example.com"), It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenCorrectPassword_WhenSignInAsync_ThenReturnsTokens()
+    {
+        // Arrange
+        RespondToAuthChallengeRequest? request = null;
+        SetupPasswordVerifierChallenge();
+        mockProvider
+            .Setup(x => x.RespondToAuthChallengeAsync(It.IsAny<RespondToAuthChallengeRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<RespondToAuthChallengeRequest, CancellationToken>((r, _) => request = r)
+            .ReturnsAsync(new RespondToAuthChallengeResponse
+            {
+                AuthenticationResult = new AuthenticationResultType { IdToken = "id", AccessToken = "access", RefreshToken = "refresh", ExpiresIn = 3600 },
+                ResponseMetadata = new ResponseMetadata(),
+            });
+
+        // Act
+        var result = await CreateSut().SignInAsync("bob@example.com", "password");
+
+        // Assert
+        Assert.Equal("id", result.IdToken);
+        Assert.Equal("access", result.AccessToken);
+        Assert.Equal("refresh", result.RefreshToken);
+        Assert.Equal(3600, result.ExpiresIn);
+        Assert.Null(result.ChallengeName);
+        Assert.NotNull(request);
+        Assert.Equal(ChallengeNameType.PASSWORD_VERIFIER, request.ChallengeName);
+        Assert.Equal("client-123", request.ClientId);
+    }
+
+    [Fact]
+    public async Task GivenCorrectPassword_WhenSignInAsync_ThenCannotCompleteNewPassword()
+    {
+        // Arrange
+        SetupPasswordVerifierChallenge();
+        SetupRespondToAuthChallengeReturnsTokens();
+        var sut = CreateSut();
+
+        // Act
+        await sut.SignInAsync("bob@example.com", "password");
+
+        // Assert - no challenge is left waiting.
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CompleteNewPasswordAsync("s1", "NewPassword123"));
+    }
+
+    [Fact]
+    public async Task GivenNewPasswordRequired_WhenSignInAsync_ThenReturnsChallengeWithoutTokens()
+    {
+        // Arrange
+        SetupPasswordVerifierChallenge();
+        SetupNewPasswordRequiredChallenge();
+
+        // Act
+        var result = await CreateSut().SignInAsync("bob@example.com", "password");
+
+        // Assert
+        Assert.Equal("NEW_PASSWORD_REQUIRED", result.ChallengeName);
+        Assert.Equal(SessionId, result.SessionId);
+        Assert.Null(result.IdToken);
+        Assert.Null(result.AccessToken);
+        Assert.Null(result.RefreshToken);
+        Assert.Equal(0, result.ExpiresIn);
+    }
+
+    [Fact]
+    public async Task GivenNewPasswordRequired_WhenCompleteNewPasswordAsync_ThenReturnsTokens()
+    {
+        // Arrange
+        SetupPasswordVerifierChallenge();
+        SetupNewPasswordRequiredChallenge();
+        var sut = CreateSut();
+        await sut.SignInAsync("bob@example.com", "password");
+        RespondToAuthChallengeRequest? request = null;
+        mockProvider
+            .Setup(x => x.RespondToAuthChallengeAsync(It.Is<RespondToAuthChallengeRequest>(r => r.ChallengeName == ChallengeNameType.NEW_PASSWORD_REQUIRED), It.IsAny<CancellationToken>()))
+            .Callback<RespondToAuthChallengeRequest, CancellationToken>((r, _) => request = r)
+            .ReturnsAsync(new RespondToAuthChallengeResponse
+            {
+                AuthenticationResult = new AuthenticationResultType { IdToken = "id", AccessToken = "access", RefreshToken = "refresh", ExpiresIn = 3600 },
+                ResponseMetadata = new ResponseMetadata(),
+            });
+
+        // Act
+        var result = await sut.CompleteNewPasswordAsync(SessionId, "NewPassword123");
+
+        // Assert
+        Assert.Equal("id", result.IdToken);
+        Assert.NotNull(request);
+        Assert.Equal(SessionId, request.Session);
+        Assert.Equal("NewPassword123", request.ChallengeResponses["NEW_PASSWORD"]);
+        Assert.Equal("bob@example.com", request.ChallengeResponses["USERNAME"]);
+    }
+
+    [Fact]
+    public async Task GivenNewPasswordCompleted_WhenCompleteNewPasswordAsyncAgain_ThenThrowsInvalidOperation()
+    {
+        // Arrange
+        SetupPasswordVerifierChallenge();
+        SetupNewPasswordRequiredChallenge();
+        var sut = CreateSut();
+        await sut.SignInAsync("bob@example.com", "password");
+        SetupRespondToAuthChallengeReturnsTokens();
+        await sut.CompleteNewPasswordAsync(SessionId, "NewPassword123");
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.CompleteNewPasswordAsync(SessionId, "NewPassword123"));
+    }
+
+    [Fact]
+    public async Task GivenNewPasswordRejected_WhenCompleteNewPasswordAsync_ThenChallengeCanBeRetried()
+    {
+        // Arrange
+        SetupPasswordVerifierChallenge();
+        SetupNewPasswordRequiredChallenge();
+        var sut = CreateSut();
+        await sut.SignInAsync("bob@example.com", "password");
+        mockProvider
+            .SetupSequence(x => x.RespondToAuthChallengeAsync(It.IsAny<RespondToAuthChallengeRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidPasswordException("Password does not conform to policy") { ErrorCode = "InvalidPasswordException" })
+            .ReturnsAsync(new RespondToAuthChallengeResponse
+            {
+                AuthenticationResult = new AuthenticationResultType { IdToken = "id", AccessToken = "access", RefreshToken = "refresh", ExpiresIn = 3600 },
+                ResponseMetadata = new ResponseMetadata(),
+            });
+
+        // Act
+        var exception = await Assert.ThrowsAsync<CognitoException>(() => sut.CompleteNewPasswordAsync(SessionId, "weak"));
+        var result = await sut.CompleteNewPasswordAsync(SessionId, "NewPassword123");
+
+        // Assert
+        Assert.Equal("InvalidPasswordException", exception.ErrorType);
+        Assert.Equal("id", result.IdToken);
+    }
+
+    [Fact]
+    public async Task GivenCognitoExceptionWithoutErrorCode_WhenRefreshAsync_ThenErrorTypeIsExceptionName()
+    {
+        // Arrange
+        mockProvider
+            .Setup(x => x.InitiateAuthAsync(It.IsAny<InitiateAuthRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TooManyRequestsException("Rate exceeded"));
+
+        // Act
+        var exception = await Assert.ThrowsAsync<CognitoException>(() => CreateSut().RefreshAsync("bob@example.com", "refresh"));
+
+        // Assert
+        Assert.Equal(nameof(TooManyRequestsException), exception.ErrorType);
+        Assert.Equal("Rate exceeded", exception.Message);
+    }
+
+    [Fact]
+    public void GivenCreatedProvider_WhenCreatingHttpClients_ThenSharesOneUncachedClient()
+    {
+        // Arrange
+        using var provider = (AmazonCognitoIdentityProviderClient)CognitoUserPoolClient.CreateProvider(config);
+        var factory = provider.Config.HttpClientFactory;
+
+        // Act
+        var first = factory.CreateHttpClient(provider.Config);
+        var second = factory.CreateHttpClient(provider.Config);
+
+        // Assert
+        Assert.Same(first, second);
+        Assert.False(factory.UseSDKHttpClientCaching(provider.Config));
+        Assert.False(factory.DisposeHttpClientsAfterUse(provider.Config));
+    }
+
+    private void SetupPasswordVerifierChallenge()
+    {
+        // Dummy SRP values: the library does the SRP calculation, and the mocked Cognito accepts whatever it sends.
+        mockProvider
+            .Setup(x => x.InitiateAuthAsync(It.IsAny<InitiateAuthRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new InitiateAuthResponse
+            {
+                ChallengeName = ChallengeNameType.PASSWORD_VERIFIER,
+                ChallengeParameters = new Dictionary<string, string>
+                {
+                    ["SALT"] = "abc123",
+                    ["SECRET_BLOCK"] = Convert.ToBase64String(new byte[] { 1, 2, 3, 4 }),
+                    ["SRP_B"] = "2",
+                    ["USERNAME"] = "bob@example.com",
+                    ["USER_ID_FOR_SRP"] = "bob@example.com",
+                },
+                ResponseMetadata = new ResponseMetadata(),
+            });
+    }
+
+    private void SetupNewPasswordRequiredChallenge()
+    {
+        mockProvider
+            .Setup(x => x.RespondToAuthChallengeAsync(It.Is<RespondToAuthChallengeRequest>(r => r.ChallengeName == ChallengeNameType.PASSWORD_VERIFIER), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RespondToAuthChallengeResponse
+            {
+                ChallengeName = ChallengeNameType.NEW_PASSWORD_REQUIRED,
+                Session = SessionId,
+                ChallengeParameters = new Dictionary<string, string>(),
+                ResponseMetadata = new ResponseMetadata(),
+            });
+    }
+
+    private void SetupRespondToAuthChallengeReturnsTokens()
+    {
+        mockProvider
+            .Setup(x => x.RespondToAuthChallengeAsync(It.IsAny<RespondToAuthChallengeRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RespondToAuthChallengeResponse
+            {
+                AuthenticationResult = new AuthenticationResultType { IdToken = "id", AccessToken = "access", RefreshToken = "refresh", ExpiresIn = 3600 },
+                ResponseMetadata = new ResponseMetadata(),
+            });
     }
 
     private CognitoUserPoolClient CreateSut() => new(mockProvider.Object, config);
