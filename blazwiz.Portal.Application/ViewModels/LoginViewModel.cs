@@ -1,4 +1,7 @@
 using Blazing.Mvvm.ComponentModel;
+//#if (IncludeNotes)
+using blazwiz.Core.Sync.Interfaces;
+//#endif
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Settings;
@@ -22,6 +25,10 @@ public partial class LoginViewModel : ViewModelBase
     private readonly ILocalStorageService localStorageService;
     private readonly IWebAuthnService webAuthnService;
     private readonly IPasswordCryptoService passwordCryptoService;
+//#if (IncludeNotes)
+    private readonly IConnectivityService connectivityService;
+    private readonly IPersistentStorageService persistentStorageService;
+//#endif
     private readonly AppSettings appSettings;
 
     private string username = string.Empty;
@@ -41,6 +48,10 @@ public partial class LoginViewModel : ViewModelBase
     private bool showWebAuthnPrompt;
     private bool isWebAuthnProcessing;
     private string? webAuthnErrorMessage;
+//#if (IncludeNotes)
+    private bool isAdvancedOptionsExpanded;
+    private bool startInOfflineMode;
+//#endif
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LoginViewModel"/> class.
@@ -51,6 +62,10 @@ public partial class LoginViewModel : ViewModelBase
     /// <param name="localStorageService">The local storage service.</param>
     /// <param name="webAuthnService">The WebAuthn service for passkey authentication.</param>
     /// <param name="passwordCryptoService">The password crypto service for PRF-based encryption.</param>
+    ///#if (IncludeNotes)
+    /// <param name="connectivityService">The connectivity service, for offline mode.</param>
+    /// <param name="persistentStorageService">Asks the browser for persistent storage after sign in.</param>
+    ///#endif
     /// <param name="appSettings">The application settings.</param>
     public LoginViewModel(
         IAuthenticationService authService,
@@ -59,6 +74,10 @@ public partial class LoginViewModel : ViewModelBase
         ILocalStorageService localStorageService,
         IWebAuthnService webAuthnService,
         IPasswordCryptoService passwordCryptoService,
+//#if (IncludeNotes)
+        IConnectivityService connectivityService,
+        IPersistentStorageService persistentStorageService,
+//#endif
         AppSettings appSettings)
     {
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
@@ -67,6 +86,10 @@ public partial class LoginViewModel : ViewModelBase
         this.localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
         this.webAuthnService = webAuthnService ?? throw new ArgumentNullException(nameof(webAuthnService));
         this.passwordCryptoService = passwordCryptoService ?? throw new ArgumentNullException(nameof(passwordCryptoService));
+//#if (IncludeNotes)
+        this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
+        this.persistentStorageService = persistentStorageService ?? throw new ArgumentNullException(nameof(persistentStorageService));
+//#endif
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
     }
 
@@ -169,6 +192,27 @@ public partial class LoginViewModel : ViewModelBase
     /// Gets the Bootstrap icon for the theme toggle button.
     /// </summary>
     public string ThemeIcon => themeService.IsDark ? "bi-sun" : "bi-moon-stars";
+//#if (IncludeNotes)
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the advanced options section is expanded. It starts expanded whenever
+    /// an advanced option differs from its default, so a setting that changes behaviour is never hidden.
+    /// </summary>
+    public bool IsAdvancedOptionsExpanded
+    {
+        get => isAdvancedOptionsExpanded;
+        set => SetProperty(ref isAdvancedOptionsExpanded, value);
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to sign in with offline mode on, so the first sync makes no network calls.
+    /// </summary>
+    public bool StartInOfflineMode
+    {
+        get => startInOfflineMode;
+        set => SetProperty(ref startInOfflineMode, value);
+    }
+//#endif
 
     /// <summary>
     /// Gets the application settings.
@@ -188,6 +232,9 @@ public partial class LoginViewModel : ViewModelBase
         }
 
         await LoadSavedUsersAsync();
+//#if (IncludeNotes)
+        await LoadAdvancedOptionsAsync();
+//#endif
     }
 
     /// <summary>
@@ -209,6 +256,9 @@ public partial class LoginViewModel : ViewModelBase
             var result = await authService.LoginAsync(Username, Password);
             if (result.Success)
             {
+//#if (IncludeNotes)
+                await ApplySignInOptionsAsync();
+//#endif
                 var rememberMeEnabled = RememberMe && !string.IsNullOrEmpty(Username);
                 await DoLogin(rememberMeEnabled);
             }
@@ -261,6 +311,9 @@ public partial class LoginViewModel : ViewModelBase
                 // The new password is the one to remember, not the temporary one used to sign in.
                 Password = NewPassword;
                 ClearNewPassword();
+//#if (IncludeNotes)
+                await ApplySignInOptionsAsync();
+//#endif
                 var rememberMeEnabled = rememberMeWhenNewPasswordStarted && !string.IsNullOrEmpty(Username);
                 await DoLogin(rememberMeEnabled);
             }
@@ -300,6 +353,17 @@ public partial class LoginViewModel : ViewModelBase
         OnPropertyChanged(nameof(ThemeIcon));
     }
 
+//#if (IncludeNotes)
+    /// <summary>
+    /// Expands or collapses the advanced options section.
+    /// </summary>
+    [RelayCommand]
+    public void ToggleAdvancedOptions()
+    {
+        IsAdvancedOptionsExpanded = !IsAdvancedOptionsExpanded;
+    }
+
+//#endif
     /// <summary>Selects a saved user for login.</summary>
     /// <param name="user">The saved user to select.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
@@ -520,6 +584,9 @@ public partial class LoginViewModel : ViewModelBase
 
                 if (loginResult.Success)
                 {
+//#if (IncludeNotes)
+                    await ApplySignInOptionsAsync();
+//#endif
                     navigationService.NavigateTo("/");
                 }
                 else
@@ -555,6 +622,34 @@ public partial class LoginViewModel : ViewModelBase
         ShowRememberMe = false;
     }
 
+//#if (IncludeNotes)
+    private async Task LoadAdvancedOptionsAsync()
+    {
+        await connectivityService.InitializeAsync();
+        StartInOfflineMode = connectivityService.IsForcedOffline;
+        IsAdvancedOptionsExpanded = StartInOfflineMode;
+    }
+
+    private async Task ApplySignInOptionsAsync()
+    {
+        try
+        {
+            // Before the first sync after sign in starts, so offline mode makes no network calls at all.
+            if (StartInOfflineMode != connectivityService.IsForcedOffline)
+            {
+                await connectivityService.SetForcedOfflineAsync(StartInOfflineMode);
+            }
+
+            // Straight after the sign-in click, so Firefox's permission prompt appears at a sensible moment.
+            await persistentStorageService.RequestAfterSignInAsync();
+        }
+        catch (Exception)
+        {
+            // Neither is worth failing the sign in over.
+        }
+    }
+
+//#endif
     private void ClearNewPassword()
     {
         NewPassword = string.Empty;

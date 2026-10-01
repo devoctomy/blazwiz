@@ -2,7 +2,7 @@
 @inherits MvvmComponentBase<FilesViewModel>
 @using blazwiz.Portal.Models.Notes
 
-<PageHeader Title="Files" Icon="bi-journal-text" Subtitle="Your notes, stored in this browser.">
+<PageHeader Title="Files" Icon="bi-journal-text" Subtitle="Your notes, stored in this browser and synced to your cloud storage.">
     <button type="button" class="btn btn-outline-primary" id="new-folder-button" @onclick="() => ViewModel.ShowNewFolderDialogCommand.Execute(null)">
         <i class="bi bi-folder-plus me-1"></i>New folder
     </button>

@@ -1,3 +1,4 @@
+using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Models.Notes;
 
 namespace blazwiz.Portal.Application.Services.Interfaces;
@@ -38,6 +39,52 @@ public interface INoteTreeService
     /// <param name="expandedFolderIds">The ids of the expanded folders.</param>
     /// <returns>The visible rows in display order.</returns>
     IReadOnlyList<FileTreeItem> BuildVisibleItems(IEnumerable<NoteEntry> entries, IReadOnlySet<string> expandedFolderIds);
+
+    /// <summary>
+    /// Builds the folders and notes from the files under the notes root: markdown files become notes, folder markers
+    /// become folders, and folders that only exist in a file's path are added too.
+    /// </summary>
+    /// <param name="files">The files in the notes file store.</param>
+    /// <param name="owner">The user the entries belong to.</param>
+    /// <returns>The entries, in no particular order.</returns>
+    IReadOnlyList<NoteEntry> BuildEntries(IEnumerable<SyncFileInfo> files, string owner);
+
+    /// <summary>
+    /// Gets the key of a note or folder inside a folder, e.g. <c>notes/Work/Ideas.md</c> or <c>notes/Work/Meetings/</c>.
+    /// </summary>
+    /// <param name="parentKey">The folder key, or null for the top level.</param>
+    /// <param name="name">The note or folder name.</param>
+    /// <param name="isFolder">True for a folder (the key ends with <c>/</c>).</param>
+    /// <returns>The key.</returns>
+    string GetChildKey(string? parentKey, string name, bool isFolder);
+
+    /// <summary>
+    /// Gets the name of a note or folder from its key.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The last part of the path, without a trailing <c>/</c>.</returns>
+    string GetName(string key);
+
+    /// <summary>
+    /// Gets the key of the folder containing a note or folder.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The folder key, or null at the top level.</returns>
+    string? GetParentKey(string key);
+
+    /// <summary>
+    /// Gets the names of the folders in a key's path, outermost first.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>The folder names. Empty at the top level.</returns>
+    IReadOnlyList<string> GetFolderNames(string key);
+
+    /// <summary>
+    /// Checks whether a key is a note under the notes root.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <returns>True for a markdown file under the root.</returns>
+    bool IsNoteKey(string key);
 
     /// <summary>
     /// Builds the list of folders an entry can be moved into: the top level and every folder except the entry and its descendants.

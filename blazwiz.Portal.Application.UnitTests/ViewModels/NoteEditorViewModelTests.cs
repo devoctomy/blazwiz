@@ -1,3 +1,5 @@
+using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Application.ViewModels;
@@ -16,6 +18,7 @@ public class NoteEditorViewModelTests
     private readonly Mock<IMarkdownFormatService> mockFormat = new();
     private readonly Mock<INoteEditorInteropService> mockEditor = new();
     private readonly Mock<INavigationService> mockNavigation = new();
+    private readonly Mock<ISyncService> mockSync = new();
     private readonly NoteEntry note = new() { Id = "n1", Name = "todo.md", Kind = NoteEntryKind.Note };
 
     public NoteEditorViewModelTests()
@@ -32,17 +35,17 @@ public class NoteEditorViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object)).ParamName);
-        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object)).ParamName);
-        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object)).ParamName);
-        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!)).ParamName);
+        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object)).ParamName);
+        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object)).ParamName);
+        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object)).ParamName);
+        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object)).ParamName);
     }
 
     [Fact]
     public void GivenNoteId_WhenGetEditUrl_ThenIdIsEscaped()
     {
-        Assert.Equal("files/edit/a%2Fb", NoteEditorViewModel.GetEditUrl("a/b"));
+        Assert.Equal("files/edit?note=a%2Fb", NoteEditorViewModel.GetEditUrl("a/b"));
     }
 
     [Fact]
@@ -314,7 +317,140 @@ public class NoteEditorViewModelTests
         mockNavigation.Verify(x => x.NavigateTo(NoteEditorViewModel.FilesUrl), Times.Once);
     }
 
-    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object);
+    [Fact]
+    public void GivenNullSyncService_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!)).ParamName);
+    }
+
+    [Fact]
+    public void GivenNoteKey_WhenGetEditUrl_ThenKeyIsEscapedInTheQueryString()
+    {
+        Assert.Equal("files/edit?note=notes%2FWork%2FMy%20Ideas.md", NoteEditorViewModel.GetEditUrl("notes/Work/My Ideas.md"));
+        Assert.Throws<ArgumentNullException>(() => NoteEditorViewModel.GetEditUrl(null!));
+    }
+
+    [Fact]
+    public async Task GivenNoUnsavedEdits_WhenSyncChangesTheNote_ThenNewContentIsShown()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ReturnsAsync(new NoteDocument { Entry = note, Content = "from another device" });
+
+        // Act
+        RaiseFilesChanged("n1");
+        await WaitForAsync(() => sut.Content == "from another device");
+
+        // Assert
+        Assert.Equal("from another device", sut.Content);
+        Assert.False(sut.IsDirty);
+        Assert.False(sut.IsRemoteChangeDialogOpen);
+    }
+
+    [Fact]
+    public async Task GivenNoUnsavedEdits_WhenSyncDeletesTheNote_ThenNotFoundWithMessage()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ReturnsAsync((NoteDocument?)null);
+
+        // Act
+        RaiseFilesChanged("n1");
+        await WaitForAsync(() => sut.IsNotFound);
+
+        // Assert
+        Assert.Null(sut.Note);
+        Assert.Equal(NoteEditorViewModel.RemoteDeletedMessage, sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GivenUnsavedEdits_WhenSyncChangesTheNote_ThenAskedAndKeepMineKeepsEdits()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "my edit";
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ReturnsAsync(new NoteDocument { Entry = note, Content = "theirs" });
+
+        // Act
+        RaiseFilesChanged("n1");
+        await WaitForAsync(() => sut.IsRemoteChangeDialogOpen);
+        sut.KeepMineCommand.Execute(null);
+
+        // Assert
+        Assert.False(sut.IsRemoteChangeDialogOpen);
+        Assert.False(sut.IsRemoteDeleted);
+        Assert.Equal("my edit", sut.Content);
+        Assert.True(sut.IsDirty);
+    }
+
+    [Fact]
+    public async Task GivenUnsavedEdits_WhenTakeTheirs_ThenSyncedContentReplacesEdits()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "my edit";
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ReturnsAsync(new NoteDocument { Entry = note, Content = "theirs" });
+        RaiseFilesChanged("n1");
+        await WaitForAsync(() => sut.IsRemoteChangeDialogOpen);
+
+        // Act
+        await sut.TakeTheirsCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("theirs", sut.Content);
+        Assert.False(sut.IsDirty);
+    }
+
+    [Fact]
+    public async Task GivenUnsavedEdits_WhenNoteDeletedAndLetGo_ThenReturnsToFilesWithoutAsking()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "my edit";
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ReturnsAsync((NoteDocument?)null);
+        RaiseFilesChanged("n1");
+        await WaitForAsync(() => sut.IsRemoteChangeDialogOpen);
+
+        // Act
+        await sut.TakeTheirsCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.IsRemoteDeleted);
+        mockNavigation.Verify(x => x.NavigateTo(NoteEditorViewModel.FilesUrl), Times.Once);
+        Assert.True(sut.CanLeave("/anywhere"));
+    }
+
+    [Fact]
+    public async Task GivenOtherFilesChanged_WhenSyncRuns_ThenEditorUntouched()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        RaiseFilesChanged("other");
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("photos", ["n1"]));
+        sut.Dispose();
+        RaiseFilesChanged("n1");
+
+        // Assert
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
+    }
+
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+    }
+
+    private void RaiseFilesChanged(string key)
+    {
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", [key]));
+    }
+
+    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object);
 
     private async Task<NoteEditorViewModel> CreateLoadedSutAsync()
     {

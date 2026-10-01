@@ -1,3 +1,6 @@
+//#if (IncludeNotes)
+using blazwiz.Core.Sync.Interfaces;
+//#endif
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
@@ -16,6 +19,9 @@ public class CognitoAuthenticationService(
     ICognitoUserPoolClient cognitoClient,
     ILocalStorageService localStorageService,
     IUserDisplayService userDisplayService,
+//#if (IncludeNotes)
+    IOfflineModeStore offlineModeStore,
+//#endif
     ISystemClock systemClock)
     : IAuthenticationService
 {
@@ -35,6 +41,9 @@ public class CognitoAuthenticationService(
     private readonly ICognitoUserPoolClient cognitoClient = cognitoClient ?? throw new ArgumentNullException(nameof(cognitoClient));
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
     private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
+//#if (IncludeNotes)
+    private readonly IOfflineModeStore offlineModeStore = offlineModeStore ?? throw new ArgumentNullException(nameof(offlineModeStore));
+//#endif
     private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
 
     private PendingNewPassword? pendingNewPassword;
@@ -158,6 +167,14 @@ public class CognitoAuthenticationService(
             return session;
         }
 
+//#if (IncludeNotes)
+        if (await offlineModeStore.GetAsync())
+        {
+            // Offline mode makes no network calls: keep the stored session and refresh it once back online.
+            return session;
+        }
+
+//#endif
         if (string.IsNullOrEmpty(session.RefreshToken))
         {
             await localStorageService.RemoveItemAsync(SessionStorageKey);

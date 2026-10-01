@@ -1,0 +1,58 @@
+using blazwiz.Core.Sync;
+using blazwiz.Core.Sync.InMemory;
+using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Models;
+using blazwiz.Core.Sync.S3;
+using blazwiz.Core.Time.Interfaces;
+using Moq;
+
+namespace blazwiz.Core.IntTests.Support;
+
+/// <summary>
+/// One device: its own in-memory files and index, tracked like the app's, syncing with the real engine through the
+/// real S3 remote store.
+/// </summary>
+public sealed class SimulatedDevice
+{
+    public const string Profile = "notes";
+    public const string Owner = "inttest-user";
+
+    private readonly Mock<ISystemClock> clock = new();
+
+    public SimulatedDevice(S3SyncTarget target)
+    {
+        var user = new Mock<ISyncUserContext>();
+        user.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
+        clock.SetupGet(x => x.UtcNow).Returns(() => DateTimeOffset.UtcNow);
+
+        var targets = new Mock<IS3SyncTargetProvider>();
+        targets.Setup(x => x.GetTargetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(target);
+
+        var matcher = new GlobSyncPathMatcher("notes/**/*", includeEmptyFolders: true);
+        Files = new InMemorySyncFileStore(user.Object, clock.Object);
+        TrackedFiles = new TrackingSyncFileStore(Profile, Files, Index, user.Object, Mock.Of<ISyncScheduler>(), clock.Object);
+        SyncProfile = new SyncProfile(Profile, Files, Index, new S3SyncRemoteStore(targets.Object, matcher), matcher);
+        Engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), clock.Object);
+    }
+
+    /// <summary>
+    /// Gets the device's files, without change tracking (what the engine sees).
+    /// </summary>
+    public InMemorySyncFileStore Files { get; }
+
+    /// <summary>
+    /// Gets the device's files as the app sees them: every change is tracked in the index.
+    /// </summary>
+    public ISyncFileStore TrackedFiles { get; }
+
+    /// <summary>
+    /// Gets the device's sync index.
+    /// </summary>
+    public InMemorySyncIndexStore Index { get; } = new();
+
+    public SyncProfile SyncProfile { get; }
+
+    public SyncEngine Engine { get; }
+
+    public Task<SyncResult> SyncAsync() => Engine.SyncAsync(SyncProfile, verify: false);
+}

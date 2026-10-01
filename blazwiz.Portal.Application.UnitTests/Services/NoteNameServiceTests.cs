@@ -46,6 +46,13 @@ public class NoteNameServiceTests
     [InlineData("<tag>")]
     [InlineData("a|b")]
     [InlineData("tab\there")]
+    [InlineData("issue #4")]
+    [InlineData("100%")]
+    [InlineData("{draft}")]
+    [InlineData("a^b")]
+    [InlineData("~home")]
+    [InlineData("[todo]")]
+    [InlineData("back`tick")]
     public void GivenInvalidCharacters_WhenValidate_ThenReturnsError(string name)
     {
         // Act

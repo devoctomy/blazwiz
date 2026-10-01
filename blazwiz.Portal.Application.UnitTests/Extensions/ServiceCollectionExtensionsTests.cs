@@ -1,4 +1,8 @@
 using Amazon.CognitoIdentityProvider;
+//#if (IncludeNotes)
+using blazwiz.Core.Sync;
+using blazwiz.Core.Sync.Interfaces;
+//#endif
 using blazwiz.Core.Extensions;
 using blazwiz.Portal.Application.Extensions;
 using blazwiz.Portal.Application.Services;
@@ -22,7 +26,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void GivenServices_WhenAddPortalApplicationServices_ThenServicesAreResolvable()
+    public async Task GivenServices_WhenAddPortalApplicationServices_ThenServicesAreResolvable()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -30,14 +34,15 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton(Mock.Of<IBrowserInteropService>());
         services.AddBlazwizCoreServices();
         services.AddSingleton(new AwsCognitoConfig()); // Registered by AddPortalSettings in the portal.
+        services.AddSingleton(new AwsS3Config());
 
         // Act
         var result = services.AddPortalApplicationServices();
 
         // Assert
         Assert.Same(services, result);
-        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-        using var scope = provider.CreateScope();
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        await using var scope = provider.CreateAsyncScope();
         Assert.IsType<LocalStorageService>(scope.ServiceProvider.GetRequiredService<ILocalStorageService>());
         Assert.IsType<UserSettingsService>(scope.ServiceProvider.GetRequiredService<IUserSettingsService>());
         Assert.IsType<ThemeService>(scope.ServiceProvider.GetRequiredService<IThemeService>());
@@ -46,8 +51,17 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<NavigationMenuService>(scope.ServiceProvider.GetRequiredService<INavigationMenuService>());
 //#if (IncludeNotes)
-        Assert.IsType<IndexedDbNoteIndexStore>(scope.ServiceProvider.GetRequiredService<INoteIndexStore>());
-        Assert.IsType<IndexedDbNoteContentStore>(Assert.Single(scope.ServiceProvider.GetServices<INoteContentStore>()));
+        Assert.IsType<CognitoIdentityClient>(scope.ServiceProvider.GetRequiredService<ICognitoIdentityClient>());
+        Assert.IsType<CognitoS3TargetProvider>(scope.ServiceProvider.GetRequiredService<IS3SyncTargetProvider>());
+        Assert.IsType<AuthSyncUserContext>(scope.ServiceProvider.GetRequiredService<ISyncUserContext>());
+        Assert.IsType<LocalStorageOfflineModeStore>(scope.ServiceProvider.GetRequiredService<IOfflineModeStore>());
+        Assert.IsType<PersistentStorageService>(scope.ServiceProvider.GetRequiredService<IPersistentStorageService>());
+        Assert.IsType<SyncEventPresenter>(scope.ServiceProvider.GetRequiredService<ISyncEventPresenter>());
+        Assert.IsType<SyncStatusPresenter>(scope.ServiceProvider.GetRequiredService<ISyncStatusPresenter>());
+        Assert.IsType<TrackingSyncFileStore>(scope.ServiceProvider.GetRequiredKeyedService<ISyncFileStore>(NoteService.ProfileName));
+        Assert.Equal([NoteService.ProfileName], scope.ServiceProvider.GetRequiredService<ISyncService>().Profiles);
+        Assert.IsType<IndexedDbNotesStateStore>(scope.ServiceProvider.GetRequiredService<INotesStateStore>());
+        Assert.IsType<NoteMigrationService>(scope.ServiceProvider.GetRequiredService<INoteMigrationService>());
         Assert.IsType<NoteService>(scope.ServiceProvider.GetRequiredService<INoteService>());
         Assert.IsType<NoteNameService>(scope.ServiceProvider.GetRequiredService<INoteNameService>());
         Assert.IsType<NoteTreeService>(scope.ServiceProvider.GetRequiredService<INoteTreeService>());
@@ -65,6 +79,7 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton(Mock.Of<IBrowserInteropService>());
         services.AddBlazwizCoreServices();
         services.AddSingleton(new AwsCognitoConfig { Region = "eu-west-2", UserPoolId = "eu-west-2_Pool", UserPoolClientId = "client" });
+        services.AddSingleton(new AwsS3Config());
 
         // Act
         services.AddPortalApplicationServices();
@@ -82,6 +97,7 @@ public class ServiceCollectionExtensionsTests
         // Arrange
         var services = new ServiceCollection();
         services.AddSingleton(new AwsCognitoConfig { Region = "eu-west-2", UserPoolId = "eu-west-2_Pool", UserPoolClientId = "client" });
+        services.AddSingleton(new AwsS3Config());
 
         // Act
         services.AddPortalApplicationServices();
