@@ -218,3 +218,13 @@ dotnet_diagnostic.SA1010.severity = none
 
 # SA1011: Closing square brackets should be spaced correctly
 dotnet_diagnostic.SA1011.severity = none
+
+# Files containing dotnet new template directives (//#if, //#endif). The template engine only
+# recognises the directives without a space after //, and they are removed when the template runs.
+[{blazwiz.Portal.Application/Extensions/ServiceCollectionExtensions.cs,blazwiz.Portal.Application/Services/NavigationMenuService.cs}]
+
+# SA1005: Single line comment should begin with a space
+dotnet_diagnostic.SA1005.severity = none
+
+# SA1515: Single-line comment should be preceded by blank line
+dotnet_diagnostic.SA1515.severity = none
