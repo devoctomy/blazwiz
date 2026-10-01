@@ -1,6 +1,13 @@
 using Amazon;
+//#if (IncludeNotes)
+using Amazon.CognitoIdentity;
+//#endif
 using Amazon.CognitoIdentityProvider;
 using Amazon.Runtime;
+//#if (IncludeNotes)
+using blazwiz.Core.Extensions;
+using blazwiz.Core.Sync.Interfaces;
+//#endif
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Aws;
@@ -51,10 +58,34 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INavigationMenuService, NavigationMenuService>();
 
 //#if (IncludeNotes)
-        // Notes: the file index and content are kept in IndexedDB. Register more INoteContentStore
-        // implementations to add storage providers (see docs/wip/opfs-offline-storage.md).
-        services.AddScoped<INoteIndexStore, IndexedDbNoteIndexStore>();
-        services.AddScoped<INoteContentStore, IndexedDbNoteContentStore>();
+        // Sync: notes are plain markdown files kept in IndexedDB and synced with the user's prefix in the data bucket
+        // (docs/wip/s3-sync.md). The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
+        services.AddSingleton<IAmazonCognitoIdentity>(sp => new AmazonCognitoIdentityClient(
+            new AnonymousAWSCredentials(),
+            new AmazonCognitoIdentityConfig
+            {
+                RegionEndpoint = GetRegion(sp.GetRequiredService<AwsCognitoConfig>().Region),
+                HttpClientFactory = sp.GetRequiredService<BrowserHttpClientFactory>(),
+            }));
+        services.AddScoped<ICognitoIdentityClient, CognitoIdentityClient>();
+        services.AddScoped<IS3SyncTargetProvider, CognitoS3TargetProvider>();
+        services.AddScoped<ISyncUserContext, AuthSyncUserContext>();
+        services.AddScoped<IOfflineModeStore, LocalStorageOfflineModeStore>();
+        services.AddScoped<IPersistentStorageService, PersistentStorageService>();
+        services.AddSingleton<ISyncEventPresenter, SyncEventPresenter>();
+        services.AddSingleton<ISyncStatusPresenter, SyncStatusPresenter>();
+        services.AddBlazwizSync(sync => sync
+            .UseIndexedDbEventLog(database: "blazwiz_sync", store: "events")
+            .UseEventLogRetention(maxAge: TimeSpan.FromDays(30), maxEventsPerUser: 5000)
+            .UseChangeDebounce(TimeSpan.FromSeconds(2))
+            .AddProfile(NoteService.ProfileName, profile => profile
+                .UseIndexedDbIndexStore(database: "blazwiz_sync", store: "notes_index")
+                .UseIndexedDbFileStore(database: IndexedDbNotesStateStore.Database, store: "files")
+                .UseRemote("notes/**/*.md", includeEmptyFolders: true)));
+
+        // Notes
+        services.AddScoped<INotesStateStore, IndexedDbNotesStateStore>();
+        services.AddScoped<INoteMigrationService, NoteMigrationService>();
         services.AddScoped<INoteService, NoteService>();
         services.AddSingleton<INoteNameService, NoteNameService>();
         services.AddSingleton<INoteTreeService, NoteTreeService>();
@@ -90,4 +121,10 @@ public static class ServiceCollectionExtensions
 
         return appSettings;
     }
+//#if (IncludeNotes)
+
+    // Used before the settings are known to be complete; the client is only called once they are.
+    private static RegionEndpoint GetRegion(string region) =>
+        string.IsNullOrWhiteSpace(region) ? RegionEndpoint.USEast1 : RegionEndpoint.GetBySystemName(region);
+//#endif
 }

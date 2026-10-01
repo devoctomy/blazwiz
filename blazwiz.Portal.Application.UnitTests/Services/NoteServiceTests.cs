@@ -1,3 +1,8 @@
+using System.Text;
+using blazwiz.Core.Sync.Connectivity;
+using blazwiz.Core.Sync.InMemory;
+using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Models;
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
@@ -14,31 +19,45 @@ public class NoteServiceTests
     private static readonly DateTimeOffset Now = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
 
     private readonly Mock<IAuthenticationService> mockAuth = new();
+    private readonly Mock<INotesStateStore> mockState = new();
+    private readonly Mock<INoteMigrationService> mockMigration = new();
+    private readonly Mock<ISyncService> mockSync = new();
+    private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly Mock<INoteNameService> mockNames = new();
-    private readonly Mock<INoteTreeService> mockTree = new();
     private readonly Mock<ISystemClock> mockClock = new();
-    private readonly InMemoryIndexStore indexStore = new();
-    private readonly InMemoryContentStore contentStore = new();
+    private readonly Mock<ISyncUserContext> mockUser = new();
+    private readonly NoteTreeService tree = new();
+    private readonly InMemorySyncFileStore files;
+    private readonly Dictionary<string, NotesState> states = [];
+    private SyncStatus syncStatus = new();
+    private ConnectivityStatus connectivity = new() { IsOnline = false, Reason = OfflineReason.NoCredentials };
 
     public NoteServiceTests()
     {
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = Owner });
+        mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
         mockClock.SetupGet(x => x.UtcNow).Returns(Now);
         mockNames.Setup(x => x.Validate(It.IsAny<string?>())).Returns((string?)null);
         mockNames.Setup(x => x.ToNoteFileName(It.IsAny<string>())).Returns<string>(n => n.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ? n : n + ".md");
-        mockTree.Setup(x => x.GetDescendantIds(It.IsAny<IEnumerable<NoteEntry>>(), It.IsAny<string>())).Returns(new HashSet<string>());
-        mockTree.Setup(x => x.GetFolderPath(It.IsAny<IEnumerable<NoteEntry>>(), It.IsAny<NoteEntry>())).Returns([]);
+        mockState.Setup(x => x.GetAsync(It.IsAny<string>())).ReturnsAsync((string o) => states.GetValueOrDefault(o));
+        mockState.Setup(x => x.SaveAsync(It.IsAny<NotesState>())).Callback<NotesState>(s => states[s.Owner] = s).Returns(Task.CompletedTask);
+        mockSync.SetupGet(x => x.Status).Returns(() => syncStatus);
+        mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => connectivity);
+        files = new InMemorySyncFileStore(mockUser.Object, mockClock.Object);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new NoteService(null!, indexStore, [contentStore], mockNames.Object, mockTree.Object, mockClock.Object)).ParamName);
-        Assert.Equal("indexStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, null!, [contentStore], mockNames.Object, mockTree.Object, mockClock.Object)).ParamName);
-        Assert.Equal("contentStores", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, null!, mockNames.Object, mockTree.Object, mockClock.Object)).ParamName);
-        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, [contentStore], null!, mockTree.Object, mockClock.Object)).ParamName);
-        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, [contentStore], mockNames.Object, null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, [contentStore], mockNames.Object, mockTree.Object, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new NoteService(null!, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("fileStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, null!, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, null!, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("migrationService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, null!, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, null!, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, null!, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, null!, tree, mockClock.Object)).ParamName);
+        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, null!, mockClock.Object)).ParamName);
+        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, null!)).ParamName);
     }
 
     [Fact]
@@ -53,7 +72,7 @@ public class NoteServiceTests
     }
 
     [Fact]
-    public async Task GivenNewUser_WhenGetEntriesAsync_ThenWelcomeNoteIsCreatedOnce()
+    public async Task GivenNewUserAndNoSyncPossible_WhenGetEntriesAsync_ThenWelcomeNoteCreatedStraightAwayAndOnce()
     {
         // Arrange
         var sut = CreateSut();
@@ -64,13 +83,49 @@ public class NoteServiceTests
 
         // Assert
         var welcome = Assert.Single(first);
+        Assert.Equal("notes/Welcome.md", welcome.Id);
         Assert.Equal(NoteService.WelcomeNoteName, welcome.Name);
         Assert.Equal(Owner, welcome.Owner);
-        Assert.Equal(NoteStorageProviders.IndexedDb, welcome.StorageProvider);
         Assert.Null(welcome.ParentId);
-        Assert.Equal(NoteService.ReadWelcomeNote(), contentStore.Content[welcome.Id]);
+        Assert.Equal(NoteService.ReadWelcomeNote(), await ReadAsync("notes/Welcome.md"));
         Assert.Single(second);
-        Assert.True(indexStore.States[Owner].WelcomeNoteCreated);
+        Assert.True(states[Owner].WelcomeNoteCreated);
+        mockMigration.Verify(x => x.MigrateAsync(Owner), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenOnlineBeforeFirstSync_WhenGetEntriesAsync_ThenWelcomeNoteWaitsForTheSync()
+    {
+        // Arrange
+        connectivity = new ConnectivityStatus { IsOnline = true };
+        var sut = CreateSut();
+
+        // Act
+        var beforeSync = await sut.GetEntriesAsync();
+        var stateSavedBeforeSync = states.ContainsKey(Owner);
+        syncStatus = new SyncStatus { LastSyncedAt = Now };
+        var afterSync = await sut.GetEntriesAsync();
+
+        // Assert
+        Assert.Empty(beforeSync);
+        Assert.False(stateSavedBeforeSync);
+        Assert.Single(afterSync);
+    }
+
+    [Fact]
+    public async Task GivenNotesSyncedFromAnotherDevice_WhenGetEntriesAsync_ThenNoWelcomeNoteButStateRecorded()
+    {
+        // Arrange
+        syncStatus = new SyncStatus { LastSyncedAt = Now };
+        await files.WriteAsync("notes/From another device.md", [1]);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.GetEntriesAsync();
+
+        // Assert
+        Assert.DoesNotContain(result, e => e.Name == NoteService.WelcomeNoteName);
+        Assert.True(states[Owner].WelcomeNoteCreated);
     }
 
     [Fact]
@@ -89,18 +144,22 @@ public class NoteServiceTests
     }
 
     [Fact]
-    public async Task GivenOtherUsersNotes_WhenGetEntriesAsync_ThenOnlyOwnNotesAreReturned()
+    public async Task GivenFilesAndMarkers_WhenGetEntriesAsync_ThenTreeBuiltFromKeys()
     {
         // Arrange
-        indexStore.States["alice"] = new NotesState { Owner = "alice", WelcomeNoteCreated = true };
-        indexStore.Entries["x"] = new NoteEntry { Id = "x", Owner = "alice", Name = "secret.md", Kind = NoteEntryKind.Note };
+        states[Owner] = new NotesState { Owner = Owner, WelcomeNoteCreated = true };
+        await files.WriteAsync("notes/Work/Meetings/2026-10-01.md", [1]);
+        await files.CreateFolderAsync("notes/Empty Folder/");
+        await files.WriteAsync("notes/readme.txt", [1]);
         var sut = CreateSut();
 
         // Act
         var result = await sut.GetEntriesAsync();
 
         // Assert
-        Assert.DoesNotContain(result, e => e.Id == "x");
+        Assert.Equal(
+            ["notes/Empty Folder/", "notes/Work/", "notes/Work/Meetings/", "notes/Work/Meetings/2026-10-01.md"],
+            result.Select(e => e.Id).Order(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -115,22 +174,22 @@ public class NoteServiceTests
     }
 
     [Fact]
-    public async Task GivenName_WhenCreateNoteAsync_ThenNoteAndContentAreSavedWithExtension()
+    public async Task GivenName_WhenCreateNoteAsync_ThenFileWrittenAtPathWithExtension()
     {
         // Arrange
         var sut = CreateSut();
+        var folder = await sut.CreateFolderAsync("Work", null);
 
         // Act
-        var note = await sut.CreateNoteAsync("  Shopping  ", null, "- milk");
+        var note = await sut.CreateNoteAsync("Plan", folder.Id, "# Plan");
 
         // Assert
-        Assert.Equal("Shopping.md", note.Name);
+        Assert.Equal("notes/Work/Plan.md", note.Id);
+        Assert.Equal("Plan.md", note.Name);
+        Assert.Equal("notes/Work/", note.ParentId);
         Assert.Equal(NoteEntryKind.Note, note.Kind);
-        Assert.Equal(Now, note.CreatedAt);
         Assert.Equal(Now, note.ModifiedAt);
-        Assert.Same(note, indexStore.Entries[note.Id]);
-        Assert.Equal("- milk", contentStore.Content[note.Id]);
-        mockNames.Verify(x => x.ToNoteFileName("Shopping"), Times.Once);
+        Assert.Equal("# Plan", await ReadAsync("notes/Work/Plan.md"));
     }
 
     [Fact]
@@ -138,13 +197,11 @@ public class NoteServiceTests
     {
         // Arrange
         var sut = CreateSut();
-        await sut.CreateNoteAsync("todo", null);
+        await sut.CreateNoteAsync("Ideas", null);
 
-        // Act
-        var exception = await Assert.ThrowsAsync<NotesException>(() => sut.CreateNoteAsync("TODO.md", null));
-
-        // Assert
-        Assert.Contains("already something called 'TODO.md'", exception.Message);
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<NotesException>(() => sut.CreateNoteAsync("IDEAS", null));
+        Assert.Contains("IDEAS.md", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -155,109 +212,86 @@ public class NoteServiceTests
         var folder = await sut.CreateFolderAsync("Work", null);
 
         // Act
-        await sut.CreateNoteAsync("todo", null);
-        await sut.CreateNoteAsync("todo", folder.Id);
+        await sut.CreateNoteAsync("Ideas", null);
+        await sut.CreateNoteAsync("Ideas", folder.Id);
 
         // Assert
-        Assert.Equal(2, indexStore.Entries.Values.Count(e => e.Name == "todo.md"));
+        Assert.NotNull(await files.ReadAsync("notes/Ideas.md"));
+        Assert.NotNull(await files.ReadAsync("notes/Work/Ideas.md"));
     }
 
     [Fact]
-    public async Task GivenInvalidName_WhenCreateNoteAsync_ThenThrowsNotesExceptionWithValidationError()
+    public async Task GivenInvalidName_WhenCreating_ThenThrowsNotesExceptionWithValidationError()
     {
         // Arrange
-        mockNames.Setup(x => x.Validate("a/b")).Returns("Bad name.");
-        var sut = CreateSut();
-
-        // Act
-        var exception = await Assert.ThrowsAsync<NotesException>(() => sut.CreateNoteAsync("a/b", null));
-
-        // Assert
-        Assert.Equal("Bad name.", exception.Message);
-        Assert.Empty(contentStore.Content);
-        Assert.Empty(indexStore.Entries);
-    }
-
-    [Fact]
-    public async Task GivenInvalidName_WhenCreateFolderAsync_ThenThrowsNotesExceptionWithValidationError()
-    {
-        // Arrange
-        mockNames.Setup(x => x.Validate("a/b")).Returns("Bad name.");
-        var sut = CreateSut();
-
-        // Act
-        var exception = await Assert.ThrowsAsync<NotesException>(() => sut.CreateFolderAsync("a/b", null));
-
-        // Assert
-        Assert.Equal("Bad name.", exception.Message);
-        Assert.Empty(indexStore.Entries);
-    }
-
-    [Fact]
-    public async Task GivenMissingParent_WhenCreateNoteAsync_ThenThrowsNotesException()
-    {
-        // Arrange
+        mockNames.Setup(x => x.Validate("bad#")).Returns("Names cannot contain #");
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotesException>(() => sut.CreateNoteAsync("todo", "missing"));
+        Assert.Equal("Names cannot contain #", (await Assert.ThrowsAsync<NotesException>(() => sut.CreateNoteAsync("bad#", null))).Message);
+        Assert.Equal("Names cannot contain #", (await Assert.ThrowsAsync<NotesException>(() => sut.CreateFolderAsync("bad#", null))).Message);
     }
 
     [Fact]
-    public async Task GivenNoteAsParent_WhenCreateFolderAsync_ThenThrowsNotesException()
+    public async Task GivenMissingOrNoteParent_WhenCreating_ThenThrowsNotesException()
     {
         // Arrange
         var sut = CreateSut();
-        var note = await sut.CreateNoteAsync("todo", null);
+        var note = await sut.CreateNoteAsync("Ideas", null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotesException>(() => sut.CreateFolderAsync("Inside", note.Id));
+        await Assert.ThrowsAsync<NotesException>(() => sut.CreateNoteAsync("x", "notes/Missing/"));
+        await Assert.ThrowsAsync<NotesException>(() => sut.CreateFolderAsync("x", note.Id));
     }
 
     [Fact]
-    public async Task GivenName_WhenCreateFolderAsync_ThenFolderIsSavedWithoutExtension()
+    public async Task GivenName_WhenCreateFolderAsync_ThenFolderMarkerWritten()
     {
         // Arrange
         var sut = CreateSut();
-        var parent = await sut.CreateFolderAsync("Work", null);
 
         // Act
-        var folder = await sut.CreateFolderAsync(" Projects ", parent.Id);
+        var folder = await sut.CreateFolderAsync(" Work ", null);
 
         // Assert
-        Assert.Equal("Projects", folder.Name);
-        Assert.Equal(NoteEntryKind.Folder, folder.Kind);
-        Assert.Equal(parent.Id, folder.ParentId);
-        Assert.Null(folder.StorageProvider);
+        Assert.Equal("notes/Work/", folder.Id);
+        Assert.Equal("Work", folder.Name);
+        Assert.True(folder.IsFolder);
+        Assert.Empty((await files.ReadAsync("notes/Work/"))!.Content);
     }
 
     [Fact]
-    public async Task GivenNote_WhenRenameAsync_ThenNameKeepsExtension()
+    public async Task GivenNote_WhenRenameAsync_ThenWrittenAtNewKeyAndOldKeyDeleted()
     {
         // Arrange
         var sut = CreateSut();
-        var note = await sut.CreateNoteAsync("todo", null);
-        var later = Now.AddMinutes(5);
-        mockClock.SetupGet(x => x.UtcNow).Returns(later);
+        var note = await sut.CreateNoteAsync("Draft", null, "text");
+        await files.WriteAsync(note.Id, Encoding.UTF8.GetBytes("text"), DateTimeOffset.UnixEpoch);
 
         // Act
-        var result = await sut.RenameAsync(note.Id, "done");
+        var renamed = await sut.RenameAsync(note.Id, "Final");
 
         // Assert
-        Assert.Equal("done.md", result.Name);
-        Assert.Equal(later, result.ModifiedAt);
+        Assert.Equal("notes/Final.md", renamed.Id);
+        Assert.Equal("Final.md", renamed.Name);
+        Assert.Null(await files.ReadAsync("notes/Draft.md"));
+        var file = await files.ReadAsync("notes/Final.md");
+        Assert.Equal("text", Encoding.UTF8.GetString(file!.Content));
+        Assert.Equal(DateTimeOffset.UnixEpoch, file.ModifiedAt);
     }
 
     [Fact]
-    public async Task GivenSiblingWithName_WhenRenameAsync_ThenThrowsNotesException()
+    public async Task GivenUnchangedName_WhenRenameAsync_ThenNothingWritten()
     {
         // Arrange
         var sut = CreateSut();
-        await sut.CreateFolderAsync("Work", null);
-        var folder = await sut.CreateFolderAsync("Home", null);
+        var note = await sut.CreateNoteAsync("Ideas", null);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<NotesException>(() => sut.RenameAsync(folder.Id, "work"));
+        // Act
+        var result = await sut.RenameAsync(note.Id, "Ideas");
+
+        // Assert
+        Assert.Equal(note.Id, result.Id);
     }
 
     [Fact]
@@ -265,41 +299,90 @@ public class NoteServiceTests
     {
         // Arrange
         var sut = CreateSut();
-        var folder = await sut.CreateFolderAsync("work", null);
+        var note = await sut.CreateNoteAsync("ideas", null);
 
         // Act
-        var result = await sut.RenameAsync(folder.Id, "Work");
+        var result = await sut.RenameAsync(note.Id, "Ideas");
 
         // Assert
-        Assert.Equal("Work", result.Name);
+        Assert.Equal("notes/Ideas.md", result.Id);
+        Assert.Null(await files.ReadAsync("notes/ideas.md"));
     }
 
     [Fact]
-    public async Task GivenNote_WhenMoveAsync_ThenParentChanges()
+    public async Task GivenSiblingWithName_WhenRenameAsync_ThenThrowsNotesException()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.CreateNoteAsync("Taken", null);
+        var note = await sut.CreateNoteAsync("Other", null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotesException>(() => sut.RenameAsync(note.Id, "taken"));
+    }
+
+    [Fact]
+    public async Task GivenFolderWithContents_WhenRenameAsync_ThenEveryFileAndMarkerMoves()
     {
         // Arrange
         var sut = CreateSut();
         var folder = await sut.CreateFolderAsync("Work", null);
-        var note = await sut.CreateNoteAsync("todo", null);
+        var meetings = await sut.CreateFolderAsync("Meetings", folder.Id);
+        await sut.CreateNoteAsync("Agenda", meetings.Id, "agenda");
 
-        // Act & Assert
-        Assert.Equal(folder.Id, (await sut.MoveAsync(note.Id, folder.Id)).ParentId);
-        Assert.Equal(folder.Id, indexStore.Entries[note.Id].ParentId);
-        Assert.Null((await sut.MoveAsync(note.Id, null)).ParentId);
+        // Act
+        var renamed = await sut.RenameAsync(folder.Id, "Job");
+
+        // Assert
+        Assert.Equal("notes/Job/", renamed.Id);
+        var keys = (await files.ListAsync()).Select(f => f.Key).Order(StringComparer.Ordinal);
+        Assert.Equal(["notes/Job/", "notes/Job/Meetings/", "notes/Job/Meetings/Agenda.md"], keys);
+        Assert.Equal("agenda", await ReadAsync("notes/Job/Meetings/Agenda.md"));
     }
 
     [Fact]
-    public async Task GivenFolder_WhenMoveAsyncIntoItsOwnDescendant_ThenThrowsNotesException()
+    public async Task GivenNote_WhenMoveAsync_ThenMovedIntoFolder()
     {
         // Arrange
         var sut = CreateSut();
-        var work = await sut.CreateFolderAsync("Work", null);
-        var projects = await sut.CreateFolderAsync("Projects", work.Id);
-        mockTree.Setup(x => x.GetDescendantIds(It.IsAny<IEnumerable<NoteEntry>>(), work.Id)).Returns(new HashSet<string> { projects.Id });
+        var folder = await sut.CreateFolderAsync("Archive", null);
+        var note = await sut.CreateNoteAsync("Old", null, "x");
+
+        // Act
+        var moved = await sut.MoveAsync(note.Id, folder.Id);
+
+        // Assert
+        Assert.Equal("notes/Archive/Old.md", moved.Id);
+        Assert.Equal(folder.Id, moved.ParentId);
+        Assert.Null(await files.ReadAsync("notes/Old.md"));
+        Assert.Equal("x", await ReadAsync("notes/Archive/Old.md"));
+    }
+
+    [Fact]
+    public async Task GivenSameParent_WhenMoveAsync_ThenNothingChanges()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var note = await sut.CreateNoteAsync("Ideas", null);
+
+        // Act
+        var result = await sut.MoveAsync(note.Id, null);
+
+        // Assert
+        Assert.Equal(note.Id, result.Id);
+    }
+
+    [Fact]
+    public async Task GivenFolder_WhenMoveAsyncIntoItselfOrDescendant_ThenThrowsNotesException()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var folder = await sut.CreateFolderAsync("Work", null);
+        var child = await sut.CreateFolderAsync("Child", folder.Id);
 
         // Act & Assert
-        await Assert.ThrowsAsync<NotesException>(() => sut.MoveAsync(work.Id, projects.Id));
-        await Assert.ThrowsAsync<NotesException>(() => sut.MoveAsync(work.Id, work.Id));
+        await Assert.ThrowsAsync<NotesException>(() => sut.MoveAsync(folder.Id, child.Id));
+        await Assert.ThrowsAsync<NotesException>(() => sut.MoveAsync(folder.Id, folder.Id));
     }
 
     [Fact]
@@ -308,175 +391,101 @@ public class NoteServiceTests
         // Arrange
         var sut = CreateSut();
         var folder = await sut.CreateFolderAsync("Work", null);
-        await sut.CreateNoteAsync("todo", folder.Id);
-        var note = await sut.CreateNoteAsync("todo", null);
+        await sut.CreateNoteAsync("Ideas", folder.Id);
+        var note = await sut.CreateNoteAsync("Ideas", null);
 
         // Act & Assert
         await Assert.ThrowsAsync<NotesException>(() => sut.MoveAsync(note.Id, folder.Id));
     }
 
     [Fact]
-    public async Task GivenFolderWithContents_WhenDeleteAsync_ThenEverythingInsideAndItsContentIsDeleted()
+    public async Task GivenFolderWithContents_WhenDeleteAsync_ThenEverythingInsideIsDeleted()
     {
         // Arrange
         var sut = CreateSut();
-        var work = await sut.CreateFolderAsync("Work", null);
-        var projects = await sut.CreateFolderAsync("Projects", work.Id);
-        var plan = await sut.CreateNoteAsync("plan", projects.Id, "plan");
-        var keep = await sut.CreateNoteAsync("keep", null, "keep");
-        mockTree.Setup(x => x.GetDescendantIds(It.IsAny<IEnumerable<NoteEntry>>(), work.Id)).Returns(new HashSet<string> { projects.Id, plan.Id });
+        var folder = await sut.CreateFolderAsync("Work", null);
+        await sut.CreateNoteAsync("Plan", folder.Id);
+        await sut.CreateNoteAsync("Keep", null);
 
         // Act
-        await sut.DeleteAsync(work.Id);
+        await sut.DeleteAsync(folder.Id);
 
         // Assert
-        Assert.Equal([keep.Id], indexStore.Entries.Keys);
-        Assert.False(contentStore.Content.ContainsKey(plan.Id));
-        Assert.True(contentStore.Content.ContainsKey(keep.Id));
+        Assert.Equal(["notes/Keep.md"], (await files.ListAsync()).Select(f => f.Key));
     }
 
     [Fact]
     public async Task GivenMissingEntry_WhenDeleteAsync_ThenThrowsNotesException()
     {
-        // Arrange
-        var sut = CreateSut();
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NotesException>(() => sut.DeleteAsync("missing"));
+        await Assert.ThrowsAsync<NotesException>(() => CreateSut().DeleteAsync("notes/missing.md"));
     }
 
     [Fact]
     public async Task GivenNestedNote_WhenGetNoteAsync_ThenReturnsContentAndFolderPath()
     {
         // Arrange
-        var sut = CreateSut();
-        var work = await sut.CreateFolderAsync("Work", null);
-        var projects = await sut.CreateFolderAsync("Projects", work.Id);
-        var plan = await sut.CreateNoteAsync("plan", projects.Id, "# Plan");
-        mockTree.Setup(x => x.GetFolderPath(It.IsAny<IEnumerable<NoteEntry>>(), plan)).Returns(["Work", "Projects"]);
+        await files.WriteAsync("notes/Work/Meetings/Agenda.md", Encoding.UTF8.GetBytes("# Agenda"), DateTimeOffset.UnixEpoch);
 
         // Act
-        var result = await sut.GetNoteAsync(plan.Id);
+        var result = await CreateSut().GetNoteAsync("notes/Work/Meetings/Agenda.md");
 
         // Assert
-        Assert.NotNull(result);
-        Assert.Same(plan, result.Entry);
-        Assert.Equal("# Plan", result.Content);
-        Assert.Equal(["Work", "Projects"], result.FolderPath);
+        Assert.Equal("# Agenda", result!.Content);
+        Assert.Equal(["Work", "Meetings"], result.FolderPath);
+        Assert.Equal("Agenda.md", result.Entry.Name);
+        Assert.Equal(DateTimeOffset.UnixEpoch, result.Entry.ModifiedAt);
     }
 
     [Fact]
-    public async Task GivenFolderOrMissingId_WhenGetNoteAsync_ThenReturnsNull()
+    public async Task GivenFolderOrMissingKey_WhenGetNoteAsync_ThenReturnsNull()
     {
         // Arrange
+        await files.CreateFolderAsync("notes/Work/");
         var sut = CreateSut();
-        var folder = await sut.CreateFolderAsync("Work", null);
 
         // Act & Assert
-        Assert.Null(await sut.GetNoteAsync(folder.Id));
-        Assert.Null(await sut.GetNoteAsync("missing"));
+        Assert.Null(await sut.GetNoteAsync("notes/Work/"));
+        Assert.Null(await sut.GetNoteAsync("notes/missing.md"));
+        Assert.Null(await sut.GetNoteAsync("other/a.md"));
     }
 
     [Fact]
-    public async Task GivenNoteFromUnavailableProvider_WhenGetNoteAsync_ThenThrowsNotesException()
+    public async Task GivenNote_WhenSaveNoteAsync_ThenContentWritten()
     {
         // Arrange
-        indexStore.Entries["x"] = new NoteEntry { Id = "x", Owner = Owner, Name = "x.md", Kind = NoteEntryKind.Note, StorageProvider = "opfs" };
         var sut = CreateSut();
+        var note = await sut.CreateNoteAsync("Ideas", null, "v1");
 
         // Act
-        var exception = await Assert.ThrowsAsync<NotesException>(() => sut.GetNoteAsync("x"));
+        var result = await sut.SaveNoteAsync(note.Id, "v2");
 
         // Assert
-        Assert.Contains("opfs", exception.Message);
+        Assert.Equal("v2", await ReadAsync(note.Id));
+        Assert.Equal(Now, result.ModifiedAt);
     }
 
     [Fact]
-    public async Task GivenNote_WhenSaveNoteAsync_ThenContentAndModifiedTimeAreUpdated()
+    public async Task GivenNoteDeletedElsewhere_WhenSaveNoteAsync_ThenItIsWrittenAgain()
     {
-        // Arrange
-        var sut = CreateSut();
-        var note = await sut.CreateNoteAsync("todo", null, "old");
-        var later = Now.AddHours(1);
-        mockClock.SetupGet(x => x.UtcNow).Returns(later);
-
         // Act
-        var result = await sut.SaveNoteAsync(note.Id, "new");
+        await CreateSut().SaveNoteAsync("notes/Kept.md", "mine");
 
         // Assert
-        Assert.Equal("new", contentStore.Content[note.Id]);
-        Assert.Equal(later, result.ModifiedAt);
-        Assert.Equal(later, indexStore.Entries[note.Id].ModifiedAt);
+        Assert.Equal("mine", await ReadAsync("notes/Kept.md"));
     }
 
     [Fact]
-    public async Task GivenFolder_WhenSaveNoteAsync_ThenThrowsNotesException()
+    public async Task GivenFolderKey_WhenSaveNoteAsync_ThenThrowsNotesException()
     {
-        // Arrange
-        var sut = CreateSut();
-        var folder = await sut.CreateFolderAsync("Work", null);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NotesException>(() => sut.SaveNoteAsync(folder.Id, "text"));
+        await Assert.ThrowsAsync<NotesException>(() => CreateSut().SaveNoteAsync("notes/Work/", "x"));
     }
 
-    private NoteService CreateSut()
+    private async Task<string?> ReadAsync(string key)
     {
-        return new NoteService(mockAuth.Object, indexStore, [contentStore], mockNames.Object, mockTree.Object, mockClock.Object);
+        var file = await files.ReadAsync(key);
+        return file == null ? null : Encoding.UTF8.GetString(file.Content);
     }
 
-    private sealed class InMemoryIndexStore : INoteIndexStore
-    {
-        public Dictionary<string, NoteEntry> Entries { get; } = [];
-
-        public Dictionary<string, NotesState> States { get; } = [];
-
-        public Task<IReadOnlyList<NoteEntry>> GetEntriesAsync(string owner) =>
-            Task.FromResult<IReadOnlyList<NoteEntry>>(Entries.Values.Where(e => e.Owner == owner).ToList());
-
-        public Task SaveEntryAsync(NoteEntry entry)
-        {
-            Entries[entry.Id] = entry;
-            return Task.CompletedTask;
-        }
-
-        public Task DeleteEntriesAsync(IEnumerable<string> ids)
-        {
-            foreach (var id in ids)
-            {
-                Entries.Remove(id);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task<NotesState?> GetStateAsync(string owner) => Task.FromResult(States.GetValueOrDefault(owner));
-
-        public Task SaveStateAsync(NotesState state)
-        {
-            States[state.Owner] = state;
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class InMemoryContentStore : INoteContentStore
-    {
-        public Dictionary<string, string> Content { get; } = [];
-
-        public string ProviderName => NoteStorageProviders.IndexedDb;
-
-        public Task<string?> ReadAsync(string id) => Task.FromResult(Content.GetValueOrDefault(id));
-
-        public Task WriteAsync(string id, string content)
-        {
-            Content[id] = content;
-            return Task.CompletedTask;
-        }
-
-        public Task DeleteAsync(string id)
-        {
-            Content.Remove(id);
-            return Task.CompletedTask;
-        }
-    }
+    private NoteService CreateSut() =>
+        new(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object);
 }

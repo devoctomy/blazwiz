@@ -6,8 +6,9 @@ namespace blazwiz.Portal.Application.Services;
 public class NoteNameService
     : INoteNameService
 {
-    // Characters that are not allowed in file names on common file systems, so names survive being synced or exported.
-    private static readonly char[] InvalidCharacters = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+    // Characters that are not allowed in file names on common file systems, plus those S3 advises against in keys, so
+    // names survive being synced or exported.
+    private static readonly char[] InvalidCharacters = ['/', '\\', ':', '*', '?', '"', '<', '>', '|', '#', '%', '{', '}', '^', '~', '[', ']', '`'];
 
     /// <inheritdoc/>
     public string NoteExtension => ".md";
@@ -31,7 +32,7 @@ public class NoteNameService
 
         if (trimmed.IndexOfAny(InvalidCharacters) >= 0 || trimmed.Any(char.IsControl))
         {
-            return "Names cannot contain any of these characters: / \\ : * ? \" < > |";
+            return "Names cannot contain any of these characters: / \\ : * ? \" < > | # % { } ^ ~ [ ] `";
         }
 
         if (trimmed.Trim('.').Length == 0)

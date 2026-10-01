@@ -28,6 +28,61 @@
     </div>
 </div>
 
+@*#if (IncludeNotes)*@
+<div class="panel mb-4" id="sync-card">
+    <h2 class="panel-title">Sync</h2>
+    <p class="panel-text">Your notes are kept in this browser and synced with your cloud storage when you are online.</p>
+    <dl class="detail-list">
+        <dt>State</dt>
+        <dd id="settings-sync-state"><i class="bi @ViewModel.SyncDisplay.Icon sync-tone-@ViewModel.SyncDisplay.Tone me-1"></i>@ViewModel.SyncDisplay.Text</dd>
+        <dt>Connection</dt>
+        <dd id="settings-connectivity">@ViewModel.ConnectivityText</dd>
+        <dt>Last synced</dt>
+        <dd id="settings-last-synced">@(ViewModel.SyncStatus.LastSyncedAt?.ToLocalTime().ToString("g") ?? "Not yet")</dd>
+        <dt>Pending changes</dt>
+        <dd id="settings-pending">@ViewModel.SyncStatus.PendingCount</dd>
+        @if (!string.IsNullOrEmpty(ViewModel.SyncStatus.LastError))
+        {
+            <dt>Last error</dt>
+            <dd id="settings-last-error" class="text-danger">@ViewModel.SyncStatus.LastError</dd>
+        }
+        <dt>Storage</dt>
+        <dd id="storage-status">
+            @if (ViewModel.IsStoragePersisted)
+            {
+                <span class="text-success"><i class="bi bi-check-lg me-1"></i>@ViewModel.StorageText</span>
+            }
+            else if (ViewModel.IsStorageKnown)
+            {
+                <span class="text-warning-emphasis"><i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.StorageText</span>
+                @if (ViewModel.ShowInstallHint)
+                {
+                    <div class="form-text" id="storage-install-hint">@SettingsViewModel.InstallHint</div>
+                }
+            }
+            else
+            {
+                <span class="text-body-secondary">@ViewModel.StorageText</span>
+            }
+        </dd>
+    </dl>
+    <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+        <button type="button" class="btn btn-primary" id="settings-sync-now"
+                disabled="@(!ViewModel.CanSyncNow)"
+                @onclick="() => ViewModel.SyncNowCommand.ExecuteAsync(null)">
+            <i class="bi bi-arrow-repeat me-1"></i>Sync now
+        </button>
+        <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="settings-offline-switch"
+                   checked="@ViewModel.IsForcedOffline"
+                   @onchange="() => ViewModel.ToggleOfflineModeCommand.ExecuteAsync(null)" />
+            <label class="form-check-label" for="settings-offline-switch">Offline mode</label>
+        </div>
+        <a href="sync" class="btn btn-link">View sync log</a>
+    </div>
+</div>
+
+@*#endif*@
 <div class="panel">
     <h2 class="panel-title">About</h2>
     <dl class="detail-list">

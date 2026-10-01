@@ -17,10 +17,11 @@ public partial class NoteEditor : MvvmComponentBase<NoteEditorViewModel>
     private bool shortcutsAttached;
 
     /// <summary>
-    /// Gets or sets the id of the note to edit, from the route.
+    /// Gets or sets the id of the note to edit (its key), from the <c>note</c> query string parameter. A query string,
+    /// because a path ending in <c>.md</c> would be treated as a file by static hosting and not reach the app.
     /// </summary>
-    [Parameter]
-    public string NoteId { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = NoteEditorViewModel.NoteQueryParameter)]
+    public string? NoteId { get; set; }
 
     [Inject]
     private IJSRuntime JSRuntime { get; set; } = default!;
@@ -46,7 +47,7 @@ public partial class NoteEditor : MvvmComponentBase<NoteEditorViewModel>
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
-        await ViewModel.LoadAsync(NoteId);
+        await ViewModel.LoadAsync(NoteId ?? string.Empty);
     }
 
     /// <inheritdoc/>

@@ -1,4 +1,4 @@
-@page "/files/edit/{NoteId}"
+@page "/files/edit"
 @inherits MvvmComponentBase<NoteEditorViewModel>
 @using blazwiz.Portal.Models.Notes
 
@@ -127,6 +127,28 @@ else
             <button type="button" class="btn btn-secondary" id="leave-stay" @onclick="() => ViewModel.StayOnPageCommand.Execute(null)">Keep editing</button>
             <button type="button" class="btn btn-outline-danger" id="leave-discard" @onclick="() => ViewModel.DiscardAndLeaveCommand.Execute(null)">Discard</button>
             <button type="button" class="btn btn-primary" id="leave-save" @onclick="() => ViewModel.SaveAndLeaveCommand.ExecuteAsync(null)">Save</button>
+        </Footer>
+    </ModalDialog>
+}
+
+@if (ViewModel.IsRemoteChangeDialogOpen)
+{
+    <ModalDialog Id="remote-change-dialog" Title="Changed on another device" Icon="bi-cloud-arrow-down" OnClose="() => ViewModel.KeepMineCommand.Execute(null)">
+        <ChildContent>
+            @if (ViewModel.IsRemoteDeleted)
+            {
+                <p class="mb-0"><strong>@ViewModel.Note?.Name</strong> was deleted on another device while you were editing it. Keep your version, or let it go?</p>
+            }
+            else
+            {
+                <p class="mb-0"><strong>@ViewModel.Note?.Name</strong> was changed on another device while you were editing it. Which version would you like to keep?</p>
+            }
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-outline-secondary" id="remote-take-theirs" @onclick="() => ViewModel.TakeTheirsCommand.ExecuteAsync(null)">
+                @(ViewModel.IsRemoteDeleted ? "Let it go" : "Take theirs")
+            </button>
+            <button type="button" class="btn btn-primary" id="remote-keep-mine" @onclick="() => ViewModel.KeepMineCommand.Execute(null)">Keep mine</button>
         </Footer>
     </ModalDialog>
 }

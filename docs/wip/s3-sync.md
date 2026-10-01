@@ -1,6 +1,8 @@
 # S3 Sync Engine (Core)
 
-> Status: WIP / plan, not implemented. Builds on the notes in [`opfs-offline-storage.md`](opfs-offline-storage.md).
+> Status: implemented (phases 1 to 6) on the `s3-sync` branch, waiting for testing against the deployed stack.
+> Builds on the notes in [`opfs-offline-storage.md`](opfs-offline-storage.md). See
+> [Implementation notes](#implementation-notes) for where the code differs from this plan.
 
 ## Goal
 
@@ -706,3 +708,34 @@ All four suites must pass before this is done.
 - `OpfsSyncFileStore` (see the OPFS notes).
 - Delta listing (only list keys changed since the last pass) if listings get large.
 - Optional client side encryption per profile, using the existing `ICryptoService`.
+
+## Implementation notes
+
+What was built differs from the plan above in these places:
+
+- **Phase 0 (spike) was not run in a browser.** The .NET SDK is used (D2) with the R1 mitigations built in:
+  `BufferingHttpHandler` / `BrowserHttpClientFactory`, `RequestChecksumCalculation` and `ResponseChecksumValidation`
+  set to `WHEN_REQUIRED`, and `UseChunkEncoding = false` on uploads. The CORS `ExposedHeaders` now include
+  `x-amz-meta-modified-at`. Testing against the deployed stack is still to do; if the SDK misbehaves in the
+  browser, a JS SDK implementation of `ISyncRemoteStore` can replace `S3SyncRemoteStore` with nothing else changing.
+- **Editor URL**: `/files/edit?note=<key>` instead of `/files/edit/{NoteId}`. A path ending in `.md` is treated as
+  a static file by the dev server and by static hosting, so it never reaches the app on a reload.
+- **Index records** have a `Revision` counter, increased by every tracked write or delete. A pass only clears the
+  dirty flag, or overwrites a local file, if the revision has not changed since its snapshot, so edits made while
+  a pass is running are never lost.
+- **Tombstones are always written**, even for files never synced, so a local delete of a file that also exists
+  remotely without a base is a conflict (newest wins) rather than a re-download.
+- **Lock**: the scheduler takes the Web Lock around each pass (and owns **Sync now**, `ISyncScheduler.SyncNowAsync`);
+  `ISyncService.SyncAsync` itself does not lock or check connectivity.
+- **Extra pieces**: `ISyncIndexStore.GetAsync`, `IS3SyncTargetProvider.Invalidate` (for the 403 refresh),
+  `IConnectivityService.InitializeAsync` / `RecheckAsync` / `Reset`, `ISyncFileStore.WriteAsync` takes an optional
+  modified time (downloads keep the remote edit time), in-memory file and index stores in Core
+  (`Sync/InMemory`, used by the tests and the integration tests' simulated devices), `ISyncStatusPresenter` (the
+  pill / Settings / Sync page status text), `IPersistentStorageService` (the ask-once rule for
+  `navigator.storage.persist()`), `INotesStateStore` (the welcome note flag) and `INoteMigrationService`.
+- **Auth in offline mode**: the auth service depends on `IOfflineModeStore` (not `IConnectivityService`, which
+  would be a dependency cycle) and, in offline mode, keeps returning the stored session without refreshing it.
+- **Search and filtering** on the Sync page show matching entries on their own; with no filter, entries are
+  grouped by pass.
+- **Template**: conditional markers inside XML documentation start with three slashes, because a two-slash marker line splits a
+  documentation comment. Files with markers are listed in `.editorconfig` with the StyleCop rules they trip.
