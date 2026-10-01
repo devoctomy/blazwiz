@@ -1,3 +1,6 @@
+using Amazon;
+using Amazon.CognitoIdentityProvider;
+using Amazon.Runtime;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Aws;
@@ -27,11 +30,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IThemeService, ThemeService>();
         services.AddScoped<IPasswordCryptoService, PasswordCryptoService>();
-        services.AddScoped<ICognitoUserPoolClient>(sp =>
-        {
-            var cognitoConfig = sp.GetRequiredService<AwsCognitoConfig>();
-            return new CognitoUserPoolClient(CognitoUserPoolClient.CreateProvider(cognitoConfig), cognitoConfig);
-        });
+        services.AddSingleton<IUserDisplayService, UserDisplayService>();
+        // The Cognito sign-in APIs are public, so the API client uses no AWS credentials.
+        services.AddSingleton(_ => new BufferingHttpHandler(new HttpClientHandler()));
+        services.AddSingleton<BrowserHttpClientFactory>();
+        services.AddSingleton<IAmazonCognitoIdentityProvider>(sp => new AmazonCognitoIdentityProviderClient(
+            new AnonymousAWSCredentials(),
+            new AmazonCognitoIdentityProviderConfig
+            {
+                RegionEndpoint = RegionEndpoint.GetBySystemName(sp.GetRequiredService<AwsCognitoConfig>().Region),
+                HttpClientFactory = sp.GetRequiredService<BrowserHttpClientFactory>(),
+            }));
+        services.AddScoped<ICognitoUserPoolClient, CognitoUserPoolClient>();
 
         // Cognito when a user pool is configured (deployed), otherwise the placeholder login (local development).
         services.AddScoped<IAuthenticationService>(sp =>
@@ -40,6 +50,18 @@ public static class ServiceCollectionExtensions
                 : ActivatorUtilities.CreateInstance<LocalAuthenticationService>(sp));
         services.AddSingleton<INavigationMenuService, NavigationMenuService>();
 
+//#if (IncludeNotes)
+        // Notes: the file index and content are kept in IndexedDB. Register more INoteContentStore
+        // implementations to add storage providers (see docs/wip/opfs-offline-storage.md).
+        services.AddScoped<INoteIndexStore, IndexedDbNoteIndexStore>();
+        services.AddScoped<INoteContentStore, IndexedDbNoteContentStore>();
+        services.AddScoped<INoteService, NoteService>();
+        services.AddSingleton<INoteNameService, NoteNameService>();
+        services.AddSingleton<INoteTreeService, NoteTreeService>();
+        services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();
+        services.AddSingleton<IMarkdownFormatService, MarkdownFormatService>();
+
+//#endif
         return services;
     }
 

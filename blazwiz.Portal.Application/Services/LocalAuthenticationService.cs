@@ -1,5 +1,4 @@
 using blazwiz.Core.Time.Interfaces;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 
@@ -12,6 +11,7 @@ namespace blazwiz.Portal.Application.Services;
 /// </summary>
 public class LocalAuthenticationService(
     ILocalStorageService localStorageService,
+    IUserDisplayService userDisplayService,
     ISystemClock systemClock)
     : IAuthenticationService
 {
@@ -25,8 +25,9 @@ public class LocalAuthenticationService(
     /// </summary>
     public static readonly TimeSpan SessionDuration = TimeSpan.FromHours(8);
 
-    private readonly ILocalStorageService localStorageService = ValidationHelpers.VerifiedAssignment(localStorageService);
-    private readonly ISystemClock systemClock = ValidationHelpers.VerifiedAssignment(systemClock);
+    private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
+    private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
+    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
 
     /// <inheritdoc/>
     public bool IsPlaceholder => true;
@@ -59,7 +60,7 @@ public class LocalAuthenticationService(
         var session = new UserSession
         {
             Username = trimmedUsername,
-            DisplayName = UserDisplayHelpers.GetDisplayNameFromUsername(trimmedUsername),
+            DisplayName = userDisplayService.GetDisplayNameFromUsername(trimmedUsername),
             Email = trimmedUsername.Contains('@') ? trimmedUsername : null,
             SignedInAt = now,
             ExpiresAt = now.Add(SessionDuration),

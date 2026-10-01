@@ -135,12 +135,17 @@ if (-not $SkipInfrastructure) {
     $changeSet = Invoke-Aws -Json -Arguments @('cloudformation', 'describe-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName)
 
     if ($changeSet.Status -eq 'FAILED') {
-        $reason = "$($changeSet.PSObject.Properties['StatusReason'].Value)"
+        $reason = "$(Get-OptionalProperty $changeSet 'StatusReason')"
         if ($reason -notmatch "didn't contain changes|No updates are to be performed") {
             throw "Could not create change set: $reason"
         }
         Invoke-Aws -Arguments @('cloudformation', 'delete-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName) | Out-Null
         Write-Ok "No infrastructure changes"
+        # Still applied, in case an earlier run could not set it.
+        Invoke-Aws -AllowFailure -Arguments @('cloudformation', 'set-stack-policy', '--stack-name', $stackName, '--stack-policy-body', "file://$stackPolicyPath") | Out-Null
+        if ($null -ne $script:LastAwsError) {
+            Write-Warn "Could not apply the stack policy: $script:LastAwsError"
+        }
     }
     else {
         # Replacement creates a new resource and deletes the old one, losing its data and changing its id.
@@ -151,7 +156,7 @@ if (-not $SkipInfrastructure) {
         $replacing = @()
         foreach ($change in @($changeSet.Changes)) {
             $resource = $change.ResourceChange
-            $replacement = "$($resource.PSObject.Properties['Replacement'].Value)"
+            $replacement = "$(Get-OptionalProperty $resource 'Replacement')"
             $line = "$($resource.Action.PadRight(7)) $($resource.LogicalResourceId) ($($resource.ResourceType))"
             if ($replacement -eq 'True' -or $replacement -eq 'Conditional') {
                 $replacing += $resource.LogicalResourceId
@@ -193,7 +198,7 @@ if (-not $SkipInfrastructure) {
                 $events = Invoke-Aws -Json -AllowFailure -Arguments @('cloudformation', 'describe-stack-events', '--stack-name', $stackName, '--max-items', '50')
                 $failedEvents = if ($null -eq $events) { @() } else { @($events.StackEvents) }
                 foreach ($stackEvent in @($failedEvents | Where-Object { $_.ResourceStatus -like '*FAILED' } | Select-Object -First 5)) {
-                    Write-Warn "$($stackEvent.LogicalResourceId): $($stackEvent.PSObject.Properties['ResourceStatusReason'].Value)"
+                    Write-Warn "$($stackEvent.LogicalResourceId): $(Get-OptionalProperty $stackEvent 'ResourceStatusReason')"
                 }
                 throw "Stack '$stackName' did not deploy (see the events above, or the CloudFormation console)."
             }
@@ -311,6 +316,8 @@ if (-not $SkipTestUser -and $TestUserEmail) {
     }
     else {
         if ($null -eq $TestUserPassword) {
+            # Drop keys pressed during the (long) deployment so they are not read as the password.
+            try { $Host.UI.RawUI.FlushInputBuffer() } catch { Write-Verbose "Could not flush the input buffer: $_" }
             $TestUserPassword = Read-Host "    Password for $TestUserEmail (min 12 chars, upper, lower, number)" -AsSecureString
         }
 

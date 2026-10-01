@@ -1,0 +1,27 @@
+<div class="modal-backdrop show"></div>
+<div class="modal d-block app-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="@($"{Id}-title")" id="@Id"
+     @ref="element" @onkeydown="OnKeyDownAsync">
+    <div class="modal-dialog modal-dialog-centered @SizeClass">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="@($"{Id}-title")">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <i class="bi @Icon me-2"></i>
+                    }
+                    @Title
+                </h2>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="OnClose"></button>
+            </div>
+            <div class="modal-body">
+                @ChildContent
+            </div>
+            @if (Footer != null)
+            {
+                <div class="modal-footer">
+                    @Footer
+                </div>
+            }
+        </div>
+    </div>
+</div>

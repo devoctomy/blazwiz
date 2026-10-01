@@ -14,6 +14,7 @@ public class MainLayoutViewModelTests
     private readonly Mock<IUserSettingsService> mockUserSettings = new();
     private readonly Mock<INavigationMenuService> mockMenu = new();
     private readonly Mock<INavigationService> mockNavigation = new();
+    private readonly Mock<IUserDisplayService> mockUserDisplay = new();
     private readonly AppSettings appSettings = new();
     private readonly UserSettings userSettings = new();
     private readonly UserSession session = new() { Username = "bob@example.com", DisplayName = "Bob Hoskins" };
@@ -22,17 +23,20 @@ public class MainLayoutViewModelTests
     {
         mockUserSettings.Setup(x => x.GetSettingsAsync()).ReturnsAsync(userSettings);
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(session);
+        mockUserDisplay.Setup(x => x.GetInitials("Bob Hoskins")).Returns("BH");
+        mockUserDisplay.Setup(x => x.GetInitials(null)).Returns("?");
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(null!, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, appSettings)).ParamName);
-        Assert.Equal("themeService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, null!, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, appSettings)).ParamName);
-        Assert.Equal("userSettingsService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, null!, mockMenu.Object, mockNavigation.Object, appSettings)).ParamName);
-        Assert.Equal("navigationMenuService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, null!, mockNavigation.Object, appSettings)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, null!, appSettings)).ParamName);
-        Assert.Equal("appSettings", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(null!, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, appSettings)).ParamName);
+        Assert.Equal("themeService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, null!, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, appSettings)).ParamName);
+        Assert.Equal("userSettingsService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, null!, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, appSettings)).ParamName);
+        Assert.Equal("navigationMenuService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, null!, mockNavigation.Object, mockUserDisplay.Object, appSettings)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, null!, mockUserDisplay.Object, appSettings)).ParamName);
+        Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, null!, appSettings)).ParamName);
+        Assert.Equal("appSettings", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -218,5 +222,6 @@ public class MainLayoutViewModelTests
         mockUserSettings.Object,
         mockMenu.Object,
         mockNavigation.Object,
+        mockUserDisplay.Object,
         appSettings);
 }

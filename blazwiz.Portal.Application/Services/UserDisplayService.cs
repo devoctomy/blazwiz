@@ -1,18 +1,15 @@
-namespace blazwiz.Portal.Application.Helpers;
+using blazwiz.Portal.Application.Services.Interfaces;
 
-/// <summary>
-/// Helpers for presenting user details.
-/// </summary>
-public static class UserDisplayHelpers
+namespace blazwiz.Portal.Application.Services;
+
+/// <inheritdoc/>
+public class UserDisplayService
+    : IUserDisplayService
 {
     private static readonly char[] NameSeparators = [' ', '.', '_', '-'];
 
-    /// <summary>
-    /// Gets up to two initials for the given display name, e.g. "Bob Hoskins" becomes "BH".
-    /// </summary>
-    /// <param name="displayName">The display name.</param>
-    /// <returns>The upper case initials, or "?" when no name is available.</returns>
-    public static string GetInitials(string? displayName)
+    /// <inheritdoc/>
+    public string GetInitials(string? displayName)
     {
         if (string.IsNullOrWhiteSpace(displayName))
         {
@@ -32,12 +29,8 @@ public static class UserDisplayHelpers
         return initials.ToUpperInvariant();
     }
 
-    /// <summary>
-    /// Derives a friendly display name from a username or email address, e.g. "bob.hoskins@example.com" becomes "Bob Hoskins".
-    /// </summary>
-    /// <param name="username">The username or email address.</param>
-    /// <returns>The display name.</returns>
-    public static string GetDisplayNameFromUsername(string username)
+    /// <inheritdoc/>
+    public string GetDisplayNameFromUsername(string username)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(username);
 

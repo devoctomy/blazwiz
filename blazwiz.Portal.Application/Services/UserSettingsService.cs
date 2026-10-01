@@ -1,4 +1,3 @@
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Settings;
 
@@ -13,7 +12,7 @@ public class UserSettingsService(ILocalStorageService localStorageService)
     /// </summary>
     public const string StorageKey = "blazwiz_user_settings";
 
-    private readonly ILocalStorageService localStorageService = ValidationHelpers.VerifiedAssignment(localStorageService);
+    private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
     private UserSettings? cachedSettings;
 
     /// <inheritdoc/>

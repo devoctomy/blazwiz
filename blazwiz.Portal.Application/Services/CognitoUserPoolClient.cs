@@ -1,10 +1,8 @@
-using Amazon;
 using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using Amazon.Extensions.CognitoAuthentication;
 using Amazon.Runtime;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Aws;
 
@@ -29,26 +27,9 @@ public class CognitoUserPoolClient : ICognitoUserPoolClient
     /// <param name="cognitoConfig">The Cognito settings.</param>
     public CognitoUserPoolClient(IAmazonCognitoIdentityProvider provider, AwsCognitoConfig cognitoConfig)
     {
-        this.provider = ValidationHelpers.VerifiedAssignment(provider);
-        this.cognitoConfig = ValidationHelpers.VerifiedAssignment(cognitoConfig);
+        this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
+        this.cognitoConfig = cognitoConfig ?? throw new ArgumentNullException(nameof(cognitoConfig));
         userPool = new CognitoUserPool(cognitoConfig.UserPoolId, cognitoConfig.UserPoolClientId, provider);
-    }
-
-    /// <summary>
-    /// Creates the Cognito user pool API client. The sign-in APIs are public, so no AWS credentials are used.
-    /// </summary>
-    /// <param name="cognitoConfig">The Cognito settings.</param>
-    /// <returns>The API client.</returns>
-    public static IAmazonCognitoIdentityProvider CreateProvider(AwsCognitoConfig cognitoConfig)
-    {
-        ArgumentNullException.ThrowIfNull(cognitoConfig);
-        return new AmazonCognitoIdentityProviderClient(
-            new AnonymousAWSCredentials(),
-            new AmazonCognitoIdentityProviderConfig
-            {
-                RegionEndpoint = RegionEndpoint.GetBySystemName(cognitoConfig.Region),
-                HttpClientFactory = new BrowserHttpClientFactory(),
-            });
     }
 
     /// <inheritdoc/>
@@ -155,39 +136,5 @@ public class CognitoUserPoolClient : ICognitoUserPoolClient
     private CognitoUser CreateUser(string username)
     {
         return new CognitoUser(username, cognitoConfig.UserPoolClientId, userPool, provider);
-    }
-
-    /// <summary>
-    /// Gives the AWS SDK an <see cref="HttpClient"/> that works in the browser. The SDK's default handler sets
-    /// options (e.g. connection limits) the browser's fetch based handler does not support, and the SDK reads
-    /// responses synchronously, which the browser does not allow, so responses are buffered first.
-    /// </summary>
-    private sealed class BrowserHttpClientFactory : HttpClientFactory
-    {
-        private static readonly HttpClient SharedClient = new HttpClient(new BufferingHandler(new HttpClientHandler()));
-
-        public override HttpClient CreateHttpClient(IClientConfig clientConfig) => SharedClient;
-
-        public override bool UseSDKHttpClientCaching(IClientConfig clientConfig) => false;
-
-        public override bool DisposeHttpClientsAfterUse(IClientConfig clientConfig) => false;
-    }
-
-    /// <summary>
-    /// Reads each response body into memory asynchronously, so later synchronous reads come from the buffer.
-    /// </summary>
-    private sealed class BufferingHandler : DelegatingHandler
-    {
-        public BufferingHandler(HttpMessageHandler innerHandler)
-            : base(innerHandler)
-        {
-        }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var response = await base.SendAsync(request, cancellationToken);
-            await response.Content.LoadIntoBufferAsync(cancellationToken);
-            return response;
-        }
     }
 }
