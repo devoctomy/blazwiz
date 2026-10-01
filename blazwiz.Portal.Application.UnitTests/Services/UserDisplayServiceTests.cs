@@ -1,9 +1,11 @@
-using blazwiz.Portal.Application.Helpers;
+using blazwiz.Portal.Application.Services;
 
-namespace blazwiz.Portal.Application.UnitTests.Helpers;
+namespace blazwiz.Portal.Application.UnitTests.Services;
 
-public class UserDisplayHelpersTests
+public class UserDisplayServiceTests
 {
+    private readonly UserDisplayService sut = new();
+
     [Theory]
     [InlineData("Bob Hoskins", "BH")]
     [InlineData("bob", "B")]
@@ -17,7 +19,7 @@ public class UserDisplayHelpersTests
     public void GivenDisplayName_WhenGetInitials_ThenReturnsExpectedInitials(string? displayName, string expected)
     {
         // Act
-        var result = UserDisplayHelpers.GetInitials(displayName);
+        var result = sut.GetInitials(displayName);
 
         // Assert
         Assert.Equal(expected, result);
@@ -32,7 +34,7 @@ public class UserDisplayHelpersTests
     public void GivenUsername_WhenGetDisplayNameFromUsername_ThenReturnsFriendlyName(string username, string expected)
     {
         // Act
-        var result = UserDisplayHelpers.GetDisplayNameFromUsername(username);
+        var result = sut.GetDisplayNameFromUsername(username);
 
         // Assert
         Assert.Equal(expected, result);
@@ -45,6 +47,6 @@ public class UserDisplayHelpersTests
     public void GivenBlankUsername_WhenGetDisplayNameFromUsername_ThenThrowsArgumentException(string? username)
     {
         // Act & Assert
-        Assert.ThrowsAny<ArgumentException>(() => UserDisplayHelpers.GetDisplayNameFromUsername(username!));
+        Assert.ThrowsAny<ArgumentException>(() => sut.GetDisplayNameFromUsername(username!));
     }
 }

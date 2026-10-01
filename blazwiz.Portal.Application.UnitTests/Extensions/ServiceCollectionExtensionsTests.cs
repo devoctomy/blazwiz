@@ -40,13 +40,17 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<UserSettingsService>(scope.ServiceProvider.GetRequiredService<IUserSettingsService>());
         Assert.IsType<ThemeService>(scope.ServiceProvider.GetRequiredService<IThemeService>());
         Assert.IsType<PasswordCryptoService>(scope.ServiceProvider.GetRequiredService<IPasswordCryptoService>());
+        Assert.IsType<UserDisplayService>(scope.ServiceProvider.GetRequiredService<IUserDisplayService>());
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<NavigationMenuService>(scope.ServiceProvider.GetRequiredService<INavigationMenuService>());
 //#if (IncludeNotes)
         Assert.IsType<IndexedDbNoteIndexStore>(scope.ServiceProvider.GetRequiredService<INoteIndexStore>());
         Assert.IsType<IndexedDbNoteContentStore>(Assert.Single(scope.ServiceProvider.GetServices<INoteContentStore>()));
         Assert.IsType<NoteService>(scope.ServiceProvider.GetRequiredService<INoteService>());
+        Assert.IsType<NoteNameService>(scope.ServiceProvider.GetRequiredService<INoteNameService>());
+        Assert.IsType<NoteTreeService>(scope.ServiceProvider.GetRequiredService<INoteTreeService>());
         Assert.IsType<MarkdownRenderer>(scope.ServiceProvider.GetRequiredService<IMarkdownRenderer>());
+        Assert.IsType<MarkdownFormatService>(scope.ServiceProvider.GetRequiredService<IMarkdownFormatService>());
 //#endif
     }
 

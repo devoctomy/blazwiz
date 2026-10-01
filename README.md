@@ -17,7 +17,7 @@ and built out from there. See [Creating a new app from this template](#creating-
 |---|---|
 | `blazwiz.Core` | .NET 10 class library for all backend / domain logic. No UI dependencies. |
 | `blazwiz.Portal` | The Blazor WASM PWA: pages, layouts, components, `wwwroot`. Views only. |
-| `blazwiz.Portal.Application` | Unit testable portal logic: view models (Blazing.Mvvm), services, helpers. |
+| `blazwiz.Portal.Application` | Unit testable portal logic: view models (Blazing.Mvvm) and services. |
 | `blazwiz.Portal.Models` | DTOs / settings used by the portal. No logic. |
 <!--#if (IncludeTests)-->
 | `blazwiz.Core.UnitTests` | xUnit + Moq. Mirrors the `Core` folder structure, one test file per class. |
@@ -112,10 +112,10 @@ organised into folders, stored in the browser for the signed in user.
   and `IndexedDbNoteContentStore` keeps the note content (see `wwwroot/js/notes.js`). Each note records
   which storage provider holds its content, so others (e.g. the Origin Private File System, see
   `docs/wip/opfs-offline-storage.md`) can be added by implementing `INoteContentStore`.
-- **Logic**: `NoteService` validates names and handles creating, renaming, moving and deleting. The
-  first time a user's notes are loaded, it creates a welcome note from the embedded
-  `Resources/WelcomeNote.md`.
-- **Editor**: the toolbar's formatting (`MarkdownFormatHelpers`) toggles, like a word processor. The
+- **Logic**: `NoteService` handles creating, renaming, moving and deleting, using `NoteNameService`
+  to validate names and `NoteTreeService` for the folder structure. The first time a user's notes
+  are loaded, it creates a welcome note from the embedded `Resources/WelcomeNote.md`.
+- **Editor**: the toolbar's formatting (`MarkdownFormatService`) toggles, like a word processor. The
   preview is rendered by [Markdig](https://github.com/xoofx/markdig) with raw HTML disabled and unsafe
   link URLs removed. `Ctrl+S` saves, and leaving with unsaved changes asks what to do with them.
 <!--#endif-->

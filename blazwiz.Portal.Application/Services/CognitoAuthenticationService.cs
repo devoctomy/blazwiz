@@ -1,6 +1,5 @@
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Aws;
@@ -16,6 +15,7 @@ namespace blazwiz.Portal.Application.Services;
 public class CognitoAuthenticationService(
     ICognitoUserPoolClient cognitoClient,
     ILocalStorageService localStorageService,
+    IUserDisplayService userDisplayService,
     ISystemClock systemClock)
     : IAuthenticationService
 {
@@ -32,9 +32,10 @@ public class CognitoAuthenticationService(
     private const string NewPasswordRequiredChallenge = "NEW_PASSWORD_REQUIRED";
     private const string ConnectionError = "Could not reach the sign-in service. Check your connection and try again.";
 
-    private readonly ICognitoUserPoolClient cognitoClient = ValidationHelpers.VerifiedAssignment(cognitoClient);
-    private readonly ILocalStorageService localStorageService = ValidationHelpers.VerifiedAssignment(localStorageService);
-    private readonly ISystemClock systemClock = ValidationHelpers.VerifiedAssignment(systemClock);
+    private readonly ICognitoUserPoolClient cognitoClient = cognitoClient ?? throw new ArgumentNullException(nameof(cognitoClient));
+    private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
+    private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
+    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
 
     private PendingNewPassword? pendingNewPassword;
 
@@ -264,7 +265,7 @@ public class CognitoAuthenticationService(
         return new UserSession
         {
             Username = username,
-            DisplayName = string.IsNullOrWhiteSpace(name) ? UserDisplayHelpers.GetDisplayNameFromUsername(username) : name,
+            DisplayName = string.IsNullOrWhiteSpace(name) ? userDisplayService.GetDisplayNameFromUsername(username) : name,
             Email = email,
             SignedInAt = signedInAt,
             ExpiresAt = systemClock.UtcNow.AddSeconds(tokens.ExpiresIn),

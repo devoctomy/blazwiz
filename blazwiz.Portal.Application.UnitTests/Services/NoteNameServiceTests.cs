@@ -1,9 +1,18 @@
-using blazwiz.Portal.Application.Helpers;
+using blazwiz.Portal.Application.Services;
 
-namespace blazwiz.Portal.Application.UnitTests.Helpers;
+namespace blazwiz.Portal.Application.UnitTests.Services;
 
-public class NoteNameHelpersTests
+public class NoteNameServiceTests
 {
+    private readonly NoteNameService sut = new();
+
+    [Fact]
+    public void GivenService_WhenGettingNameLimits_ThenMarkdownExtensionAndOneHundredCharacters()
+    {
+        Assert.Equal(".md", sut.NoteExtension);
+        Assert.Equal(100, sut.MaxNameLength);
+    }
+
     [Theory]
     [InlineData("Shopping list")]
     [InlineData("  padded  ")]
@@ -12,7 +21,7 @@ public class NoteNameHelpersTests
     public void GivenValidName_WhenValidate_ThenReturnsNull(string name)
     {
         // Act & Assert
-        Assert.Null(NoteNameHelpers.Validate(name));
+        Assert.Null(sut.Validate(name));
     }
 
     [Theory]
@@ -24,7 +33,7 @@ public class NoteNameHelpersTests
     public void GivenEmptyName_WhenValidate_ThenAsksForName(string? name)
     {
         // Act & Assert
-        Assert.Equal("Please enter a name.", NoteNameHelpers.Validate(name));
+        Assert.Equal("Please enter a name.", sut.Validate(name));
     }
 
     [Theory]
@@ -40,7 +49,7 @@ public class NoteNameHelpersTests
     public void GivenInvalidCharacters_WhenValidate_ThenReturnsError(string name)
     {
         // Act
-        var result = NoteNameHelpers.Validate(name);
+        var result = sut.Validate(name);
 
         // Assert
         Assert.NotNull(result);
@@ -51,10 +60,10 @@ public class NoteNameHelpersTests
     public void GivenTooLongName_WhenValidate_ThenReturnsError()
     {
         // Act
-        var result = NoteNameHelpers.Validate(new string('a', NoteNameHelpers.MaxNameLength + 1));
+        var result = sut.Validate(new string('a', sut.MaxNameLength + 1));
 
         // Assert
-        Assert.Equal($"Names can be at most {NoteNameHelpers.MaxNameLength} characters.", result);
+        Assert.Equal($"Names can be at most {sut.MaxNameLength} characters.", result);
     }
 
     [Theory]
@@ -66,7 +75,7 @@ public class NoteNameHelpersTests
     public void GivenName_WhenToNoteFileName_ThenHasMarkdownExtension(string name, string expected)
     {
         // Act & Assert
-        Assert.Equal(expected, NoteNameHelpers.ToNoteFileName(name));
+        Assert.Equal(expected, sut.ToNoteFileName(name));
     }
 
     [Theory]
@@ -76,6 +85,6 @@ public class NoteNameHelpersTests
     public void GivenFileName_WhenWithoutExtension_ThenRemovesMarkdownExtension(string fileName, string expected)
     {
         // Act & Assert
-        Assert.Equal(expected, NoteNameHelpers.WithoutExtension(fileName));
+        Assert.Equal(expected, sut.WithoutExtension(fileName));
     }
 }

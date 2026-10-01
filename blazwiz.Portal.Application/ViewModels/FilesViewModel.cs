@@ -1,6 +1,5 @@
 using Blazing.Mvvm.ComponentModel;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Notes;
 using CommunityToolkit.Mvvm.Input;
@@ -31,6 +30,8 @@ public partial class FilesViewModel : ViewModelBase
 
     private readonly INoteService noteService;
     private readonly INavigationService navigationService;
+    private readonly INoteNameService noteNameService;
+    private readonly INoteTreeService noteTreeService;
     private readonly HashSet<string> expandedFolderIds = [];
 
     private IReadOnlyList<NoteEntry> entries = [];
@@ -53,11 +54,29 @@ public partial class FilesViewModel : ViewModelBase
     /// </summary>
     /// <param name="noteService">The note service.</param>
     /// <param name="navigationService">The navigation service.</param>
-    public FilesViewModel(INoteService noteService, INavigationService navigationService)
+    /// <param name="noteNameService">The note name service.</param>
+    /// <param name="noteTreeService">The note tree service.</param>
+    public FilesViewModel(
+        INoteService noteService,
+        INavigationService navigationService,
+        INoteNameService noteNameService,
+        INoteTreeService noteTreeService)
     {
-        this.noteService = ValidationHelpers.VerifiedAssignment(noteService);
-        this.navigationService = ValidationHelpers.VerifiedAssignment(navigationService);
+        this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
+        this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        this.noteNameService = noteNameService ?? throw new ArgumentNullException(nameof(noteNameService));
+        this.noteTreeService = noteTreeService ?? throw new ArgumentNullException(nameof(noteTreeService));
     }
+
+    /// <summary>
+    /// Gets the file extension given to every note, shown next to the name box.
+    /// </summary>
+    public string NoteExtension => noteNameService.NoteExtension;
+
+    /// <summary>
+    /// Gets the longest name allowed.
+    /// </summary>
+    public int MaxNameLength => noteNameService.MaxNameLength;
 
     /// <summary>
     /// Gets all of the user's notes and folders.
@@ -152,7 +171,7 @@ public partial class FilesViewModel : ViewModelBase
     /// Gets how many notes and folders are inside the folder the dialog is for, to warn before deleting it.
     /// </summary>
     public int DialogEntryDescendantCount => DialogEntry is { IsFolder: true } folder
-        ? NoteTreeHelpers.GetDescendantIds(Entries, folder.Id).Count
+        ? noteTreeService.GetDescendantIds(Entries, folder.Id).Count
         : 0;
 
     /// <summary>
@@ -300,7 +319,7 @@ public partial class FilesViewModel : ViewModelBase
         var entry = Entries.FirstOrDefault(e => e.Id == entryId);
         if (entry != null)
         {
-            ShowDialog(FilesDialogKind.Rename, entry, entry.IsFolder ? entry.Name : NoteNameHelpers.WithoutExtension(entry.Name));
+            ShowDialog(FilesDialogKind.Rename, entry, entry.IsFolder ? entry.Name : noteNameService.WithoutExtension(entry.Name));
         }
     }
 
@@ -314,7 +333,7 @@ public partial class FilesViewModel : ViewModelBase
         var entry = Entries.FirstOrDefault(e => e.Id == entryId);
         if (entry != null)
         {
-            MoveTargets = NoteTreeHelpers.BuildMoveTargets(Entries, entry.Id, TopLevelName);
+            MoveTargets = noteTreeService.BuildMoveTargets(Entries, entry.Id, TopLevelName);
             MoveTargetId = entry.ParentId ?? TopLevelId;
             ShowDialog(FilesDialogKind.Move, entry, string.Empty);
         }
@@ -488,7 +507,7 @@ public partial class FilesViewModel : ViewModelBase
         var target = Entries.FirstOrDefault(e => e.Id == targetId);
         return target is { IsFolder: true }
             && target.Id != entry.Id
-            && !(entry.IsFolder && NoteTreeHelpers.GetDescendantIds(Entries, entry.Id).Contains(target.Id));
+            && !(entry.IsFolder && noteTreeService.GetDescendantIds(Entries, entry.Id).Contains(target.Id));
     }
 
     private async Task MoveEntryAsync(string entryId, string targetId)
@@ -503,7 +522,7 @@ public partial class FilesViewModel : ViewModelBase
 
     private async Task DeleteEntryAsync(NoteEntry entry)
     {
-        var removedIds = entry.IsFolder ? NoteTreeHelpers.GetDescendantIds(Entries, entry.Id).Append(entry.Id).ToHashSet() : [entry.Id];
+        var removedIds = entry.IsFolder ? noteTreeService.GetDescendantIds(Entries, entry.Id).Append(entry.Id).ToHashSet() : [entry.Id];
         await noteService.DeleteAsync(entry.Id);
         if (SelectedFolderId != null && removedIds.Contains(SelectedFolderId))
         {
@@ -534,7 +553,7 @@ public partial class FilesViewModel : ViewModelBase
 
     private void RefreshTree()
     {
-        VisibleItems = NoteTreeHelpers.BuildVisibleItems(Entries, expandedFolderIds);
+        VisibleItems = noteTreeService.BuildVisibleItems(Entries, expandedFolderIds);
     }
 
     private async Task RunAsync(Func<Task> action)

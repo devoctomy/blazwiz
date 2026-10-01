@@ -8,12 +8,19 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 public class ProfileViewModelTests
 {
     private readonly Mock<IAuthenticationService> mockAuth = new();
+    private readonly Mock<IUserDisplayService> mockUserDisplay = new();
+
+    public ProfileViewModelTests()
+    {
+        mockUserDisplay.Setup(x => x.GetInitials("Bob Hoskins")).Returns("BH");
+        mockUserDisplay.Setup(x => x.GetInitials(null)).Returns("?");
+    }
 
     [Fact]
-    public void GivenNullAuthService_WhenConstructing_ThenThrowsArgumentNullException()
+    public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new ProfileViewModel(null!));
-        Assert.Equal("authService", exception.ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new ProfileViewModel(null!, mockUserDisplay.Object)).ParamName);
+        Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new ProfileViewModel(mockAuth.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -22,7 +29,7 @@ public class ProfileViewModelTests
         // Arrange
         var session = new UserSession { DisplayName = "Bob Hoskins" };
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(session);
-        var sut = new ProfileViewModel(mockAuth.Object);
+        var sut = new ProfileViewModel(mockAuth.Object, mockUserDisplay.Object);
         var changed = new List<string?>();
         sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
 
@@ -41,7 +48,7 @@ public class ProfileViewModelTests
     {
         // Arrange
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync((UserSession?)null);
-        var sut = new ProfileViewModel(mockAuth.Object);
+        var sut = new ProfileViewModel(mockAuth.Object, mockUserDisplay.Object);
 
         // Act
         await sut.OnInitializedAsync();

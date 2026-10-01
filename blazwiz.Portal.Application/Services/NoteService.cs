@@ -1,6 +1,5 @@
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Notes;
 
@@ -11,6 +10,8 @@ public class NoteService(
     IAuthenticationService authService,
     INoteIndexStore indexStore,
     IEnumerable<INoteContentStore> contentStores,
+    INoteNameService noteNameService,
+    INoteTreeService noteTreeService,
     ISystemClock systemClock)
     : INoteService
 {
@@ -29,10 +30,12 @@ public class NoteService(
     /// </summary>
     public const string DefaultStorageProvider = NoteStorageProviders.IndexedDb;
 
-    private readonly IAuthenticationService authService = ValidationHelpers.VerifiedAssignment(authService);
-    private readonly INoteIndexStore indexStore = ValidationHelpers.VerifiedAssignment(indexStore);
-    private readonly IReadOnlyList<INoteContentStore> contentStores = ValidationHelpers.VerifiedAssignment(contentStores).ToList();
-    private readonly ISystemClock systemClock = ValidationHelpers.VerifiedAssignment(systemClock);
+    private readonly IAuthenticationService authService = authService ?? throw new ArgumentNullException(nameof(authService));
+    private readonly INoteIndexStore indexStore = indexStore ?? throw new ArgumentNullException(nameof(indexStore));
+    private readonly IReadOnlyList<INoteContentStore> contentStores = (contentStores ?? throw new ArgumentNullException(nameof(contentStores))).ToList();
+    private readonly INoteNameService noteNameService = noteNameService ?? throw new ArgumentNullException(nameof(noteNameService));
+    private readonly INoteTreeService noteTreeService = noteTreeService ?? throw new ArgumentNullException(nameof(noteTreeService));
+    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
 
     /// <summary>
     /// Reads the welcome note's markdown from the embedded resource.
@@ -109,7 +112,7 @@ public class NoteService(
         var owner = await GetOwnerAsync();
         var entries = await indexStore.GetEntriesAsync(owner);
         var entry = FindEntry(entries, id);
-        var newName = entry.IsFolder ? ValidName(name) : NoteNameHelpers.ToNoteFileName(ValidName(name));
+        var newName = entry.IsFolder ? ValidName(name) : noteNameService.ToNoteFileName(ValidName(name));
         if (newName == entry.Name)
         {
             return entry;
@@ -134,7 +137,7 @@ public class NoteService(
         }
 
         EnsureFolderExists(entries, parentId);
-        if (parentId != null && entry.IsFolder && (parentId == entry.Id || NoteTreeHelpers.GetDescendantIds(entries, entry.Id).Contains(parentId)))
+        if (parentId != null && entry.IsFolder && (parentId == entry.Id || noteTreeService.GetDescendantIds(entries, entry.Id).Contains(parentId)))
         {
             throw new NotesException("A folder cannot be moved into itself.");
         }
@@ -156,7 +159,7 @@ public class NoteService(
         var ids = new HashSet<string> { entry.Id };
         if (entry.IsFolder)
         {
-            ids.UnionWith(NoteTreeHelpers.GetDescendantIds(entries, entry.Id));
+            ids.UnionWith(noteTreeService.GetDescendantIds(entries, entry.Id));
         }
 
         // Remove the index entries first, so a failure part way through never leaves an entry without content.
@@ -183,7 +186,7 @@ public class NoteService(
         {
             Entry = entry,
             Content = await GetContentStore(entry).ReadAsync(entry.Id) ?? string.Empty,
-            FolderPath = NoteTreeHelpers.GetFolderPath(entries, entry),
+            FolderPath = noteTreeService.GetFolderPath(entries, entry),
         };
     }
 
@@ -208,17 +211,6 @@ public class NoteService(
 
     private static string NewId() => Guid.NewGuid().ToString("N");
 
-    private static string ValidName(string name)
-    {
-        var error = NoteNameHelpers.Validate(name);
-        if (error != null)
-        {
-            throw new NotesException(error);
-        }
-
-        return name.Trim();
-    }
-
     private static NoteEntry FindEntry(IEnumerable<NoteEntry> entries, string id)
     {
         return entries.FirstOrDefault(e => e.Id == id)
@@ -241,9 +233,20 @@ public class NoteService(
         }
     }
 
+    private string ValidName(string name)
+    {
+        var error = noteNameService.Validate(name);
+        if (error != null)
+        {
+            throw new NotesException(error);
+        }
+
+        return name.Trim();
+    }
+
     private async Task<NoteEntry> CreateNoteEntryAsync(string owner, IReadOnlyList<NoteEntry> entries, string name, string? parentId, string content)
     {
-        var noteName = NoteNameHelpers.ToNoteFileName(ValidName(name));
+        var noteName = noteNameService.ToNoteFileName(ValidName(name));
         EnsureFolderExists(entries, parentId);
         EnsureNameIsFree(entries, parentId, noteName, null);
 

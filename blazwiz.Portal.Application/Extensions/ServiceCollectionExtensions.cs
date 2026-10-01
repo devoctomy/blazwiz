@@ -27,6 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IThemeService, ThemeService>();
         services.AddScoped<IPasswordCryptoService, PasswordCryptoService>();
+        services.AddSingleton<IUserDisplayService, UserDisplayService>();
         services.AddScoped<ICognitoUserPoolClient>(sp =>
         {
             var cognitoConfig = sp.GetRequiredService<AwsCognitoConfig>();
@@ -46,7 +47,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INoteIndexStore, IndexedDbNoteIndexStore>();
         services.AddScoped<INoteContentStore, IndexedDbNoteContentStore>();
         services.AddScoped<INoteService, NoteService>();
+        services.AddSingleton<INoteNameService, NoteNameService>();
+        services.AddSingleton<INoteTreeService, NoteTreeService>();
         services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();
+        services.AddSingleton<IMarkdownFormatService, MarkdownFormatService>();
 
 //#endif
         return services;

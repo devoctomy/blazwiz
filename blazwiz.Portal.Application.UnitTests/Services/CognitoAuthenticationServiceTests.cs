@@ -17,6 +17,7 @@ public class CognitoAuthenticationServiceTests
 
     private readonly Mock<ICognitoUserPoolClient> mockCognito = new(MockBehavior.Strict);
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
+    private readonly Mock<IUserDisplayService> mockUserDisplay = new();
     private readonly Mock<ISystemClock> mockSystemClock = new();
     private readonly string idToken = CreateJwt("""{"email":"bob.hoskins@example.com","cognito:username":"5f2c1a7e"}""");
 
@@ -28,9 +29,10 @@ public class CognitoAuthenticationServiceTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("cognitoClient", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(null!, mockLocalStorage.Object, mockSystemClock.Object)).ParamName);
-        Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, null!, mockSystemClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, null!)).ParamName);
+        Assert.Equal("cognitoClient", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(null!, mockLocalStorage.Object, mockUserDisplay.Object, mockSystemClock.Object)).ParamName);
+        Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, null!, mockUserDisplay.Object, mockSystemClock.Object)).ParamName);
+        Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, null!, mockSystemClock.Object)).ParamName);
+        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -74,6 +76,7 @@ public class CognitoAuthenticationServiceTests
     {
         // Arrange
         mockCognito.Setup(x => x.SignInAsync("bob.hoskins@example.com", Password)).ReturnsAsync(Tokens(idToken));
+        mockUserDisplay.Setup(x => x.GetDisplayNameFromUsername("bob.hoskins@example.com")).Returns("Bob Hoskins");
         var sut = CreateSut();
 
         // Act
@@ -104,6 +107,7 @@ public class CognitoAuthenticationServiceTests
 
         // Assert
         Assert.Equal("Robert H", result.Session!.DisplayName);
+        mockUserDisplay.Verify(x => x.GetDisplayNameFromUsername(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -111,6 +115,7 @@ public class CognitoAuthenticationServiceTests
     {
         // Arrange
         mockCognito.Setup(x => x.SignInAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(Tokens("not-a-jwt"));
+        mockUserDisplay.Setup(x => x.GetDisplayNameFromUsername("alice@example.com")).Returns("Alice");
 
         // Act
         var result = await CreateSut().LoginAsync("alice@example.com", Password);
@@ -474,5 +479,5 @@ public class CognitoAuthenticationServiceTests
             .ReturnsAsync(session);
     }
 
-    private CognitoAuthenticationService CreateSut() => new(mockCognito.Object, mockLocalStorage.Object, mockSystemClock.Object);
+    private CognitoAuthenticationService CreateSut() => new(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, mockSystemClock.Object);
 }

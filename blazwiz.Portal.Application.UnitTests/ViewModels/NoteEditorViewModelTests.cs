@@ -13,6 +13,7 @@ public class NoteEditorViewModelTests
 
     private readonly Mock<INoteService> mockNotes = new();
     private readonly Mock<IMarkdownRenderer> mockRenderer = new();
+    private readonly Mock<IMarkdownFormatService> mockFormat = new();
     private readonly Mock<INoteEditorInteropService> mockEditor = new();
     private readonly Mock<INavigationService> mockNavigation = new();
     private readonly NoteEntry note = new() { Id = "n1", Name = "todo.md", Kind = NoteEntryKind.Note };
@@ -31,10 +32,11 @@ public class NoteEditorViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockEditor.Object, mockNavigation.Object)).ParamName);
-        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockEditor.Object, mockNavigation.Object)).ParamName);
-        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockNavigation.Object)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockEditor.Object, null!)).ParamName);
+        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object)).ParamName);
+        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object)).ParamName);
+        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object)).ParamName);
+        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -163,14 +165,14 @@ public class NoteEditorViewModelTests
         var sut = await CreateLoadedSutAsync();
         mockEditor.Setup(x => x.GetSelectionAsync(NoteEditorViewModel.EditorElementId))
             .ReturnsAsync(new EditorSelection { Text = "say hello", Start = 4, End = 9 });
+        var edit = new MarkdownTextEdit { Start = 4, End = 9, Replacement = "**hello**", SelectionStart = 6, SelectionEnd = 11 };
+        mockFormat.Setup(x => x.Apply("say hello", 4, 9, MarkdownFormat.Bold)).Returns(edit);
 
         // Act
         await sut.FormatCommand.ExecuteAsync(MarkdownFormat.Bold);
 
         // Assert
-        mockEditor.Verify(
-            x => x.ApplyEditAsync(NoteEditorViewModel.EditorElementId, It.Is<MarkdownTextEdit>(e => e.Start == 4 && e.End == 9 && e.Replacement == "**hello**")),
-            Times.Once);
+        mockEditor.Verify(x => x.ApplyEditAsync(NoteEditorViewModel.EditorElementId, edit), Times.Once);
         Assert.Equal("say **hello**", sut.Content);
         Assert.True(sut.IsDirty);
     }
@@ -186,6 +188,7 @@ public class NoteEditorViewModelTests
 
         // Assert
         mockEditor.Verify(x => x.ApplyEditAsync(It.IsAny<string>(), It.IsAny<MarkdownTextEdit>()), Times.Never);
+        mockFormat.Verify(x => x.Apply(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<MarkdownFormat>()), Times.Never);
         Assert.Equal("saved", sut.Content);
     }
 
@@ -311,7 +314,7 @@ public class NoteEditorViewModelTests
         mockNavigation.Verify(x => x.NavigateTo(NoteEditorViewModel.FilesUrl), Times.Once);
     }
 
-    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockEditor.Object, mockNavigation.Object);
+    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object);
 
     private async Task<NoteEditorViewModel> CreateLoadedSutAsync()
     {

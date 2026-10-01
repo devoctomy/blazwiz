@@ -1,10 +1,12 @@
-using blazwiz.Portal.Application.Helpers;
+using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Models.Notes;
 
-namespace blazwiz.Portal.Application.UnitTests.Helpers;
+namespace blazwiz.Portal.Application.UnitTests.Services;
 
-public class NoteTreeHelpersTests
+public class NoteTreeServiceTests
 {
+    private readonly NoteTreeService sut = new();
+
     // Work/          (folder)
     //   Projects/    (folder)
     //     plan.md
@@ -27,7 +29,7 @@ public class NoteTreeHelpersTests
     public void GivenEntries_WhenGetChildren_ThenFoldersFirstThenByNameIgnoringCase()
     {
         // Act
-        var result = NoteTreeHelpers.GetChildren(entries, null);
+        var result = sut.GetChildren(entries, null);
 
         // Assert
         Assert.Equal(["archive", "work", "a", "b"], result.Select(e => e.Id));
@@ -37,7 +39,7 @@ public class NoteTreeHelpersTests
     public void GivenNestedFolders_WhenGetDescendantIds_ThenReturnsAllLevels()
     {
         // Act
-        var result = NoteTreeHelpers.GetDescendantIds(entries, "work");
+        var result = sut.GetDescendantIds(entries, "work");
 
         // Assert
         Assert.Equal(["agenda", "plan", "projects"], result.Order());
@@ -47,14 +49,14 @@ public class NoteTreeHelpersTests
     public void GivenEmptyFolder_WhenGetDescendantIds_ThenReturnsEmpty()
     {
         // Act & Assert
-        Assert.Empty(NoteTreeHelpers.GetDescendantIds(entries, "archive"));
+        Assert.Empty(sut.GetDescendantIds(entries, "archive"));
     }
 
     [Fact]
     public void GivenNestedNote_WhenGetFolderPath_ThenReturnsOutermostFirst()
     {
         // Act
-        var result = NoteTreeHelpers.GetFolderPath(entries, entries.Single(e => e.Id == "plan"));
+        var result = sut.GetFolderPath(entries, entries.Single(e => e.Id == "plan"));
 
         // Assert
         Assert.Equal(["Work", "Projects"], result);
@@ -64,14 +66,14 @@ public class NoteTreeHelpersTests
     public void GivenTopLevelNote_WhenGetFolderPath_ThenReturnsEmpty()
     {
         // Act & Assert
-        Assert.Empty(NoteTreeHelpers.GetFolderPath(entries, entries.Single(e => e.Id == "a")));
+        Assert.Empty(sut.GetFolderPath(entries, entries.Single(e => e.Id == "a")));
     }
 
     [Fact]
     public void GivenCollapsedFolders_WhenBuildVisibleItems_ThenOnlyTopLevelIsShown()
     {
         // Act
-        var result = NoteTreeHelpers.BuildVisibleItems(entries, new HashSet<string>());
+        var result = sut.BuildVisibleItems(entries, new HashSet<string>());
 
         // Assert
         Assert.Equal(["archive", "work", "a", "b"], result.Select(i => i.Entry.Id));
@@ -84,7 +86,7 @@ public class NoteTreeHelpersTests
     public void GivenExpandedFolders_WhenBuildVisibleItems_ThenChildrenFollowTheirFolderIndented()
     {
         // Act
-        var result = NoteTreeHelpers.BuildVisibleItems(entries, new HashSet<string> { "work", "projects" });
+        var result = sut.BuildVisibleItems(entries, new HashSet<string> { "work", "projects" });
 
         // Assert
         Assert.Equal(["archive", "work", "projects", "plan", "agenda", "a", "b"], result.Select(i => i.Entry.Id));
@@ -96,7 +98,7 @@ public class NoteTreeHelpersTests
     public void GivenExpandedFolderInsideCollapsedFolder_WhenBuildVisibleItems_ThenItsChildrenAreHidden()
     {
         // Act
-        var result = NoteTreeHelpers.BuildVisibleItems(entries, new HashSet<string> { "projects" });
+        var result = sut.BuildVisibleItems(entries, new HashSet<string> { "projects" });
 
         // Assert
         Assert.DoesNotContain(result, i => i.Entry.Id == "plan");
@@ -106,7 +108,7 @@ public class NoteTreeHelpersTests
     public void GivenFolder_WhenBuildMoveTargets_ThenExcludesItselfAndItsDescendants()
     {
         // Act
-        var result = NoteTreeHelpers.BuildMoveTargets(entries, "work", "All notes");
+        var result = sut.BuildMoveTargets(entries, "work", "All notes");
 
         // Assert
         Assert.Equal([string.Empty, "archive"], result.Select(o => o.Id));
@@ -117,7 +119,7 @@ public class NoteTreeHelpersTests
     public void GivenNote_WhenBuildMoveTargets_ThenListsEveryFolderInTreeOrderWithDepth()
     {
         // Act
-        var result = NoteTreeHelpers.BuildMoveTargets(entries, "a", "All notes");
+        var result = sut.BuildMoveTargets(entries, "a", "All notes");
 
         // Assert
         Assert.Equal([string.Empty, "archive", "work", "projects"], result.Select(o => o.Id));

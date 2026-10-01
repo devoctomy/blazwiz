@@ -11,6 +11,7 @@ public class LocalAuthenticationServiceTests
     private static readonly DateTimeOffset Now = new(2026, 1, 1, 9, 0, 0, TimeSpan.Zero);
 
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
+    private readonly Mock<IUserDisplayService> mockUserDisplay = new();
     private readonly Mock<ISystemClock> mockSystemClock = new();
 
     public LocalAuthenticationServiceTests()
@@ -22,7 +23,7 @@ public class LocalAuthenticationServiceTests
     public void GivenNullLocalStorage_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(null!, mockSystemClock.Object));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(null!, mockUserDisplay.Object, mockSystemClock.Object));
         Assert.Equal("localStorageService", exception.ParamName);
     }
 
@@ -30,8 +31,16 @@ public class LocalAuthenticationServiceTests
     public void GivenNullSystemClock_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, null!));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, null!));
         Assert.Equal("systemClock", exception.ParamName);
+    }
+
+    [Fact]
+    public void GivenNullUserDisplayService_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, null!, mockSystemClock.Object));
+        Assert.Equal("userDisplayService", exception.ParamName);
     }
 
     [Fact]
@@ -75,6 +84,7 @@ public class LocalAuthenticationServiceTests
     public async Task GivenEmailUsername_WhenLoginAsync_ThenSucceedsAndStoresSession()
     {
         // Arrange
+        mockUserDisplay.Setup(x => x.GetDisplayNameFromUsername("bob.hoskins@example.com")).Returns("Bob Hoskins");
         var sut = CreateSut();
 
         // Act
@@ -96,6 +106,7 @@ public class LocalAuthenticationServiceTests
     public async Task GivenPlainUsername_WhenLoginAsync_ThenSessionHasNoEmail()
     {
         // Arrange
+        mockUserDisplay.Setup(x => x.GetDisplayNameFromUsername("alice")).Returns("Alice");
         var sut = CreateSut();
 
         // Act
@@ -173,5 +184,5 @@ public class LocalAuthenticationServiceTests
             .ReturnsAsync(session);
     }
 
-    private LocalAuthenticationService CreateSut() => new(mockLocalStorage.Object, mockSystemClock.Object);
+    private LocalAuthenticationService CreateSut() => new(mockLocalStorage.Object, mockUserDisplay.Object, mockSystemClock.Object);
 }

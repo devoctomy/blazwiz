@@ -1,14 +1,16 @@
-using blazwiz.Portal.Application.Helpers;
+using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Models.Notes;
 
-namespace blazwiz.Portal.Application.UnitTests.Helpers;
+namespace blazwiz.Portal.Application.UnitTests.Services;
 
 /// <summary>
 /// Tests use « and » to mark the selection before and after formatting, e.g. "say «hello»" selects "hello".
 /// A caret with nothing selected is written as «».
 /// </summary>
-public class MarkdownFormatHelpersTests
+public class MarkdownFormatServiceTests
 {
+    private readonly MarkdownFormatService sut = new();
+
     [Theory]
     [InlineData("say «hello» there", "say **«hello»** there")]
     [InlineData("say «hello »there", "say **«hello»** there")]
@@ -132,7 +134,7 @@ public class MarkdownFormatHelpersTests
     public void GivenReversedOrOutOfRangeSelection_WhenApply_ThenSelectionIsNormalised()
     {
         // Act
-        var edit = MarkdownFormatHelpers.Apply("hello", 99, 0, MarkdownFormat.Bold);
+        var edit = sut.Apply("hello", 99, 0, MarkdownFormat.Bold);
 
         // Assert
         Assert.Equal("**hello**", edit.ApplyTo("hello"));
@@ -143,16 +145,16 @@ public class MarkdownFormatHelpersTests
     [Fact]
     public void GivenNullText_WhenApply_ThenThrowsArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => MarkdownFormatHelpers.Apply(null!, 0, 0, MarkdownFormat.Bold));
+        Assert.Throws<ArgumentNullException>(() => sut.Apply(null!, 0, 0, MarkdownFormat.Bold));
     }
 
-    private static string Format(string markedText, MarkdownFormat format)
+    private string Format(string markedText, MarkdownFormat format)
     {
         var start = markedText.IndexOf('«');
         var end = markedText.IndexOf('»') - 1;
         var text = markedText.Replace("«", string.Empty).Replace("»", string.Empty);
 
-        var edit = MarkdownFormatHelpers.Apply(text, start, end, format);
+        var edit = sut.Apply(text, start, end, format);
         var result = edit.ApplyTo(text);
 
         return result[..edit.SelectionStart] + "«" + result[edit.SelectionStart..edit.SelectionEnd] + "»" + result[edit.SelectionEnd..];
