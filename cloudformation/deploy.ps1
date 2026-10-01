@@ -316,6 +316,8 @@ if (-not $SkipTestUser -and $TestUserEmail) {
     }
     else {
         if ($null -eq $TestUserPassword) {
+            # Drop keys pressed during the (long) deployment so they are not read as the password.
+            try { $Host.UI.RawUI.FlushInputBuffer() } catch { Write-Verbose "Could not flush the input buffer: $_" }
             $TestUserPassword = Read-Host "    Password for $TestUserEmail (min 12 chars, upper, lower, number)" -AsSecureString
         }
 
