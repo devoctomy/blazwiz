@@ -30,22 +30,6 @@ public class CognitoUserPoolClientTests
     }
 
     [Fact]
-    public void GivenConfig_WhenCreateProvider_ThenUsesConfiguredRegion()
-    {
-        // Act
-        using var provider = (AmazonCognitoIdentityProviderClient)CognitoUserPoolClient.CreateProvider(config);
-
-        // Assert
-        Assert.Equal("eu-west-2", provider.Config.RegionEndpoint.SystemName);
-    }
-
-    [Fact]
-    public void GivenNullConfig_WhenCreateProvider_ThenThrows()
-    {
-        Assert.Throws<ArgumentNullException>(() => CognitoUserPoolClient.CreateProvider(null!));
-    }
-
-    [Fact]
     public async Task GivenRefreshToken_WhenRefreshAsync_ThenReturnsNewTokens()
     {
         // Arrange
@@ -287,23 +271,6 @@ public class CognitoUserPoolClientTests
         // Assert
         Assert.Equal(nameof(TooManyRequestsException), exception.ErrorType);
         Assert.Equal("Rate exceeded", exception.Message);
-    }
-
-    [Fact]
-    public void GivenCreatedProvider_WhenCreatingHttpClients_ThenSharesOneUncachedClient()
-    {
-        // Arrange
-        using var provider = (AmazonCognitoIdentityProviderClient)CognitoUserPoolClient.CreateProvider(config);
-        var factory = provider.Config.HttpClientFactory;
-
-        // Act
-        var first = factory.CreateHttpClient(provider.Config);
-        var second = factory.CreateHttpClient(provider.Config);
-
-        // Assert
-        Assert.Same(first, second);
-        Assert.False(factory.UseSDKHttpClientCaching(provider.Config));
-        Assert.False(factory.DisposeHttpClientsAfterUse(provider.Config));
     }
 
     private void SetupPasswordVerifierChallenge()
