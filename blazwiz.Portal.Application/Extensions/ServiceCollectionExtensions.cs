@@ -1,3 +1,6 @@
+using Amazon;
+using Amazon.CognitoIdentityProvider;
+using Amazon.Runtime;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Aws;
@@ -28,11 +31,17 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IThemeService, ThemeService>();
         services.AddScoped<IPasswordCryptoService, PasswordCryptoService>();
         services.AddSingleton<IUserDisplayService, UserDisplayService>();
-        services.AddScoped<ICognitoUserPoolClient>(sp =>
-        {
-            var cognitoConfig = sp.GetRequiredService<AwsCognitoConfig>();
-            return new CognitoUserPoolClient(CognitoUserPoolClient.CreateProvider(cognitoConfig), cognitoConfig);
-        });
+        // The Cognito sign-in APIs are public, so the API client uses no AWS credentials.
+        services.AddSingleton(_ => new BufferingHttpHandler(new HttpClientHandler()));
+        services.AddSingleton<BrowserHttpClientFactory>();
+        services.AddSingleton<IAmazonCognitoIdentityProvider>(sp => new AmazonCognitoIdentityProviderClient(
+            new AnonymousAWSCredentials(),
+            new AmazonCognitoIdentityProviderConfig
+            {
+                RegionEndpoint = RegionEndpoint.GetBySystemName(sp.GetRequiredService<AwsCognitoConfig>().Region),
+                HttpClientFactory = sp.GetRequiredService<BrowserHttpClientFactory>(),
+            }));
+        services.AddScoped<ICognitoUserPoolClient, CognitoUserPoolClient>();
 
         // Cognito when a user pool is configured (deployed), otherwise the placeholder login (local development).
         services.AddScoped<IAuthenticationService>(sp =>

@@ -1,3 +1,4 @@
+using Amazon.CognitoIdentityProvider;
 using blazwiz.Core.Extensions;
 using blazwiz.Portal.Application.Extensions;
 using blazwiz.Portal.Application.Services;
@@ -28,6 +29,7 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton(Mock.Of<IJSRuntime>());
         services.AddSingleton(Mock.Of<IBrowserInteropService>());
         services.AddBlazwizCoreServices();
+        services.AddSingleton(new AwsCognitoConfig()); // Registered by AddPortalSettings in the portal.
 
         // Act
         var result = services.AddPortalApplicationServices();
@@ -72,6 +74,24 @@ public class ServiceCollectionExtensionsTests
         using var scope = provider.CreateScope();
         Assert.IsType<CognitoAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<CognitoUserPoolClient>(scope.ServiceProvider.GetRequiredService<ICognitoUserPoolClient>());
+    }
+
+    [Fact]
+    public void GivenCognitoConfigured_WhenAddPortalApplicationServices_ThenCognitoApiClientUsesRegionAndBrowserHttpClient()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton(new AwsCognitoConfig { Region = "eu-west-2", UserPoolId = "eu-west-2_Pool", UserPoolClientId = "client" });
+
+        // Act
+        services.AddPortalApplicationServices();
+
+        // Assert
+        using var provider = services.BuildServiceProvider();
+        var client = Assert.IsType<AmazonCognitoIdentityProviderClient>(provider.GetRequiredService<IAmazonCognitoIdentityProvider>());
+        Assert.Equal("eu-west-2", client.Config.RegionEndpoint.SystemName);
+        Assert.Same(provider.GetRequiredService<BrowserHttpClientFactory>(), client.Config.HttpClientFactory);
+        Assert.Same(client, provider.GetRequiredService<IAmazonCognitoIdentityProvider>());
     }
 
     [Fact]
