@@ -1,19 +1,14 @@
+using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Notes;
 
-namespace blazwiz.Portal.Application.Helpers;
+namespace blazwiz.Portal.Application.Services;
 
-/// <summary>
-/// Works with the folder structure of a flat list of <see cref="NoteEntry"/> items.
-/// </summary>
-public static class NoteTreeHelpers
+/// <inheritdoc/>
+public class NoteTreeService
+    : INoteTreeService
 {
-    /// <summary>
-    /// Gets the entries directly inside a folder, folders first, then by name.
-    /// </summary>
-    /// <param name="entries">All of the user's entries.</param>
-    /// <param name="parentId">The folder id, or null for the top level.</param>
-    /// <returns>The sorted child entries.</returns>
-    public static IReadOnlyList<NoteEntry> GetChildren(IEnumerable<NoteEntry> entries, string? parentId)
+    /// <inheritdoc/>
+    public IReadOnlyList<NoteEntry> GetChildren(IEnumerable<NoteEntry> entries, string? parentId)
     {
         ArgumentNullException.ThrowIfNull(entries);
 
@@ -24,13 +19,8 @@ public static class NoteTreeHelpers
             .ToList();
     }
 
-    /// <summary>
-    /// Gets the ids of every entry inside a folder, at any depth.
-    /// </summary>
-    /// <param name="entries">All of the user's entries.</param>
-    /// <param name="folderId">The folder id.</param>
-    /// <returns>The ids of the folder's descendants (not including the folder itself).</returns>
-    public static IReadOnlySet<string> GetDescendantIds(IEnumerable<NoteEntry> entries, string folderId)
+    /// <inheritdoc/>
+    public IReadOnlySet<string> GetDescendantIds(IEnumerable<NoteEntry> entries, string folderId)
     {
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(folderId);
@@ -53,13 +43,8 @@ public static class NoteTreeHelpers
         return result;
     }
 
-    /// <summary>
-    /// Gets the names of the folders containing an entry, outermost first.
-    /// </summary>
-    /// <param name="entries">All of the user's entries.</param>
-    /// <param name="entry">The entry.</param>
-    /// <returns>The folder names. Empty when the entry is at the top level.</returns>
-    public static IReadOnlyList<string> GetFolderPath(IEnumerable<NoteEntry> entries, NoteEntry entry)
+    /// <inheritdoc/>
+    public IReadOnlyList<string> GetFolderPath(IEnumerable<NoteEntry> entries, NoteEntry entry)
     {
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(entry);
@@ -77,13 +62,8 @@ public static class NoteTreeHelpers
         return path;
     }
 
-    /// <summary>
-    /// Builds the rows shown in the files tree: top level entries, plus the contents of expanded folders.
-    /// </summary>
-    /// <param name="entries">All of the user's entries.</param>
-    /// <param name="expandedFolderIds">The ids of the expanded folders.</param>
-    /// <returns>The visible rows in display order.</returns>
-    public static IReadOnlyList<FileTreeItem> BuildVisibleItems(IEnumerable<NoteEntry> entries, IReadOnlySet<string> expandedFolderIds)
+    /// <inheritdoc/>
+    public IReadOnlyList<FileTreeItem> BuildVisibleItems(IEnumerable<NoteEntry> entries, IReadOnlySet<string> expandedFolderIds)
     {
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(expandedFolderIds);
@@ -94,14 +74,8 @@ public static class NoteTreeHelpers
         return items;
     }
 
-    /// <summary>
-    /// Builds the list of folders an entry can be moved into: the top level and every folder except the entry and its descendants.
-    /// </summary>
-    /// <param name="entries">All of the user's entries.</param>
-    /// <param name="entryId">The id of the entry being moved.</param>
-    /// <param name="topLevelName">The name to show for the top level.</param>
-    /// <returns>The folders in tree order.</returns>
-    public static IReadOnlyList<FolderOption> BuildMoveTargets(IEnumerable<NoteEntry> entries, string entryId, string topLevelName)
+    /// <inheritdoc/>
+    public IReadOnlyList<FolderOption> BuildMoveTargets(IEnumerable<NoteEntry> entries, string entryId, string topLevelName)
     {
         ArgumentNullException.ThrowIfNull(entries);
         ArgumentNullException.ThrowIfNull(entryId);
@@ -115,7 +89,7 @@ public static class NoteTreeHelpers
         return options;
     }
 
-    private static void AddVisibleItems(List<NoteEntry> entries, string? parentId, int depth, IReadOnlySet<string> expanded, List<FileTreeItem> items)
+    private void AddVisibleItems(List<NoteEntry> entries, string? parentId, int depth, IReadOnlySet<string> expanded, List<FileTreeItem> items)
     {
         foreach (var entry in GetChildren(entries, parentId))
         {
@@ -135,7 +109,7 @@ public static class NoteTreeHelpers
         }
     }
 
-    private static void AddFolderOptions(List<NoteEntry> entries, string? parentId, int depth, HashSet<string> excluded, List<FolderOption> options)
+    private void AddFolderOptions(List<NoteEntry> entries, string? parentId, int depth, HashSet<string> excluded, List<FolderOption> options)
     {
         foreach (var folder in GetChildren(entries, parentId).Where(e => e.IsFolder && !excluded.Contains(e.Id)))
         {

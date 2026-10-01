@@ -1,5 +1,4 @@
 using Blazing.Mvvm.ComponentModel;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Settings;
@@ -62,13 +61,13 @@ public partial class LoginViewModel : ViewModelBase
         IPasswordCryptoService passwordCryptoService,
         AppSettings appSettings)
     {
-        this.authService = ValidationHelpers.VerifiedAssignment(authService);
-        this.navigationService = ValidationHelpers.VerifiedAssignment(navigationService);
-        this.themeService = ValidationHelpers.VerifiedAssignment(themeService);
-        this.localStorageService = ValidationHelpers.VerifiedAssignment(localStorageService);
-        this.webAuthnService = ValidationHelpers.VerifiedAssignment(webAuthnService);
-        this.passwordCryptoService = ValidationHelpers.VerifiedAssignment(passwordCryptoService);
-        this.appSettings = ValidationHelpers.VerifiedAssignment(appSettings);
+        this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        this.themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+        this.localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
+        this.webAuthnService = webAuthnService ?? throw new ArgumentNullException(nameof(webAuthnService));
+        this.passwordCryptoService = passwordCryptoService ?? throw new ArgumentNullException(nameof(passwordCryptoService));
+        this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
     }
 
     /// <summary>

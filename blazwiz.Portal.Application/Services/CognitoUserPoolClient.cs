@@ -4,7 +4,6 @@ using Amazon.CognitoIdentityProvider.Model;
 using Amazon.Extensions.CognitoAuthentication;
 using Amazon.Runtime;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Aws;
 
@@ -29,8 +28,8 @@ public class CognitoUserPoolClient : ICognitoUserPoolClient
     /// <param name="cognitoConfig">The Cognito settings.</param>
     public CognitoUserPoolClient(IAmazonCognitoIdentityProvider provider, AwsCognitoConfig cognitoConfig)
     {
-        this.provider = ValidationHelpers.VerifiedAssignment(provider);
-        this.cognitoConfig = ValidationHelpers.VerifiedAssignment(cognitoConfig);
+        this.provider = provider ?? throw new ArgumentNullException(nameof(provider));
+        this.cognitoConfig = cognitoConfig ?? throw new ArgumentNullException(nameof(cognitoConfig));
         userPool = new CognitoUserPool(cognitoConfig.UserPoolId, cognitoConfig.UserPoolClientId, provider);
     }
 

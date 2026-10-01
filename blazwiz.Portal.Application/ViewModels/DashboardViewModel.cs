@@ -1,6 +1,5 @@
 using Blazing.Mvvm.ComponentModel;
 using blazwiz.Core.Greetings.Interfaces;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Navigation;
 using blazwiz.Portal.Models.Settings;
@@ -32,10 +31,10 @@ public partial class DashboardViewModel : ViewModelBase
         INavigationMenuService navigationMenuService,
         AppSettings appSettings)
     {
-        this.authService = ValidationHelpers.VerifiedAssignment(authService);
-        this.greetingService = ValidationHelpers.VerifiedAssignment(greetingService);
-        this.navigationMenuService = ValidationHelpers.VerifiedAssignment(navigationMenuService);
-        this.appSettings = ValidationHelpers.VerifiedAssignment(appSettings);
+        this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        this.greetingService = greetingService ?? throw new ArgumentNullException(nameof(greetingService));
+        this.navigationMenuService = navigationMenuService ?? throw new ArgumentNullException(nameof(navigationMenuService));
+        this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
     }
 
     /// <summary>

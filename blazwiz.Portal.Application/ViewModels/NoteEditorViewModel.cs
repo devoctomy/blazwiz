@@ -1,6 +1,5 @@
 using Blazing.Mvvm.ComponentModel;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Notes;
 using CommunityToolkit.Mvvm.Input;
@@ -25,6 +24,7 @@ public partial class NoteEditorViewModel : ViewModelBase
 
     private readonly INoteService noteService;
     private readonly IMarkdownRenderer markdownRenderer;
+    private readonly IMarkdownFormatService markdownFormatService;
     private readonly INoteEditorInteropService editorInteropService;
     private readonly INavigationService navigationService;
 
@@ -49,18 +49,21 @@ public partial class NoteEditorViewModel : ViewModelBase
     /// </summary>
     /// <param name="noteService">The note service.</param>
     /// <param name="markdownRenderer">The markdown renderer, for the preview.</param>
+    /// <param name="markdownFormatService">Works out the edits made by the formatting buttons.</param>
     /// <param name="editorInteropService">Access to the editor's text and selection in the browser.</param>
     /// <param name="navigationService">The navigation service.</param>
     public NoteEditorViewModel(
         INoteService noteService,
         IMarkdownRenderer markdownRenderer,
+        IMarkdownFormatService markdownFormatService,
         INoteEditorInteropService editorInteropService,
         INavigationService navigationService)
     {
-        this.noteService = ValidationHelpers.VerifiedAssignment(noteService);
-        this.markdownRenderer = ValidationHelpers.VerifiedAssignment(markdownRenderer);
-        this.editorInteropService = ValidationHelpers.VerifiedAssignment(editorInteropService);
-        this.navigationService = ValidationHelpers.VerifiedAssignment(navigationService);
+        this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
+        this.markdownRenderer = markdownRenderer ?? throw new ArgumentNullException(nameof(markdownRenderer));
+        this.markdownFormatService = markdownFormatService ?? throw new ArgumentNullException(nameof(markdownFormatService));
+        this.editorInteropService = editorInteropService ?? throw new ArgumentNullException(nameof(editorInteropService));
+        this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
     }
 
     /// <summary>
@@ -253,7 +256,7 @@ public partial class NoteEditorViewModel : ViewModelBase
             return;
         }
 
-        var edit = MarkdownFormatHelpers.Apply(selection.Text, selection.Start, selection.End, format);
+        var edit = markdownFormatService.Apply(selection.Text, selection.Start, selection.End, format);
         await editorInteropService.ApplyEditAsync(EditorElementId, edit);
 
         // The editor raises an input event which updates Content too; setting it here keeps the view model in step straight away.

@@ -1,6 +1,5 @@
 @page "/files"
 @inherits MvvmComponentBase<FilesViewModel>
-@using blazwiz.Portal.Application.Helpers
 @using blazwiz.Portal.Models.Notes
 
 <PageHeader Title="Files" Icon="bi-journal-text" Subtitle="Your notes, stored in this browser.">
@@ -142,12 +141,12 @@
                                id="dialog-name"
                                class="form-control @(ViewModel.DialogError != null ? "is-invalid" : null)"
                                autocomplete="off"
-                               maxlength="@NoteNameHelpers.MaxNameLength"
+                               maxlength="@ViewModel.MaxNameLength"
                                @bind="ViewModel.DialogName"
                                @bind:event="oninput" />
                         @if (isNote)
                         {
-                            <span class="input-group-text">@NoteNameHelpers.NoteExtension</span>
+                            <span class="input-group-text">@ViewModel.NoteExtension</span>
                         }
                         @if (ViewModel.DialogError != null)
                         {

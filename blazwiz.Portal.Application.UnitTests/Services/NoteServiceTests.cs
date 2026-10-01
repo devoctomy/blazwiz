@@ -14,6 +14,8 @@ public class NoteServiceTests
     private static readonly DateTimeOffset Now = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
 
     private readonly Mock<IAuthenticationService> mockAuth = new();
+    private readonly Mock<INoteNameService> mockNames = new();
+    private readonly Mock<INoteTreeService> mockTree = new();
     private readonly Mock<ISystemClock> mockClock = new();
     private readonly InMemoryIndexStore indexStore = new();
     private readonly InMemoryContentStore contentStore = new();
@@ -22,15 +24,21 @@ public class NoteServiceTests
     {
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = Owner });
         mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockNames.Setup(x => x.Validate(It.IsAny<string?>())).Returns((string?)null);
+        mockNames.Setup(x => x.ToNoteFileName(It.IsAny<string>())).Returns<string>(n => n.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ? n : n + ".md");
+        mockTree.Setup(x => x.GetDescendantIds(It.IsAny<IEnumerable<NoteEntry>>(), It.IsAny<string>())).Returns(new HashSet<string>());
+        mockTree.Setup(x => x.GetFolderPath(It.IsAny<IEnumerable<NoteEntry>>(), It.IsAny<NoteEntry>())).Returns([]);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new NoteService(null!, indexStore, [contentStore], mockClock.Object)).ParamName);
-        Assert.Equal("indexStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, null!, [contentStore], mockClock.Object)).ParamName);
-        Assert.Equal("contentStores", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, [contentStore], null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new NoteService(null!, indexStore, [contentStore], mockNames.Object, mockTree.Object, mockClock.Object)).ParamName);
+        Assert.Equal("indexStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, null!, [contentStore], mockNames.Object, mockTree.Object, mockClock.Object)).ParamName);
+        Assert.Equal("contentStores", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, null!, mockNames.Object, mockTree.Object, mockClock.Object)).ParamName);
+        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, [contentStore], null!, mockTree.Object, mockClock.Object)).ParamName);
+        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, [contentStore], mockNames.Object, null!, mockClock.Object)).ParamName);
+        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, indexStore, [contentStore], mockNames.Object, mockTree.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -122,6 +130,7 @@ public class NoteServiceTests
         Assert.Equal(Now, note.ModifiedAt);
         Assert.Same(note, indexStore.Entries[note.Id]);
         Assert.Equal("- milk", contentStore.Content[note.Id]);
+        mockNames.Verify(x => x.ToNoteFileName("Shopping"), Times.Once);
     }
 
     [Fact]
@@ -153,17 +162,35 @@ public class NoteServiceTests
         Assert.Equal(2, indexStore.Entries.Values.Count(e => e.Name == "todo.md"));
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData("a/b")]
-    public async Task GivenInvalidName_WhenCreateNoteAsync_ThenThrowsNotesException(string name)
+    [Fact]
+    public async Task GivenInvalidName_WhenCreateNoteAsync_ThenThrowsNotesExceptionWithValidationError()
     {
         // Arrange
+        mockNames.Setup(x => x.Validate("a/b")).Returns("Bad name.");
         var sut = CreateSut();
 
-        // Act & Assert
-        await Assert.ThrowsAsync<NotesException>(() => sut.CreateNoteAsync(name, null));
+        // Act
+        var exception = await Assert.ThrowsAsync<NotesException>(() => sut.CreateNoteAsync("a/b", null));
+
+        // Assert
+        Assert.Equal("Bad name.", exception.Message);
         Assert.Empty(contentStore.Content);
+        Assert.Empty(indexStore.Entries);
+    }
+
+    [Fact]
+    public async Task GivenInvalidName_WhenCreateFolderAsync_ThenThrowsNotesExceptionWithValidationError()
+    {
+        // Arrange
+        mockNames.Setup(x => x.Validate("a/b")).Returns("Bad name.");
+        var sut = CreateSut();
+
+        // Act
+        var exception = await Assert.ThrowsAsync<NotesException>(() => sut.CreateFolderAsync("a/b", null));
+
+        // Assert
+        Assert.Equal("Bad name.", exception.Message);
+        Assert.Empty(indexStore.Entries);
     }
 
     [Fact]
@@ -268,6 +295,7 @@ public class NoteServiceTests
         var sut = CreateSut();
         var work = await sut.CreateFolderAsync("Work", null);
         var projects = await sut.CreateFolderAsync("Projects", work.Id);
+        mockTree.Setup(x => x.GetDescendantIds(It.IsAny<IEnumerable<NoteEntry>>(), work.Id)).Returns(new HashSet<string> { projects.Id });
 
         // Act & Assert
         await Assert.ThrowsAsync<NotesException>(() => sut.MoveAsync(work.Id, projects.Id));
@@ -296,6 +324,7 @@ public class NoteServiceTests
         var projects = await sut.CreateFolderAsync("Projects", work.Id);
         var plan = await sut.CreateNoteAsync("plan", projects.Id, "plan");
         var keep = await sut.CreateNoteAsync("keep", null, "keep");
+        mockTree.Setup(x => x.GetDescendantIds(It.IsAny<IEnumerable<NoteEntry>>(), work.Id)).Returns(new HashSet<string> { projects.Id, plan.Id });
 
         // Act
         await sut.DeleteAsync(work.Id);
@@ -324,6 +353,7 @@ public class NoteServiceTests
         var work = await sut.CreateFolderAsync("Work", null);
         var projects = await sut.CreateFolderAsync("Projects", work.Id);
         var plan = await sut.CreateNoteAsync("plan", projects.Id, "# Plan");
+        mockTree.Setup(x => x.GetFolderPath(It.IsAny<IEnumerable<NoteEntry>>(), plan)).Returns(["Work", "Projects"]);
 
         // Act
         var result = await sut.GetNoteAsync(plan.Id);
@@ -392,7 +422,7 @@ public class NoteServiceTests
 
     private NoteService CreateSut()
     {
-        return new NoteService(mockAuth.Object, indexStore, [contentStore], mockClock.Object);
+        return new NoteService(mockAuth.Object, indexStore, [contentStore], mockNames.Object, mockTree.Object, mockClock.Object);
     }
 
     private sealed class InMemoryIndexStore : INoteIndexStore

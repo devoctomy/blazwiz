@@ -11,6 +11,9 @@ public class FilesViewModelTests
 {
     private readonly Mock<INoteService> mockNotes = new();
     private readonly Mock<INavigationService> mockNavigation = new();
+    private readonly Mock<INoteNameService> mockNames = new();
+    private readonly Mock<INoteTreeService> mockTree = new();
+    private HashSet<string> lastExpandedFolderIds = [];
     private List<NoteEntry> entries =
     [
         Folder("work", "Work", null),
@@ -22,17 +25,43 @@ public class FilesViewModelTests
     public FilesViewModelTests()
     {
         mockNotes.Setup(x => x.GetEntriesAsync()).ReturnsAsync(() => entries);
+
+        // The tree service decides which rows are visible; here every entry is returned, flagged as expanded when the
+        // view model asked for it, and the expanded folders are captured so tests can check what was asked for.
+        mockTree.Setup(x => x.BuildVisibleItems(It.IsAny<IEnumerable<NoteEntry>>(), It.IsAny<IReadOnlySet<string>>()))
+            .Returns<IEnumerable<NoteEntry>, IReadOnlySet<string>>((all, expanded) =>
+            {
+                lastExpandedFolderIds = [.. expanded];
+                return all.Select(e => new FileTreeItem { Entry = e, IsExpanded = expanded.Contains(e.Id) }).ToList();
+            });
+        mockTree.Setup(x => x.GetDescendantIds(It.IsAny<IEnumerable<NoteEntry>>(), It.IsAny<string>())).Returns(new HashSet<string>());
+        mockTree.Setup(x => x.GetDescendantIds(It.IsAny<IEnumerable<NoteEntry>>(), "work")).Returns(new HashSet<string> { "projects", "plan" });
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(null!, mockNavigation.Object)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, null!)).ParamName);
+        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(null!, mockNavigation.Object, mockNames.Object, mockTree.Object)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, null!, mockNames.Object, mockTree.Object)).ParamName);
+        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, null!, mockTree.Object)).ParamName);
+        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, null!)).ParamName);
     }
 
     [Fact]
-    public async Task GivenEntries_WhenInitialized_ThenTopLevelIsShown()
+    public void GivenNameService_WhenGettingNameLimits_ThenComeFromNameService()
+    {
+        // Arrange
+        mockNames.SetupGet(x => x.NoteExtension).Returns(".md");
+        mockNames.SetupGet(x => x.MaxNameLength).Returns(42);
+        var sut = CreateSut();
+
+        // Act & Assert
+        Assert.Equal(".md", sut.NoteExtension);
+        Assert.Equal(42, sut.MaxNameLength);
+    }
+
+    [Fact]
+    public async Task GivenEntries_WhenInitialized_ThenTreeIsBuiltWithNothingExpanded()
     {
         // Arrange
         var sut = CreateSut();
@@ -43,7 +72,8 @@ public class FilesViewModelTests
 
         // Assert
         Assert.False(sut.IsLoading);
-        Assert.Equal(["work", "todo"], sut.VisibleItems.Select(i => i.Entry.Id));
+        Assert.Equal(entries.Select(e => e.Id), sut.VisibleItems.Select(i => i.Entry.Id));
+        Assert.Empty(lastExpandedFolderIds);
         Assert.Null(sut.SelectedFolderId);
         Assert.Equal(FilesViewModel.TopLevelName, sut.SelectedFolderName);
     }
@@ -64,16 +94,16 @@ public class FilesViewModelTests
     }
 
     [Fact]
-    public async Task GivenFolder_WhenToggleFolder_ThenChildrenAreShownThenHidden()
+    public async Task GivenFolder_WhenToggleFolder_ThenTreeIsRebuiltExpandedThenCollapsed()
     {
         // Arrange
         var sut = await CreateLoadedSutAsync();
 
         // Act & Assert
         sut.ToggleFolderCommand.Execute("work");
-        Assert.Equal(["work", "projects", "todo"], sut.VisibleItems.Select(i => i.Entry.Id));
+        Assert.Equal(["work"], lastExpandedFolderIds);
         sut.ToggleFolderCommand.Execute("work");
-        Assert.Equal(["work", "todo"], sut.VisibleItems.Select(i => i.Entry.Id));
+        Assert.Empty(lastExpandedFolderIds);
     }
 
     [Fact]
@@ -183,6 +213,7 @@ public class FilesViewModelTests
     public async Task GivenNote_WhenShowRenameDialog_ThenNameIsShownWithoutExtension()
     {
         // Arrange
+        mockNames.Setup(x => x.WithoutExtension("todo.md")).Returns("todo");
         mockNotes.Setup(x => x.RenameAsync("todo", "done")).ReturnsAsync(Note("todo", "done.md", null));
         var sut = await CreateLoadedSutAsync();
 
@@ -198,18 +229,20 @@ public class FilesViewModelTests
     }
 
     [Fact]
-    public async Task GivenFolder_WhenShowMoveDialog_ThenTargetsExcludeItselfAndDescendants()
+    public async Task GivenEntry_WhenShowMoveDialog_ThenTargetsComeFromTreeServiceAndCurrentFolderIsChosen()
     {
         // Arrange
+        var targets = new List<FolderOption> { new() { Id = FilesViewModel.TopLevelId, Name = FilesViewModel.TopLevelName } };
+        mockTree.Setup(x => x.BuildMoveTargets(It.IsAny<IEnumerable<NoteEntry>>(), "projects", FilesViewModel.TopLevelName)).Returns(targets);
         var sut = await CreateLoadedSutAsync();
 
         // Act
-        sut.ShowMoveDialogCommand.Execute("work");
+        sut.ShowMoveDialogCommand.Execute("projects");
 
         // Assert
         Assert.Equal(FilesDialogKind.Move, sut.ActiveDialog);
-        Assert.Equal([FilesViewModel.TopLevelId], sut.MoveTargets.Select(t => t.Id));
-        Assert.Equal(FilesViewModel.TopLevelId, sut.MoveTargetId);
+        Assert.Same(targets, sut.MoveTargets);
+        Assert.Equal("work", sut.MoveTargetId);
     }
 
     [Fact]
@@ -218,7 +251,6 @@ public class FilesViewModelTests
         // Arrange
         var sut = await CreateLoadedSutAsync();
         sut.ShowMoveDialogCommand.Execute("todo");
-        Assert.Equal(["", "work", "projects"], sut.MoveTargets.Select(t => t.Id));
 
         // Act
         sut.MoveTargetId = "work";
@@ -377,7 +409,7 @@ public class FilesViewModelTests
     private static NoteEntry Note(string id, string name, string? parentId) =>
         new() { Id = id, Name = name, ParentId = parentId, Kind = NoteEntryKind.Note, StorageProvider = NoteStorageProviders.IndexedDb };
 
-    private FilesViewModel CreateSut() => new(mockNotes.Object, mockNavigation.Object);
+    private FilesViewModel CreateSut() => new(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object);
 
     private async Task<FilesViewModel> CreateLoadedSutAsync()
     {
