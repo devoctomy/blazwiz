@@ -53,6 +53,10 @@ public class MarkdownFormatServiceTests
     [InlineData("# Ti«»tle", MarkdownFormat.Heading2, "## Title«»")]
     [InlineData("### Ti«»tle", MarkdownFormat.Heading3, "Title«»")]
     [InlineData("before\nTi«»tle\nafter", MarkdownFormat.Heading2, "before\n## Title«»\nafter")]
+    [InlineData("###### Ti«»tle", MarkdownFormat.Heading1, "# Title«»")]
+    [InlineData("#\tTi«»tle", MarkdownFormat.Heading1, "Title«»")]
+    [InlineData("#Ti«»tle", MarkdownFormat.Heading1, "# #Title«»")]
+    [InlineData("####### Ti«»tle", MarkdownFormat.Heading1, "# ####### Title«»")]
     public void GivenCaretInLine_WhenHeading_ThenSetsOrRemovesLevelForWholeLine(string before, MarkdownFormat format, string expected)
     {
         Assert.Equal(expected, Format(before, format));
@@ -65,6 +69,10 @@ public class MarkdownFormatServiceTests
     [InlineData("o«n»e", "«- one»")]
     [InlineData("«1. one\n2. two»", "«- one\n- two»")]
     [InlineData("«  indented»", "«  - indented»")]
+    [InlineData("«* one\n+ two»", "«one\ntwo»")]
+    [InlineData("«  - one\n  - two»", "«  one\n  two»")]
+    [InlineData("«- [ ] milk»", "«- milk»")]
+    [InlineData("«-one»", "«- -one»")]
     public void GivenLines_WhenBulletList_ThenTogglesBullets(string before, string expected)
     {
         Assert.Equal(expected, Format(before, MarkdownFormat.BulletList));
@@ -74,6 +82,10 @@ public class MarkdownFormatServiceTests
     [InlineData("«one\ntwo\nthree»", "«1. one\n2. two\n3. three»")]
     [InlineData("«1. one\n2. two»", "«one\ntwo»")]
     [InlineData("«- one\n- two»", "«1. one\n2. two»")]
+    [InlineData("«1) one\n2) two»", "«one\ntwo»")]
+    [InlineData("«10. ten»", "«ten»")]
+    [InlineData("«- [x] done»", "«1. done»")]
+    [InlineData("«1.one»", "«1. 1.one»")]
     public void GivenLines_WhenNumberedList_ThenNumbersEachLine(string before, string expected)
     {
         Assert.Equal(expected, Format(before, MarkdownFormat.NumberedList));
@@ -83,6 +95,10 @@ public class MarkdownFormatServiceTests
     [InlineData("«milk\neggs»", "«- [ ] milk\n- [ ] eggs»")]
     [InlineData("«- [ ] milk\n- [x] eggs»", "«milk\neggs»")]
     [InlineData("«- milk»", "«- [ ] milk»")]
+    [InlineData("«- [X] done»", "«done»")]
+    [InlineData("«* [x] done»", "«done»")]
+    [InlineData("«1. milk»", "«- [ ] milk»")]
+    [InlineData("«- [] milk»", "«- [ ] [] milk»")]
     public void GivenLines_WhenTaskList_ThenTogglesCheckboxes(string before, string expected)
     {
         Assert.Equal(expected, Format(before, MarkdownFormat.TaskList));
@@ -91,6 +107,10 @@ public class MarkdownFormatServiceTests
     [Theory]
     [InlineData("«wise\nwords»", "«> wise\n> words»")]
     [InlineData("«> wise\n> words»", "«wise\nwords»")]
+    [InlineData("«>wise»", "«wise»")]
+    [InlineData("«>> nested»", "«> nested»")]
+    [InlineData("«> wise\nwords»", "«> > wise\n> words»")]
+    [InlineData("«> wise\n\n> words»", "«wise\n\nwords»")]
     public void GivenLines_WhenQuote_ThenTogglesQuote(string before, string expected)
     {
         Assert.Equal(expected, Format(before, MarkdownFormat.Quote));
@@ -106,6 +126,12 @@ public class MarkdownFormatServiceTests
     [InlineData("«var x = 1;»", "```\n«var x = 1;»\n```")]
     [InlineData("text «»", "text \n```\n«code»\n```")]
     [InlineData("«```\nvar x = 1;\n```»", "«var x = 1;»")]
+    [InlineData("«```csharp\nvar x = 1;\n```»", "«var x = 1;»")]
+    [InlineData("«```\none\n\ntwo\n```  »", "«one\n\ntwo»")]
+    [InlineData("«```\nvar x = 1;```»", "«var x = 1;»")]
+    [InlineData("«```\n```»", "«»")]
+    [InlineData("«```\nunclosed»", "```\n«```\nunclosed»\n```")]
+    [InlineData("«```x```»", "```\n«```x```»\n```")]
     public void GivenSelection_WhenCodeBlock_ThenTogglesFence(string before, string expected)
     {
         Assert.Equal(expected, Format(before, MarkdownFormat.CodeBlock));
