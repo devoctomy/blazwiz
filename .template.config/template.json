@@ -42,6 +42,13 @@
       "displayName": "Include the Showcase page",
       "description": "Include the Showcase page of themed buttons, alerts, forms and tables to copy from."
     },
+    "IncludeNotes": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "displayName": "Include the notes app",
+      "description": "Include the Files page and markdown note editor, with notes stored in the browser's IndexedDB."
+    },
     "appNamespace": {
       "type": "derived",
       "valueSource": "name",
@@ -203,6 +210,48 @@
           "exclude": [
             "blazwiz.Portal/Pages/Showcase.razor",
             "blazwiz.Portal/Pages/Showcase.razor.cs"
+          ]
+        },
+        {
+          "condition": "(!IncludeNotes)",
+          "exclude": [
+            "blazwiz.Portal.Models/Notes/**",
+            "blazwiz.Portal.Application/Exceptions/NotesException.cs",
+            "blazwiz.Portal.Application/Resources/WelcomeNote.md",
+            "blazwiz.Portal.Application/Services/IndexedDbNoteContentStore.cs",
+            "blazwiz.Portal.Application/Services/IndexedDbNoteIndexStore.cs",
+            "blazwiz.Portal.Application/Services/MarkdownFormatService.cs",
+            "blazwiz.Portal.Application/Services/MarkdownRenderer.cs",
+            "blazwiz.Portal.Application/Services/NoteNameService.cs",
+            "blazwiz.Portal.Application/Services/NoteService.cs",
+            "blazwiz.Portal.Application/Services/NoteTreeService.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/IMarkdownFormatService.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/IMarkdownRenderer.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/INoteContentStore.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/INoteEditorInteropService.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/INoteIndexStore.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/INoteNameService.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/INoteService.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/INoteTreeService.cs",
+            "blazwiz.Portal.Application/ViewModels/FilesViewModel.cs",
+            "blazwiz.Portal.Application/ViewModels/NoteEditorViewModel.cs",
+            "blazwiz.Portal/Pages/Files.razor",
+            "blazwiz.Portal/Pages/Files.razor.cs",
+            "blazwiz.Portal/Pages/NoteEditor.razor",
+            "blazwiz.Portal/Pages/NoteEditor.razor.cs",
+            "blazwiz.Portal/Services/NoteEditorInteropService.cs",
+            "blazwiz.Portal/wwwroot/css/notes.css",
+            "blazwiz.Portal/wwwroot/js/notes.js",
+            "blazwiz.Portal.Application.UnitTests/Services/IndexedDbNoteContentStoreTests.cs",
+            "blazwiz.Portal.Application.UnitTests/Services/IndexedDbNoteIndexStoreTests.cs",
+            "blazwiz.Portal.Application.UnitTests/Services/MarkdownFormatServiceTests.cs",
+            "blazwiz.Portal.Application.UnitTests/Services/MarkdownRendererTests.cs",
+            "blazwiz.Portal.Application.UnitTests/Services/NoteNameServiceTests.cs",
+            "blazwiz.Portal.Application.UnitTests/Services/NoteServiceTests.cs",
+            "blazwiz.Portal.Application.UnitTests/Services/NoteTreeServiceTests.cs",
+            "blazwiz.Portal.Application.UnitTests/ViewModels/FilesViewModelTests.cs",
+            "blazwiz.Portal.Application.UnitTests/ViewModels/NoteEditorViewModelTests.cs",
+            "blazwiz.Portal.UITests/NotesTests.cs"
           ]
         }
       ]

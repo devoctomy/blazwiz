@@ -1,5 +1,4 @@
 using Blazing.Mvvm.ComponentModel;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Settings;
 using CommunityToolkit.Mvvm.Input;
@@ -19,7 +18,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <param name="themeService">The theme service.</param>
     public SettingsViewModel(IThemeService themeService)
     {
-        this.themeService = ValidationHelpers.VerifiedAssignment(themeService);
+        this.themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
         this.themeService.ThemeChanged += OnThemeChanged;
     }
 

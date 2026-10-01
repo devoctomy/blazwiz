@@ -182,6 +182,17 @@ function Invoke-Aws {
     return $stdout
 }
 
+function Get-OptionalProperty($InputObject, [string]$Name) {
+    <#
+    .SYNOPSIS
+    Returns a property's value, or $null if the object does not have it (the AWS CLI omits empty fields).
+    #>
+    if ($null -eq $InputObject) { return $null }
+    $property = $InputObject.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $null }
+    return $property.Value
+}
+
 function Get-StackOutputs([string]$StackName) {
     <#
     .SYNOPSIS

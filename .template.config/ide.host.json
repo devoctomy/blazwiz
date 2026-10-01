@@ -23,6 +23,11 @@
       "id": "IncludeShowcase",
       "name": { "text": "Include the Showcase page" },
       "isVisible": true
+    },
+    {
+      "id": "IncludeNotes",
+      "name": { "text": "Include the notes app" },
+      "isVisible": true
     }
   ]
 }

@@ -1,0 +1,230 @@
+@page "/files"
+@inherits MvvmComponentBase<FilesViewModel>
+@using blazwiz.Portal.Models.Notes
+
+<PageHeader Title="Files" Icon="bi-journal-text" Subtitle="Your notes, stored in this browser.">
+    <button type="button" class="btn btn-outline-primary" id="new-folder-button" @onclick="() => ViewModel.ShowNewFolderDialogCommand.Execute(null)">
+        <i class="bi bi-folder-plus me-1"></i>New folder
+    </button>
+    <button type="button" class="btn btn-primary" id="new-note-button" @onclick="() => ViewModel.ShowNewNoteDialogCommand.Execute(null)">
+        <i class="bi bi-file-earmark-plus me-1"></i>New note
+    </button>
+</PageHeader>
+
+@if (ViewModel.ErrorMessage != null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert" id="files-error">
+        <i class="bi bi-exclamation-triangle me-2"></i>@ViewModel.ErrorMessage
+        <button type="button" class="btn-close" aria-label="Close" @onclick="() => ViewModel.DismissErrorCommand.Execute(null)"></button>
+    </div>
+}
+
+<div class="panel files-panel @(ViewModel.DraggedId != null ? "is-dragging" : null)">
+    <div class="files-root @(ViewModel.SelectedFolderId == null ? "selected" : null) @(ViewModel.DropTargetId == FilesViewModel.TopLevelId ? "drop-target" : null)"
+         id="files-root"
+         @onclick="() => ViewModel.SelectTopLevelCommand.Execute(null)"
+         @ondragenter="() => ViewModel.DragEnterCommand.Execute(FilesViewModel.TopLevelId)"
+         @ondragover:preventDefault
+         @ondrop="() => ViewModel.DropCommand.ExecuteAsync(FilesViewModel.TopLevelId)"
+         @ondrop:preventDefault>
+        <i class="bi bi-journals files-root-icon"></i>
+        <span class="files-root-name">@FilesViewModel.TopLevelName</span>
+        <span class="files-root-hint d-none d-sm-inline">
+            New notes go in <strong id="selected-folder-name">@ViewModel.SelectedFolderName</strong>
+        </span>
+    </div>
+
+    @if (ViewModel.IsLoading)
+    {
+        <div class="files-empty">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Loading your notes...
+        </div>
+    }
+    else if (ViewModel.VisibleItems.Count == 0)
+    {
+        <div class="files-empty" id="files-empty">
+            <i class="bi bi-journal-plus"></i>
+            <p>You have no notes yet.</p>
+            <button type="button" class="btn btn-primary btn-sm" @onclick="() => ViewModel.ShowNewNoteDialogCommand.Execute(null)">Create a note</button>
+        </div>
+    }
+    else
+    {
+        <ul class="file-tree" id="file-tree">
+            @foreach (var item in ViewModel.VisibleItems)
+            {
+                var entry = item.Entry;
+                var dropId = entry.IsFolder ? entry.Id : entry.ParentId ?? FilesViewModel.TopLevelId;
+                <li @key="entry.Id"
+                    class="file-row @(entry.IsFolder ? "is-folder" : "is-note") @(entry.IsFolder && ViewModel.SelectedFolderId == entry.Id ? "selected" : null) @(entry.IsFolder && ViewModel.DropTargetId == entry.Id ? "drop-target" : null) @(ViewModel.DraggedId == entry.Id ? "is-dragged" : null)"
+                    style="--depth: @item.Depth"
+                    draggable="true"
+                    data-drag-id="@entry.Id"
+                    data-name="@entry.Name"
+                    @ondragstart="() => ViewModel.StartDragCommand.Execute(entry.Id)"
+                    @ondragend="() => ViewModel.EndDragCommand.Execute(null)"
+                    @ondragenter="() => ViewModel.DragEnterCommand.Execute(dropId)"
+                    @ondragover:preventDefault
+                    @ondrop="() => ViewModel.DropCommand.ExecuteAsync(dropId)"
+                    @ondrop:preventDefault>
+                    @if (entry.IsFolder)
+                    {
+                        <button type="button" class="file-toggle" title="@(item.IsExpanded ? "Collapse" : "Expand")"
+                                aria-expanded="@item.IsExpanded.ToString().ToLowerInvariant()"
+                                @onclick="() => ViewModel.ToggleFolderCommand.Execute(entry.Id)">
+                            <i class="bi @(item.IsExpanded ? "bi-chevron-down" : "bi-chevron-right")"></i>
+                        </button>
+                        <button type="button" class="file-name" @onclick="() => ViewModel.SelectFolderCommand.Execute(entry.Id)">
+                            <i class="bi @(item.IsExpanded ? "bi-folder2-open" : "bi-folder") file-icon"></i>
+                            <span class="file-label">@entry.Name</span>
+                            <span class="file-count">@item.ChildCount</span>
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="file-toggle-spacer"></span>
+                        <button type="button" class="file-name" title="Edit @entry.Name" @onclick="() => ViewModel.OpenNoteCommand.Execute(entry.Id)">
+                            <i class="bi bi-file-earmark-text file-icon"></i>
+                            <span class="file-label">@entry.Name</span>
+                        </button>
+                    }
+                    <span class="file-meta d-none d-md-inline">@entry.ModifiedAt.ToLocalTime().ToString("g")</span>
+                    <span class="file-actions">
+                        @if (!entry.IsFolder)
+                        {
+                            <button type="button" class="icon-btn icon-btn-sm file-action-edit" title="Edit" aria-label="Edit @entry.Name"
+                                    @onclick="() => ViewModel.OpenNoteCommand.Execute(entry.Id)">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                        }
+                        <button type="button" class="icon-btn icon-btn-sm file-action-rename" title="Rename" aria-label="Rename @entry.Name"
+                                @onclick="() => ViewModel.ShowRenameDialogCommand.Execute(entry.Id)">
+                            <i class="bi bi-input-cursor-text"></i>
+                        </button>
+                        <button type="button" class="icon-btn icon-btn-sm file-action-move" title="Move to..." aria-label="Move @entry.Name"
+                                @onclick="() => ViewModel.ShowMoveDialogCommand.Execute(entry.Id)">
+                            <i class="bi bi-folder-symlink"></i>
+                        </button>
+                        <button type="button" class="icon-btn icon-btn-sm file-action-delete" title="Delete" aria-label="Delete @entry.Name"
+                                @onclick="() => ViewModel.ShowDeleteDialogCommand.Execute(entry.Id)">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </span>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+<p class="files-tip d-none d-md-block">
+    <i class="bi bi-info-circle me-1"></i>Drag notes and folders onto a folder to move them, or onto <em>@FilesViewModel.TopLevelName</em> to move them to the top level.
+</p>
+
+@switch (ViewModel.ActiveDialog)
+{
+    case FilesDialogKind.NewNote:
+    case FilesDialogKind.NewFolder:
+    case FilesDialogKind.Rename:
+        var isNote = ViewModel.ActiveDialog == FilesDialogKind.NewNote || ViewModel.DialogEntry is { IsFolder: false };
+        var title = ViewModel.ActiveDialog switch
+        {
+            FilesDialogKind.NewNote => "New note",
+            FilesDialogKind.NewFolder => "New folder",
+            _ => $"Rename {ViewModel.DialogEntry?.Name}",
+        };
+        <ModalDialog Id="name-dialog" Title="@title" Icon="@(isNote ? "bi-file-earmark-text" : "bi-folder")" OnClose="() => ViewModel.CloseDialogCommand.Execute(null)">
+            <ChildContent>
+                <form id="name-dialog-form" @onsubmit="() => ViewModel.ConfirmDialogCommand.ExecuteAsync(null)">
+                    <label class="form-label" for="dialog-name">@(isNote ? "File name" : "Folder name")</label>
+                    <div class="input-group has-validation">
+                        <input type="text"
+                               id="dialog-name"
+                               class="form-control @(ViewModel.DialogError != null ? "is-invalid" : null)"
+                               autocomplete="off"
+                               maxlength="@ViewModel.MaxNameLength"
+                               @bind="ViewModel.DialogName"
+                               @bind:event="oninput" />
+                        @if (isNote)
+                        {
+                            <span class="input-group-text">@ViewModel.NoteExtension</span>
+                        }
+                        @if (ViewModel.DialogError != null)
+                        {
+                            <div class="invalid-feedback" id="dialog-error">@ViewModel.DialogError</div>
+                        }
+                    </div>
+                    @if (ViewModel.ActiveDialog != FilesDialogKind.Rename)
+                    {
+                        <div class="form-text">Will be created in <strong>@ViewModel.SelectedFolderName</strong>.</div>
+                    }
+                </form>
+            </ChildContent>
+            <Footer>
+                <button type="button" class="btn btn-secondary" @onclick="() => ViewModel.CloseDialogCommand.Execute(null)">Cancel</button>
+                <button type="submit" class="btn btn-primary" form="name-dialog-form" id="dialog-confirm">
+                    @(ViewModel.ActiveDialog == FilesDialogKind.Rename ? "Rename" : "Create")
+                </button>
+            </Footer>
+        </ModalDialog>
+        break;
+
+    case FilesDialogKind.Move:
+        <ModalDialog Id="move-dialog" Title="@($"Move {ViewModel.DialogEntry?.Name}")" Icon="bi-folder-symlink" OnClose="() => ViewModel.CloseDialogCommand.Execute(null)">
+            <ChildContent>
+                <p class="mb-2">Choose a folder:</p>
+                <div class="list-group move-targets">
+                    @foreach (var option in ViewModel.MoveTargets)
+                    {
+                        <button type="button"
+                                class="list-group-item list-group-item-action @(ViewModel.MoveTargetId == option.Id ? "active" : null)"
+                                style="--depth: @option.Depth"
+                                data-name="@option.Name"
+                                aria-pressed="@((ViewModel.MoveTargetId == option.Id).ToString().ToLowerInvariant())"
+                                @onclick="() => ViewModel.MoveTargetId = option.Id">
+                            <i class="bi @(option.Depth == 0 ? "bi-journals" : "bi-folder") me-2"></i>@option.Name
+                        </button>
+                    }
+                </div>
+                @if (ViewModel.DialogError != null)
+                {
+                    <div class="alert alert-danger mt-3 mb-0" id="dialog-error">@ViewModel.DialogError</div>
+                }
+            </ChildContent>
+            <Footer>
+                <button type="button" class="btn btn-secondary" @onclick="() => ViewModel.CloseDialogCommand.Execute(null)">Cancel</button>
+                <button type="button" class="btn btn-primary" id="dialog-confirm" @onclick="() => ViewModel.ConfirmDialogCommand.ExecuteAsync(null)">Move</button>
+            </Footer>
+        </ModalDialog>
+        break;
+
+    case FilesDialogKind.Delete:
+        <ModalDialog Id="delete-dialog" Title="@($"Delete {ViewModel.DialogEntry?.Name}?")" Icon="bi-trash3" OnClose="() => ViewModel.CloseDialogCommand.Execute(null)">
+            <ChildContent>
+                @if (ViewModel.DialogEntry is not { IsFolder: true })
+                {
+                    <p>This note will be deleted.</p>
+                }
+                else if (ViewModel.DialogEntryDescendantCount == 0)
+                {
+                    <p>This folder is empty.</p>
+                }
+                else
+                {
+                    <p>
+                        Everything inside this folder will be deleted too
+                        (<strong>@ViewModel.DialogEntryDescendantCount</strong> @(ViewModel.DialogEntryDescendantCount == 1 ? "item" : "items")).
+                    </p>
+                }
+                <p class="mb-0 text-body-secondary">This cannot be undone.</p>
+                @if (ViewModel.DialogError != null)
+                {
+                    <div class="alert alert-danger mt-3 mb-0" id="dialog-error">@ViewModel.DialogError</div>
+                }
+            </ChildContent>
+            <Footer>
+                <button type="button" class="btn btn-secondary" @onclick="() => ViewModel.CloseDialogCommand.Execute(null)">Cancel</button>
+                <button type="button" class="btn btn-danger" id="dialog-confirm" @onclick="() => ViewModel.ConfirmDialogCommand.ExecuteAsync(null)">Delete</button>
+            </Footer>
+        </ModalDialog>
+        break;
+}

@@ -1,5 +1,4 @@
 using Blazing.Mvvm.ComponentModel;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Navigation;
@@ -18,6 +17,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     private readonly IUserSettingsService userSettingsService;
     private readonly INavigationMenuService navigationMenuService;
     private readonly INavigationService navigationService;
+    private readonly IUserDisplayService userDisplayService;
     private readonly AppSettings appSettings;
 
     private bool isReady;
@@ -33,6 +33,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// <param name="userSettingsService">The user settings service.</param>
     /// <param name="navigationMenuService">The navigation menu service.</param>
     /// <param name="navigationService">The navigation service.</param>
+    /// <param name="userDisplayService">The user display service.</param>
     /// <param name="appSettings">The application settings.</param>
     public MainLayoutViewModel(
         IAuthenticationService authService,
@@ -40,14 +41,16 @@ public partial class MainLayoutViewModel : ViewModelBase
         IUserSettingsService userSettingsService,
         INavigationMenuService navigationMenuService,
         INavigationService navigationService,
+        IUserDisplayService userDisplayService,
         AppSettings appSettings)
     {
-        this.authService = ValidationHelpers.VerifiedAssignment(authService);
-        this.themeService = ValidationHelpers.VerifiedAssignment(themeService);
-        this.userSettingsService = ValidationHelpers.VerifiedAssignment(userSettingsService);
-        this.navigationMenuService = ValidationHelpers.VerifiedAssignment(navigationMenuService);
-        this.navigationService = ValidationHelpers.VerifiedAssignment(navigationService);
-        this.appSettings = ValidationHelpers.VerifiedAssignment(appSettings);
+        this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        this.themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
+        this.userSettingsService = userSettingsService ?? throw new ArgumentNullException(nameof(userSettingsService));
+        this.navigationMenuService = navigationMenuService ?? throw new ArgumentNullException(nameof(navigationMenuService));
+        this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        this.userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
+        this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
 
         this.themeService.ThemeChanged += OnThemeChanged;
     }
@@ -97,7 +100,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// <summary>
     /// Gets the initials of the signed in user, for the avatar.
     /// </summary>
-    public string UserInitials => UserDisplayHelpers.GetInitials(CurrentUser?.DisplayName);
+    public string UserInitials => userDisplayService.GetInitials(CurrentUser?.DisplayName);
 
     /// <summary>
     /// Gets the sidebar navigation items.

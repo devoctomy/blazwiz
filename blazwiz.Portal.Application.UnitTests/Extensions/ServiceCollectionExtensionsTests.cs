@@ -1,3 +1,4 @@
+using Amazon.CognitoIdentityProvider;
 using blazwiz.Core.Extensions;
 using blazwiz.Portal.Application.Extensions;
 using blazwiz.Portal.Application.Services;
@@ -28,6 +29,7 @@ public class ServiceCollectionExtensionsTests
         services.AddSingleton(Mock.Of<IJSRuntime>());
         services.AddSingleton(Mock.Of<IBrowserInteropService>());
         services.AddBlazwizCoreServices();
+        services.AddSingleton(new AwsCognitoConfig()); // Registered by AddPortalSettings in the portal.
 
         // Act
         var result = services.AddPortalApplicationServices();
@@ -40,8 +42,18 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<UserSettingsService>(scope.ServiceProvider.GetRequiredService<IUserSettingsService>());
         Assert.IsType<ThemeService>(scope.ServiceProvider.GetRequiredService<IThemeService>());
         Assert.IsType<PasswordCryptoService>(scope.ServiceProvider.GetRequiredService<IPasswordCryptoService>());
+        Assert.IsType<UserDisplayService>(scope.ServiceProvider.GetRequiredService<IUserDisplayService>());
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<NavigationMenuService>(scope.ServiceProvider.GetRequiredService<INavigationMenuService>());
+//#if (IncludeNotes)
+        Assert.IsType<IndexedDbNoteIndexStore>(scope.ServiceProvider.GetRequiredService<INoteIndexStore>());
+        Assert.IsType<IndexedDbNoteContentStore>(Assert.Single(scope.ServiceProvider.GetServices<INoteContentStore>()));
+        Assert.IsType<NoteService>(scope.ServiceProvider.GetRequiredService<INoteService>());
+        Assert.IsType<NoteNameService>(scope.ServiceProvider.GetRequiredService<INoteNameService>());
+        Assert.IsType<NoteTreeService>(scope.ServiceProvider.GetRequiredService<INoteTreeService>());
+        Assert.IsType<MarkdownRenderer>(scope.ServiceProvider.GetRequiredService<IMarkdownRenderer>());
+        Assert.IsType<MarkdownFormatService>(scope.ServiceProvider.GetRequiredService<IMarkdownFormatService>());
+//#endif
     }
 
     [Fact]
@@ -62,6 +74,24 @@ public class ServiceCollectionExtensionsTests
         using var scope = provider.CreateScope();
         Assert.IsType<CognitoAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<CognitoUserPoolClient>(scope.ServiceProvider.GetRequiredService<ICognitoUserPoolClient>());
+    }
+
+    [Fact]
+    public void GivenCognitoConfigured_WhenAddPortalApplicationServices_ThenCognitoApiClientUsesRegionAndBrowserHttpClient()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton(new AwsCognitoConfig { Region = "eu-west-2", UserPoolId = "eu-west-2_Pool", UserPoolClientId = "client" });
+
+        // Act
+        services.AddPortalApplicationServices();
+
+        // Assert
+        using var provider = services.BuildServiceProvider();
+        var client = Assert.IsType<AmazonCognitoIdentityProviderClient>(provider.GetRequiredService<IAmazonCognitoIdentityProvider>());
+        Assert.Equal("eu-west-2", client.Config.RegionEndpoint.SystemName);
+        Assert.Same(provider.GetRequiredService<BrowserHttpClientFactory>(), client.Config.HttpClientFactory);
+        Assert.Same(client, provider.GetRequiredService<IAmazonCognitoIdentityProvider>());
     }
 
     [Fact]

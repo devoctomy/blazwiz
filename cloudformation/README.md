@@ -35,7 +35,8 @@ The policy below covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and noth
         "cloudformation:DescribeStackEvents",
         "cloudformation:DescribeStackResources",
         "cloudformation:GetTemplate",
-        "cloudformation:DeleteStack"
+        "cloudformation:DeleteStack",
+        "cloudformation:SetStackPolicy"
       ],
       "Resource": [
         "arn:aws:cloudformation:*:ACCOUNT_ID:stack/blazwiz-*/*",

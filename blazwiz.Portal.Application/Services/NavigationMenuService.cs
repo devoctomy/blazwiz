@@ -18,6 +18,15 @@ public class NavigationMenuService : INavigationMenuService
             ExactMatch = true,
             Description = "Your home page.",
         },
+//#if (IncludeNotes)
+        new NavigationItem
+        {
+            Text = "Files",
+            Href = "files",
+            Icon = "bi-journal-text",
+            Description = "Your markdown notes, organised into folders.",
+        },
+//#endif
 //#if (IncludeShowcase)
         new NavigationItem
         {

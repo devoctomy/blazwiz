@@ -1,5 +1,4 @@
 using Blazing.Mvvm.ComponentModel;
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 
@@ -11,15 +10,18 @@ namespace blazwiz.Portal.Application.ViewModels;
 public partial class ProfileViewModel : ViewModelBase
 {
     private readonly IAuthenticationService authService;
+    private readonly IUserDisplayService userDisplayService;
     private UserSession? user;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProfileViewModel"/> class.
     /// </summary>
     /// <param name="authService">The authentication service.</param>
-    public ProfileViewModel(IAuthenticationService authService)
+    /// <param name="userDisplayService">The user display service.</param>
+    public ProfileViewModel(IAuthenticationService authService, IUserDisplayService userDisplayService)
     {
-        this.authService = ValidationHelpers.VerifiedAssignment(authService);
+        this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        this.userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
     }
 
     /// <summary>
@@ -40,7 +42,7 @@ public partial class ProfileViewModel : ViewModelBase
     /// <summary>
     /// Gets the initials of the signed in user, for the avatar.
     /// </summary>
-    public string Initials => UserDisplayHelpers.GetInitials(User?.DisplayName);
+    public string Initials => userDisplayService.GetInitials(User?.DisplayName);
 
     /// <inheritdoc/>
     public override async Task OnInitializedAsync()

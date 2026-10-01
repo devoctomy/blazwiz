@@ -159,6 +159,33 @@ code {
     border-radius: var(--bw-radius-sm);
 }
 
+/* Modals (see Components/ModalDialog) */
+.app-modal .modal-content {
+    background: var(--bw-surface);
+    border: 1px solid var(--bw-border);
+    border-radius: var(--bw-radius);
+    box-shadow: var(--bw-shadow-lg);
+}
+
+.app-modal .modal-header,
+.app-modal .modal-footer {
+    border-color: var(--bw-border);
+}
+
+.app-modal .modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.app-modal .modal-footer {
+    gap: 0.25rem;
+}
+
+.modal-backdrop.show {
+    opacity: 0.45;
+}
+
 .table {
     --bs-table-bg: transparent;
 }

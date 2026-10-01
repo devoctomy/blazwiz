@@ -1,4 +1,3 @@
-using blazwiz.Portal.Application.Helpers;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Settings;
 
@@ -10,8 +9,8 @@ public class ThemeService(
     IBrowserInteropService browserInteropService)
     : IThemeService
 {
-    private readonly IUserSettingsService userSettingsService = ValidationHelpers.VerifiedAssignment(userSettingsService);
-    private readonly IBrowserInteropService browserInteropService = ValidationHelpers.VerifiedAssignment(browserInteropService);
+    private readonly IUserSettingsService userSettingsService = userSettingsService ?? throw new ArgumentNullException(nameof(userSettingsService));
+    private readonly IBrowserInteropService browserInteropService = browserInteropService ?? throw new ArgumentNullException(nameof(browserInteropService));
     private bool initialized;
 
     /// <inheritdoc/>
