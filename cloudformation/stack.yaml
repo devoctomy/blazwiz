@@ -189,7 +189,8 @@ Resources:
                   - !If [UseCustomDomain, !Sub 'https://${CustomDomainName}', !Ref AWS::NoValue]
                   - !Join [',', !Ref LocalDevOrigins]
             AllowedHeaders: ['*']
-            ExposedHeaders: [ETag]
+            # ETag drives sync; x-amz-meta-modified-at is the edit time compared when both sides changed.
+            ExposedHeaders: [ETag, x-amz-meta-modified-at]
             MaxAge: 3000
       Tags:
         - Key: app

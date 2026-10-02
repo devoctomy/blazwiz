@@ -26,6 +26,13 @@ public class NavigationMenuService : INavigationMenuService
             Icon = "bi-journal-text",
             Description = "Your markdown notes, organised into folders.",
         },
+        new NavigationItem
+        {
+            Text = "Sync",
+            Href = "sync",
+            Icon = "bi-arrow-repeat",
+            Description = "What sync has done, connectivity and offline mode.",
+        },
 //#endif
 //#if (IncludeShowcase)
         new NavigationItem

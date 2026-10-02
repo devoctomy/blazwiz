@@ -78,7 +78,9 @@ To test a portal that is already running (or deployed), set `BLAZWIZ_UITEST_URL`
 30s per test, see `TestBase.cs` and `.runsettings`).
 
 **Integration tests** tagged `@aws` need these environment variables, otherwise they are skipped:
-`BLAZWIZ_INTTEST_AWS_ACCESSKEY`, `BLAZWIZ_INTTEST_AWS_SECRETACCESSKEY`, `BLAZWIZ_INTTEST_AWS_REGION`.
+`BLAZWIZ_INTTEST_AWS_ACCESSKEY`, `BLAZWIZ_INTTEST_AWS_SECRETACCESSKEY`, `BLAZWIZ_INTTEST_AWS_REGION`<!--#if (IncludeNotes)-->
+and `BLAZWIZ_INTTEST_AWS_BUCKETNAME`. The sync scenarios simulate two devices syncing through that bucket, each
+under its own `blazwiz-inttests/<guid>/` prefix, which is emptied afterwards<!--#endif-->.
 <!--#endif-->
 
 ## Building out
@@ -106,18 +108,53 @@ no longer need it.
 ### Notes
 
 The **Files** page and note editor are a working example of an offline-first feature: markdown notes,
-organised into folders, stored in the browser for the signed in user.
+organised into folders, stored in the browser for the signed in user and synced to their own prefix in the
+data bucket.
 
-- **Storage**: `IndexedDbNoteIndexStore` keeps the file index (folders and note metadata) in IndexedDB,
-  and `IndexedDbNoteContentStore` keeps the note content (see `wwwroot/js/notes.js`). Each note records
-  which storage provider holds its content, so others (e.g. the Origin Private File System, see
-  `docs/wip/opfs-offline-storage.md`) can be added by implementing `INoteContentStore`.
-- **Logic**: `NoteService` handles creating, renaming, moving and deleting, using `NoteNameService`
-  to validate names and `NoteTreeService` for the folder structure. The first time a user's notes
-  are loaded, it creates a welcome note from the embedded `Resources/WelcomeNote.md`.
+- **Storage**: notes are plain `.md` files and folders are paths (`notes/Work/Ideas.md`), kept in IndexedDB by
+  the `notes` sync profile's file store. `NoteService` asks for it with `[FromKeyedServices("notes")] ISyncFileStore`,
+  so every change is tracked for sync automatically. Notes from earlier versions are migrated to files on first load.
+- **Logic**: `NoteService` handles creating, renaming, moving and deleting (S3 has no rename, so a rename writes the
+  new keys and deletes the old ones), using `NoteNameService` to validate names (including characters unsafe in
+  S3 keys) and `NoteTreeService` for the folder structure. The welcome note (`Resources/WelcomeNote.md`) is created
+  once the first sync shows the user has no notes anywhere, or straight away when sync cannot run.
 - **Editor**: the toolbar's formatting (`MarkdownFormatService`) toggles, like a word processor. The
   preview is rendered by [Markdig](https://github.com/xoofx/markdig) with raw HTML disabled and unsafe
-  link URLs removed. `Ctrl+S` saves, and leaving with unsaved changes asks what to do with them.
+  link URLs removed. `Ctrl+S` saves, and leaving with unsaved changes asks what to do with them. If a sync
+  changes the open note while it has unsaved edits, the user chooses whether to keep theirs or take the synced one.
+
+### Sync
+
+`blazwiz.Core/Sync` is a reusable engine that keeps local files in step with objects under the user's S3 prefix
+(`<identity id>/`), for any feature and any file type. Notes is its first user (see `docs/wip/s3-sync.md`):
+
+```csharp
+services.AddBlazwizSync(sync => sync
+    .UseIndexedDbEventLog(database: "blazwiz_sync", store: "events")
+    .UseEventLogRetention(maxAge: TimeSpan.FromDays(30), maxEventsPerUser: 5000)
+    .UseChangeDebounce(TimeSpan.FromSeconds(2))
+    .AddProfile("notes", profile => profile
+        .UseIndexedDbIndexStore(database: "blazwiz_sync", store: "notes_index")
+        .UseIndexedDbFileStore(database: "blazwiz_notes", store: "files")
+        .UseRemote("notes/**/*.md", includeEmptyFolders: true)));
+```
+
+- **How it decides**: an index records each file's hash and ETag at the last sync, so a pass knows which side
+  changed. Uploads and deletes are conditional (`If-Match` / `If-None-Match`), so nothing newer is overwritten; when
+  both sides changed, the newest edit wins (`NewestWinsConflictResolver`, using the edit time saved in
+  `x-amz-meta-modified-at`).
+- **When it runs**: on sign in (a full verify pass), 2 seconds after local changes, when the app regains focus and
+  when it comes back online. A Web Lock keeps two tabs from syncing the same profile at once.
+- **Connectivity**: offline mode, the browser's network, AWS credentials and an S3 probe are checked in that
+  order. Offline mode (the status pill in the bottom right, Settings, the Sync page, or **Start in offline mode**
+  under the login page's advanced options) makes no network calls at all; changes keep being recorded and sync
+  when it is turned off.
+- **Credentials**: `CognitoS3TargetProvider` exchanges the ID token for temporary credentials through the
+  identity pool. With the placeholder sign-in there is no cloud sync: everything works locally and the status
+  says why ("Offline: no credentials").
+- **Sync log**: everything the engine does is logged in IndexedDB and shown on the **Sync** page, with search,
+  filters and live updates. After the first sign in the app asks the browser for persistent storage, and the
+  Settings Sync card shows whether it was granted.
 <!--#endif-->
 
 ### Add a service
@@ -225,9 +262,14 @@ deployments show up straight away. The test user is created with a permanent pas
 
 ## Roadmap
 
+<!--#if (IncludeNotes)-->
+- **More sync**: timer based sync, signing in with no network, large files (streaming and multipart upload), an
+  OPFS file store, and telling other open tabs about synced changes (see `docs/wip/s3-sync.md`).
+<!--#else-->
 - **AWS credentials in the browser**: exchange the ID token for temporary AWS credentials through the
-  Cognito identity pool (`CognitoUser.GetCognitoAWSCredentials` in the same library), for direct access to
-  the per-user data bucket. The infrastructure is already in place (see [Deploying to AWS](#deploying-to-aws)).
+  Cognito identity pool, for direct access to the per-user data bucket. The infrastructure is already in place
+  (see [Deploying to AWS](#deploying-to-aws)). The notes app (`--IncludeNotes`) does this to sync notes.
+<!--#endif-->
 <!--#if (false)-->
 
 ## Creating a new app from this template
@@ -255,7 +297,7 @@ dotnet new blazwiz -n AcmePortal --Title "Acme Portal"
 | `--Description` | `Sign in to continue.` | Shown under the title on the login page. |
 | `--IncludeTests` | `true` | Include the four test projects. |
 | `--IncludeShowcase` | `true` | Include the Showcase page of themed building blocks. |
-| `--IncludeNotes` | `true` | Include the Files page and markdown note editor (notes stored in IndexedDB). |
+| `--IncludeNotes` | `true` | Include the Files page and markdown note editor, and the S3 sync engine, Sync page and offline mode. |
 
 The name is used in other forms where the context needs them: lower case letters and numbers for AWS
 (stack, bucket and role names, e.g. `acmeportal-dev`) and browser storage keys, `ACMEPORTAL_` for test

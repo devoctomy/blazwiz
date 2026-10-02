@@ -13,4 +13,10 @@ public class NavigationService(NavigationManager navigationManager) : INavigatio
     {
         navigationManager.NavigateTo(uri);
     }
+
+    /// <inheritdoc/>
+    public void Reload()
+    {
+        navigationManager.Refresh(forceReload: true);
+    }
 }

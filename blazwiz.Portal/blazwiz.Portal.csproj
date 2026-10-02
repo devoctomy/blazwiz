@@ -10,6 +10,11 @@
   <PropertyGroup>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
   </PropertyGroup>
+  <!-- Release builds are stamped with when they were built (UTC), shown in Settings > About, so a deployed build can be
+       told apart from the last one. Debug builds are not, so they still build incrementally. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Release'">
+    <AssemblyMetadata Include="BuildTimeUtc" Value="$([System.DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm'))" />
+  </ItemGroup>
   <!--
     Uncomment for smaller / faster production builds once the wasm-tools workload is installed
     (dotnet workload install wasm-tools). AOT makes publishing considerably slower.
