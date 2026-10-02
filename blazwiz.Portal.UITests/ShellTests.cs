@@ -72,6 +72,17 @@ public class ShellTests : TestBase
     }
 
     [TestMethod]
+    public async Task GivenReleaseBuild_WhenOpeningSettings_ThenAboutShowsWhenItWasBuilt()
+    {
+        // The UI tests run the portal in Release, as deployments are.
+        await LoginAsync();
+
+        await Page.Locator("#nav-settings").ClickAsync();
+
+        await Expect(Page.Locator("#app-build-time")).ToHaveTextAsync(new Regex(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$"));
+    }
+
+    [TestMethod]
     public async Task GivenMobileViewport_WhenOpeningMenu_ThenSidebarSlidesIn()
     {
         await Page.SetViewportSizeAsync(390, 844);

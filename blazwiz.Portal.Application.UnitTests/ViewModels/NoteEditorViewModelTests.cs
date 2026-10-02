@@ -1,3 +1,4 @@
+using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
@@ -110,6 +111,37 @@ public class NoteEditorViewModelTests
         // Assert
         Assert.Equal(FilesViewModel.StorageErrorMessage, sut.ErrorMessage);
         Assert.False(sut.IsLoading);
+    }
+
+    [Fact]
+    public async Task GivenFolderUnreachable_WhenLoadAsync_ThenShowsItsMessageWithoutCrashing()
+    {
+        // Arrange
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ThrowsAsync(new SyncStorageAccessException("Allow access to the folder 'Notes' to use your files."));
+        var sut = CreateSut();
+
+        // Act
+        await sut.LoadAsync("n1");
+
+        // Assert
+        Assert.Equal("Allow access to the folder 'Notes' to use your files.", sut.ErrorMessage);
+        Assert.False(sut.IsLoading);
+    }
+
+    [Fact]
+    public async Task GivenFilesBeingMoved_WhenSaved_ThenShowsItsMessageAndStillDirty()
+    {
+        // Arrange
+        mockNotes.Setup(x => x.SaveNoteAsync("n1", It.IsAny<string>())).ThrowsAsync(new SyncStorageMigrationException("Your files are being moved to another storage. Try again in a moment."));
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "changed";
+
+        // Act
+        await sut.SaveCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("Your files are being moved to another storage. Try again in a moment.", sut.ErrorMessage);
+        Assert.True(sut.IsDirty);
     }
 
     [Fact]

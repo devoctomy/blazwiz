@@ -197,11 +197,14 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gets the progress line while files are moved, e.g. "Moving files: 3 of 10", or null.
+    /// Gets the progress line while files are moved, e.g. "Syncing before moving…" or "Moving files: 3 of 10", or null.
     /// </summary>
-    public string? MigrationText => migrationProgress is { } progress
-        ? string.Create(CultureInfo.InvariantCulture, $"Moving files: {progress.Done} of {progress.Total}")
-        : null;
+    public string? MigrationText => migrationProgress switch
+    {
+        null => null,
+        { IsSyncing: true } => "Syncing before moving…",
+        var progress => string.Create(CultureInfo.InvariantCulture, $"Moving files: {progress.Done} of {progress.Total}"),
+    };
 
     /// <summary>
     /// Gets why the last move failed, or null.

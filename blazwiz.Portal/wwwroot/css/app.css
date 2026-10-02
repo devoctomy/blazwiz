@@ -489,6 +489,11 @@ code {
     animation: page-in 0.3s ease;
 }
 
+/* Wraps the page so it can be shown again from scratch (keyed), without affecting the layout. */
+.app-content-body {
+    display: contents;
+}
+
 @media (max-width: 575.98px) {
     .app-content {
         padding: 1.25rem 1rem 2rem;
@@ -976,6 +981,29 @@ code {
 
 .validation-message {
     color: var(--bs-danger);
+}
+
+/* Shown by js/app-update.js when a new version of the app is ready. Plain HTML, so it works even if the app does not. */
+#app-update-banner {
+    position: fixed;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 2001;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: calc(100% - 2rem);
+    padding: 0.6rem 0.75rem 0.6rem 1.25rem;
+    border-radius: var(--bw-radius-sm);
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+}
+
+#app-update-banner[hidden] {
+    display: none;
 }
 
 #blazor-error-ui {

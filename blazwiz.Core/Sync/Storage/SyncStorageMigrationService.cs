@@ -12,8 +12,9 @@ namespace blazwiz.Core.Sync.Storage;
 /// is undone (while copying) or finished (while clearing the source) by <see cref="RecoverAsync"/>.
 /// </summary>
 /// <remarks>
-/// Files are copied byte for byte with their modified times, and the sync index is not touched, so nothing is
-/// uploaded or downloaded again afterwards.
+/// When online, each profile is synced first (still under the lock), so a move straight after the first sign in moves
+/// the downloaded files rather than an empty store. Files are copied byte for byte with their modified times, and the
+/// sync index is not touched, so nothing is uploaded or downloaded again afterwards.
 /// </remarks>
 public class SyncStorageMigrationService(
     SyncOptions options,
@@ -21,7 +22,9 @@ public class SyncStorageMigrationService(
     ISyncStorageStateStore stateStore,
     ISyncScheduler scheduler,
     ISyncLockService lockService,
-    ISyncStorageChannel channel)
+    ISyncStorageChannel channel,
+    ISyncService syncService,
+    IConnectivityService connectivityService)
     : ISyncStorageMigrationService
 {
     /// <summary>
@@ -35,6 +38,8 @@ public class SyncStorageMigrationService(
     private readonly ISyncScheduler scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
     private readonly ISyncLockService lockService = lockService ?? throw new ArgumentNullException(nameof(lockService));
     private readonly ISyncStorageChannel channel = channel ?? throw new ArgumentNullException(nameof(channel));
+    private readonly ISyncService syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+    private readonly IConnectivityService connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
 
     /// <inheritdoc/>
     public async Task MigrateAsync(SyncStorageKind target, IProgress<SyncStorageMigrationProgress>? progress = null, CancellationToken ct = default)
@@ -151,6 +156,14 @@ public class SyncStorageMigrationService(
             if (from == target)
             {
                 return;
+            }
+
+            // Bring this device up to date first, e.g. straight after the first sign in, before anything has been
+            // downloaded. Offline, what is here is moved and the rest arrives in the new storage later.
+            progress?.Report(new SyncStorageMigrationProgress(profile, 0, 0, isSyncing: true));
+            if ((await connectivityService.CheckAsync(ct)).IsOnline)
+            {
+                await syncService.SyncAsync(profile, verify: false, ct);
             }
 
             var source = resolver.GetStore(profile, from);

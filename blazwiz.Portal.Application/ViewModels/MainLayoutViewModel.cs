@@ -34,6 +34,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     private readonly ISyncStorageMigrationService storageMigrationService;
     private readonly ISyncStorageChannel storageChannel;
     private readonly ISyncFolderService folderService;
+    private readonly IBrowserNetworkStatus browserNetworkStatus;
 //#endif
     private readonly AppSettings appSettings;
 
@@ -41,11 +42,13 @@ public partial class MainLayoutViewModel : ViewModelBase
     private bool isSidebarCollapsed;
     private bool isMobileMenuOpen;
     private UserSession? currentUser;
+    private int contentVersion;
 //#if (IncludeNotes)
     private bool isSyncPopoverOpen;
     private bool isStorageMigrating;
     private bool needsFolderAccess;
     private string? folderName;
+    private string? folderAccessError;
 //#endif
 
     /// <summary>
@@ -65,6 +68,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// <param name="storageMigrationService">Finishes or undoes a storage move cut short.</param>
     /// <param name="storageChannel">Hears about storage moves in other tabs.</param>
     /// <param name="folderService">Checks and restores access to the folder the files are kept in.</param>
+    /// <param name="browserNetworkStatus">Says when the app comes back to the foreground.</param>
     ///#endif
     /// <param name="appSettings">The application settings.</param>
     public MainLayoutViewModel(
@@ -82,6 +86,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         ISyncStorageMigrationService storageMigrationService,
         ISyncStorageChannel storageChannel,
         ISyncFolderService folderService,
+        IBrowserNetworkStatus browserNetworkStatus,
 //#endif
         AppSettings appSettings)
     {
@@ -99,6 +104,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         this.storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
         this.storageChannel = storageChannel ?? throw new ArgumentNullException(nameof(storageChannel));
         this.folderService = folderService ?? throw new ArgumentNullException(nameof(folderService));
+        this.browserNetworkStatus = browserNetworkStatus ?? throw new ArgumentNullException(nameof(browserNetworkStatus));
 //#endif
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
 
@@ -107,6 +113,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         this.syncService.StatusChanged += OnSyncStatusChanged;
         this.connectivityService.StatusChanged += OnConnectivityChanged;
         this.storageChannel.MessageReceived += OnStorageChannelMessage;
+        this.browserNetworkStatus.BecameVisible += OnBecameVisible;
 //#endif
     }
 
@@ -172,6 +179,16 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// </summary>
     public AppSettings AppSettings => appSettings;
 
+    /// <summary>
+    /// Gets a number that changes when the page content must be shown again from scratch (it is used as the
+    /// content's key), e.g. after a storage folder is reconnected, so pages reload their files.
+    /// </summary>
+    public int ContentVersion
+    {
+        get => contentVersion;
+        private set => SetProperty(ref contentVersion, value);
+    }
+
 //#if (IncludeNotes)
     /// <summary>
     /// Gets what the sync status pill shows.
@@ -209,6 +226,15 @@ public partial class MainLayoutViewModel : ViewModelBase
     {
         get => needsFolderAccess;
         private set => SetProperty(ref needsFolderAccess, value);
+    }
+
+    /// <summary>
+    /// Gets why reconnecting the folder did not work, or null.
+    /// </summary>
+    public string? FolderAccessError
+    {
+        get => folderAccessError;
+        private set => SetProperty(ref folderAccessError, value);
     }
 
     /// <summary>
@@ -343,17 +369,38 @@ public partial class MainLayoutViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Asks the browser for permission to the folder the files are kept in again, then reloads so the app and sync
-    /// start against it.
+    /// Asks the browser for permission to the folder the files are kept in again. Once it is allowed, the page content
+    /// is shown again (so it reloads its files) and sync starts. The page is not reloaded: some browsers (e.g. Chrome
+    /// on Android) only keep the permission for the current page.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
     public async Task ReconnectFolderAsync()
     {
-        if (await folderService.ReconnectAsync())
+        try
         {
-            navigationService.Reload();
+            if (!await folderService.ReconnectAsync())
+            {
+                FolderAccessError = "Access to the folder was not allowed.";
+                return;
+            }
+
+            if ((await folderService.GetStatusAsync())?.IsGranted != true)
+            {
+                FolderAccessError = "The browser did not keep access to the folder. Try again, or move your notes to browser storage in Settings.";
+                return;
+            }
         }
+        catch (Exception ex)
+        {
+            FolderAccessError = $"The folder could not be reconnected: {ex.Message}";
+            return;
+        }
+
+        FolderAccessError = null;
+        NeedsFolderAccess = false;
+        ContentVersion++;
+        await StartSchedulerAsync();
     }
 
 //#endif
@@ -382,6 +429,7 @@ public partial class MainLayoutViewModel : ViewModelBase
             syncService.StatusChanged -= OnSyncStatusChanged;
             connectivityService.StatusChanged -= OnConnectivityChanged;
             storageChannel.MessageReceived -= OnStorageChannelMessage;
+            browserNetworkStatus.BecameVisible -= OnBecameVisible;
 //#endif
         }
 
@@ -408,21 +456,14 @@ public partial class MainLayoutViewModel : ViewModelBase
             // The files stay where they are; sync still runs against the storage in use.
         }
 
-        try
+        if (!await CheckFolderAccessAsync())
         {
-            if (await folderService.NeedsReconnectAsync())
-            {
-                // The browser only asks for permission after a click: wait for the user to reconnect the folder.
-                FolderName = (await folderService.GetStatusAsync())?.Name;
-                NeedsFolderAccess = true;
-                return;
-            }
+            await StartSchedulerAsync();
         }
-        catch (Exception)
-        {
-            // Sync reports the problem itself if the folder cannot be used.
-        }
+    }
 
+    private async Task StartSchedulerAsync()
+    {
         try
         {
             await syncScheduler.StartAsync();
@@ -430,6 +471,44 @@ public partial class MainLayoutViewModel : ViewModelBase
         catch (Exception)
         {
             // Sync failures show in the status pill and the sync log; the app keeps working locally.
+        }
+    }
+
+    // Shows the reconnect banner if the files are kept in a folder the browser no longer allows access to. The browser
+    // only asks again after a click, so the user must press Reconnect. Returns true if access is needed.
+    private async Task<bool> CheckFolderAccessAsync()
+    {
+        try
+        {
+            if (!await folderService.NeedsReconnectAsync())
+            {
+                return false;
+            }
+
+            FolderName = (await folderService.GetStatusAsync())?.Name;
+            NeedsFolderAccess = true;
+            return true;
+        }
+        catch (Exception)
+        {
+            // Sync reports the problem itself if the folder cannot be used.
+            return false;
+        }
+    }
+
+    // Phones (e.g. Chrome on Android) can take the permission away while the app is in the background.
+    private async void OnBecameVisible(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (!NeedsFolderAccess && await CheckFolderAccessAsync())
+            {
+                await syncScheduler.StopAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // Event handlers must not throw.
         }
     }
 

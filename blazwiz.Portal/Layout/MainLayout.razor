@@ -101,10 +101,16 @@ else
                                 @onclick="() => ViewModel.ReconnectFolderCommand.ExecuteAsync(null)">
                             <i class="bi bi-folder-check me-1"></i>Reconnect folder
                         </button>
+                        @if (!string.IsNullOrEmpty(ViewModel.FolderAccessError))
+                        {
+                            <div class="w-100 small" id="folder-access-error">@ViewModel.FolderAccessError</div>
+                        }
                     </div>
                 }
 @*#endif*@
-                @Body
+                <div class="app-content-body" @key="ViewModel.ContentVersion">
+                    @Body
+                </div>
             </main>
         </div>
 @*#if (IncludeNotes)*@

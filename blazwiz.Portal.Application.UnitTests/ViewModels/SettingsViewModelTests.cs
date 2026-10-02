@@ -244,6 +244,7 @@ public class SettingsViewModelTests
         var sut = CreateSut();
         await sut.OnInitializedAsync();
         await sut.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.Opfs);
+        string? syncingText = null;
         string? progressText = null;
         bool? migratingDuring = null;
         bool? canSyncDuring = null;
@@ -251,7 +252,9 @@ public class SettingsViewModelTests
         mockMigration.Setup(x => x.MigrateAsync(SyncStorageKind.Opfs, It.IsAny<IProgress<SyncStorageMigrationProgress>?>(), It.IsAny<CancellationToken>()))
             .Callback<SyncStorageKind, IProgress<SyncStorageMigrationProgress>?, CancellationToken>((_, progress, _) =>
             {
-                progress!.Report(new SyncStorageMigrationProgress("notes", 3, 10));
+                progress!.Report(new SyncStorageMigrationProgress("notes", 0, 0, isSyncing: true));
+                syncingText = sut.MigrationText;
+                progress.Report(new SyncStorageMigrationProgress("notes", 3, 10));
                 progressText = sut.MigrationText;
                 migratingDuring = sut.IsMigrating;
                 canSyncDuring = sut.CanSyncNow;
@@ -264,6 +267,7 @@ public class SettingsViewModelTests
         await sut.ConfirmStorageChangeCommand.ExecuteAsync(null);
 
         // Assert
+        Assert.Equal("Syncing before moving…", syncingText);
         Assert.Equal("Moving files: 3 of 10", progressText);
         Assert.True(migratingDuring);
         Assert.False(canSyncDuring);

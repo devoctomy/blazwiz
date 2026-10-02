@@ -138,7 +138,7 @@
             else
             {
                 <p id="storage-dialog-summary">@(ViewModel.PendingFileCount == 1 ? "1 file" : $"{ViewModel.PendingFileCount} files") will be moved to <strong>@ViewModel.PendingStorageName</strong> on this device.</p>
-                <p class="mb-0">Sync pauses while they move. Other tabs of the app reload when it finishes. Nothing is uploaded again.</p>
+                <p class="mb-0">When online, anything not yet on this device is synced first. Sync then pauses while they move. Other tabs of the app reload when it finishes. Nothing is uploaded again.</p>
             }
         </ChildContent>
         <Footer>
@@ -156,5 +156,7 @@
         <dd id="app-version">@Globals.Version</dd>
         <dt>Build</dt>
         <dd>@(Globals.IsDebugBuild ? "Debug" : "Release")</dd>
+        <dt>Built</dt>
+        <dd id="app-build-time">@(Globals.BuildTime is { } built ? $"{built} UTC" : "Not stamped (development build)")</dd>
     </dl>
 </div>

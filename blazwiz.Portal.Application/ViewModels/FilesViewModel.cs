@@ -1,4 +1,5 @@
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
@@ -426,7 +427,7 @@ public partial class FilesViewModel : ViewModelBase
 
             await ReloadAsync();
         }
-        catch (NotesException ex)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
         {
             DialogError = ex.Message;
         }
@@ -619,7 +620,7 @@ public partial class FilesViewModel : ViewModelBase
         {
             await action();
         }
-        catch (NotesException ex)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
         {
             ErrorMessage = ex.Message;
         }
