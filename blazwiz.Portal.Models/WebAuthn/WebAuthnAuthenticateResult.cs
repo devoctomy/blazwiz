@@ -26,7 +26,8 @@ public class WebAuthnAuthenticateResult
     public bool UserVerified { get; set; }
 
     /// <summary>
-    /// Gets or sets the output from the Pseudo-Random Function (PRF) extension.
+    /// Gets or sets a value indicating whether keys were derived from the Pseudo-Random Function (PRF) output and put in
+    /// the key store. The PRF output itself never leaves the WebAuthn service.
     /// </summary>
-    public string? PrfOutput { get; set; }
+    public bool KeysDerived { get; set; }
 }

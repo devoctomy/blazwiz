@@ -1,4 +1,5 @@
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Cryptography.Interfaces;
 //#if (IncludeNotes)
 using blazwiz.Core.Sync.Interfaces;
 //#endif
@@ -25,6 +26,7 @@ public partial class LoginViewModel : ViewModelBase
     private readonly ILocalStorageService localStorageService;
     private readonly IWebAuthnService webAuthnService;
     private readonly IPasswordCryptoService passwordCryptoService;
+    private readonly IDerivedKeyStore keyStore;
 //#if (IncludeNotes)
     private readonly IConnectivityService connectivityService;
     private readonly IPersistentStorageService persistentStorageService;
@@ -61,7 +63,8 @@ public partial class LoginViewModel : ViewModelBase
     /// <param name="themeService">The theme service.</param>
     /// <param name="localStorageService">The local storage service.</param>
     /// <param name="webAuthnService">The WebAuthn service for passkey authentication.</param>
-    /// <param name="passwordCryptoService">The password crypto service for PRF-based encryption.</param>
+    /// <param name="passwordCryptoService">The password crypto service, using the remember me key derived from WebAuthn.</param>
+    /// <param name="keyStore">The keys derived from WebAuthn, forgotten when nobody is signed in.</param>
     ///#if (IncludeNotes)
     /// <param name="connectivityService">The connectivity service, for offline mode.</param>
     /// <param name="persistentStorageService">Asks the browser for persistent storage after sign in.</param>
@@ -74,6 +77,7 @@ public partial class LoginViewModel : ViewModelBase
         ILocalStorageService localStorageService,
         IWebAuthnService webAuthnService,
         IPasswordCryptoService passwordCryptoService,
+        IDerivedKeyStore keyStore,
 //#if (IncludeNotes)
         IConnectivityService connectivityService,
         IPersistentStorageService persistentStorageService,
@@ -86,6 +90,7 @@ public partial class LoginViewModel : ViewModelBase
         this.localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
         this.webAuthnService = webAuthnService ?? throw new ArgumentNullException(nameof(webAuthnService));
         this.passwordCryptoService = passwordCryptoService ?? throw new ArgumentNullException(nameof(passwordCryptoService));
+        this.keyStore = keyStore ?? throw new ArgumentNullException(nameof(keyStore));
 //#if (IncludeNotes)
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
         this.persistentStorageService = persistentStorageService ?? throw new ArgumentNullException(nameof(persistentStorageService));
@@ -231,6 +236,8 @@ public partial class LoginViewModel : ViewModelBase
             return;
         }
 
+        // Nobody is signed in (signed out, or the session expired), so no keys should be held.
+        keyStore.Clear();
         await LoadSavedUsersAsync();
 //#if (IncludeNotes)
         await LoadAdvancedOptionsAsync();
@@ -445,16 +452,14 @@ public partial class LoginViewModel : ViewModelBase
         try
         {
             var result = await webAuthnService.RegisterAsync(Username, null);
-            var prfSupported = result.Success && result.PrfEnabled && !string.IsNullOrEmpty(result.PrfOutput);
-
-            if (prfSupported)
+            if (result.Success && result.PrfEnabled && result.KeysDerived)
             {
                 var webAuthnCredential = new WebAuthnStoredCredential
                 {
                     CredentialID = result.CredentialID ?? string.Empty,
                     UserID = result.UserID ?? string.Empty,
                     CreatedAt = DateTime.UtcNow,
-                    EncryptedPassword = await passwordCryptoService.EncryptWithPrfAsync(Password, result.PrfOutput!),
+                    EncryptedPassword = await passwordCryptoService.EncryptAsync(Password),
                 };
 
                 await SaveUserAsync(Username, webAuthnCredential);
@@ -574,11 +579,9 @@ public partial class LoginViewModel : ViewModelBase
         {
             var authResult = await webAuthnService.AuthenticateAsync(user.WebAuthnCredential!.CredentialID);
 
-            if (authResult.Success && !string.IsNullOrEmpty(authResult.PrfOutput))
+            if (authResult.Success && authResult.KeysDerived)
             {
-                var decryptedPassword = await passwordCryptoService.DecryptWithPrfAsync(
-                    user.WebAuthnCredential.EncryptedPassword!,
-                    authResult.PrfOutput);
+                var decryptedPassword = await passwordCryptoService.DecryptAsync(user.WebAuthnCredential.EncryptedPassword!);
 
                 var loginResult = await authService.LoginAsync(user.Email, decryptedPassword);
 
@@ -615,6 +618,8 @@ public partial class LoginViewModel : ViewModelBase
 
     private void FallbackToManualLogin(SavedUser user)
     {
+        // The keys came from a biometric sign in that failed, so they must not outlive it.
+        keyStore.Clear();
         Username = user.Email;
         Password = string.Empty;
         IsUsernameReadonly = false;

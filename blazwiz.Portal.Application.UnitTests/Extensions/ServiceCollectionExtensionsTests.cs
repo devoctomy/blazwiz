@@ -3,6 +3,9 @@ using Amazon.CognitoIdentityProvider;
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.Interfaces;
 //#endif
+using blazwiz.Core.Cryptography;
+using blazwiz.Core.Cryptography.Configuration;
+using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Extensions;
 using blazwiz.Portal.Application.Extensions;
 using blazwiz.Portal.Application.Services;
@@ -47,6 +50,12 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<UserSettingsService>(scope.ServiceProvider.GetRequiredService<IUserSettingsService>());
         Assert.IsType<ThemeService>(scope.ServiceProvider.GetRequiredService<IThemeService>());
         Assert.IsType<PasswordCryptoService>(scope.ServiceProvider.GetRequiredService<IPasswordCryptoService>());
+        Assert.IsType<PrfKeyDerivator>(scope.ServiceProvider.GetRequiredService<IPrfKeyDerivator>());
+        Assert.IsType<InMemoryDerivedKeyStore>(scope.ServiceProvider.GetRequiredService<IDerivedKeyStore>());
+        var prfOptions = scope.ServiceProvider.GetRequiredService<PrfKeyDerivationOptions>();
+        Assert.Equal(AppIdentity.Name, prfOptions.ApplicationName);
+        Assert.Equal(Guid.Parse(AppIdentity.Id), prfOptions.ApplicationId);
+        Assert.Equal([PasswordCryptoService.RememberMeKeyName], prfOptions.Keys.Select(k => k.Name));
         Assert.IsType<UserDisplayService>(scope.ServiceProvider.GetRequiredService<IUserDisplayService>());
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<NavigationMenuService>(scope.ServiceProvider.GetRequiredService<INavigationMenuService>());
