@@ -4,8 +4,8 @@ using Amazon.CognitoIdentity;
 //#endif
 using Amazon.CognitoIdentityProvider;
 using Amazon.Runtime;
-//#if (IncludeNotes)
 using blazwiz.Core.Extensions;
+//#if (IncludeNotes)
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 //#endif
@@ -38,6 +38,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IThemeService, ThemeService>();
         services.AddScoped<IPasswordCryptoService, PasswordCryptoService>();
+
+        // Keys derived from the WebAuthn PRF output, kept in memory; features get them from IDerivedKeyStore by name.
+        services.AddBlazwizPrfKeyDerivation(prf => prf
+            .UseApplication(AppIdentity.Name, AppIdentity.Id)
+            .AddKey(PasswordCryptoService.RememberMeKeyName));
         services.AddSingleton<IUserDisplayService, UserDisplayService>();
         // The Cognito sign-in APIs are public, so the API client uses no AWS credentials.
         services.AddSingleton(_ => new BufferingHttpHandler(new HttpClientHandler()));

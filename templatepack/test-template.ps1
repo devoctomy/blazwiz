@@ -112,6 +112,19 @@ try {
             Write-Host "    [PASS] no 'blazwiz' left" -ForegroundColor Green
         }
 
+        # Each app gets its own ID (the 'guids' in template.json), so its WebAuthn derived keys differ from every other app's.
+        $templateAppId = [regex]::Match((Get-Content (Join-Path $repositoryRoot 'blazwiz.Portal.Application/AppIdentity.cs') -Raw), 'Id = "([^"]+)"').Groups[1].Value
+        $appIdentityFile = Get-ChildItem -Path $output -Filter 'AppIdentity.cs' -Recurse | Select-Object -First 1
+        $appId = [regex]::Match((Get-Content $appIdentityFile.FullName -Raw), 'Id = "([^"]+)"').Groups[1].Value
+        $parsedAppId = [Guid]::Empty
+        if ($templateAppId -and [Guid]::TryParse($appId, [ref]$parsedAppId) -and $parsedAppId -ne [Guid]::Empty -and $appId -ne $templateAppId) {
+            Write-Host "    [PASS] app ID '$appId' is new" -ForegroundColor Green
+        }
+        else {
+            $script:Failures.Add("'$name' app ID '$appId' is not a new GUID (template's is '$templateAppId')")
+            Write-Host "    [FAIL] app ID '$appId' is not a new GUID (template's is '$templateAppId')" -ForegroundColor Red
+        }
+
         # The CloudFormation AppName must match the template's AllowedPattern.
         $deployScript = Get-Content (Join-Path $output 'cloudformation/deploy.ps1') -Raw
         $appNameMatch = [regex]::Match($deployScript, '\[string\]\$AppName = ''([^'']*)''')
