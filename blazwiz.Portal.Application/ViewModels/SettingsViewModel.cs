@@ -173,7 +173,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>
     /// Gets the name of the storage the user asked to move to, with the picked folder's name, e.g.
-    /// "Folder on this computer (Notes)".
+    /// "File System (Notes)".
     /// </summary>
     public string? PendingStorageName => PendingStorageKind is not SyncStorageKind kind
         ? null
@@ -315,14 +315,14 @@ public partial class SettingsViewModel : ViewModelBase
     /// Gets the name of a storage, as the settings show it.
     /// </summary>
     /// <param name="kind">The storage.</param>
-    /// <returns>The name, e.g. "Browser file system (OPFS)".</returns>
+    /// <returns>The name, e.g. "OPFS".</returns>
     public string GetStorageName(SyncStorageKind kind)
     {
         return kind switch
         {
-            SyncStorageKind.IndexedDb => "Browser database (IndexedDB)",
-            SyncStorageKind.Opfs => "Browser file system (OPFS)",
-            SyncStorageKind.LocalFolder => "Folder on this computer",
+            SyncStorageKind.IndexedDb => "IndexedDB",
+            SyncStorageKind.Opfs => "OPFS",
+            SyncStorageKind.LocalFolder => "File System",
             _ => kind.ToString(),
         };
     }

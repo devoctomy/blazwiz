@@ -93,6 +93,7 @@
                         class="btn btn-outline-primary @(ViewModel.StorageKind == SyncStorageKind.IndexedDb ? "active" : null)"
                         aria-pressed="@(ViewModel.StorageKind == SyncStorageKind.IndexedDb ? "true" : "false")"
                         disabled="@ViewModel.IsMigrating"
+                        title="Kept in the browser's database (IndexedDB)"
                         @onclick="() => ViewModel.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.IndexedDb)">
                     <i class="bi bi-database me-1"></i>@ViewModel.GetStorageName(SyncStorageKind.IndexedDb)
                 </button>
@@ -100,7 +101,7 @@
                         class="btn btn-outline-primary @(ViewModel.StorageKind == SyncStorageKind.Opfs ? "active" : null)"
                         aria-pressed="@(ViewModel.StorageKind == SyncStorageKind.Opfs ? "true" : "false")"
                         disabled="@(ViewModel.IsMigrating || !ViewModel.IsOpfsSupported)"
-                        title="@(ViewModel.IsOpfsSupported ? null : "This browser cannot keep files in OPFS")"
+                        title="@(ViewModel.IsOpfsSupported ? "Files kept privately by the browser (origin private file system)" : "This browser cannot keep files in OPFS")"
                         @onclick="() => ViewModel.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.Opfs)">
                     <i class="bi bi-hdd me-1"></i>@ViewModel.GetStorageName(SyncStorageKind.Opfs)
                 </button>
@@ -108,7 +109,7 @@
                         class="btn btn-outline-primary @(ViewModel.StorageKind == SyncStorageKind.LocalFolder ? "active" : null)"
                         aria-pressed="@(ViewModel.StorageKind == SyncStorageKind.LocalFolder ? "true" : "false")"
                         disabled="@(ViewModel.IsMigrating || !ViewModel.IsFolderSupported)"
-                        title="@(ViewModel.IsFolderSupported ? "Pick a folder you can open outside the app" : "Only Chrome and Edge on desktop can keep files in a folder")"
+                        title="@(ViewModel.IsFolderSupported ? "A folder you pick, which you can open outside the app (File System Access API)" : "This browser cannot keep files in a folder you pick")"
                         @onclick="() => ViewModel.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.LocalFolder)">
                     <i class="bi bi-folder2-open me-1"></i>@ViewModel.GetStorageName(SyncStorageKind.LocalFolder)
                 </button>

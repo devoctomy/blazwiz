@@ -151,7 +151,7 @@ public class SyncTests : TestBase
         await Page.Locator("#nav-settings").ClickAsync();
         await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
         await Page.Locator("#storage-option-opfs").ClickAsync();
-        await Expect(Page.Locator("#storage-dialog-summary")).ToHaveTextAsync(new Regex(@"^\d+ files will be moved to Browser file system \(OPFS\) on this device\.$"));
+        await Expect(Page.Locator("#storage-dialog-summary")).ToHaveTextAsync(new Regex(@"^\d+ files will be moved to OPFS on this device\.$"));
         await ScreenshotAsync("ConfirmMove");
         await Page.Locator("#storage-confirm").ClickAsync();
         await Expect(Page.Locator("#storage-dialog")).ToBeHiddenAsync();
@@ -214,7 +214,7 @@ public class SyncTests : TestBase
         // Picking the folder comes first, then the usual confirmation naming it.
         await Page.Locator("#nav-settings").ClickAsync();
         await Page.Locator("#storage-option-folder").ClickAsync();
-        await Expect(Page.Locator("#storage-dialog-summary")).ToHaveTextAsync(new Regex(@"^\d+ files will be moved to Folder on this computer \(picked-folder\) on this device\.$"));
+        await Expect(Page.Locator("#storage-dialog-summary")).ToHaveTextAsync(new Regex(@"^\d+ files will be moved to File System \(picked-folder\) on this device\.$"));
         await Page.Locator("#storage-confirm").ClickAsync();
         await Expect(Page.Locator("#storage-option-folder")).ToHaveClassAsync(new Regex("active"));
         await Expect(Page.Locator("#storage-folder-name")).ToHaveTextAsync("Folder: picked-folder");
