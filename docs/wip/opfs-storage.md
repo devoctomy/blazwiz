@@ -1,7 +1,7 @@
-# OPFS file storage (switchable with IndexedDB)
+# Switchable file storage: IndexedDB, OPFS and a local folder
 
 > Status: implemented on `s3-sync`. Replaces `opfs-offline-storage.md`. See [As built](#as-built) for where the code
-> differs from the plan below.
+> differs from the plan below, and [Local folder](#local-folder-file-system-access-api) for the third storage.
 
 ## As built
 
@@ -140,10 +140,33 @@ registers the migration service.
 - The migration holds every file in memory one at a time, not all at once. Fine for notes. Very large binaries would
   need streaming.
 
-## Follow up: Local folder backend
+## Local folder (File System Access API)
 
-To add the visible folder later, add `SyncStorageKind.LocalFolder` and an `FsAccessSyncFileStore`. That backend shares
-the JS tree walking with OPFS: the root is a picked handle instead of `getDirectory()`. The handle is kept in IndexedDB.
-Before each use, the store calls `queryPermission`. If permission isn't `granted`, sync pauses and the Sync panel shows
-a "Reconnect folder" button (`requestPermission` needs a user gesture). Chromium only; the option is hidden elsewhere.
-Migration is unchanged.
+Implemented as a third storage, `SyncStorageKind.LocalFolder`, added with `UseFileStores(s => s.AddLocalFolder())`.
+This is the option for files the user can see and open in Explorer or Finder; OPFS is not.
+
+- **Picking.** Choosing "Folder on this computer" in Settings opens `showDirectoryPicker` first (it must follow the
+  click), then shows the usual move confirmation naming the folder. One folder per user, shared by every profile.
+  The `FileSystemDirectoryHandle` is kept by `wwwroot/js/folder.js` in its own IndexedDB database (`blazwiz_folders`),
+  because handles cannot pass through .NET.
+- **Layout.** Files keep their S3 paths inside the folder, e.g. `<folder>/notes/Work/Ideas.md`. Empty folders have a
+  `.folder` marker file. `filetree.js` holds the tree code shared with OPFS.
+- **Only the profile's files.** `FolderSyncFileStore` lists only under the remote pattern's prefix (`notes/`) and only
+  keys that match it. Anything else in the folder is never listed, moved or deleted.
+- **Will not overwrite.** Moving into a folder that already holds the profile's files is refused
+  (`SyncStorageMigrationService.FolderNotEmptyMessage`), rather than clearing it. Moving out of the folder deletes the
+  moved notes from it, as any move does.
+- **Permission.** Every call checks `queryPermission` first and throws `SyncStorageAccessException` if access is not
+  granted. On start, if the folder is in use without permission, `MainLayoutViewModel` shows a "Reconnect folder"
+  banner and holds sync back. The button calls `requestPermission` (needs the click), then reloads. An installed
+  Chromium PWA can keep "Allow on every visit", so the banner should rarely appear there.
+- **Edits made outside the app.** Beside each file it writes, the store records the modified time to report and the
+  file system's time at that moment (`FolderFileRecord`). If the file system's time later differs, the file was
+  changed outside the app, and that time is reported instead. Such edits are found by the verify pass after sign in
+  and uploaded like any other change.
+- **Browsers.** Chrome and Edge on desktop only. Elsewhere the option is disabled, with a tooltip saying why.
+- **UI tests.** Playwright cannot drive the real picker, so the tests replace `showDirectoryPicker` with one that
+  returns an OPFS directory handle, and stub `queryPermission`/`requestPermission` to simulate access lapsing.
+
+Also fixed along the way: `channel.js` posted through a new `BroadcastChannel`, which the tab's own listener received,
+so the tab doing the move reloaded itself (hiding any error). It now posts through the subscribed channel.

@@ -1,5 +1,6 @@
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.FileTree;
 using blazwiz.Core.Sync.Opfs;
 using blazwiz.Core.Time.Interfaces;
 using Moq;
@@ -52,8 +53,8 @@ public class OpfsSyncFileStoreTests
         // Arrange
         mockOpfs.Setup(x => x.ListAsync(Root, Owner)).ReturnsAsync(
         [
-            new OpfsEntry { Key = "notes/a.md", Size = 3, LastModified = Now.ToUnixTimeMilliseconds() },
-            new OpfsEntry { Key = "notes/Work/", Size = 0, LastModified = Now.ToUnixTimeMilliseconds() },
+            new FileTreeEntry { Key = "notes/a.md", Size = 3, LastModified = Now.ToUnixTimeMilliseconds() },
+            new FileTreeEntry { Key = "notes/Work/", Size = 0, LastModified = Now.ToUnixTimeMilliseconds() },
         ]);
         mockIndexedDb.Setup(x => x.GetAllByIndexAsync<OpfsFileRecord>(Metadata, "owner", Owner, null))
             .ReturnsAsync([new OpfsFileRecord { Owner = Owner, Key = "notes/a.md", ModifiedAt = Earlier }]);
@@ -72,7 +73,7 @@ public class OpfsSyncFileStoreTests
     public async Task GivenFileWithMetadata_WhenReadAsync_ThenContentAndRecordedTime()
     {
         // Arrange
-        mockOpfs.Setup(x => x.ReadAsync(Root, Owner, "notes/a.md")).ReturnsAsync(new OpfsFile { Content = [1, 2], LastModified = Now.ToUnixTimeMilliseconds() });
+        mockOpfs.Setup(x => x.ReadAsync(Root, Owner, "notes/a.md")).ReturnsAsync(new FileTreeFile { Content = [1, 2], LastModified = Now.ToUnixTimeMilliseconds() });
         mockIndexedDb.Setup(x => x.GetAsync<OpfsFileRecord>(Metadata, It.Is<object>(k => ((object[])k).SequenceEqual(new object[] { Owner, "notes/a.md" }))))
             .ReturnsAsync(new OpfsFileRecord { ModifiedAt = Earlier });
 
@@ -89,7 +90,7 @@ public class OpfsSyncFileStoreTests
     public async Task GivenFileWithoutMetadataOrContent_WhenReadAsync_ThenEmptyContentAndBrowserTime()
     {
         // Arrange
-        mockOpfs.Setup(x => x.ReadAsync(Root, Owner, "notes/a.md")).ReturnsAsync(new OpfsFile { LastModified = Now.ToUnixTimeMilliseconds() });
+        mockOpfs.Setup(x => x.ReadAsync(Root, Owner, "notes/a.md")).ReturnsAsync(new FileTreeFile { LastModified = Now.ToUnixTimeMilliseconds() });
 
         // Act
         var result = await CreateSut().ReadAsync("notes/a.md");

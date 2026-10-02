@@ -90,6 +90,9 @@ public class SyncProfileBuilderTests
         Assert.ThrowsAny<ArgumentException>(() => sut.UseFileStores(s => s.AddIndexedDb(" ", "notes")));
         Assert.ThrowsAny<ArgumentException>(() => sut.UseFileStores(s => s.AddOpfs(" ")));
         Assert.ThrowsAny<ArgumentException>(() => sut.UseFileStores(s => s.AddOpfs("root", metadataDatabase: " ")));
+        Assert.ThrowsAny<ArgumentException>(() => sut.UseFileStores(s => s.AddLocalFolder(metadataDatabase: " ")));
+        Assert.Contains("(LocalFolder) has not been added", Assert.Throws<ArgumentException>(() => sut.UseFileStores(s => s
+            .AddIndexedDb("files", "notes").AddOpfs("root").UseDefault(SyncStorageKind.LocalFolder))).Message);
         Assert.Throws<ArgumentNullException>(() => new SyncFileStoresBuilder(null!));
     }
 

@@ -1,9 +1,9 @@
-namespace blazwiz.Core.Sync.Opfs;
+namespace blazwiz.Core.Sync.FileTree;
 
 /// <summary>
-/// A file read from OPFS.
+/// A file read from a directory tree (OPFS or a picked folder).
 /// </summary>
-public class OpfsFile
+public class FileTreeFile
 {
     /// <summary>
     /// Gets or sets the content.

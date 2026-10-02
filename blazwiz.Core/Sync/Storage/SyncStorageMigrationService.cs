@@ -1,3 +1,4 @@
+using System.Globalization;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
@@ -23,6 +24,11 @@ public class SyncStorageMigrationService(
     ISyncStorageChannel channel)
     : ISyncStorageMigrationService
 {
+    /// <summary>
+    /// The message when the picked folder already has files for the profile ({0}).
+    /// </summary>
+    public const string FolderNotEmptyMessage = "The folder already has {0} files in it. Choose an empty folder, or move them out first.";
+
     private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly ISyncStorageResolver resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
     private readonly ISyncStorageStateStore stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
@@ -149,6 +155,12 @@ public class SyncStorageMigrationService(
 
             var source = resolver.GetStore(profile, from);
             var destination = resolver.GetStore(profile, target);
+            if (target == SyncStorageKind.LocalFolder && (await destination.ListAsync(ct)).Count > 0)
+            {
+                // The user's own folder: never clear files the app did not put there.
+                throw new SyncStorageMigrationException(string.Format(CultureInfo.InvariantCulture, FolderNotEmptyMessage, profile));
+            }
+
             await SaveAsync(state, from, from, target, SyncStorageMigrationPhase.Copying);
             try
             {

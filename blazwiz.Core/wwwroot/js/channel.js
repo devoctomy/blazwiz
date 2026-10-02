@@ -25,8 +25,15 @@ export function unsubscribe() {
     }
 }
 
+// Posts through the subscribed channel when there is one: a BroadcastChannel does not receive its own messages, but
+// any other one in this tab would, and this tab would then react to its own message.
 export function post(name, message) {
     if (typeof BroadcastChannel !== 'function') {
+        return;
+    }
+
+    if (channel && channel.name === name) {
+        channel.postMessage(message);
         return;
     }
 

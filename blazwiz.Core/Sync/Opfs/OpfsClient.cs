@@ -1,3 +1,4 @@
+using blazwiz.Core.Sync.FileTree;
 using blazwiz.Core.Sync.Interfaces;
 using Microsoft.JSInterop;
 
@@ -26,24 +27,24 @@ public sealed class OpfsClient(IJSRuntime jsRuntime)
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<OpfsEntry>> ListAsync(string root, string owner)
+    public async Task<IReadOnlyList<FileTreeEntry>> ListAsync(string root, string owner)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
         ArgumentException.ThrowIfNullOrWhiteSpace(owner);
 
         var js = await GetModuleAsync();
-        return await js.InvokeAsync<List<OpfsEntry>>("list", root, owner);
+        return await js.InvokeAsync<List<FileTreeEntry>>("list", root, owner);
     }
 
     /// <inheritdoc/>
-    public async Task<OpfsFile?> ReadAsync(string root, string owner, string key)
+    public async Task<FileTreeFile?> ReadAsync(string root, string owner, string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
         ArgumentException.ThrowIfNullOrWhiteSpace(owner);
         ArgumentException.ThrowIfNullOrEmpty(key);
 
         var js = await GetModuleAsync();
-        return await js.InvokeAsync<OpfsFile?>("read", root, owner, key);
+        return await js.InvokeAsync<FileTreeFile?>("read", root, owner, key);
     }
 
     /// <inheritdoc/>

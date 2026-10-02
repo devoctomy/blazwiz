@@ -1,4 +1,4 @@
-using blazwiz.Core.Sync.Opfs;
+using blazwiz.Core.Sync.FileTree;
 
 namespace blazwiz.Core.Sync.Interfaces;
 
@@ -20,7 +20,7 @@ public interface IOpfsClient
     /// <param name="root">The root directory.</param>
     /// <param name="owner">The user id.</param>
     /// <returns>The files, in no particular order.</returns>
-    Task<IReadOnlyList<OpfsEntry>> ListAsync(string root, string owner);
+    Task<IReadOnlyList<FileTreeEntry>> ListAsync(string root, string owner);
 
     /// <summary>
     /// Reads a file.
@@ -29,7 +29,7 @@ public interface IOpfsClient
     /// <param name="owner">The user id.</param>
     /// <param name="key">The key.</param>
     /// <returns>The file, or null if there is none.</returns>
-    Task<OpfsFile?> ReadAsync(string root, string owner, string key);
+    Task<FileTreeFile?> ReadAsync(string root, string owner, string key);
 
     /// <summary>
     /// Adds or replaces a file, creating its directories.

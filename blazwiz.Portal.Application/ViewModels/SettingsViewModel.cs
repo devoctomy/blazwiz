@@ -38,11 +38,15 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly IStorageDurabilityService storageDurabilityService;
     private readonly ISyncStorageResolver storageResolver;
     private readonly ISyncStorageMigrationService storageMigrationService;
+    private readonly ISyncFolderService folderService;
 
     private StorageDurabilityStatus? storage;
     private IReadOnlyList<string> switchableProfiles = [];
     private SyncStorageKind storageKind;
     private bool isOpfsSupported;
+    private bool isFolderSupported;
+    private string? folderName;
+    private string? pendingFolderName;
     private bool isMigrating;
     private SyncStorageMigrationProgress? migrationProgress;
     private string? storageError;
@@ -61,6 +65,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <param name="storageDurabilityService">Reports whether the browser keeps the site's storage.</param>
     /// <param name="storageResolver">Finds the storages the files can be kept in, and the one in use.</param>
     /// <param name="storageMigrationService">Moves the files to another storage.</param>
+    /// <param name="folderService">Picks the folder on this computer for the files.</param>
     ///#endif
     /// <param name="themeService">The theme service.</param>
     public SettingsViewModel(
@@ -72,6 +77,7 @@ public partial class SettingsViewModel : ViewModelBase
         IStorageDurabilityService storageDurabilityService,
         ISyncStorageResolver storageResolver,
         ISyncStorageMigrationService storageMigrationService,
+        ISyncFolderService folderService,
 //#endif
         IThemeService themeService)
     {
@@ -84,6 +90,7 @@ public partial class SettingsViewModel : ViewModelBase
         this.storageDurabilityService = storageDurabilityService ?? throw new ArgumentNullException(nameof(storageDurabilityService));
         this.storageResolver = storageResolver ?? throw new ArgumentNullException(nameof(storageResolver));
         this.storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
+        this.folderService = folderService ?? throw new ArgumentNullException(nameof(folderService));
 //#endif
         this.themeService.ThemeChanged += OnThemeChanged;
 //#if (IncludeNotes)
@@ -147,6 +154,34 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Gets a value indicating whether the browser can keep files in a folder the user picks.
+    /// </summary>
+    public bool IsFolderSupported
+    {
+        get => isFolderSupported;
+        private set => SetProperty(ref isFolderSupported, value);
+    }
+
+    /// <summary>
+    /// Gets the name of the folder the files are kept in, when they are kept in one.
+    /// </summary>
+    public string? FolderName
+    {
+        get => folderName;
+        private set => SetProperty(ref folderName, value);
+    }
+
+    /// <summary>
+    /// Gets the name of the storage the user asked to move to, with the picked folder's name, e.g.
+    /// "Folder on this computer (Notes)".
+    /// </summary>
+    public string? PendingStorageName => PendingStorageKind is not SyncStorageKind kind
+        ? null
+        : kind == SyncStorageKind.LocalFolder && pendingFolderName != null
+            ? $"{GetStorageName(kind)} ({pendingFolderName})"
+            : GetStorageName(kind);
+
+    /// <summary>
     /// Gets a value indicating whether the files are being moved to another storage.
     /// </summary>
     public bool IsMigrating
@@ -188,6 +223,7 @@ public partial class SettingsViewModel : ViewModelBase
             if (SetProperty(ref pendingStorageKind, value))
             {
                 OnPropertyChanged(nameof(IsStorageDialogOpen));
+                OnPropertyChanged(nameof(PendingStorageName));
             }
         }
     }
@@ -283,12 +319,14 @@ public partial class SettingsViewModel : ViewModelBase
         {
             SyncStorageKind.IndexedDb => "Browser database (IndexedDB)",
             SyncStorageKind.Opfs => "Browser file system (OPFS)",
+            SyncStorageKind.LocalFolder => "Folder on this computer",
             _ => kind.ToString(),
         };
     }
 
     /// <summary>
-    /// Asks to move the files to another storage: counts them and shows the confirmation.
+    /// Asks to move the files to another storage: for a folder, asks the user to pick one first (this follows the
+    /// click, so the browser allows it); then counts the files and shows the confirmation.
     /// </summary>
     /// <param name="kind">The storage to move to.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
@@ -301,6 +339,25 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         StorageError = null;
+        if (kind == SyncStorageKind.LocalFolder)
+        {
+            try
+            {
+                pendingFolderName = await folderService.PickAsync();
+            }
+            catch (Exception ex)
+            {
+                StorageError = $"The folder could not be opened: {ex.Message}";
+                return;
+            }
+
+            if (pendingFolderName == null)
+            {
+                // Cancelled.
+                return;
+            }
+        }
+
         try
         {
             var count = 0;
@@ -349,6 +406,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             await storageMigrationService.MigrateAsync(target, new ProgressReporter(this));
             StorageKind = target;
+            FolderName = target == SyncStorageKind.LocalFolder ? pendingFolderName : null;
         }
         catch (Exception ex)
         {
@@ -430,6 +488,8 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 StorageKind = (await storageResolver.GetStateAsync(switchableProfiles[0])).Kind;
                 IsOpfsSupported = await storageResolver.IsSupportedAsync(SyncStorageKind.Opfs);
+                IsFolderSupported = await storageResolver.IsSupportedAsync(SyncStorageKind.LocalFolder);
+                FolderName = StorageKind == SyncStorageKind.LocalFolder ? (await folderService.GetStatusAsync())?.Name : null;
             }
         }
         catch (Exception)

@@ -17,6 +17,7 @@ public class SyncStorageMigrationServiceTests
     private readonly Mock<ISyncUserContext> mockUser = new();
     private readonly Mock<ISystemClock> mockClock = new();
     private readonly Mock<IOpfsClient> mockOpfs = new();
+    private readonly Mock<IFolderAccessClient> mockFolderClient = new();
     private readonly Mock<ISyncScheduler> mockScheduler = new();
     private readonly Mock<ISyncLockService> mockLock = new();
     private readonly Mock<ISyncStorageChannel> mockChannel = new();
@@ -25,6 +26,7 @@ public class SyncStorageMigrationServiceTests
     private readonly List<string> calls = [];
     private readonly InMemorySyncFileStore indexedDb;
     private ISyncFileStore opfs;
+    private readonly InMemorySyncFileStore folder;
 
     public SyncStorageMigrationServiceTests()
     {
@@ -40,9 +42,11 @@ public class SyncStorageMigrationServiceTests
 
         indexedDb = new InMemorySyncFileStore(mockUser.Object, mockClock.Object);
         opfs = new InMemorySyncFileStore(mockUser.Object, mockClock.Object);
+        folder = new InMemorySyncFileStore(mockUser.Object, mockClock.Object);
         var notes = new SyncProfileOptions { Name = "notes" };
         notes.FileStores.Add(new SyncStorageOptions(SyncStorageKind.IndexedDb, _ => indexedDb));
         notes.FileStores.Add(new SyncStorageOptions(SyncStorageKind.Opfs, _ => opfs));
+        notes.FileStores.Add(new SyncStorageOptions(SyncStorageKind.LocalFolder, _ => folder));
         options.Profiles.Add(notes);
         options.Profiles.Add(new SyncProfileOptions { Name = "photos" });
     }
@@ -102,6 +106,39 @@ public class SyncStorageMigrationServiceTests
 
         // Assert
         Assert.Equal(["notes/a.md"], (await opfs.ListAsync()).Select(f => f.Key));
+    }
+
+    [Fact]
+    public async Task GivenEmptyFolder_WhenMigrateToLocalFolder_ThenMoved()
+    {
+        // Arrange
+        await indexedDb.WriteAsync("notes/a.md", [1]);
+
+        // Act
+        await CreateSut().MigrateAsync(SyncStorageKind.LocalFolder);
+
+        // Assert
+        Assert.Equal(["notes/a.md"], (await folder.ListAsync()).Select(f => f.Key));
+        Assert.Empty(await indexedDb.ListAsync());
+        Assert.Equal(SyncStorageKind.LocalFolder, stateStore.Saved.Last().Kind);
+    }
+
+    [Fact]
+    public async Task GivenFolderAlreadyHoldsFiles_WhenMigrateToLocalFolder_ThenRefusedWithoutTouchingEither()
+    {
+        // Arrange
+        await indexedDb.WriteAsync("notes/a.md", [1]);
+        await folder.WriteAsync("notes/mine.md", [9]);
+
+        // Act
+        var ex = await Assert.ThrowsAsync<SyncStorageMigrationException>(() => CreateSut().MigrateAsync(SyncStorageKind.LocalFolder));
+
+        // Assert
+        Assert.Equal("The folder already has notes files in it. Choose an empty folder, or move them out first.", ex.Message);
+        Assert.Equal(["notes/mine.md"], (await folder.ListAsync()).Select(f => f.Key));
+        Assert.Single(await indexedDb.ListAsync());
+        Assert.Empty(stateStore.Saved);
+        Assert.Equal(["stop", "Migrating", "lock blazwiz-sync-notes", "Changed", "start"], calls);
     }
 
     [Fact]
@@ -301,7 +338,7 @@ public class SyncStorageMigrationServiceTests
         Assert.Empty(calls);
     }
 
-    private SyncStorageResolver CreateResolver() => new(Mock.Of<IServiceProvider>(), options, stateStore, mockUser.Object, mockOpfs.Object);
+    private SyncStorageResolver CreateResolver() => new(Mock.Of<IServiceProvider>(), options, stateStore, mockUser.Object, mockOpfs.Object, mockFolderClient.Object);
 
     private SyncStorageMigrationService CreateSut() => new(options, CreateResolver(), stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object);
 

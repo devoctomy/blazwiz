@@ -2,6 +2,7 @@ using blazwiz.Core.Extensions;
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Connectivity;
+using blazwiz.Core.Sync.Folder;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
@@ -49,6 +50,8 @@ public class SyncServiceCollectionExtensionsTests
         Assert.IsType<SyncScheduler>(sp.GetRequiredService<ISyncScheduler>());
         Assert.IsType<ConnectivityService>(sp.GetRequiredService<IConnectivityService>());
         Assert.IsType<OpfsClient>(sp.GetRequiredService<IOpfsClient>());
+        Assert.IsType<FolderAccessClient>(sp.GetRequiredService<IFolderAccessClient>());
+        Assert.IsType<SyncFolderService>(sp.GetRequiredService<ISyncFolderService>());
         Assert.IsType<SyncStorageChannel>(sp.GetRequiredService<ISyncStorageChannel>());
         Assert.IsType<SyncStorageResolver>(sp.GetRequiredService<ISyncStorageResolver>());
         Assert.IsType<SyncStorageMigrationService>(sp.GetRequiredService<ISyncStorageMigrationService>());
@@ -111,7 +114,7 @@ public class SyncServiceCollectionExtensionsTests
         // Arrange
         var services = CreateServices();
         services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p
-            .UseFileStores(s => s.AddIndexedDb("blazwiz_notes", "files").AddOpfs("notes_root"))
+            .UseFileStores(s => s.AddIndexedDb("blazwiz_notes", "files").AddOpfs("notes_root").AddLocalFolder())
             .UseRemote("notes/**/*.md")));
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         await using var scope = provider.CreateAsyncScope();
@@ -130,6 +133,8 @@ public class SyncServiceCollectionExtensionsTests
         var opfs = Assert.IsType<OpfsSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.Opfs));
         Assert.Equal("notes_root", opfs.Root);
         Assert.Equal(("blazwiz_sync", "notes_opfs"), (opfs.MetadataStore.Database, opfs.MetadataStore.Name));
+        var folder = Assert.IsType<FolderSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.LocalFolder));
+        Assert.Equal(("blazwiz_sync", "notes_folder"), (folder.MetadataStore.Database, folder.MetadataStore.Name));
     }
 
     [Fact]

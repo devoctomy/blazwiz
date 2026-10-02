@@ -91,6 +91,11 @@ public class SyncProfileBuilder(SyncProfileOptions options)
             throw new ArgumentException($"Sync profile '{Options.Name}' needs at least two storages to switch between.", nameof(configure));
         }
 
+        if (Options.DefaultStorageKind is { } kind && Options.FileStores.All(s => s.Kind != kind))
+        {
+            throw new ArgumentException($"The default storage of sync profile '{Options.Name}' ({kind}) has not been added.", nameof(configure));
+        }
+
         Options.FileStoreFactory = null;
         return this;
     }

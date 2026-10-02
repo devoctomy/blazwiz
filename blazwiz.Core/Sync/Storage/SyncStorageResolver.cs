@@ -13,7 +13,8 @@ public class SyncStorageResolver(
     SyncOptions options,
     ISyncStorageStateStore stateStore,
     ISyncUserContext userContext,
-    IOpfsClient opfsClient)
+    IOpfsClient opfsClient,
+    IFolderAccessClient folderClient)
     : ISyncStorageResolver
 {
     private readonly IServiceProvider services = services ?? throw new ArgumentNullException(nameof(services));
@@ -21,6 +22,7 @@ public class SyncStorageResolver(
     private readonly ISyncStorageStateStore stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly IOpfsClient opfsClient = opfsClient ?? throw new ArgumentNullException(nameof(opfsClient));
+    private readonly IFolderAccessClient folderClient = folderClient ?? throw new ArgumentNullException(nameof(folderClient));
     private readonly Dictionary<(string Profile, SyncStorageKind Kind), ISyncFileStore> stores = [];
 
     /// <inheritdoc/>
@@ -72,6 +74,7 @@ public class SyncStorageResolver(
         {
             SyncStorageKind.IndexedDb => true,
             SyncStorageKind.Opfs => await opfsClient.IsSupportedAsync(),
+            SyncStorageKind.LocalFolder => await folderClient.IsSupportedAsync(),
             _ => false,
         };
     }
