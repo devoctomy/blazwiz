@@ -1,6 +1,25 @@
 # OPFS file storage (switchable with IndexedDB)
 
-> Status: plan for review. Replaces `opfs-offline-storage.md`.
+> Status: implemented on `s3-sync`. Replaces `opfs-offline-storage.md`. See [As built](#as-built) for where the code
+> differs from the plan below.
+
+## As built
+
+- **Storage state lives in IndexedDB, not localStorage.** One `SyncStorageState` per profile and user in
+  `blazwiz_sync/storage` (`IndexedDbSyncStorageStateStore`). It holds the storage in use and the move in progress
+  (from, to and phase), so the selection and the recovery record are one row. It is read on every file call and
+  never cached, so a move made in another tab is seen straight away.
+- **No keyed backend services.** `SyncStorageResolver` builds each storage's file store from the factories added with
+  `UseFileStores`, and keeps them for the scope. The untracked store of a switchable profile is a
+  `SwitchableSyncFileStore`.
+- **Changes are refused while files are copying.** `SwitchableSyncFileStore` throws `SyncStorageMigrationException`
+  for writes and deletes while the phase is `Copying`, so nothing written in another tab is left behind. Reads still
+  work. Other tabs also show a blocking overlay (`Migrating`), then reload (`Changed`) through `SyncStorageChannel`.
+- **Copies are checked byte for byte,** by reading each file back from the target, rather than by hash.
+- **No single-backend `UseOpfsFileStore`.** OPFS is only offered through `UseFileStores(s => s.AddOpfs(root))`.
+- **Recovery runs before sync starts:** `MainLayoutViewModel` calls `RecoverAsync` before `ISyncScheduler.StartAsync`.
+  Recovery takes the profile's sync lock and reads the state again, so it never undoes a move another tab is making.
+- **The notes OPFS root is `blazwiz_notes`.** Modified times are kept in `blazwiz_sync/notes_opfs`.
 
 ## Goal
 

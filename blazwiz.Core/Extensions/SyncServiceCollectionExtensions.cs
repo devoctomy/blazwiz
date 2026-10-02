@@ -3,6 +3,7 @@ using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Opfs;
 using blazwiz.Core.Sync.S3;
 using blazwiz.Core.Sync.Storage;
 using blazwiz.Core.Time;
@@ -23,7 +24,9 @@ public static class SyncServiceCollectionExtensions
     /// </summary>
     /// <remarks>
     /// Each profile's file store is registered as a keyed <see cref="ISyncFileStore"/> under the profile name, already
-    /// wrapped so writes and deletes are tracked: <c>[FromKeyedServices("notes")] ISyncFileStore files</c>.
+    /// wrapped so writes and deletes are tracked: <c>[FromKeyedServices("notes")] ISyncFileStore files</c>. A profile
+    /// configured with <c>UseFileStores</c> passes each call to the storage the user picked on this device; the files
+    /// are moved between storages with <see cref="ISyncStorageMigrationService"/>.
     /// </remarks>
     /// <param name="services">The service collection to add services to.</param>
     /// <param name="configure">Configures the log, timings and profiles.</param>
@@ -51,6 +54,13 @@ public static class SyncServiceCollectionExtensions
         services.TryAddScoped<ISyncService, SyncService>();
         services.TryAddScoped<ISyncScheduler, SyncScheduler>();
         services.TryAddScoped<IConnectivityService, ConnectivityService>();
+        services.TryAddScoped<IOpfsClient, OpfsClient>();
+        services.TryAddScoped<ISyncStorageChannel, SyncStorageChannel>();
+        services.TryAddScoped<ISyncStorageStateStore>(sp => new IndexedDbSyncStorageStateStore(
+            sp.GetRequiredService<IIndexedDbClient>(),
+            IndexedDbSyncStorageStateStore.DescribeStore(SyncDefaults.IndexDatabase, SyncDefaults.StorageStateStore)));
+        services.TryAddScoped<ISyncStorageResolver, SyncStorageResolver>();
+        services.TryAddScoped<ISyncStorageMigrationService, SyncStorageMigrationService>();
         services.TryAddScoped<ISyncEventLog>(sp => options.EventLogFactory?.Invoke(sp) ?? new IndexedDbSyncEventLog(
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
@@ -77,11 +87,13 @@ public static class SyncServiceCollectionExtensions
             sp.GetRequiredService<IIndexedDbClient>(),
             IndexedDbSyncIndexStore.DescribeStore(profile.IndexDatabase, profile.ResolvedIndexStoreName)));
 
-        services.AddKeyedScoped<ISyncFileStore>(untrackedKey, (sp, _) => profile.FileStoreFactory?.Invoke(sp) ?? new IndexedDbSyncFileStore(
-            sp.GetRequiredService<IIndexedDbClient>(),
-            sp.GetRequiredService<ISyncUserContext>(),
-            sp.GetRequiredService<ISystemClock>(),
-            IndexedDbSyncFileStore.DescribeStore(profile.FileDatabase, profile.ResolvedFileStoreName)));
+        services.AddKeyedScoped<ISyncFileStore>(untrackedKey, (sp, _) => profile.IsSwitchable
+            ? new SwitchableSyncFileStore(name, sp.GetRequiredService<ISyncStorageResolver>())
+            : profile.FileStoreFactory?.Invoke(sp) ?? new IndexedDbSyncFileStore(
+                sp.GetRequiredService<IIndexedDbClient>(),
+                sp.GetRequiredService<ISyncUserContext>(),
+                sp.GetRequiredService<ISystemClock>(),
+                IndexedDbSyncFileStore.DescribeStore(profile.FileDatabase, profile.ResolvedFileStoreName)));
 
         services.AddKeyedScoped<ISyncFileStore>(name, (sp, _) => new TrackingSyncFileStore(
             name,

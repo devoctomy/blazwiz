@@ -5,6 +5,8 @@ using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Models;
+using blazwiz.Core.Sync.Opfs;
 using blazwiz.Core.Sync.S3;
 using blazwiz.Core.Sync.Storage;
 using blazwiz.Core.Time.Interfaces;
@@ -46,6 +48,12 @@ public class SyncServiceCollectionExtensionsTests
         Assert.IsType<SyncService>(sp.GetRequiredService<ISyncService>());
         Assert.IsType<SyncScheduler>(sp.GetRequiredService<ISyncScheduler>());
         Assert.IsType<ConnectivityService>(sp.GetRequiredService<IConnectivityService>());
+        Assert.IsType<OpfsClient>(sp.GetRequiredService<IOpfsClient>());
+        Assert.IsType<SyncStorageChannel>(sp.GetRequiredService<ISyncStorageChannel>());
+        Assert.IsType<SyncStorageResolver>(sp.GetRequiredService<ISyncStorageResolver>());
+        Assert.IsType<SyncStorageMigrationService>(sp.GetRequiredService<ISyncStorageMigrationService>());
+        var storageState = Assert.IsType<IndexedDbSyncStorageStateStore>(sp.GetRequiredService<ISyncStorageStateStore>());
+        Assert.Equal(("blazwiz_sync", "storage"), (storageState.Store.Database, storageState.Store.Name));
         Assert.Same(TimeProvider.System, sp.GetRequiredService<TimeProvider>());
         Assert.NotNull(sp.GetRequiredService<ISystemClock>());
 
@@ -95,6 +103,33 @@ public class SyncServiceCollectionExtensionsTests
         Assert.Equal(("blazwiz_sync", "notes_index"), (index.Store.Database, index.Store.Name));
         Assert.Equal(("blazwiz_notes", "files"), (files.Store.Database, files.Store.Name));
         Assert.Equal("log", log.Store.Name);
+    }
+
+    [Fact]
+    public async Task GivenSwitchableStores_WhenAddBlazwizSync_ThenEngineAndAppGoThroughTheSwitchAndEachStorageResolves()
+    {
+        // Arrange
+        var services = CreateServices();
+        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p
+            .UseFileStores(s => s.AddIndexedDb("blazwiz_notes", "files").AddOpfs("notes_root"))
+            .UseRemote("notes/**/*.md")));
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        await using var scope = provider.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+
+        // Act
+        var resolver = sp.GetRequiredService<ISyncStorageResolver>();
+
+        // Assert
+        var untracked = Assert.IsType<SwitchableSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
+        Assert.Same(untracked, Assert.Single(sp.GetServices<SyncProfile>()).FileStore);
+        Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
+
+        var indexedDb = Assert.IsType<IndexedDbSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.IndexedDb));
+        Assert.Equal(("blazwiz_notes", "files"), (indexedDb.Store.Database, indexedDb.Store.Name));
+        var opfs = Assert.IsType<OpfsSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.Opfs));
+        Assert.Equal("notes_root", opfs.Root);
+        Assert.Equal(("blazwiz_sync", "notes_opfs"), (opfs.MetadataStore.Database, opfs.MetadataStore.Name));
     }
 
     [Fact]

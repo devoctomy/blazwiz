@@ -1,5 +1,8 @@
 @page "/settings"
 @inherits MvvmComponentBase<SettingsViewModel>
+@*#if (IncludeNotes)*@
+@using blazwiz.Core.Sync.Models
+@*#endif*@
 
 <PageHeader Title="Settings" Icon="bi-gear" Subtitle="Preferences are saved in this browser." />
 
@@ -80,7 +83,58 @@
         </div>
         <a href="sync" class="btn btn-link">View sync log</a>
     </div>
+    @if (ViewModel.CanSwitchStorage)
+    {
+        <div class="mt-4" id="storage-location">
+            <h3 class="h6 mb-1">Storage location</h3>
+            <p class="panel-text mb-2">Where your notes are kept on this device. Sync pauses while they are moved.</p>
+            <div class="btn-group flex-wrap" role="group" aria-label="Storage location">
+                <button type="button" id="storage-option-indexeddb"
+                        class="btn btn-outline-primary @(ViewModel.StorageKind == SyncStorageKind.IndexedDb ? "active" : null)"
+                        aria-pressed="@(ViewModel.StorageKind == SyncStorageKind.IndexedDb ? "true" : "false")"
+                        disabled="@ViewModel.IsMigrating"
+                        @onclick="() => ViewModel.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.IndexedDb)">
+                    <i class="bi bi-database me-1"></i>@ViewModel.GetStorageName(SyncStorageKind.IndexedDb)
+                </button>
+                <button type="button" id="storage-option-opfs"
+                        class="btn btn-outline-primary @(ViewModel.StorageKind == SyncStorageKind.Opfs ? "active" : null)"
+                        aria-pressed="@(ViewModel.StorageKind == SyncStorageKind.Opfs ? "true" : "false")"
+                        disabled="@(ViewModel.IsMigrating || !ViewModel.IsOpfsSupported)"
+                        title="@(ViewModel.IsOpfsSupported ? null : "This browser cannot keep files in OPFS")"
+                        @onclick="() => ViewModel.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.Opfs)">
+                    <i class="bi bi-folder2 me-1"></i>@ViewModel.GetStorageName(SyncStorageKind.Opfs)
+                </button>
+            </div>
+            @if (!string.IsNullOrEmpty(ViewModel.StorageError))
+            {
+                <div class="text-danger mt-2" id="storage-error">@ViewModel.StorageError</div>
+            }
+        </div>
+    }
 </div>
+
+@if (ViewModel.IsStorageDialogOpen)
+{
+    <ModalDialog Id="storage-dialog" Title="Move your notes?" Icon="bi-arrow-left-right" OnClose="() => ViewModel.CloseStorageDialogCommand.Execute(null)">
+        <ChildContent>
+            @if (ViewModel.IsMigrating)
+            {
+                <p class="mb-0" id="storage-migration-progress">
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>@(ViewModel.MigrationText ?? "Pausing sync…")
+                </p>
+            }
+            else
+            {
+                <p id="storage-dialog-summary">@(ViewModel.PendingFileCount == 1 ? "1 file" : $"{ViewModel.PendingFileCount} files") will be moved to <strong>@ViewModel.GetStorageName(ViewModel.PendingStorageKind!.Value)</strong> on this device.</p>
+                <p class="mb-0">Sync pauses while they move. Other tabs of the app reload when it finishes. Nothing is uploaded again.</p>
+            }
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" disabled="@ViewModel.IsMigrating" @onclick="() => ViewModel.CloseStorageDialogCommand.Execute(null)">Cancel</button>
+            <button type="button" class="btn btn-primary" id="storage-confirm" disabled="@ViewModel.IsMigrating" @onclick="() => ViewModel.ConfirmStorageChangeCommand.ExecuteAsync(null)">Move files</button>
+        </Footer>
+    </ModalDialog>
+}
 
 @*#endif*@
 <div class="panel">
