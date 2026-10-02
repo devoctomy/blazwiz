@@ -162,8 +162,8 @@ public class SettingsViewModelTests
     }
 
     [Theory]
-    [InlineData(SyncStorageKind.IndexedDb, "Browser database (IndexedDB)")]
-    [InlineData(SyncStorageKind.Opfs, "Browser file system (OPFS)")]
+    [InlineData(SyncStorageKind.IndexedDb, "IndexedDB")]
+    [InlineData(SyncStorageKind.Opfs, "OPFS")]
     public void GivenStorage_WhenGetStorageName_ThenReturnsName(SyncStorageKind kind, string expected)
     {
         Assert.Equal(expected, CreateSut().GetStorageName(kind));
@@ -315,7 +315,7 @@ public class SettingsViewModelTests
         // Assert
         Assert.True(sut.IsFolderSupported);
         Assert.Equal("Notes", sut.FolderName);
-        Assert.Equal("Folder on this computer", sut.GetStorageName(SyncStorageKind.LocalFolder));
+        Assert.Equal("File System", sut.GetStorageName(SyncStorageKind.LocalFolder));
     }
 
     [Fact]
@@ -366,7 +366,7 @@ public class SettingsViewModelTests
 
         // Assert
         Assert.True(sut.IsStorageDialogOpen);
-        Assert.Equal("Folder on this computer (Notes)", sut.PendingStorageName);
+        Assert.Equal("File System (Notes)", sut.PendingStorageName);
 
         // Act
         await sut.ConfirmStorageChangeCommand.ExecuteAsync(null);
@@ -390,7 +390,7 @@ public class SettingsViewModelTests
         await sut.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.Opfs);
 
         // Assert
-        Assert.Equal("Browser file system (OPFS)", sut.PendingStorageName);
+        Assert.Equal("OPFS", sut.PendingStorageName);
         mockFolder.Verify(x => x.PickAsync(), Times.Never);
     }
 
