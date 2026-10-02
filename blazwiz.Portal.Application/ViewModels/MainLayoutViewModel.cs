@@ -31,6 +31,8 @@ public partial class MainLayoutViewModel : ViewModelBase
     private readonly IConnectivityService connectivityService;
     private readonly ISyncScheduler syncScheduler;
     private readonly ISyncStatusPresenter syncStatusPresenter;
+    private readonly ISyncStorageMigrationService storageMigrationService;
+    private readonly ISyncStorageChannel storageChannel;
 //#endif
     private readonly AppSettings appSettings;
 
@@ -40,6 +42,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     private UserSession? currentUser;
 //#if (IncludeNotes)
     private bool isSyncPopoverOpen;
+    private bool isStorageMigrating;
 //#endif
 
     /// <summary>
@@ -56,6 +59,8 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// <param name="connectivityService">The connectivity service.</param>
     /// <param name="syncScheduler">The sync scheduler.</param>
     /// <param name="syncStatusPresenter">Describes the sync status.</param>
+    /// <param name="storageMigrationService">Finishes or undoes a storage move cut short.</param>
+    /// <param name="storageChannel">Hears about storage moves in other tabs.</param>
     ///#endif
     /// <param name="appSettings">The application settings.</param>
     public MainLayoutViewModel(
@@ -70,6 +75,8 @@ public partial class MainLayoutViewModel : ViewModelBase
         IConnectivityService connectivityService,
         ISyncScheduler syncScheduler,
         ISyncStatusPresenter syncStatusPresenter,
+        ISyncStorageMigrationService storageMigrationService,
+        ISyncStorageChannel storageChannel,
 //#endif
         AppSettings appSettings)
     {
@@ -84,6 +91,8 @@ public partial class MainLayoutViewModel : ViewModelBase
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
         this.syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
         this.syncStatusPresenter = syncStatusPresenter ?? throw new ArgumentNullException(nameof(syncStatusPresenter));
+        this.storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
+        this.storageChannel = storageChannel ?? throw new ArgumentNullException(nameof(storageChannel));
 //#endif
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
 
@@ -91,6 +100,7 @@ public partial class MainLayoutViewModel : ViewModelBase
 //#if (IncludeNotes)
         this.syncService.StatusChanged += OnSyncStatusChanged;
         this.connectivityService.StatusChanged += OnConnectivityChanged;
+        this.storageChannel.MessageReceived += OnStorageChannelMessage;
 //#endif
     }
 
@@ -174,6 +184,15 @@ public partial class MainLayoutViewModel : ViewModelBase
     {
         get => isSyncPopoverOpen;
         private set => SetProperty(ref isSyncPopoverOpen, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether another tab is moving the files to another storage, so this one must wait.
+    /// </summary>
+    public bool IsStorageMigrating
+    {
+        get => isStorageMigrating;
+        private set => SetProperty(ref isStorageMigrating, value);
     }
 
     /// <summary>
@@ -323,6 +342,7 @@ public partial class MainLayoutViewModel : ViewModelBase
 //#if (IncludeNotes)
             syncService.StatusChanged -= OnSyncStatusChanged;
             connectivityService.StatusChanged -= OnConnectivityChanged;
+            storageChannel.MessageReceived -= OnStorageChannelMessage;
 //#endif
         }
 
@@ -337,6 +357,18 @@ public partial class MainLayoutViewModel : ViewModelBase
 
     private async Task StartSyncAsync()
     {
+        try
+        {
+            await storageChannel.StartAsync();
+
+            // A storage move cut short (e.g. by a reload) is finished or undone before anything syncs.
+            await storageMigrationService.RecoverAsync();
+        }
+        catch (Exception)
+        {
+            // The files stay where they are; sync still runs against the storage in use.
+        }
+
         try
         {
             await syncScheduler.StartAsync();
@@ -363,6 +395,18 @@ public partial class MainLayoutViewModel : ViewModelBase
     private void OnConnectivityChanged(object? sender, ConnectivityStatus e)
     {
         RefreshSync();
+    }
+
+    private void OnStorageChannelMessage(object? sender, SyncStorageChannelMessage e)
+    {
+        if (e == SyncStorageChannelMessage.Migrating)
+        {
+            IsStorageMigrating = true;
+            return;
+        }
+
+        // Another tab moved the files: start again against the storage now in use.
+        navigationService.Reload();
     }
 //#endif
 }

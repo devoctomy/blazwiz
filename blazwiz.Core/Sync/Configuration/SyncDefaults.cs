@@ -29,4 +29,20 @@ public static class SyncDefaults
     /// Put before a profile name for the cross tab lock taken while it syncs.
     /// </summary>
     public const string LockNamePrefix = "blazwiz-sync-";
+
+    /// <summary>
+    /// The IndexedDB object store (in <see cref="IndexDatabase"/>) recording which storage each profile uses.
+    /// </summary>
+    public const string StorageStateStore = "storage";
+
+    /// <summary>
+    /// Added to a profile name for the IndexedDB object store (in <see cref="IndexDatabase"/>) holding its OPFS files'
+    /// modified times, unless configured otherwise.
+    /// </summary>
+    public const string OpfsMetadataStoreSuffix = "_opfs";
+
+    /// <summary>
+    /// The BroadcastChannel the app's tabs use to tell each other about storage moves.
+    /// </summary>
+    public const string StorageChannelName = "blazwiz-sync-storage";
 }

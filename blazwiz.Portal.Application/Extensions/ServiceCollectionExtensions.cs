@@ -7,6 +7,7 @@ using Amazon.Runtime;
 //#if (IncludeNotes)
 using blazwiz.Core.Extensions;
 using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Models;
 //#endif
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
@@ -58,8 +59,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INavigationMenuService, NavigationMenuService>();
 
 //#if (IncludeNotes)
-        // Sync: notes are plain markdown files kept in IndexedDB and synced with the user's prefix in the data bucket
-        // (docs/wip/s3-sync.md). The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
+        // Sync: notes are plain markdown files kept in IndexedDB or OPFS (the user picks, per device, in Settings) and
+        // synced with the user's prefix in the data bucket (docs/wip/s3-sync.md, docs/wip/opfs-storage.md). The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
         services.AddSingleton<IAmazonCognitoIdentity>(sp => new AmazonCognitoIdentityClient(
             new AnonymousAWSCredentials(),
             new AmazonCognitoIdentityConfig
@@ -80,7 +81,10 @@ public static class ServiceCollectionExtensions
             .UseChangeDebounce(TimeSpan.FromSeconds(2))
             .AddProfile(NoteService.ProfileName, profile => profile
                 .UseIndexedDbIndexStore(database: "blazwiz_sync", store: "notes_index")
-                .UseIndexedDbFileStore(database: IndexedDbNotesStateStore.Database, store: "files")
+                .UseFileStores(stores => stores
+                    .AddIndexedDb(database: IndexedDbNotesStateStore.Database, store: "files")
+                    .AddOpfs(root: "blazwiz_notes")
+                    .UseDefault(SyncStorageKind.IndexedDb))
                 .UseRemote("notes/**/*.md", includeEmptyFolders: true)));
 
         // Notes

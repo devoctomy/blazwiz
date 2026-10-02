@@ -133,5 +133,101 @@ public class SyncTests : TestBase
         await Expect(Page.Locator("#sync-log")).ToContainTextAsync("Offline mode turned on");
     }
 
+    [TestMethod]
+    public async Task GivenNotes_WhenStorageSwitchedToOpfsAndBack_ThenNotesMoveWithNothingNewToSync()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-files").ClickAsync();
+        await Expect(Row("Welcome.md")).ToBeVisibleAsync();
+        await Page.Locator("#new-note-button").ClickAsync();
+        await Page.Locator("#dialog-name").FillAsync("Moving");
+        await Page.Keyboard.PressAsync("Enter");
+        await Page.Locator("#note-editor").FillAsync("kept in OPFS");
+        await Page.Locator("#save-note-button").ClickAsync();
+        await Expect(Page.Locator("#editor-status")).ToContainTextAsync("Saved at");
+        await Expect(Page.Locator("#sync-status-pill")).ToContainTextAsync("2 pending");
+
+        // Move to OPFS.
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
+        await Page.Locator("#storage-option-opfs").ClickAsync();
+        await Expect(Page.Locator("#storage-dialog-summary")).ToHaveTextAsync(new Regex(@"^\d+ files will be moved to Browser file system \(OPFS\) on this device\.$"));
+        await ScreenshotAsync("ConfirmMove");
+        await Page.Locator("#storage-confirm").ClickAsync();
+        await Expect(Page.Locator("#storage-dialog")).ToBeHiddenAsync();
+        await Expect(Page.Locator("#storage-option-opfs")).ToHaveClassAsync(new Regex("active"));
+        await Expect(Page.Locator("#storage-error")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#settings-pending")).ToHaveTextAsync("2");
+        await ScreenshotAsync("MovedToOpfs");
+        CollectionAssert.Contains(await ListOpfsFilesAsync(), "notes/Moving.md");
+
+        // Still in OPFS, and still readable, after a reload.
+        await Page.ReloadAsync();
+        await Expect(Page.Locator("#storage-option-opfs")).ToHaveClassAsync(new Regex("active"));
+        await Page.Locator("#nav-files").ClickAsync();
+        await Row("Moving.md").Locator(".file-name").ClickAsync();
+        await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("kept in OPFS");
+        await Expect(Page.Locator("#sync-status-pill")).ToContainTextAsync("2 pending");
+
+        // And back to IndexedDB, which leaves OPFS empty.
+        await Page.Locator("#close-note-button").ClickAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#storage-option-indexeddb").ClickAsync();
+        await Page.Locator("#storage-confirm").ClickAsync();
+        await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
+        Assert.AreEqual(0, (await ListOpfsFilesAsync()).Count);
+        await Page.ReloadAsync();
+        await Page.Locator("#nav-files").ClickAsync();
+        await Row("Moving.md").Locator(".file-name").ClickAsync();
+        await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("kept in OPFS");
+    }
+
+    [TestMethod]
+    public async Task GivenStorageChoiceOpen_WhenCancelled_ThenNothingMoves()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#storage-option-opfs").ClickAsync();
+        await Expect(Page.Locator("#storage-dialog")).ToBeVisibleAsync();
+
+        await Page.Locator("#storage-dialog .btn-secondary").ClickAsync();
+
+        await Expect(Page.Locator("#storage-dialog")).ToBeHiddenAsync();
+        await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
+        Assert.AreEqual(0, (await ListOpfsFilesAsync()).Count);
+    }
+
     private ILocator Row(string name) => Page.Locator($"#file-tree .file-row[data-name='{name}']");
+
+    // Every file under the notes OPFS root, as "<key>" relative to the user's directory.
+    private async Task<List<string>> ListOpfsFilesAsync()
+    {
+        var files = await Page.EvaluateAsync<string[]>(@"async () => {
+            const found = [];
+            async function walk(directory, prefix) {
+                for await (const [name, handle] of directory.entries()) {
+                    if (handle.kind === 'directory') {
+                        await walk(handle, prefix + name + '/');
+                    } else {
+                        found.push(prefix + name);
+                    }
+                }
+            }
+
+            const top = await navigator.storage.getDirectory();
+            let root;
+            try {
+                root = await top.getDirectoryHandle('blazwiz_notes');
+            } catch {
+                return found;
+            }
+
+            for await (const [, owner] of root.entries()) {
+                await walk(owner, '');
+            }
+
+            return found;
+        }");
+        return [.. files];
+    }
 }

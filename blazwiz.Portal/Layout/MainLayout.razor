@@ -136,4 +136,20 @@ else
         </div>
 @*#endif*@
     </div>
+@*#if (IncludeNotes)*@
+    @if (ViewModel.IsStorageMigrating)
+    {
+        <div class="modal-backdrop show"></div>
+        <div class="modal d-block app-modal" role="alertdialog" aria-modal="true" aria-labelledby="storage-migrating-text" id="storage-migrating-overlay">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body d-flex align-items-center gap-3">
+                        <span class="spinner-border text-primary flex-shrink-0" aria-hidden="true"></span>
+                        <span id="storage-migrating-text">Your notes are being moved to another storage in another tab. This tab reloads when it finishes.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+@*#endif*@
 }

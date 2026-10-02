@@ -36,8 +36,18 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly ISyncScheduler syncScheduler;
     private readonly ISyncStatusPresenter syncStatusPresenter;
     private readonly IStorageDurabilityService storageDurabilityService;
+    private readonly ISyncStorageResolver storageResolver;
+    private readonly ISyncStorageMigrationService storageMigrationService;
 
     private StorageDurabilityStatus? storage;
+    private IReadOnlyList<string> switchableProfiles = [];
+    private SyncStorageKind storageKind;
+    private bool isOpfsSupported;
+    private bool isMigrating;
+    private SyncStorageMigrationProgress? migrationProgress;
+    private string? storageError;
+    private SyncStorageKind? pendingStorageKind;
+    private int pendingFileCount;
 //#endif
 
     /// <summary>
@@ -49,6 +59,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <param name="syncScheduler">The sync scheduler.</param>
     /// <param name="syncStatusPresenter">Describes the sync status.</param>
     /// <param name="storageDurabilityService">Reports whether the browser keeps the site's storage.</param>
+    /// <param name="storageResolver">Finds the storages the files can be kept in, and the one in use.</param>
+    /// <param name="storageMigrationService">Moves the files to another storage.</param>
     ///#endif
     /// <param name="themeService">The theme service.</param>
     public SettingsViewModel(
@@ -58,6 +70,8 @@ public partial class SettingsViewModel : ViewModelBase
         ISyncScheduler syncScheduler,
         ISyncStatusPresenter syncStatusPresenter,
         IStorageDurabilityService storageDurabilityService,
+        ISyncStorageResolver storageResolver,
+        ISyncStorageMigrationService storageMigrationService,
 //#endif
         IThemeService themeService)
     {
@@ -68,6 +82,8 @@ public partial class SettingsViewModel : ViewModelBase
         this.syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
         this.syncStatusPresenter = syncStatusPresenter ?? throw new ArgumentNullException(nameof(syncStatusPresenter));
         this.storageDurabilityService = storageDurabilityService ?? throw new ArgumentNullException(nameof(storageDurabilityService));
+        this.storageResolver = storageResolver ?? throw new ArgumentNullException(nameof(storageResolver));
+        this.storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
 //#endif
         this.themeService.ThemeChanged += OnThemeChanged;
 //#if (IncludeNotes)
@@ -105,7 +121,90 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>
     /// Gets a value indicating whether Sync now can be used.
     /// </summary>
-    public bool CanSyncNow => connectivityService.Status.IsOnline && syncService.Status.State != SyncState.Syncing;
+    public bool CanSyncNow => connectivityService.Status.IsOnline && syncService.Status.State != SyncState.Syncing && !IsMigrating;
+
+    /// <summary>
+    /// Gets a value indicating whether the files can be kept in more than one storage, so the choice is shown.
+    /// </summary>
+    public bool CanSwitchStorage => switchableProfiles.Count > 0;
+
+    /// <summary>
+    /// Gets the storage the files are kept in on this device.
+    /// </summary>
+    public SyncStorageKind StorageKind
+    {
+        get => storageKind;
+        private set => SetProperty(ref storageKind, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the browser can keep files in OPFS.
+    /// </summary>
+    public bool IsOpfsSupported
+    {
+        get => isOpfsSupported;
+        private set => SetProperty(ref isOpfsSupported, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the files are being moved to another storage.
+    /// </summary>
+    public bool IsMigrating
+    {
+        get => isMigrating;
+        private set
+        {
+            if (SetProperty(ref isMigrating, value))
+            {
+                OnPropertyChanged(nameof(CanSyncNow));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the progress line while files are moved, e.g. "Moving files: 3 of 10", or null.
+    /// </summary>
+    public string? MigrationText => migrationProgress is { } progress
+        ? string.Create(CultureInfo.InvariantCulture, $"Moving files: {progress.Done} of {progress.Total}")
+        : null;
+
+    /// <summary>
+    /// Gets why the last move failed, or null.
+    /// </summary>
+    public string? StorageError
+    {
+        get => storageError;
+        private set => SetProperty(ref storageError, value);
+    }
+
+    /// <summary>
+    /// Gets the storage the user asked to move to, while the confirmation is shown.
+    /// </summary>
+    public SyncStorageKind? PendingStorageKind
+    {
+        get => pendingStorageKind;
+        private set
+        {
+            if (SetProperty(ref pendingStorageKind, value))
+            {
+                OnPropertyChanged(nameof(IsStorageDialogOpen));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the move confirmation is shown.
+    /// </summary>
+    public bool IsStorageDialogOpen => PendingStorageKind != null;
+
+    /// <summary>
+    /// Gets the number of files that will be moved.
+    /// </summary>
+    public int PendingFileCount
+    {
+        get => pendingFileCount;
+        private set => SetProperty(ref pendingFileCount, value);
+    }
 
     /// <summary>
     /// Gets a value indicating whether the storage status is known.
@@ -170,6 +269,99 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsStoragePersisted));
         OnPropertyChanged(nameof(StorageText));
         OnPropertyChanged(nameof(ShowInstallHint));
+        await LoadStorageKindAsync();
+    }
+
+    /// <summary>
+    /// Gets the name of a storage, as the settings show it.
+    /// </summary>
+    /// <param name="kind">The storage.</param>
+    /// <returns>The name, e.g. "Browser file system (OPFS)".</returns>
+    public string GetStorageName(SyncStorageKind kind)
+    {
+        return kind switch
+        {
+            SyncStorageKind.IndexedDb => "Browser database (IndexedDB)",
+            SyncStorageKind.Opfs => "Browser file system (OPFS)",
+            _ => kind.ToString(),
+        };
+    }
+
+    /// <summary>
+    /// Asks to move the files to another storage: counts them and shows the confirmation.
+    /// </summary>
+    /// <param name="kind">The storage to move to.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task RequestStorageChangeAsync(SyncStorageKind kind)
+    {
+        if (kind == StorageKind || IsMigrating || !CanSwitchStorage)
+        {
+            return;
+        }
+
+        StorageError = null;
+        try
+        {
+            var count = 0;
+            foreach (var profile in switchableProfiles)
+            {
+                var state = await storageResolver.GetStateAsync(profile);
+                count += (await storageResolver.GetStore(profile, state.Kind).ListAsync()).Count;
+            }
+
+            PendingFileCount = count;
+            PendingStorageKind = kind;
+        }
+        catch (Exception ex)
+        {
+            StorageError = $"Your files could not be read: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Closes the move confirmation without moving anything. Ignored while files are moving.
+    /// </summary>
+    [RelayCommand]
+    public void CloseStorageDialog()
+    {
+        if (!IsMigrating)
+        {
+            PendingStorageKind = null;
+        }
+    }
+
+    /// <summary>
+    /// Moves the files to the storage asked for. Sync pauses while they move; if the move fails, the files stay
+    /// where they were and the error is shown.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task ConfirmStorageChangeAsync()
+    {
+        if (PendingStorageKind is not SyncStorageKind target || IsMigrating)
+        {
+            return;
+        }
+
+        IsMigrating = true;
+        try
+        {
+            await storageMigrationService.MigrateAsync(target, new ProgressReporter(this));
+            StorageKind = target;
+        }
+        catch (Exception ex)
+        {
+            StorageError = $"Your files could not be moved: {ex.Message}";
+            await LoadStorageKindAsync();
+        }
+        finally
+        {
+            SetMigrationProgress(null);
+            IsMigrating = false;
+            PendingStorageKind = null;
+            RefreshSync();
+        }
     }
 
     /// <summary>
@@ -229,6 +421,31 @@ public partial class SettingsViewModel : ViewModelBase
             : string.Create(CultureInfo.InvariantCulture, $"{size:0.#} {units[unit]}");
     }
 
+    private async Task LoadStorageKindAsync()
+    {
+        try
+        {
+            switchableProfiles = syncService.Profiles.Where(storageResolver.IsSwitchable).ToList();
+            if (switchableProfiles.Count > 0)
+            {
+                StorageKind = (await storageResolver.GetStateAsync(switchableProfiles[0])).Kind;
+                IsOpfsSupported = await storageResolver.IsSupportedAsync(SyncStorageKind.Opfs);
+            }
+        }
+        catch (Exception)
+        {
+            switchableProfiles = [];
+        }
+
+        OnPropertyChanged(nameof(CanSwitchStorage));
+    }
+
+    private void SetMigrationProgress(SyncStorageMigrationProgress? progress)
+    {
+        migrationProgress = progress;
+        OnPropertyChanged(nameof(MigrationText));
+    }
+
     private void RefreshSync()
     {
         OnPropertyChanged(nameof(SyncDisplay));
@@ -253,4 +470,18 @@ public partial class SettingsViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CurrentTheme));
     }
+//#if (IncludeNotes)
+
+    /// <summary>
+    /// Shows move progress as it is reported, on the caller's context (unlike <see cref="Progress{T}"/>).
+    /// </summary>
+    private sealed class ProgressReporter(SettingsViewModel owner)
+        : IProgress<SyncStorageMigrationProgress>
+    {
+        public void Report(SyncStorageMigrationProgress value)
+        {
+            owner.SetMigrationProgress(value);
+        }
+    }
+//#endif
 }

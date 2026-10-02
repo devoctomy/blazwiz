@@ -57,11 +57,12 @@ public class SyncProfileBuilder(SyncProfileOptions options)
         Options.FileDatabase = database;
         Options.FileStoreName = store;
         Options.FileStoreFactory = null;
+        ClearFileStores();
         return this;
     }
 
     /// <summary>
-    /// Keeps the files in a custom store (e.g. OPFS), created from the service provider.
+    /// Keeps the files in a custom store, created from the service provider.
     /// </summary>
     /// <typeparam name="T">The store type.</typeparam>
     /// <returns>The builder.</returns>
@@ -69,6 +70,28 @@ public class SyncProfileBuilder(SyncProfileOptions options)
         where T : class, ISyncFileStore
     {
         Options.FileStoreFactory = sp => ActivatorUtilities.CreateInstance<T>(sp);
+        ClearFileStores();
+        return this;
+    }
+
+    /// <summary>
+    /// Keeps the files in storages the user can switch between on each device (e.g. IndexedDB and OPFS). The files
+    /// are moved with <see cref="ISyncStorageMigrationService"/>; the index stays where it is.
+    /// </summary>
+    /// <param name="configure">Adds the storages, and optionally sets the default. At least two are required.</param>
+    /// <returns>The builder.</returns>
+    public SyncProfileBuilder UseFileStores(Action<SyncFileStoresBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        ClearFileStores();
+        configure(new SyncFileStoresBuilder(Options));
+        if (Options.FileStores.Count < 2)
+        {
+            throw new ArgumentException($"Sync profile '{Options.Name}' needs at least two storages to switch between.", nameof(configure));
+        }
+
+        Options.FileStoreFactory = null;
         return this;
     }
 
@@ -86,5 +109,11 @@ public class SyncProfileBuilder(SyncProfileOptions options)
         Options.RemotePattern = pattern.TrimStart('/');
         Options.IncludeEmptyFolders = includeEmptyFolders;
         return this;
+    }
+
+    private void ClearFileStores()
+    {
+        Options.FileStores.Clear();
+        Options.DefaultStorageKind = null;
     }
 }
