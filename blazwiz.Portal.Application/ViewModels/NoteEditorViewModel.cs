@@ -1,5 +1,9 @@
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Sync.Exceptions;
+using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
+using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Notes;
 using CommunityToolkit.Mvvm.Input;
@@ -8,7 +12,9 @@ using Microsoft.JSInterop;
 namespace blazwiz.Portal.Application.ViewModels;
 
 /// <summary>
-/// ViewModel for the note editor: markdown text with formatting buttons, a live preview and saving.
+/// ViewModel for the note editor: markdown text with formatting buttons, a live preview and saving. When a sync changes
+/// the open note, it is reloaded, or (with unsaved edits) the user is asked whether to keep their version or take the
+/// synced one.
 /// </summary>
 public partial class NoteEditorViewModel : ViewModelBase
 {
@@ -22,11 +28,22 @@ public partial class NoteEditorViewModel : ViewModelBase
     /// </summary>
     public const string FilesUrl = "files";
 
+    /// <summary>
+    /// The query string parameter holding the note's key in the editor URL.
+    /// </summary>
+    public const string NoteQueryParameter = "note";
+
+    /// <summary>
+    /// The message shown when the open note was deleted on another device.
+    /// </summary>
+    public const string RemoteDeletedMessage = "This note was deleted on another device.";
+
     private readonly INoteService noteService;
     private readonly IMarkdownRenderer markdownRenderer;
     private readonly IMarkdownFormatService markdownFormatService;
     private readonly INoteEditorInteropService editorInteropService;
     private readonly INavigationService navigationService;
+    private readonly ISyncService syncService;
 
     private string? loadedNoteId;
     private NoteEntry? note;
@@ -43,6 +60,8 @@ public partial class NoteEditorViewModel : ViewModelBase
     private string? pendingLocation;
     private string? errorMessage;
     private DateTimeOffset? lastSavedAt;
+    private bool isRemoteChangeDialogOpen;
+    private bool isRemoteDeleted;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NoteEditorViewModel"/> class.
@@ -52,18 +71,22 @@ public partial class NoteEditorViewModel : ViewModelBase
     /// <param name="markdownFormatService">Works out the edits made by the formatting buttons.</param>
     /// <param name="editorInteropService">Access to the editor's text and selection in the browser.</param>
     /// <param name="navigationService">The navigation service.</param>
+    /// <param name="syncService">The sync service, to notice when a sync changes the open note.</param>
     public NoteEditorViewModel(
         INoteService noteService,
         IMarkdownRenderer markdownRenderer,
         IMarkdownFormatService markdownFormatService,
         INoteEditorInteropService editorInteropService,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        ISyncService syncService)
     {
         this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
         this.markdownRenderer = markdownRenderer ?? throw new ArgumentNullException(nameof(markdownRenderer));
         this.markdownFormatService = markdownFormatService ?? throw new ArgumentNullException(nameof(markdownFormatService));
         this.editorInteropService = editorInteropService ?? throw new ArgumentNullException(nameof(editorInteropService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+        this.syncService.FilesChanged += OnFilesChanged;
     }
 
     /// <summary>
@@ -178,11 +201,34 @@ public partial class NoteEditorViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Gets a value indicating whether the dialog asking what to do about a note changed by a sync is showing.
+    /// </summary>
+    public bool IsRemoteChangeDialogOpen
+    {
+        get => isRemoteChangeDialogOpen;
+        private set => SetProperty(ref isRemoteChangeDialogOpen, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the sync deleted the note (rather than changed it).
+    /// </summary>
+    public bool IsRemoteDeleted
+    {
+        get => isRemoteDeleted;
+        private set => SetProperty(ref isRemoteDeleted, value);
+    }
+
+    /// <summary>
     /// Gets the URL of the editor for a note.
     /// </summary>
-    /// <param name="noteId">The note id.</param>
+    /// <param name="noteId">The note id (its key, e.g. <c>notes/Work/Ideas.md</c>).</param>
     /// <returns>The relative URL.</returns>
-    public static string GetEditUrl(string noteId) => $"{FilesUrl}/edit/{Uri.EscapeDataString(noteId)}";
+    public static string GetEditUrl(string noteId)
+    {
+        ArgumentNullException.ThrowIfNull(noteId);
+
+        return $"{FilesUrl}/edit?{NoteQueryParameter}={Uri.EscapeDataString(noteId)}";
+    }
 
     /// <summary>
     /// Loads a note, unless it is already loaded.
@@ -218,7 +264,7 @@ public partial class NoteEditorViewModel : ViewModelBase
             PreviewHtml = markdownRenderer.ToHtml(Content);
             OnPropertyChanged(nameof(IsDirty));
         }
-        catch (NotesException ex)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
         {
             ErrorMessage = ex.Message;
         }
@@ -344,6 +390,110 @@ public partial class NoteEditorViewModel : ViewModelBase
         ErrorMessage = null;
     }
 
+    /// <summary>
+    /// Keeps the user's unsaved edits after a sync changed or deleted the note. Saving uploads them over the synced version.
+    /// </summary>
+    [RelayCommand]
+    public void KeepMine()
+    {
+        IsRemoteChangeDialogOpen = false;
+    }
+
+    /// <summary>
+    /// Discards the user's unsaved edits and takes the synced version (or, if it was deleted, returns to the files page).
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task TakeTheirsAsync()
+    {
+        IsRemoteChangeDialogOpen = false;
+        if (IsRemoteDeleted)
+        {
+            leaveConfirmed = true;
+            navigationService.NavigateTo(FilesUrl);
+            return;
+        }
+
+        await ReloadAsync();
+    }
+
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            syncService.FilesChanged -= OnFilesChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+
+    private async void OnFilesChanged(object? sender, SyncFilesChangedEventArgs e)
+    {
+        var note = Note;
+        if (e.Profile != NoteService.ProfileName || note == null || !e.Keys.Contains(note.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            var document = await noteService.GetNoteAsync(note.Id);
+            if (IsDirty)
+            {
+                IsRemoteDeleted = document == null;
+                IsRemoteChangeDialogOpen = true;
+            }
+            else
+            {
+                ApplyDocument(document);
+            }
+        }
+        catch (Exception)
+        {
+            // Leave the editor as it is; the user can still save their version.
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (Note == null)
+        {
+            return;
+        }
+
+        try
+        {
+            ApplyDocument(await noteService.GetNoteAsync(Note.Id));
+        }
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
+        {
+            ErrorMessage = ex.Message;
+        }
+        catch (JSException)
+        {
+            ErrorMessage = FilesViewModel.StorageErrorMessage;
+        }
+    }
+
+    private void ApplyDocument(NoteDocument? document)
+    {
+        if (document == null)
+        {
+            Note = null;
+            IsNotFound = true;
+            ErrorMessage = RemoteDeletedMessage;
+            return;
+        }
+
+        savedContent = document.Content;
+        Note = document.Entry;
+        FolderPath = document.FolderPath;
+        Content = document.Content;
+        PreviewHtml = markdownRenderer.ToHtml(Content);
+        OnPropertyChanged(nameof(IsDirty));
+    }
+
     private void Leave()
     {
         leaveConfirmed = true;
@@ -371,7 +521,7 @@ public partial class NoteEditorViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsDirty));
             return true;
         }
-        catch (NotesException ex)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
         {
             ErrorMessage = ex.Message;
             return false;

@@ -1,3 +1,6 @@
+using blazwiz.Core.Sync.Exceptions;
+using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Application.ViewModels;
@@ -13,6 +16,7 @@ public class FilesViewModelTests
     private readonly Mock<INavigationService> mockNavigation = new();
     private readonly Mock<INoteNameService> mockNames = new();
     private readonly Mock<INoteTreeService> mockTree = new();
+    private readonly Mock<ISyncService> mockSync = new();
     private HashSet<string> lastExpandedFolderIds = [];
     private List<NoteEntry> entries =
     [
@@ -25,6 +29,7 @@ public class FilesViewModelTests
     public FilesViewModelTests()
     {
         mockNotes.Setup(x => x.GetEntriesAsync()).ReturnsAsync(() => entries);
+        mockSync.SetupGet(x => x.Status).Returns(new SyncStatus());
 
         // The tree service decides which rows are visible; here every entry is returned, flagged as expanded when the
         // view model asked for it, and the expanded folders are captured so tests can check what was asked for.
@@ -41,10 +46,10 @@ public class FilesViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(null!, mockNavigation.Object, mockNames.Object, mockTree.Object)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, null!, mockNames.Object, mockTree.Object)).ParamName);
-        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, null!, mockTree.Object)).ParamName);
-        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, null!)).ParamName);
+        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(null!, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, null!, mockNames.Object, mockTree.Object, mockSync.Object)).ParamName);
+        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, null!, mockTree.Object, mockSync.Object)).ParamName);
+        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, null!, mockSync.Object)).ParamName);
     }
 
     [Fact]
@@ -77,6 +82,28 @@ public class FilesViewModelTests
         Assert.Null(sut.SelectedFolderId);
         Assert.Equal(FilesViewModel.TopLevelName, sut.SelectedFolderName);
     }
+
+    [Theory]
+    [MemberData(nameof(StorageExceptions))]
+    public async Task GivenFolderUnreachableOrFilesMoving_WhenInitialized_ThenShowsItsMessageWithoutCrashing(Exception exception)
+    {
+        // Arrange
+        mockNotes.Setup(x => x.GetEntriesAsync()).ThrowsAsync(exception);
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.Equal(exception.Message, sut.ErrorMessage);
+        Assert.False(sut.IsLoading);
+    }
+
+    public static TheoryData<Exception> StorageExceptions() => new()
+    {
+        new SyncStorageAccessException("Allow access to the folder 'Notes' to use your files."),
+        new SyncStorageMigrationException("Your files are being moved to another storage. Try again in a moment."),
+    };
 
     [Fact]
     public async Task GivenStorageUnavailable_WhenInitialized_ThenShowsError()
@@ -146,7 +173,7 @@ public class FilesViewModelTests
         sut.OpenNoteCommand.Execute("todo");
 
         // Assert
-        mockNavigation.Verify(x => x.NavigateTo("files/edit/todo"), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("files/edit?note=todo"), Times.Once);
     }
 
     [Fact]
@@ -165,7 +192,7 @@ public class FilesViewModelTests
 
         // Assert
         Assert.Equal(FilesDialogKind.None, sut.ActiveDialog);
-        mockNavigation.Verify(x => x.NavigateTo("files/edit/ideas"), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("files/edit?note=ideas"), Times.Once);
     }
 
     [Fact]
@@ -403,13 +430,86 @@ public class FilesViewModelTests
         Assert.Null(sut.ErrorMessage);
     }
 
+    [Fact]
+    public void GivenNullSyncService_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, null!)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenLoaded_WhenSyncChangesNotes_ThenTreeReloads()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        entries = [Note("new", "new.md", null)];
+
+        // Act
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", ["new"]));
+        await WaitForAsync(() => sut.Entries.Count == 1);
+
+        // Assert
+        Assert.Equal("new", Assert.Single(sut.Entries).Id);
+    }
+
+    [Fact]
+    public async Task GivenLoaded_WhenAnotherProfileChanges_ThenTreeNotReloaded()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("photos", ["a.png"]));
+
+        // Assert
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenLoaded_WhenFirstSyncFinishes_ThenTreeReloadsOnce()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        var synced = new SyncStatus { LastSyncedAt = DateTimeOffset.UnixEpoch };
+
+        // Act
+        mockSync.Raise(x => x.StatusChanged += null, mockSync.Object, synced);
+        mockSync.Raise(x => x.StatusChanged += null, mockSync.Object, synced);
+        await WaitForAsync(() => mockNotes.Invocations.Count(i => i.Method.Name == nameof(INoteService.GetEntriesAsync)) >= 2);
+
+        // Assert
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenDisposed_WhenSyncChangesNotes_ThenNothingReloads()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        sut.Dispose();
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", ["x"]));
+
+        // Assert
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
+    }
+
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+    }
+
     private static NoteEntry Folder(string id, string name, string? parentId) =>
         new() { Id = id, Name = name, ParentId = parentId, Kind = NoteEntryKind.Folder };
 
     private static NoteEntry Note(string id, string name, string? parentId) =>
-        new() { Id = id, Name = name, ParentId = parentId, Kind = NoteEntryKind.Note, StorageProvider = NoteStorageProviders.IndexedDb };
+        new() { Id = id, Name = name, ParentId = parentId, Kind = NoteEntryKind.Note };
 
-    private FilesViewModel CreateSut() => new(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object);
+    private FilesViewModel CreateSut() => new(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object);
 
     private async Task<FilesViewModel> CreateLoadedSutAsync()
     {

@@ -1,3 +1,6 @@
+//#if (IncludeNotes)
+using blazwiz.Core.Sync.Interfaces;
+//#endif
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
@@ -19,6 +22,9 @@ public class CognitoAuthenticationServiceTests
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<IUserDisplayService> mockUserDisplay = new();
     private readonly Mock<ISystemClock> mockSystemClock = new();
+//#if (IncludeNotes)
+    private readonly Mock<IOfflineModeStore> mockOfflineMode = new();
+//#endif
     private readonly string idToken = CreateJwt("""{"email":"bob.hoskins@example.com","cognito:username":"5f2c1a7e"}""");
 
     public CognitoAuthenticationServiceTests()
@@ -29,10 +35,26 @@ public class CognitoAuthenticationServiceTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("cognitoClient", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(null!, mockLocalStorage.Object, mockUserDisplay.Object, mockSystemClock.Object)).ParamName);
-        Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, null!, mockUserDisplay.Object, mockSystemClock.Object)).ParamName);
-        Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, null!, mockSystemClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!)).ParamName);
+        Assert.Equal("cognitoClient", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(null!, mockLocalStorage.Object, mockUserDisplay.Object,
+//#if (IncludeNotes)
+            mockOfflineMode.Object,
+//#endif
+            mockSystemClock.Object)).ParamName);
+        Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, null!, mockUserDisplay.Object,
+//#if (IncludeNotes)
+            mockOfflineMode.Object,
+//#endif
+            mockSystemClock.Object)).ParamName);
+        Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, null!,
+//#if (IncludeNotes)
+            mockOfflineMode.Object,
+//#endif
+            mockSystemClock.Object)).ParamName);
+        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
+//#if (IncludeNotes)
+            mockOfflineMode.Object,
+//#endif
+            null!)).ParamName);
     }
 
     [Fact]
@@ -472,6 +494,31 @@ public class CognitoAuthenticationServiceTests
         return sut;
     }
 
+//#if (IncludeNotes)
+    [Fact]
+    public void GivenNullOfflineModeStore_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("offlineModeStore", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!, mockSystemClock.Object)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenExpiredSessionInOfflineMode_WhenGetCurrentUserAsync_ThenStoredSessionKeptWithoutRefreshing()
+    {
+        // Arrange
+        var session = new UserSession { Username = "bob", IdToken = idToken, RefreshToken = "refresh", ExpiresAt = Now.AddMinutes(-30) };
+        SetupStoredSession(session);
+        mockOfflineMode.Setup(x => x.GetAsync()).ReturnsAsync(true);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.GetCurrentUserAsync();
+
+        // Assert (the strict Cognito mock would throw if a refresh were attempted)
+        Assert.Same(session, result);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(It.IsAny<string>()), Times.Never);
+    }
+
+//#endif
     private void SetupStoredSession(UserSession? session)
     {
         mockLocalStorage
@@ -479,5 +526,9 @@ public class CognitoAuthenticationServiceTests
             .ReturnsAsync(session);
     }
 
-    private CognitoAuthenticationService CreateSut() => new(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, mockSystemClock.Object);
+    private CognitoAuthenticationService CreateSut() => new(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
+//#if (IncludeNotes)
+        mockOfflineMode.Object,
+//#endif
+        mockSystemClock.Object);
 }

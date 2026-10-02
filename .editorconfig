@@ -219,12 +219,27 @@ dotnet_diagnostic.SA1010.severity = none
 # SA1011: Closing square brackets should be spaced correctly
 dotnet_diagnostic.SA1011.severity = none
 
-# Files containing dotnet new template directives (//#if, //#endif). The template engine only
-# recognises the directives without a space after //, and they are removed when the template runs.
-[{blazwiz.Portal.Application/Extensions/ServiceCollectionExtensions.cs,blazwiz.Portal.Application/Services/NavigationMenuService.cs}]
+# Files containing dotnet new template conditional directives (see .template.config/template.json). The
+# template engine only recognises them without a space after the slashes, and removes them when it runs.
+[{blazwiz.Portal.Application/Extensions/ServiceCollectionExtensions.cs,blazwiz.Portal.Application/Services/NavigationMenuService.cs,blazwiz.Portal.Application/Services/CognitoAuthenticationService.cs,blazwiz.Portal.Application/ViewModels/MainLayoutViewModel.cs,blazwiz.Portal.Application/ViewModels/LoginViewModel.cs,blazwiz.Portal.Application/ViewModels/SettingsViewModel.cs}]
+
+# SA1004: Documentation line should begin with a space (conditional markers inside documentation)
+dotnet_diagnostic.SA1004.severity = none
 
 # SA1005: Single line comment should begin with a space
 dotnet_diagnostic.SA1005.severity = none
+
+# SA1114: Parameter list should follow declaration
+dotnet_diagnostic.SA1114.severity = none
+
+# SA1512: Single-line comments should not be followed by blank line
+dotnet_diagnostic.SA1512.severity = none
+
+# SA1513: Closing brace should be followed by blank line
+dotnet_diagnostic.SA1513.severity = none
+
+# SA1514: Element documentation header should be preceded by blank line
+dotnet_diagnostic.SA1514.severity = none
 
 # SA1515: Single-line comment should be preceded by blank line
 dotnet_diagnostic.SA1515.severity = none

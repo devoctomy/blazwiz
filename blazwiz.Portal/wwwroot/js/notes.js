@@ -1,87 +1,6 @@
-// Notes storage (IndexedDB) and editor helpers, called from IndexedDbNoteIndexStore, IndexedDbNoteContentStore,
-// NoteEditorInteropService and the NoteEditor page via JS interop.
+// Note editor helpers, called from NoteEditorInteropService and the NoteEditor page via JS interop. Notes are stored
+// as files by the sync engine in blazwiz.Core (see _content/blazwiz.Core/js/indexeddb.js).
 window.notesInterop = (function () {
-    const DB_NAME = 'blazwiz_notes';
-    const DB_VERSION = 1;
-    let dbPromise = null;
-
-    // Object stores: 'entries' is the file index (folders and note metadata, indexed by owner), 'content' holds the
-    // content of notes stored by the IndexedDB provider, and 'state' holds per user state such as the welcome note flag.
-    function openDb() {
-        if (!dbPromise) {
-            dbPromise = new Promise(function (resolve, reject) {
-                const request = indexedDB.open(DB_NAME, DB_VERSION);
-                request.onupgradeneeded = function () {
-                    const db = request.result;
-                    if (!db.objectStoreNames.contains('entries')) {
-                        db.createObjectStore('entries', { keyPath: 'id' }).createIndex('owner', 'owner', { unique: false });
-                    }
-                    if (!db.objectStoreNames.contains('content')) {
-                        db.createObjectStore('content', { keyPath: 'id' });
-                    }
-                    if (!db.objectStoreNames.contains('state')) {
-                        db.createObjectStore('state', { keyPath: 'owner' });
-                    }
-                };
-                request.onsuccess = function () {
-                    resolve(request.result);
-                };
-                request.onerror = function () {
-                    dbPromise = null;
-                    reject(request.error);
-                };
-            });
-        }
-
-        return dbPromise;
-    }
-
-    // Runs one operation in a transaction and resolves with its result once the transaction has committed.
-    async function run(storeName, mode, operation) {
-        const db = await openDb();
-        return new Promise(function (resolve, reject) {
-            const transaction = db.transaction(storeName, mode);
-            const request = operation(transaction.objectStore(storeName));
-            transaction.oncomplete = function () {
-                resolve(request && request.result !== undefined ? request.result : null);
-            };
-            transaction.onerror = function () {
-                reject(transaction.error);
-            };
-            transaction.onabort = function () {
-                reject(transaction.error);
-            };
-        });
-    }
-
-    const db = {
-        get: function (storeName, key) {
-            return run(storeName, 'readonly', function (store) {
-                return store.get(key);
-            });
-        },
-
-        getAllByOwner: function (storeName, owner) {
-            return run(storeName, 'readonly', function (store) {
-                return store.index('owner').getAll(owner);
-            });
-        },
-
-        put: function (storeName, value) {
-            return run(storeName, 'readwrite', function (store) {
-                store.put(value);
-            });
-        },
-
-        deleteMany: function (storeName, keys) {
-            return run(storeName, 'readwrite', function (store) {
-                keys.forEach(function (key) {
-                    store.delete(key);
-                });
-            });
-        }
-    };
-
     const shortcutHandlers = new Map();
 
     const editor = {
@@ -161,7 +80,7 @@ window.notesInterop = (function () {
         }
     };
 
-    return { db: db, editor: editor };
+    return { editor: editor };
 })();
 
 // Firefox only starts a drag when data is set in dragstart, which Blazor event handlers cannot do, so set it here

@@ -1,5 +1,9 @@
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Sync.Exceptions;
+using blazwiz.Core.Sync.Interfaces;
+using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
+using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Notes;
 using CommunityToolkit.Mvvm.Input;
@@ -9,7 +13,7 @@ namespace blazwiz.Portal.Application.ViewModels;
 
 /// <summary>
 /// ViewModel for the files page: a tree of the user's notes and folders, with dialogs to create, rename, move and
-/// delete them, and drag and drop to move them between folders.
+/// delete them, and drag and drop to move them between folders. The tree refreshes when a sync changes the notes.
 /// </summary>
 public partial class FilesViewModel : ViewModelBase
 {
@@ -32,6 +36,7 @@ public partial class FilesViewModel : ViewModelBase
     private readonly INavigationService navigationService;
     private readonly INoteNameService noteNameService;
     private readonly INoteTreeService noteTreeService;
+    private readonly ISyncService syncService;
     private readonly HashSet<string> expandedFolderIds = [];
 
     private IReadOnlyList<NoteEntry> entries = [];
@@ -48,6 +53,7 @@ public partial class FilesViewModel : ViewModelBase
     private string moveTargetId = TopLevelId;
     private string? draggedId;
     private string? dropTargetId;
+    private DateTimeOffset? lastSyncedAt;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FilesViewModel"/> class.
@@ -56,16 +62,22 @@ public partial class FilesViewModel : ViewModelBase
     /// <param name="navigationService">The navigation service.</param>
     /// <param name="noteNameService">The note name service.</param>
     /// <param name="noteTreeService">The note tree service.</param>
+    /// <param name="syncService">The sync service, to refresh when a sync changes the notes.</param>
     public FilesViewModel(
         INoteService noteService,
         INavigationService navigationService,
         INoteNameService noteNameService,
-        INoteTreeService noteTreeService)
+        INoteTreeService noteTreeService,
+        ISyncService syncService)
     {
         this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         this.noteNameService = noteNameService ?? throw new ArgumentNullException(nameof(noteNameService));
         this.noteTreeService = noteTreeService ?? throw new ArgumentNullException(nameof(noteTreeService));
+        this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+        lastSyncedAt = syncService.Status.LastSyncedAt;
+        this.syncService.FilesChanged += OnFilesChanged;
+        this.syncService.StatusChanged += OnSyncStatusChanged;
     }
 
     /// <summary>
@@ -415,7 +427,7 @@ public partial class FilesViewModel : ViewModelBase
 
             await ReloadAsync();
         }
-        catch (NotesException ex)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
         {
             DialogError = ex.Message;
         }
@@ -490,6 +502,18 @@ public partial class FilesViewModel : ViewModelBase
         ErrorMessage = null;
     }
 
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            syncService.FilesChanged -= OnFilesChanged;
+            syncService.StatusChanged -= OnSyncStatusChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+
     private bool CanDropOn(string targetId, string? entryId = null)
     {
         entryId ??= DraggedId;
@@ -556,6 +580,39 @@ public partial class FilesViewModel : ViewModelBase
         VisibleItems = noteTreeService.BuildVisibleItems(Entries, expandedFolderIds);
     }
 
+    private async void OnFilesChanged(object? sender, SyncFilesChangedEventArgs e)
+    {
+        if (e.Profile == NoteService.ProfileName && !IsBusy)
+        {
+            await ReloadSafelyAsync();
+        }
+    }
+
+    private async void OnSyncStatusChanged(object? sender, SyncStatus status)
+    {
+        // A finished sync may make it time to create the welcome note, or show notes from another device.
+        if (status.LastSyncedAt != lastSyncedAt)
+        {
+            lastSyncedAt = status.LastSyncedAt;
+            if (!IsBusy)
+            {
+                await ReloadSafelyAsync();
+            }
+        }
+    }
+
+    private async Task ReloadSafelyAsync()
+    {
+        try
+        {
+            await RunAsync(ReloadAsync);
+        }
+        catch (Exception)
+        {
+            // A background refresh must not crash the page; the next change or visit loads the notes again.
+        }
+    }
+
     private async Task RunAsync(Func<Task> action)
     {
         ErrorMessage = null;
@@ -563,7 +620,7 @@ public partial class FilesViewModel : ViewModelBase
         {
             await action();
         }
-        catch (NotesException ex)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
         {
             ErrorMessage = ex.Message;
         }
