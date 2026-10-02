@@ -91,6 +91,19 @@ else
             </header>
 
             <main class="app-content">
+@*#if (IncludeNotes)*@
+                @if (ViewModel.NeedsFolderAccess)
+                {
+                    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-3" role="alert" id="folder-access-banner">
+                        <i class="bi bi-folder-x fs-5"></i>
+                        <span class="flex-grow-1">Your notes are kept in the folder <strong>@(ViewModel.FolderName ?? "you chose")</strong>. Allow access to it again to use them and sync.</span>
+                        <button type="button" class="btn btn-warning btn-sm" id="folder-reconnect-button"
+                                @onclick="() => ViewModel.ReconnectFolderCommand.ExecuteAsync(null)">
+                            <i class="bi bi-folder-check me-1"></i>Reconnect folder
+                        </button>
+                    </div>
+                }
+@*#endif*@
                 @Body
             </main>
         </div>

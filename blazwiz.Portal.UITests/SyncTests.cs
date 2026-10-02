@@ -197,7 +197,132 @@ public class SyncTests : TestBase
         Assert.AreEqual(0, (await ListOpfsFilesAsync()).Count);
     }
 
+    [TestMethod]
+    public async Task GivenPickedFolder_WhenStorageSwitchedToItAndAccessLapses_ThenNotesLiveThereAndReconnectRestoresThem()
+    {
+        await StubFolderPickerAsync();
+        await LoginAsync();
+        await Page.Locator("#nav-files").ClickAsync();
+        await Expect(Row("Welcome.md")).ToBeVisibleAsync();
+        await Page.Locator("#new-note-button").ClickAsync();
+        await Page.Locator("#dialog-name").FillAsync("In a folder");
+        await Page.Keyboard.PressAsync("Enter");
+        await Page.Locator("#note-editor").FillAsync("visible on disk");
+        await Page.Locator("#save-note-button").ClickAsync();
+        await Expect(Page.Locator("#editor-status")).ToContainTextAsync("Saved at");
+
+        // Picking the folder comes first, then the usual confirmation naming it.
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#storage-option-folder").ClickAsync();
+        await Expect(Page.Locator("#storage-dialog-summary")).ToHaveTextAsync(new Regex(@"^\d+ files will be moved to Folder on this computer \(picked-folder\) on this device\.$"));
+        await Page.Locator("#storage-confirm").ClickAsync();
+        await Expect(Page.Locator("#storage-option-folder")).ToHaveClassAsync(new Regex("active"));
+        await Expect(Page.Locator("#storage-folder-name")).ToHaveTextAsync("Folder: picked-folder");
+        await Expect(Page.Locator("#settings-pending")).ToHaveTextAsync("2");
+        await ScreenshotAsync("MovedToFolder");
+        var inFolder = await ListPickedFolderAsync();
+        CollectionAssert.Contains(inFolder, "notes/In a folder.md");
+        CollectionAssert.Contains(inFolder, "notes/Welcome.md");
+
+        // The browser forgets the permission: the app asks for it back before syncing.
+        await Page.EvaluateAsync("() => localStorage.setItem('test-folder-revoked', '1')");
+        await Page.ReloadAsync();
+        await Expect(Page.Locator("#folder-access-banner")).ToContainTextAsync("picked-folder");
+        await ScreenshotAsync("ReconnectBanner");
+        await Page.Locator("#folder-reconnect-button").ClickAsync();
+        await Expect(Page.Locator("#folder-access-banner")).ToHaveCountAsync(0);
+        await Page.Locator("#nav-files").ClickAsync();
+        await Row("In a folder.md").Locator(".file-name").ClickAsync();
+        await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("visible on disk");
+
+        // Moving back takes the notes out of the folder.
+        await Page.Locator("#close-note-button").ClickAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#storage-option-indexeddb").ClickAsync();
+        await Page.Locator("#storage-confirm").ClickAsync();
+        await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
+        Assert.AreEqual(0, (await ListPickedFolderAsync()).Count);
+    }
+
+    [TestMethod]
+    public async Task GivenPickedFolderAlreadyHasNotes_WhenMovingThere_ThenRefusedAndTheirFilesKept()
+    {
+        await StubFolderPickerAsync();
+        await LoginAsync();
+        await Page.EvaluateAsync(@"async () => {
+            const folder = await (await navigator.storage.getDirectory()).getDirectoryHandle('picked-folder', { create: true });
+            const notes = await folder.getDirectoryHandle('notes', { create: true });
+            const writable = await (await notes.getFileHandle('Mine.md', { create: true })).createWritable();
+            await writable.write('my own note');
+            await writable.close();
+        }");
+
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#storage-option-folder").ClickAsync();
+        await Page.Locator("#storage-confirm").ClickAsync();
+
+        await Expect(Page.Locator("#storage-error")).ToContainTextAsync("The folder already has notes files in it");
+        await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
+        CollectionAssert.AreEqual(new[] { "notes/Mine.md" }, await ListPickedFolderAsync());
+    }
+
+    [TestMethod]
+    public async Task GivenTwoTabs_WhenOneMovesTheFiles_ThenOnlyTheOtherReloads()
+    {
+        await LoginAsync();
+        var other = await Context.NewPageAsync();
+        await other.GotoAsync(ServerUrl);
+        await Expect(other.Locator("#dashboard-greeting")).ToBeVisibleAsync();
+        await other.EvaluateAsync("() => window.notReloaded = true");
+        await Page.EvaluateAsync("() => window.notReloaded = true");
+
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#storage-option-opfs").ClickAsync();
+        await Page.Locator("#storage-confirm").ClickAsync();
+        await Expect(Page.Locator("#storage-option-opfs")).ToHaveClassAsync(new Regex("active"));
+
+        await other.WaitForFunctionAsync("() => window.notReloaded === undefined");
+        await Expect(other.Locator("#dashboard-greeting")).ToBeVisibleAsync();
+        Assert.IsTrue(await Page.EvaluateAsync<bool>("() => window.notReloaded === true"));
+    }
+
     private ILocator Row(string name) => Page.Locator($"#file-tree .file-row[data-name='{name}']");
+
+    // Playwright cannot drive the real folder picker, so it hands back a real directory handle (an OPFS folder called
+    // 'picked-folder'). Permission is granted unless the test sets 'test-folder-revoked' in localStorage, which asking
+    // for permission again clears.
+    private Task StubFolderPickerAsync()
+    {
+        return Page.AddInitScriptAsync(@"
+            window.showDirectoryPicker = async () =>
+                (await navigator.storage.getDirectory()).getDirectoryHandle('picked-folder', { create: true });
+            FileSystemHandle.prototype.queryPermission = async () =>
+                localStorage.getItem('test-folder-revoked') ? 'prompt' : 'granted';
+            FileSystemHandle.prototype.requestPermission = async () => {
+                localStorage.removeItem('test-folder-revoked');
+                return 'granted';
+            };");
+    }
+
+    private async Task<List<string>> ListPickedFolderAsync()
+    {
+        var files = await Page.EvaluateAsync<string[]>(@"async () => {
+            const found = [];
+            async function walk(directory, prefix) {
+                for await (const [name, handle] of directory.entries()) {
+                    if (handle.kind === 'directory') {
+                        await walk(handle, prefix + name + '/');
+                    } else {
+                        found.push(prefix + name);
+                    }
+                }
+            }
+
+            await walk(await (await navigator.storage.getDirectory()).getDirectoryHandle('picked-folder', { create: true }), '');
+            return found;
+        }");
+        return [.. files];
+    }
 
     // Every file under the notes OPFS root, as "<key>" relative to the user's directory.
     private async Task<List<string>> ListOpfsFilesAsync()

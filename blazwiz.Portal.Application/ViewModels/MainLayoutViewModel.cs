@@ -33,6 +33,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     private readonly ISyncStatusPresenter syncStatusPresenter;
     private readonly ISyncStorageMigrationService storageMigrationService;
     private readonly ISyncStorageChannel storageChannel;
+    private readonly ISyncFolderService folderService;
 //#endif
     private readonly AppSettings appSettings;
 
@@ -43,6 +44,8 @@ public partial class MainLayoutViewModel : ViewModelBase
 //#if (IncludeNotes)
     private bool isSyncPopoverOpen;
     private bool isStorageMigrating;
+    private bool needsFolderAccess;
+    private string? folderName;
 //#endif
 
     /// <summary>
@@ -61,6 +64,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// <param name="syncStatusPresenter">Describes the sync status.</param>
     /// <param name="storageMigrationService">Finishes or undoes a storage move cut short.</param>
     /// <param name="storageChannel">Hears about storage moves in other tabs.</param>
+    /// <param name="folderService">Checks and restores access to the folder the files are kept in.</param>
     ///#endif
     /// <param name="appSettings">The application settings.</param>
     public MainLayoutViewModel(
@@ -77,6 +81,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         ISyncStatusPresenter syncStatusPresenter,
         ISyncStorageMigrationService storageMigrationService,
         ISyncStorageChannel storageChannel,
+        ISyncFolderService folderService,
 //#endif
         AppSettings appSettings)
     {
@@ -93,6 +98,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         this.syncStatusPresenter = syncStatusPresenter ?? throw new ArgumentNullException(nameof(syncStatusPresenter));
         this.storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
         this.storageChannel = storageChannel ?? throw new ArgumentNullException(nameof(storageChannel));
+        this.folderService = folderService ?? throw new ArgumentNullException(nameof(folderService));
 //#endif
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
 
@@ -193,6 +199,25 @@ public partial class MainLayoutViewModel : ViewModelBase
     {
         get => isStorageMigrating;
         private set => SetProperty(ref isStorageMigrating, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the files are kept in a folder the browser needs permission to again, so sync
+    /// waits until the user reconnects it.
+    /// </summary>
+    public bool NeedsFolderAccess
+    {
+        get => needsFolderAccess;
+        private set => SetProperty(ref needsFolderAccess, value);
+    }
+
+    /// <summary>
+    /// Gets the name of the folder to reconnect, when known.
+    /// </summary>
+    public string? FolderName
+    {
+        get => folderName;
+        private set => SetProperty(ref folderName, value);
     }
 
     /// <summary>
@@ -317,6 +342,20 @@ public partial class MainLayoutViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Asks the browser for permission to the folder the files are kept in again, then reloads so the app and sync
+    /// start against it.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task ReconnectFolderAsync()
+    {
+        if (await folderService.ReconnectAsync())
+        {
+            navigationService.Reload();
+        }
+    }
+
 //#endif
     /// <summary>
     /// Signs the user out and returns to the login page.
@@ -367,6 +406,21 @@ public partial class MainLayoutViewModel : ViewModelBase
         catch (Exception)
         {
             // The files stay where they are; sync still runs against the storage in use.
+        }
+
+        try
+        {
+            if (await folderService.NeedsReconnectAsync())
+            {
+                // The browser only asks for permission after a click: wait for the user to reconnect the folder.
+                FolderName = (await folderService.GetStatusAsync())?.Name;
+                NeedsFolderAccess = true;
+                return;
+            }
+        }
+        catch (Exception)
+        {
+            // Sync reports the problem itself if the folder cannot be used.
         }
 
         try

@@ -1,9 +1,9 @@
-namespace blazwiz.Core.Sync.Opfs;
+namespace blazwiz.Core.Sync.FileTree;
 
 /// <summary>
-/// A file (or folder marker) listed from OPFS.
+/// A file (or folder marker) listed from a directory tree (OPFS or a picked folder).
 /// </summary>
-public class OpfsEntry
+public class FileTreeEntry
 {
     /// <summary>
     /// Gets or sets the key. Folder markers end with <c>/</c>.

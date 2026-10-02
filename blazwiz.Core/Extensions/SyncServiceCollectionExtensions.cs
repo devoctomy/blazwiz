@@ -1,6 +1,7 @@
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Connectivity;
+using blazwiz.Core.Sync.Folder;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Opfs;
@@ -55,6 +56,8 @@ public static class SyncServiceCollectionExtensions
         services.TryAddScoped<ISyncScheduler, SyncScheduler>();
         services.TryAddScoped<IConnectivityService, ConnectivityService>();
         services.TryAddScoped<IOpfsClient, OpfsClient>();
+        services.TryAddScoped<IFolderAccessClient, FolderAccessClient>();
+        services.TryAddScoped<ISyncFolderService, SyncFolderService>();
         services.TryAddScoped<ISyncStorageChannel, SyncStorageChannel>();
         services.TryAddScoped<ISyncStorageStateStore>(sp => new IndexedDbSyncStorageStateStore(
             sp.GetRequiredService<IIndexedDbClient>(),

@@ -59,8 +59,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INavigationMenuService, NavigationMenuService>();
 
 //#if (IncludeNotes)
-        // Sync: notes are plain markdown files kept in IndexedDB or OPFS (the user picks, per device, in Settings) and
-        // synced with the user's prefix in the data bucket (docs/wip/s3-sync.md, docs/wip/opfs-storage.md). The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
+        // Sync: notes are plain markdown files kept in IndexedDB, OPFS or a folder the user picks (chosen per device in
+        // Settings) and synced with the user's prefix in the data bucket (docs/wip/s3-sync.md, docs/wip/opfs-storage.md).
+        // The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
         services.AddSingleton<IAmazonCognitoIdentity>(sp => new AmazonCognitoIdentityClient(
             new AnonymousAWSCredentials(),
             new AmazonCognitoIdentityConfig
@@ -84,6 +85,7 @@ public static class ServiceCollectionExtensions
                 .UseFileStores(stores => stores
                     .AddIndexedDb(database: IndexedDbNotesStateStore.Database, store: "files")
                     .AddOpfs(root: "blazwiz_notes")
+                    .AddLocalFolder()
                     .UseDefault(SyncStorageKind.IndexedDb))
                 .UseRemote("notes/**/*.md", includeEmptyFolders: true)));
 

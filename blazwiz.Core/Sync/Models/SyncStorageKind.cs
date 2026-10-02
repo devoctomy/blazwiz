@@ -14,4 +14,9 @@ public enum SyncStorageKind
     /// The origin private file system (OPFS).
     /// </summary>
     Opfs,
+
+    /// <summary>
+    /// A folder the user picks on their computer (File System Access API; Chromium desktop only).
+    /// </summary>
+    LocalFolder,
 }

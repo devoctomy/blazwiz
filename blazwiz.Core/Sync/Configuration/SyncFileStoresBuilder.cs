@@ -1,3 +1,4 @@
+using blazwiz.Core.Sync.Folder;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
@@ -57,6 +58,28 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
             sp.GetRequiredService<ISyncUserContext>(),
             sp.GetRequiredService<ISystemClock>(),
             root,
+            description));
+    }
+
+    /// <summary>
+    /// Adds a folder the user picks on their computer as a storage (File System Access API; Chromium desktop only).
+    /// Files are kept at the same paths as in S3, and only those matching the profile's remote pattern are seen.
+    /// </summary>
+    /// <param name="metadataDatabase">The IndexedDB database for the files' modified times.</param>
+    /// <param name="metadataStore">The IndexedDB object store for the files' modified times, or null for <c>&lt;profile&gt;_folder</c>.</param>
+    /// <returns>The builder.</returns>
+    public SyncFileStoresBuilder AddLocalFolder(string metadataDatabase = SyncDefaults.IndexDatabase, string? metadataStore = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(metadataDatabase);
+
+        var name = Options.Name;
+        var description = FolderSyncFileStore.DescribeMetadataStore(metadataDatabase, metadataStore ?? name + SyncDefaults.FolderMetadataStoreSuffix);
+        return Add(SyncStorageKind.LocalFolder, sp => new FolderSyncFileStore(
+            sp.GetRequiredService<IFolderAccessClient>(),
+            sp.GetRequiredService<IIndexedDbClient>(),
+            sp.GetRequiredService<ISyncUserContext>(),
+            sp.GetRequiredService<ISystemClock>(),
+            sp.GetRequiredKeyedService<ISyncPathMatcher>(name),
             description));
     }
 

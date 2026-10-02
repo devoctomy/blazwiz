@@ -102,9 +102,21 @@
                         disabled="@(ViewModel.IsMigrating || !ViewModel.IsOpfsSupported)"
                         title="@(ViewModel.IsOpfsSupported ? null : "This browser cannot keep files in OPFS")"
                         @onclick="() => ViewModel.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.Opfs)">
-                    <i class="bi bi-folder2 me-1"></i>@ViewModel.GetStorageName(SyncStorageKind.Opfs)
+                    <i class="bi bi-hdd me-1"></i>@ViewModel.GetStorageName(SyncStorageKind.Opfs)
+                </button>
+                <button type="button" id="storage-option-folder"
+                        class="btn btn-outline-primary @(ViewModel.StorageKind == SyncStorageKind.LocalFolder ? "active" : null)"
+                        aria-pressed="@(ViewModel.StorageKind == SyncStorageKind.LocalFolder ? "true" : "false")"
+                        disabled="@(ViewModel.IsMigrating || !ViewModel.IsFolderSupported)"
+                        title="@(ViewModel.IsFolderSupported ? "Pick a folder you can open outside the app" : "Only Chrome and Edge on desktop can keep files in a folder")"
+                        @onclick="() => ViewModel.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.LocalFolder)">
+                    <i class="bi bi-folder2-open me-1"></i>@ViewModel.GetStorageName(SyncStorageKind.LocalFolder)
                 </button>
             </div>
+            @if (ViewModel.StorageKind == SyncStorageKind.LocalFolder && !string.IsNullOrEmpty(ViewModel.FolderName))
+            {
+                <div class="form-text" id="storage-folder-name"><i class="bi bi-folder2-open me-1"></i>Folder: @ViewModel.FolderName</div>
+            }
             @if (!string.IsNullOrEmpty(ViewModel.StorageError))
             {
                 <div class="text-danger mt-2" id="storage-error">@ViewModel.StorageError</div>
@@ -125,7 +137,7 @@
             }
             else
             {
-                <p id="storage-dialog-summary">@(ViewModel.PendingFileCount == 1 ? "1 file" : $"{ViewModel.PendingFileCount} files") will be moved to <strong>@ViewModel.GetStorageName(ViewModel.PendingStorageKind!.Value)</strong> on this device.</p>
+                <p id="storage-dialog-summary">@(ViewModel.PendingFileCount == 1 ? "1 file" : $"{ViewModel.PendingFileCount} files") will be moved to <strong>@ViewModel.PendingStorageName</strong> on this device.</p>
                 <p class="mb-0">Sync pauses while they move. Other tabs of the app reload when it finishes. Nothing is uploaded again.</p>
             }
         </ChildContent>

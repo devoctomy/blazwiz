@@ -42,6 +42,12 @@ public static class SyncDefaults
     public const string OpfsMetadataStoreSuffix = "_opfs";
 
     /// <summary>
+    /// Added to a profile name for the IndexedDB object store (in <see cref="IndexDatabase"/>) holding its local folder
+    /// files' modified times, unless configured otherwise.
+    /// </summary>
+    public const string FolderMetadataStoreSuffix = "_folder";
+
+    /// <summary>
     /// The BroadcastChannel the app's tabs use to tell each other about storage moves.
     /// </summary>
     public const string StorageChannelName = "blazwiz-sync-storage";

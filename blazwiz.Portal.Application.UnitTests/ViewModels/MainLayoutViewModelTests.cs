@@ -27,6 +27,7 @@ public class MainLayoutViewModelTests
     private readonly Mock<ISyncScheduler> mockScheduler = new();
     private readonly Mock<ISyncStorageMigrationService> mockStorageMigration = new();
     private readonly Mock<ISyncStorageChannel> mockStorageChannel = new();
+    private readonly Mock<ISyncFolderService> mockFolder = new();
     private SyncStatus syncStatus = new();
     private ConnectivityStatus connectivity = new() { IsOnline = false, Reason = OfflineReason.NoCredentials, LastCheckedAt = DateTimeOffset.UnixEpoch };
 //#endif
@@ -51,37 +52,37 @@ public class MainLayoutViewModelTests
     {
         Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(null!, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object,
 //#if (IncludeNotes)
-            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object,
+            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object,
 //#endif
             appSettings)).ParamName);
         Assert.Equal("themeService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, null!, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object,
 //#if (IncludeNotes)
-            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object,
+            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object,
 //#endif
             appSettings)).ParamName);
         Assert.Equal("userSettingsService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, null!, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object,
 //#if (IncludeNotes)
-            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object,
+            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object,
 //#endif
             appSettings)).ParamName);
         Assert.Equal("navigationMenuService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, null!, mockNavigation.Object, mockUserDisplay.Object,
 //#if (IncludeNotes)
-            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object,
+            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object,
 //#endif
             appSettings)).ParamName);
         Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, null!, mockUserDisplay.Object,
 //#if (IncludeNotes)
-            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object,
+            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object,
 //#endif
             appSettings)).ParamName);
         Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, null!,
 //#if (IncludeNotes)
-            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object,
+            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object,
 //#endif
             appSettings)).ParamName);
         Assert.Equal("appSettings", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object,
 //#if (IncludeNotes)
-            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object,
+            mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(), mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object,
 //#endif
             null!)).ParamName);
     }
@@ -268,12 +269,13 @@ public class MainLayoutViewModelTests
     public void GivenNullSyncDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var presenter = new SyncStatusPresenter();
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, null!, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorageMigration.Object, mockStorageChannel.Object, appSettings)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, null!, mockScheduler.Object, presenter, mockStorageMigration.Object, mockStorageChannel.Object, appSettings)).ParamName);
-        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, null!, presenter, mockStorageMigration.Object, mockStorageChannel.Object, appSettings)).ParamName);
-        Assert.Equal("syncStatusPresenter", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, mockStorageMigration.Object, mockStorageChannel.Object, appSettings)).ParamName);
-        Assert.Equal("storageMigrationService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, null!, mockStorageChannel.Object, appSettings)).ParamName);
-        Assert.Equal("storageChannel", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorageMigration.Object, null!, appSettings)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, null!, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object, appSettings)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, null!, mockScheduler.Object, presenter, mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object, appSettings)).ParamName);
+        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, null!, presenter, mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object, appSettings)).ParamName);
+        Assert.Equal("syncStatusPresenter", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, mockStorageMigration.Object, mockStorageChannel.Object, mockFolder.Object, appSettings)).ParamName);
+        Assert.Equal("storageMigrationService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, null!, mockStorageChannel.Object, mockFolder.Object, appSettings)).ParamName);
+        Assert.Equal("folderService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorageMigration.Object, mockStorageChannel.Object, null!, appSettings)).ParamName);
+        Assert.Equal("storageChannel", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorageMigration.Object, null!, mockFolder.Object, appSettings)).ParamName);
     }
 
     [Fact]
@@ -291,6 +293,54 @@ public class MainLayoutViewModelTests
 
         // Assert
         Assert.Equal(["channel", "recover", "sync"], calls);
+    }
+
+    [Fact]
+    public async Task GivenFolderNeedsPermission_WhenInitialized_ThenBannerShownAndSyncWaits()
+    {
+        // Arrange
+        mockFolder.Setup(x => x.NeedsReconnectAsync()).ReturnsAsync(true);
+        mockFolder.Setup(x => x.GetStatusAsync()).ReturnsAsync(new SyncFolderStatus { Name = "Notes", Permission = "prompt" });
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.True(sut.NeedsFolderAccess);
+        Assert.Equal("Notes", sut.FolderName);
+        mockScheduler.Verify(x => x.StartAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenFolderCheckFails_WhenInitialized_ThenSyncStillStarts()
+    {
+        // Arrange
+        mockFolder.Setup(x => x.NeedsReconnectAsync()).ThrowsAsync(new InvalidOperationException("boom"));
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.False(sut.NeedsFolderAccess);
+        mockScheduler.Verify(x => x.StartAsync(), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(true, 1)]
+    [InlineData(false, 0)]
+    public async Task GivenUserAnswers_WhenReconnectFolder_ThenReloadsOnlyIfAllowed(bool granted, int reloads)
+    {
+        // Arrange
+        mockFolder.Setup(x => x.ReconnectAsync()).ReturnsAsync(granted);
+        var sut = CreateSut();
+
+        // Act
+        await sut.ReconnectFolderCommand.ExecuteAsync(null);
+
+        // Assert
+        mockNavigation.Verify(x => x.Reload(), Times.Exactly(reloads));
     }
 
     [Fact]
@@ -508,6 +558,7 @@ public class MainLayoutViewModelTests
         new SyncStatusPresenter(),
         mockStorageMigration.Object,
         mockStorageChannel.Object,
+        mockFolder.Object,
 //#endif
         appSettings);
 }

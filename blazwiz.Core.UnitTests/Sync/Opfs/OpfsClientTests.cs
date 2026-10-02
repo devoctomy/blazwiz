@@ -1,3 +1,4 @@
+using blazwiz.Core.Sync.FileTree;
 using blazwiz.Core.Sync.Opfs;
 using Microsoft.JSInterop;
 using Microsoft.JSInterop.Infrastructure;
@@ -37,8 +38,8 @@ public class OpfsClientTests
     public async Task GivenFiles_WhenListAsync_ThenCallsModuleList()
     {
         // Arrange
-        var entries = new List<OpfsEntry> { new() { Key = "notes/a.md", Size = 3, LastModified = 1 } };
-        mockModule.Setup(x => x.InvokeAsync<List<OpfsEntry>>("list", It.Is<object?[]>(a => (string?)a[0] == "root" && (string?)a[1] == "bob")))
+        var entries = new List<FileTreeEntry> { new() { Key = "notes/a.md", Size = 3, LastModified = 1 } };
+        mockModule.Setup(x => x.InvokeAsync<List<FileTreeEntry>>("list", It.Is<object?[]>(a => (string?)a[0] == "root" && (string?)a[1] == "bob")))
             .ReturnsAsync(entries);
         var sut = new OpfsClient(mockJs.Object);
 
@@ -50,8 +51,8 @@ public class OpfsClientTests
     public async Task GivenFile_WhenReadAsync_ThenCallsModuleRead()
     {
         // Arrange
-        var file = new OpfsFile { Content = [1], LastModified = 1 };
-        mockModule.Setup(x => x.InvokeAsync<OpfsFile?>("read", It.Is<object?[]>(a => (string?)a[0] == "root" && (string?)a[1] == "bob" && (string?)a[2] == "notes/a.md")))
+        var file = new FileTreeFile { Content = [1], LastModified = 1 };
+        mockModule.Setup(x => x.InvokeAsync<FileTreeFile?>("read", It.Is<object?[]>(a => (string?)a[0] == "root" && (string?)a[1] == "bob" && (string?)a[2] == "notes/a.md")))
             .ReturnsAsync(file);
         var sut = new OpfsClient(mockJs.Object);
 
