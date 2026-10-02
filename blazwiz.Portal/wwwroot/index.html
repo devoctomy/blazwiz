@@ -41,6 +41,11 @@
         <div class="loading-progress-text"></div>
     </div>
 
+    <div id="app-update-banner" role="status" hidden>
+        <span>A new version of the app is available.</span>
+        <button type="button" class="btn btn-primary btn-sm app-update-button">Update</button>
+    </div>
+
     <div id="blazor-error-ui">
         An unhandled error has occurred.
         <a href="." class="reload">Reload</a>
@@ -53,7 +58,7 @@
     <script src="js/notes.js"></script>
     <!--#endif-->
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
-    <script>navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });</script>
+    <script src="js/app-update.js"></script>
 </body>
 
 </html>

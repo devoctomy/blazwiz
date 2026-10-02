@@ -229,11 +229,30 @@ public class SyncTests : TestBase
         await Page.ReloadAsync();
         await Expect(Page.Locator("#folder-access-banner")).ToContainTextAsync("picked-folder");
         await ScreenshotAsync("ReconnectBanner");
+
+        // Reconnecting must not reload: some browsers (Chrome on Android) only keep the grant for the current page.
+        await Page.EvaluateAsync("() => window.notReloaded = true");
         await Page.Locator("#folder-reconnect-button").ClickAsync();
         await Expect(Page.Locator("#folder-access-banner")).ToHaveCountAsync(0);
+        Assert.IsTrue(await Page.EvaluateAsync<bool>("() => window.notReloaded === true"));
         await Page.Locator("#nav-files").ClickAsync();
         await Row("In a folder.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("visible on disk");
+
+        // Losing access while in the background (as phones do) shows the banner as soon as the app is back.
+        await Page.EvaluateAsync("() => { localStorage.setItem('test-folder-revoked', '1'); document.dispatchEvent(new Event('visibilitychange')); }");
+        await Expect(Page.Locator("#folder-access-banner")).ToBeVisibleAsync();
+
+        // Using the notes meanwhile shows why they cannot be read, not Blazor's "unhandled error" bar.
+        await Page.Locator("#close-note-button").ClickAsync();
+        await Expect(Page.Locator("body")).ToContainTextAsync("Allow access to the folder 'picked-folder' to use your files.");
+        await Expect(Page.Locator("#blazor-error-ui")).ToBeHiddenAsync();
+        await Page.Locator("#folder-reconnect-button").ClickAsync();
+        await Expect(Page.Locator("#folder-access-banner")).ToHaveCountAsync(0);
+        await Row("In a folder.md").Locator(".file-name").ClickAsync();
+        await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("visible on disk");
+        await Expect(Page.Locator("#blazor-error-ui")).ToBeHiddenAsync();
+        Assert.IsTrue(await Page.EvaluateAsync<bool>("() => window.notReloaded === true"));
 
         // Moving back takes the notes out of the folder.
         await Page.Locator("#close-note-button").ClickAsync();

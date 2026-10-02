@@ -6,7 +6,8 @@ namespace blazwiz.Core.Sync.Models;
 /// <param name="profile">The profile being moved.</param>
 /// <param name="done">The files copied so far.</param>
 /// <param name="total">The files to copy.</param>
-public class SyncStorageMigrationProgress(string profile, int done, int total)
+/// <param name="isSyncing">True while the profile is synced before the copy starts.</param>
+public class SyncStorageMigrationProgress(string profile, int done, int total, bool isSyncing = false)
 {
     /// <summary>
     /// Gets the profile being moved.
@@ -22,4 +23,9 @@ public class SyncStorageMigrationProgress(string profile, int done, int total)
     /// Gets the files to copy.
     /// </summary>
     public int Total { get; } = total;
+
+    /// <summary>
+    /// Gets a value indicating whether the profile is being synced before the copy starts.
+    /// </summary>
+    public bool IsSyncing { get; } = isSyncing;
 }

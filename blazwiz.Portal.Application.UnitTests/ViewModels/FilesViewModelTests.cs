@@ -1,3 +1,4 @@
+using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
@@ -81,6 +82,28 @@ public class FilesViewModelTests
         Assert.Null(sut.SelectedFolderId);
         Assert.Equal(FilesViewModel.TopLevelName, sut.SelectedFolderName);
     }
+
+    [Theory]
+    [MemberData(nameof(StorageExceptions))]
+    public async Task GivenFolderUnreachableOrFilesMoving_WhenInitialized_ThenShowsItsMessageWithoutCrashing(Exception exception)
+    {
+        // Arrange
+        mockNotes.Setup(x => x.GetEntriesAsync()).ThrowsAsync(exception);
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.Equal(exception.Message, sut.ErrorMessage);
+        Assert.False(sut.IsLoading);
+    }
+
+    public static TheoryData<Exception> StorageExceptions() => new()
+    {
+        new SyncStorageAccessException("Allow access to the folder 'Notes' to use your files."),
+        new SyncStorageMigrationException("Your files are being moved to another storage. Try again in a moment."),
+    };
 
     [Fact]
     public async Task GivenStorageUnavailable_WhenInitialized_ThenShowsError()

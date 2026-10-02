@@ -157,9 +157,14 @@ This is the option for files the user can see and open in Explorer or Finder; OP
   (`SyncStorageMigrationService.FolderNotEmptyMessage`), rather than clearing it. Moving out of the folder deletes the
   moved notes from it, as any move does.
 - **Permission.** Every call checks `queryPermission` first and throws `SyncStorageAccessException` if access is not
-  granted. On start, if the folder is in use without permission, `MainLayoutViewModel` shows a "Reconnect folder"
-  banner and holds sync back. The button calls `requestPermission` (needs the click), then reloads. An installed
-  Chromium PWA can keep "Allow on every visit", so the banner should rarely appear there.
+  granted. On start, and whenever the app comes back to the foreground (phones can take the permission away while it
+  is in the background), `MainLayoutViewModel` checks the folder. If it is in use without permission, it shows a
+  "Reconnect folder" banner and holds sync back. The button calls `requestPermission` (needs the click), checks the
+  grant really stuck, then shows the page content again (keyed on `ContentVersion`) and starts sync. It does **not**
+  reload: Chrome on Android appears to keep the grant for the current page only. An installed desktop Chromium PWA
+  can keep "Allow on every visit", so the banner should rarely appear there; on Android expect it after backgrounding.
+- **Moves sync first.** When online, each profile is synced (under its lock) before it is copied, so moving straight
+  after the first sign in moves the downloaded files, not an empty store.
 - **Edits made outside the app.** Beside each file it writes, the store records the modified time to report and the
   file system's time at that moment (`FolderFileRecord`). If the file system's time later differs, the file was
   changed outside the app, and that time is reported instead. Such edits are found by the verify pass after sign in

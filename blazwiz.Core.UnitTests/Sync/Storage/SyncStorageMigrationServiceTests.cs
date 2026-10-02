@@ -1,4 +1,5 @@
 using blazwiz.Core.Sync.Configuration;
+using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
@@ -21,6 +22,8 @@ public class SyncStorageMigrationServiceTests
     private readonly Mock<ISyncScheduler> mockScheduler = new();
     private readonly Mock<ISyncLockService> mockLock = new();
     private readonly Mock<ISyncStorageChannel> mockChannel = new();
+    private readonly Mock<ISyncService> mockSync = new();
+    private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly FakeStateStore stateStore = new();
     private readonly SyncOptions options = new();
     private readonly List<string> calls = [];
@@ -33,6 +36,7 @@ public class SyncStorageMigrationServiceTests
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
         mockClock.SetupGet(x => x.UtcNow).Returns(DateTimeOffset.UnixEpoch);
         mockScheduler.SetupGet(x => x.IsStarted).Returns(true);
+        mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ConnectivityStatus { IsOnline = false });
         mockScheduler.Setup(x => x.StopAsync()).Callback(() => calls.Add("stop")).Returns(Task.CompletedTask);
         mockScheduler.Setup(x => x.StartAsync()).Callback(() => calls.Add("start")).Returns(Task.CompletedTask);
         mockChannel.Setup(x => x.PostAsync(It.IsAny<SyncStorageChannelMessage>())).Callback<SyncStorageChannelMessage>(m => calls.Add(m.ToString())).Returns(Task.CompletedTask);
@@ -55,12 +59,14 @@ public class SyncStorageMigrationServiceTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var resolver = CreateResolver();
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(null!, resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("resolver", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, null!, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, null!, mockScheduler.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, null!, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, null!, mockChannel.Object)).ParamName);
-        Assert.Equal("channel", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, mockLock.Object, null!)).ParamName);
+        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(null!, resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("resolver", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, null!, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, null!, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, null!, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, null!, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, null!, mockConnectivity.Object)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, null!)).ParamName);
+        Assert.Equal("channel", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, mockLock.Object, null!, mockSync.Object, mockConnectivity.Object)).ParamName);
     }
 
     [Fact]
@@ -80,7 +86,7 @@ public class SyncStorageMigrationServiceTests
         Assert.Equal([1, 2], a!.Content);
         Assert.Equal(Earlier, a.ModifiedAt);
         Assert.NotNull(await opfs.ReadAsync("notes/Work/"));
-        Assert.Equal([(0, 2), (1, 2), (2, 2)], progress);
+        Assert.Equal([(0, 0), (0, 2), (1, 2), (2, 2)], progress);
         Assert.Equal(["stop", "Migrating", "lock blazwiz-sync-notes", "Changed", "start"], calls);
 
         var state = stateStore.Saved.Last();
@@ -92,6 +98,44 @@ public class SyncStorageMigrationServiceTests
         Assert.Equal(SyncStorageKind.IndexedDb, stateStore.Saved[0].Kind);
         Assert.Equal((SyncStorageKind.IndexedDb, SyncStorageKind.Opfs), (stateStore.Saved[0].MigrationFrom, stateStore.Saved[0].MigrationTo));
         Assert.Equal(SyncStorageKind.Opfs, stateStore.Saved[1].Kind);
+    }
+
+    [Fact]
+    public async Task GivenOnline_WhenMigrate_ThenSyncedUnderTheLockBeforeCopyingSoDownloadsAreMoved()
+    {
+        // Arrange: nothing local yet (straight after the first sign in); the pass downloads a file.
+        mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ConnectivityStatus { IsOnline = true });
+        mockSync.Setup(x => x.SyncAsync("notes", false, It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("sync"))
+            .Returns(async () =>
+            {
+                await indexedDb.WriteAsync("notes/downloaded.md", [1]);
+                return new SyncResult();
+            });
+        var syncing = new List<bool>();
+
+        // Act
+        await CreateSut().MigrateAsync(SyncStorageKind.Opfs, new Reporter(p => syncing.Add(p.IsSyncing)));
+
+        // Assert
+        Assert.Equal(["notes/downloaded.md"], (await opfs.ListAsync()).Select(f => f.Key));
+        Assert.Equal(["stop", "Migrating", "lock blazwiz-sync-notes", "sync", "Changed", "start"], calls);
+        Assert.True(syncing[0]);
+        Assert.All(syncing.Skip(1), s => Assert.False(s));
+    }
+
+    [Fact]
+    public async Task GivenOffline_WhenMigrate_ThenMovesWhatIsHereWithoutSyncing()
+    {
+        // Arrange
+        await indexedDb.WriteAsync("notes/a.md", [1]);
+
+        // Act
+        await CreateSut().MigrateAsync(SyncStorageKind.Opfs);
+
+        // Assert
+        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Single(await opfs.ListAsync());
     }
 
     [Fact]
@@ -340,7 +384,7 @@ public class SyncStorageMigrationServiceTests
 
     private SyncStorageResolver CreateResolver() => new(Mock.Of<IServiceProvider>(), options, stateStore, mockUser.Object, mockOpfs.Object, mockFolderClient.Object);
 
-    private SyncStorageMigrationService CreateSut() => new(options, CreateResolver(), stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object);
+    private SyncStorageMigrationService CreateSut() => new(options, CreateResolver(), stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object);
 
     private sealed class FakeStateStore : ISyncStorageStateStore
     {
