@@ -12,8 +12,8 @@ here has been confirmed by running it. Where a finding needs a quick check first
 
 | Severity | Count | Meaning |
 |---|---|---|
-| High | 3 | Fix before E2E encryption ships: leaks plaintext, allows script injection, or can stop sync |
-| Medium | 11 | Real defects or risks that can lose data or weaken security in plausible situations |
+| High | 2 | Fix before E2E encryption ships: leaks plaintext or allows script injection |
+| Medium | 12 | Real defects or risks that can lose data or weaken security in plausible situations |
 | Low | 14 | Hardening, edge cases, and tidying |
 | Maintainability | 8 | Design and readability, no defect today |
 
@@ -97,23 +97,6 @@ ciphertext. Without it, they can.
   when the note is previewed.
 - Add a CSP (M5) as a second barrier.
 
-### H3 (High). A cancelled Web Lock request can hold the sync lock until the tab closes
-
-**Where:** `blazwiz.Core/Sync/WebLockSyncLockService.cs:18-25`, `blazwiz.Core/wwwroot/js/network.js:47-60`
-
-`AcquireAsync` passes `ct` to `InvokeAsync`. Cancelling it only abandons the .NET await. The `navigator.locks.request`
-call in JS stays queued. When it is later granted, `acquireLock` stores a release function in `heldLocks` and resolves
-an id that no .NET code will ever release. The lock then stays held until the tab closes. **Every other tab's sync for
-that profile waits forever**, and the scheduler's `Running` flag in this tab is never cleared for the next try.
-Cancellation happens on sign out (`SyncScheduler.StopAsync`) and on any cancelled `SyncEncryptionService` operation.
-
-**Recommendation**
-- Pass an `AbortSignal` to `navigator.locks.request(name, { signal }, …)`, and add a `cancelLock(requestId)` JS
-  function that .NET calls when `ct` fires (`ct.Register`).
-- Alternatively, have JS take a request id up front. If the lock is granted after .NET has given up, release it
-  straight away.
-- Consider a maximum hold time for a pass, so a hung S3 call cannot block other tabs for good.
-
 ### M2 (Medium). Remembered passwords and refresh tokens are exposed to any script in the origin
 
 **Where:** `blazwiz.Portal.Application/Services/CognitoAuthenticationService.cs:31,255`, `LoginViewModel.cs` (`blazwiz_saved_users`),
@@ -174,6 +157,34 @@ in the same tab until `InitializeAsync` runs.
 **Recommendation:** add an explicit "sign out" step to `ISyncEncryptionService` or `IE2eKeyManager`:
 `keyRing.Clear(Plaintext)`, `derivedKeyStore.Clear()` and status reset to `Unknown`. Call it from `LogoutAsync`.
 
+### M6 (Medium, was H3 High). A cancelled Web Lock request can hold the sync lock until the tab closes
+
+**Status: done (2026-10-03).** Dropped to Medium: it is a bug that needs two tabs, one waiting for the other's pass,
+and the waiting one cancelling (e.g. sign out). `WebLockSyncLockService` now gives each request a GUID id up front.
+When `ct` cancels the wait, it calls a new `cancelLock(requestId)` in `network.js`, which aborts the request through
+an `AbortSignal` if it is still queued, or releases the lock straight away if it was granted after .NET gave up. GUIDs
+are used because the service is scoped while the JS module (and its locks) is shared by the whole page.
+Tests: three new `WebLockSyncLockServiceTests` (unique ids, cancel reaches the browser, page gone while cancelling).
+The JS was also checked in Playwright's Chromium with a scratch page (not in the repo): a cancelled queued request
+rejects with `AbortError`, a late grant is released, and the lock is free afterwards in both cases. Caveats:
+- Not done: a maximum hold time for a pass, so a hung S3 call cannot block other tabs. That is a separate issue.
+- The JS has no automated test in the repo. The Playwright UI suite only covers the normal lock path.
+
+**Where:** `blazwiz.Core/Sync/WebLockSyncLockService.cs:18-25`, `blazwiz.Core/wwwroot/js/network.js:47-60`
+
+`AcquireAsync` passes `ct` to `InvokeAsync`. Cancelling it only abandons the .NET await. The `navigator.locks.request`
+call in JS stays queued. When it is later granted, `acquireLock` stores a release function in `heldLocks` and resolves
+an id that no .NET code will ever release. The lock then stays held until the tab closes. **Every other tab's sync for
+that profile waits forever**, and the scheduler's `Running` flag in this tab is never cleared for the next try.
+Cancellation happens on sign out (`SyncScheduler.StopAsync`) and on any cancelled `SyncEncryptionService` operation.
+
+**Recommendation**
+- Pass an `AbortSignal` to `navigator.locks.request(name, { signal }, …)`, and add a `cancelLock(requestId)` JS
+  function that .NET calls when `ct` fires (`ct.Register`).
+- Alternatively, have JS take a request id up front. If the lock is granted after .NET has given up, release it
+  straight away.
+- Consider a maximum hold time for a pass, so a hung S3 call cannot block other tabs for good.
+
 ### L1 (Low). Ciphertext is not bound to its file path
 
 **Where:** `blazwiz.Core/Encryption/EncryptedFileFormat.cs:52-61`
@@ -216,7 +227,7 @@ enable dialog, or delete non-current versions after a successful enable.
 
 ## 2. Correctness and data integrity
 
-### M6 (Medium). A corrupt keys.json fails silently and leaves writes in plaintext
+### M7 (Medium). A corrupt keys.json fails silently and leaves writes in plaintext
 
 **Where:** `E2eKeyManager.cs:115`, `MainLayoutViewModel.cs:485-493`
 
@@ -228,7 +239,7 @@ is unreadable. `OnConnectivityChanged` only retries when connectivity changes.
 **Recommendation:** in `InitializeAsync`, catch `InvalidDataException`, call `keyRing.Clear(E2eWriteMode.Refuse)`,
 and set a distinct status (e.g. `Corrupt`) that the banner can explain.
 
-### M7 (Medium). An offline token refresh signs the user out
+### M8 (Medium). An offline token refresh signs the user out
 
 **Where:** `blazwiz.Portal.Application/Services/CognitoAuthenticationService.cs:203-207`
 
@@ -239,7 +250,7 @@ sends the user to `/login` in an offline-first app, and `/login` then wipes the 
 **Recommendation:** return the stale session, perhaps marked as expired, and let AWS calls fail and retry through
 the connectivity service. Also make refresh single-flight: several callers can currently refresh at once.
 
-### M8 (Medium). Edit conflicts silently drop the losing version and depend on device clocks
+### M9 (Medium). Edit conflicts silently drop the losing version and depend on device clocks
 
 **Where:** `blazwiz.Core/Sync/NewestWinsConflictResolver.cs:28`, `SyncEngine.cs:213-252`
 
@@ -257,7 +268,7 @@ the connectivity service. Also make refresh single-flight: several callers can c
   keyed plaintext hash (HMAC with a key derived from the file key) in object metadata.
 - Clamp remote `ModifiedAt` to no later than the S3 `LastModified` plus a small skew.
 
-### M9 (Medium). A local edit can be overwritten during a download
+### M10 (Medium). A local edit can be overwritten during a download
 
 **Where:** `blazwiz.Core/Sync/SyncEngine.cs:198-206`
 
@@ -315,7 +326,7 @@ report a partial move to the user.
 
 ## 3. Concurrency and reliability
 
-### M10 (Medium). Many failures are swallowed with no record
+### M11 (Medium). Many failures are swallowed with no record
 
 **Where (examples):** `SyncEncryptionService.cs:303` (`EncryptArrivalsAsync`), `SyncScheduler.cs:208`,
 `MainLayoutViewModel.cs:478-493`, `SyncEngine.WriteLogAsync`, `LoginViewModel.SaveUserAsync` (`catch { }`)
@@ -327,7 +338,7 @@ re-encrypted" should not vanish.
 **Recommendation:** inject `ILogger<T>` (the browser console logger is built in for WASM). Log at Warning in each
 swallowing `catch`. Also write E2E failures to the sync event log so they show on the Sync page.
 
-### M11 (Medium). The data bucket and identity resources are deleted with the stack
+### M12 (Medium). The data bucket and identity resources are deleted with the stack
 
 **Where:** `cloudformation/stack.yaml:165-166, 229-230, 282-283`
 
@@ -373,7 +384,7 @@ See M2.
 
 ### I2 (Medium). The data bucket has no versioning
 
-There is nothing to recover from a sync bug, a newest-wins overwrite (M8), or deletion by stolen credentials. Turn on
+There is nothing to recover from a sync bug, a newest-wins overwrite (M9), or deletion by stolen credentials. Turn on
 versioning with a lifecycle rule that expires non-current versions after 30 days, and see L4 for the trade-off with
 encryption.
 
@@ -427,7 +438,7 @@ Each call clones the key and then zeroes the copy. Add `bool HasKey(string name)
 |---|---|---|
 | D1 | `ICryptoService` / `BouncyCastleAesGcmCryptoService` vs `IAeadCipher` / `BouncyCastleAesGcmAeadCipher` | Two AES-GCM implementations. The older one takes base64 key **strings** (which cannot be zeroed), copies the ciphertext and tag back and forth for no reason, and its doc mentions a `NativeAesGcmCryptoService` that does not exist (`BouncyCastleAesGcmCryptoService.cs:13`). Rebuild `PasswordCryptoService` on `IAeadCipher` with a version byte, and remove `ICryptoService`. |
 | D2 | `E2eKeyManager`, `E2eKeyRing`, `SyncEncryptionService` | `status` and `isBusy` are unsynchronised fields. That is fine while WASM is single threaded. Note the assumption in a comment, or use `Interlocked`/`Lock` as `E2eKeyRing` already does, before multithreaded WASM arrives. |
-| D3 | `async void` handlers (`SyncScheduler`, `SyncEncryptionService`, `ConnectivityService`, several view models) | All are wrapped in try/catch, which is good. A small shared pattern (fire and forget with logging, via an injectable service rather than a static helper) would remove the repetition and give a single place to log (M10). |
+| D3 | `async void` handlers (`SyncScheduler`, `SyncEncryptionService`, `ConnectivityService`, several view models) | All are wrapped in try/catch, which is good. A small shared pattern (fire and forget with logging, via an injectable service rather than a static helper) would remove the repetition and give a single place to log (M11). |
 | D4 | `E2eKeyManager.TryUnlock` (`:427-452`) | Only catches `CryptographicException`. A corrupt `WrappedMasterKey` in local storage (bad base64) throws `FormatException` from `Unwrap` and fails `InitializeAsync`. Catch `FormatException` as well, and treat it as `NeedsSetup`. |
 | D5 | `SecretsManagerUserKeysStore.WithClientAsync` | Signals "not supported" with `InvalidOperationException`, which `E2eKeyManager.InitializeAsync` maps to `Unsupported`. Any other `InvalidOperationException` from the AWS SDK path would be misread the same way. Use a dedicated exception type. |
 | D6 | `S3SyncRemoteStore.CallAsync` (`:201-239`) | Only `HttpRequestException` from the target provider is mapped. `CognitoException` (e.g. refresh token revoked) escapes as a per-file failure, not `SyncAccessDeniedException`. |
@@ -456,10 +467,10 @@ Each call clones the key and then zeroes the copy. Add `bool HasKey(string name)
 
 1. ~~**H1**: re-check keys.json while `Disabled`, and stop plaintext uploads over encrypted records.~~ Done (see H1 status).
 2. ~~**H2**: test the Markdig generic attributes payload, and change the pipeline if it fails.~~ Done (see H2 status).
-3. **H3**: make Web Lock acquisition cancellable.
-4. **M5, M6**: clear keys on logout, and handle a corrupt keys.json.
+3. ~~**M6** (was H3): make Web Lock acquisition cancellable.~~ Done (see M6 status).
+4. **M5, M7**: clear keys on logout, and handle a corrupt keys.json.
 5. **M2 / I1**: CSP via a CloudFront response headers policy, and self-host fonts.
-6. **M11, I2**: retain the data bucket and pools, and turn on versioning.
+6. **M12, I2**: retain the data bucket and pools, and turn on versioning.
 7. **M3, M4**: bounds-check KDF settings, and add a concurrency check for keys.json writes.
-8. **M8, M9**: conflict copies, plaintext-aware comparison, and per-key write serialisation.
-9. **M10, D1–D8**: logging, consolidate the AES-GCM services, and CI.
+8. **M9, M10**: conflict copies, plaintext-aware comparison, and per-key write serialisation.
+9. **M11, D1–D8**: logging, consolidate the AES-GCM services, and CI.

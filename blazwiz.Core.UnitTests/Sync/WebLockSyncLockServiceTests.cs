@@ -15,8 +15,8 @@ public class WebLockSyncLockServiceTests
     {
         mockJs.Setup(x => x.InvokeAsync<IJSObjectReference>("import", It.IsAny<CancellationToken>(), It.Is<object?[]>(a => (string?)a[0] == BrowserNetworkStatus.ModulePath)))
             .ReturnsAsync(mockModule.Object);
-        mockModule.Setup(x => x.InvokeAsync<int>("acquireLock", It.IsAny<CancellationToken>(), It.Is<object?[]>(a => (string?)a[0] == "blazwiz-sync-notes")))
-            .ReturnsAsync(7);
+        mockModule.Setup(x => x.InvokeAsync<string>("acquireLock", It.IsAny<CancellationToken>(), It.Is<object?[]>(a => (string?)a[0] == "blazwiz-sync-notes")))
+            .ReturnsAsync((string _, CancellationToken _, object?[] a) => (string)a[1]!);
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class WebLockSyncLockServiceTests
         await handle.DisposeAsync();
 
         // Assert
-        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("releaseLock", It.Is<object?[]>(a => (int)a[0]! == 7)), Times.Once);
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("releaseLock", It.Is<object?[]>(a => (string?)a[0] == RequestId(0))), Times.Once);
     }
 
     [Fact]
@@ -55,5 +55,63 @@ public class WebLockSyncLockServiceTests
     public async Task GivenNoName_WhenAcquireAsync_ThenThrows()
     {
         await Assert.ThrowsAnyAsync<ArgumentException>(() => new WebLockSyncLockService(mockJs.Object).AcquireAsync(" "));
+    }
+
+    [Fact]
+    public async Task GivenTwoRequests_WhenAcquireAsync_ThenEachHasItsOwnRequestId()
+    {
+        // Arrange
+        var sut = new WebLockSyncLockService(mockJs.Object);
+
+        // Act
+        await sut.AcquireAsync("blazwiz-sync-notes");
+        await sut.AcquireAsync("blazwiz-sync-notes");
+
+        // Assert
+        Assert.False(string.IsNullOrEmpty(RequestId(0)));
+        Assert.NotEqual(RequestId(0), RequestId(1));
+    }
+
+    [Fact]
+    public async Task GivenWaitCancelled_WhenAcquireAsync_ThenRequestIsCancelledInTheBrowser()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        mockModule.Setup(x => x.InvokeAsync<string>("acquireLock", cts.Token, It.IsAny<object?[]>()))
+            .Returns(async (string _, CancellationToken ct, object?[] _) =>
+            {
+                await Task.Delay(Timeout.Infinite, ct);
+                return string.Empty;
+            });
+        var sut = new WebLockSyncLockService(mockJs.Object);
+
+        // Act
+        var acquire = sut.AcquireAsync("blazwiz-sync-notes", cts.Token);
+        await cts.CancelAsync();
+
+        // Assert
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => acquire);
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("cancelLock", It.Is<object?[]>(a => (string?)a[0] == RequestId(0))), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenPageGone_WhenCancelling_ThenStillThrowsOperationCanceledException()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        mockModule.Setup(x => x.InvokeAsync<string>("acquireLock", cts.Token, It.IsAny<object?[]>())).ThrowsAsync(new OperationCanceledException(cts.Token));
+        mockModule.Setup(x => x.InvokeAsync<IJSVoidResult>("cancelLock", It.IsAny<object?[]>())).ThrowsAsync(new JSDisconnectedException("gone"));
+        var sut = new WebLockSyncLockService(mockJs.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.AcquireAsync("blazwiz-sync-notes", cts.Token));
+    }
+
+    // The request id passed on the nth acquireLock call.
+    private string? RequestId(int call)
+    {
+        var args = (object?[])mockModule.Invocations.Where(i => i.Arguments[0] is "acquireLock").ElementAt(call).Arguments[2];
+        return (string?)args[1];
     }
 }
