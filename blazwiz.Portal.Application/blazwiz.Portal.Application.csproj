@@ -10,6 +10,7 @@
     <PackageReference Include="Amazon.Extensions.CognitoAuthentication" />
 <!--#if (IncludeNotes)-->
     <PackageReference Include="AWSSDK.CognitoIdentity" />
+    <PackageReference Include="AWSSDK.SecretsManager" />
 <!--#endif-->
     <PackageReference Include="AWSSDK.CognitoIdentityProvider" />
     <PackageReference Include="Blazing.Mvvm" />

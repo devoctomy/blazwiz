@@ -76,6 +76,11 @@ public static class ServiceCollectionExtensions
             }));
         services.AddScoped<ICognitoIdentityClient, CognitoIdentityClient>();
         services.AddScoped<IS3SyncTargetProvider, CognitoS3TargetProvider>();
+
+        // The user's keys, in their own Secrets Manager secret named <user pool sub>/keys.
+        services.AddSingleton<ISecretsManagerClientFactory, SecretsManagerClientFactory>();
+        services.AddScoped<IUserKeysStore, SecretsManagerUserKeysStore>();
+
         services.AddScoped<ISyncUserContext, AuthSyncUserContext>();
         services.AddScoped<IOfflineModeStore, LocalStorageOfflineModeStore>();
         services.AddScoped<IPersistentStorageService, PersistentStorageService>();
