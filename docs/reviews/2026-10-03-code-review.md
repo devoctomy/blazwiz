@@ -28,6 +28,18 @@ Those are the hardest cases in an offline-first sync engine with encryption.
 
 ### H1 (High). A device that is not set up keeps uploading plaintext after encryption is turned on elsewhere
 
+**Status: done (2026-10-03).** `ISyncGate` is now async (`CanSyncAsync`). Before every pass of an encrypted
+profile, `E2eSyncGate` re-reads keys.json while the status is `Disabled`, `Unavailable` or `Unknown`. If encryption
+was turned on elsewhere, the device moves to `NeedsSetup` or `Blocked`, refuses writes and skips the pass. Edits made
+while it thought encryption was off stay on the device until it is set up, and setup encrypts them before they sync.
+A two-device unit test covers this (`E2eSyncGateTests`). Caveats:
+- A split-second race remains: encryption turned on elsewhere between this device's check and its upload in the same
+  pass. With one user controlling every device this is accepted.
+- It costs one Secrets Manager call per pass while encryption is off. This is not throttled (see I6).
+- Not done: refusing plaintext over `Encrypted` index records (would miss this scenario and block a legitimate
+  disable), re-checking on downloaded E2EE headers, and an `@aws` two-device scenario.
+- Future: AppSync Events to tell open devices straight away when keys.json changes, instead of at their next pass.
+
 **Where:** `blazwiz.Core/Sync/Encryption/E2eSyncGate.cs:23-26`, `blazwiz.Core/Encryption/E2eKeyManager.cs:76-143`,
 `blazwiz.Core/Sync/Encryption/SyncEncryptionService.cs:330-345`
 
@@ -432,7 +444,7 @@ Each call clones the key and then zeroes the copy. Add `bool HasKey(string name)
 
 ## 8. Suggested order of work
 
-1. **H1**: re-check keys.json while `Disabled`, and stop plaintext uploads over encrypted records.
+1. ~~**H1**: re-check keys.json while `Disabled`, and stop plaintext uploads over encrypted records.~~ Done (see H1 status).
 2. **H2**: test the Markdig generic attributes payload, and change the pipeline if it fails.
 3. **H3**: make Web Lock acquisition cancellable.
 4. **M5, M6**: clear keys on logout, and handle a corrupt keys.json.

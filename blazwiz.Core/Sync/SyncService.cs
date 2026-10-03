@@ -59,7 +59,7 @@ public class SyncService(
         {
             foreach (var item in selected)
             {
-                if (!gates.All(g => g.CanSync(item.Name)))
+                if (!await CanSyncAsync(item.Name, ct))
                 {
                     continue;
                 }
@@ -128,6 +128,19 @@ public class SyncService(
     {
         status = new SyncStatus();
         StatusChanged?.Invoke(this, status.Clone());
+    }
+
+    private async Task<bool> CanSyncAsync(string profile, CancellationToken ct)
+    {
+        foreach (var gate in gates)
+        {
+            if (!await gate.CanSyncAsync(profile, ct))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private async Task<SyncResult> RunProfileAsync(SyncProfile profile, bool verify, CancellationToken ct)

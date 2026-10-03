@@ -260,8 +260,8 @@ public class SyncServiceTests
     {
         // Arrange
         var gate = new Mock<ISyncGate>();
-        gate.Setup(x => x.CanSync("notes")).Returns(false);
-        gate.Setup(x => x.CanSync("photos")).Returns(true);
+        gate.Setup(x => x.CanSyncAsync("notes", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        gate.Setup(x => x.CanSyncAsync("photos", It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var sut = new SyncService([notes, photos], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [gate.Object]);
 
         // Act
