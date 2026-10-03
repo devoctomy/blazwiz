@@ -128,6 +128,24 @@ public class NoteTreeServiceTests
     }
 
     [Fact]
+    public void GivenEncryptedNote_WhenBuildEntries_ThenEntryHasItsEncryptionKeyId()
+    {
+        // Arrange
+        var files = new[]
+        {
+            new SyncFileInfo { Key = "notes/Secret.md", EncryptionKeyId = "k_1" },
+            new SyncFileInfo { Key = "notes/Plain.md" },
+        };
+
+        // Act
+        var result = sut.BuildEntries(files, "bob").ToDictionary(e => e.Id);
+
+        // Assert
+        Assert.Equal("k_1", result["notes/Secret.md"].EncryptionKeyId);
+        Assert.Null(result["notes/Plain.md"].EncryptionKeyId);
+    }
+
+    [Fact]
     public void GivenFiles_WhenBuildEntries_ThenNotesMarkersAndImpliedFoldersBecomeEntries()
     {
         // Arrange

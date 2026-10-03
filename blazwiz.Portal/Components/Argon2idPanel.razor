@@ -1,0 +1,38 @@
+@inherits MvvmComponentBase<Argon2idSettingsViewModel>
+
+<div class="panel mb-4" id="argon2id-card">
+    <h2 class="panel-title">Argon2id</h2>
+    <p class="panel-text">Your end to end encryption passphrase is turned into a key with Argon2id, which is slow and memory hungry on purpose so passphrases are hard to guess. New passphrases use these settings; existing ones keep the settings they were made with.</p>
+    <dl class="detail-list">
+        <dt>Memory</dt>
+        <dd id="argon2id-memory">@ViewModel.MemoryText</dd>
+        <dt>Iterations</dt>
+        <dd id="argon2id-iterations">@ViewModel.Parameters.Iterations</dd>
+        <dt>Parallelism</dt>
+        <dd id="argon2id-parallelism">@ViewModel.Parameters.Parallelism</dd>
+        <dt>Key length</dt>
+        <dd id="argon2id-key-length">@ViewModel.Parameters.KeyLength bytes</dd>
+    </dl>
+    <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+        <button type="button" class="btn btn-outline-primary" id="argon2id-benchmark" disabled="@ViewModel.IsRunning"
+                @onclick="() => ViewModel.BenchmarkCommand.ExecuteAsync(null)">
+            @if (ViewModel.IsRunning)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-stopwatch me-1"></i>
+            }
+            Benchmark
+        </button>
+        @if (ViewModel.Result != null)
+        {
+            <span id="argon2id-result">@ViewModel.Result</span>
+        }
+        @if (ViewModel.Error != null)
+        {
+            <span class="text-danger" id="argon2id-error">@ViewModel.Error</span>
+        }
+    </div>
+</div>

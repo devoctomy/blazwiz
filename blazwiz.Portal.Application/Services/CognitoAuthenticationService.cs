@@ -12,9 +12,17 @@ namespace blazwiz.Portal.Application.Services;
 
 /// <summary>
 /// Signs users in to the Cognito user pool (via <see cref="ICognitoUserPoolClient"/>), handles the new
-/// password challenge for invited users, and refreshes the tokens when they expire. The session,
-/// including the tokens, is kept in local storage so it survives page reloads.
+/// password challenge for invited users, and refreshes the tokens when they expire. The session, with the
+/// short-lived ID and access tokens, is kept in local storage so it survives page reloads and works offline.
 /// </summary>
+/// <remarks>
+/// The refresh token is never stored: it is held in memory, so only this tab can renew the session, and only until
+/// it is closed or reloaded. After that the user signs in again (one touch with passkey quick login). Anything that
+/// can run script in the app's origin can read local storage, and a stored refresh token would let it act as the user
+/// for the token's whole validity (<c>RefreshTokenValidity</c> in <c>cloudformation/stack.yaml</c>), from anywhere.
+/// To keep sessions across restarts, at least: keep that validity short, add a Content-Security-Policy, and consider
+/// a backend that holds the tokens (backend for frontend) rather than the browser.
+/// </remarks>
 public class CognitoAuthenticationService(
     ICognitoUserPoolClient cognitoClient,
     ILocalStorageService localStorageService,
@@ -47,6 +55,7 @@ public class CognitoAuthenticationService(
     private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
 
     private PendingNewPassword? pendingNewPassword;
+    private string? refreshToken;
 
     /// <inheritdoc/>
     public bool IsPlaceholder => false;
@@ -131,14 +140,15 @@ public class CognitoAuthenticationService(
     public async Task LogoutAsync()
     {
         pendingNewPassword = null;
-        var session = await localStorageService.GetObjectAsync<UserSession>(SessionStorageKey);
+        var token = refreshToken;
+        refreshToken = null;
         await localStorageService.RemoveItemAsync(SessionStorageKey);
 
-        if (!string.IsNullOrEmpty(session?.RefreshToken))
+        if (!string.IsNullOrEmpty(token))
         {
             try
             {
-                await cognitoClient.RevokeAsync(session.RefreshToken);
+                await cognitoClient.RevokeAsync(token);
             }
             catch (Exception ex) when (ex is CognitoException or HttpRequestException)
             {
@@ -175,28 +185,32 @@ public class CognitoAuthenticationService(
         }
 
 //#endif
-        if (string.IsNullOrEmpty(session.RefreshToken))
+        if (string.IsNullOrEmpty(refreshToken))
         {
+            // Signed in from another tab, or before a reload: this tab cannot renew it.
             await localStorageService.RemoveItemAsync(SessionStorageKey);
             return null;
         }
 
         try
         {
-            var result = await cognitoClient.RefreshAsync(session.Username, session.RefreshToken);
+            var result = await cognitoClient.RefreshAsync(session.Username, refreshToken);
             if (string.IsNullOrEmpty(result.IdToken))
             {
+                refreshToken = null;
                 await localStorageService.RemoveItemAsync(SessionStorageKey);
                 return null;
             }
 
-            var refreshed = CreateSession(result, session.Username, session.RefreshToken, session.SignedInAt);
+            refreshToken = result.RefreshToken ?? refreshToken;
+            var refreshed = CreateSession(result, session.Username, session.SignedInAt);
             await localStorageService.SetObjectAsync(SessionStorageKey, refreshed);
             return refreshed;
         }
         catch (CognitoException)
         {
             // The refresh token has expired or been revoked.
+            refreshToken = null;
             await localStorageService.RemoveItemAsync(SessionStorageKey);
             return null;
         }
@@ -251,7 +265,8 @@ public class CognitoAuthenticationService(
     {
         if (!string.IsNullOrEmpty(result.IdToken))
         {
-            var session = CreateSession(result, username, null, systemClock.UtcNow);
+            refreshToken = result.RefreshToken;
+            var session = CreateSession(result, username, systemClock.UtcNow);
             await localStorageService.SetObjectAsync(SessionStorageKey, session);
             return new LoginResult
             {
@@ -273,7 +288,7 @@ public class CognitoAuthenticationService(
         return Failed($"Sign-in needs '{result.ChallengeName}', which this portal does not support yet.");
     }
 
-    private UserSession CreateSession(CognitoSignInResult tokens, string fallbackUsername, string? existingRefreshToken, DateTimeOffset signedInAt)
+    private UserSession CreateSession(CognitoSignInResult tokens, string fallbackUsername, DateTimeOffset signedInAt)
     {
         var email = GetClaim(tokens.IdToken, "email");
         var username = email ?? fallbackUsername;
@@ -288,7 +303,6 @@ public class CognitoAuthenticationService(
             ExpiresAt = systemClock.UtcNow.AddSeconds(tokens.ExpiresIn),
             IdToken = tokens.IdToken,
             AccessToken = tokens.AccessToken,
-            RefreshToken = tokens.RefreshToken ?? existingRefreshToken,
         };
     }
 

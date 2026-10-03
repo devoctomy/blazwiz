@@ -1,4 +1,5 @@
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Encryption.Exceptions;
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
@@ -264,7 +265,7 @@ public partial class NoteEditorViewModel : ViewModelBase
             PreviewHtml = markdownRenderer.ToHtml(Content);
             OnPropertyChanged(nameof(IsDirty));
         }
-        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
             ErrorMessage = ex.Message;
         }
@@ -466,7 +467,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         {
             ApplyDocument(await noteService.GetNoteAsync(Note.Id));
         }
-        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
             ErrorMessage = ex.Message;
         }
@@ -521,7 +522,7 @@ public partial class NoteEditorViewModel : ViewModelBase
             OnPropertyChanged(nameof(IsDirty));
             return true;
         }
-        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
             ErrorMessage = ex.Message;
             return false;

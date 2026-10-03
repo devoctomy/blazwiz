@@ -1,4 +1,7 @@
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Encryption.Exceptions;
+using blazwiz.Core.Encryption.Models;
+using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
@@ -37,6 +40,7 @@ public partial class FilesViewModel : ViewModelBase
     private readonly INoteNameService noteNameService;
     private readonly INoteTreeService noteTreeService;
     private readonly ISyncService syncService;
+    private readonly ISyncEncryptionService encryptionService;
     private readonly HashSet<string> expandedFolderIds = [];
 
     private IReadOnlyList<NoteEntry> entries = [];
@@ -63,21 +67,25 @@ public partial class FilesViewModel : ViewModelBase
     /// <param name="noteNameService">The note name service.</param>
     /// <param name="noteTreeService">The note tree service.</param>
     /// <param name="syncService">The sync service, to refresh when a sync changes the notes.</param>
+    /// <param name="encryptionService">Says whether encrypted notes can be decrypted on this device.</param>
     public FilesViewModel(
         INoteService noteService,
         INavigationService navigationService,
         INoteNameService noteNameService,
         INoteTreeService noteTreeService,
-        ISyncService syncService)
+        ISyncService syncService,
+        ISyncEncryptionService encryptionService)
     {
         this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         this.noteNameService = noteNameService ?? throw new ArgumentNullException(nameof(noteNameService));
         this.noteTreeService = noteTreeService ?? throw new ArgumentNullException(nameof(noteTreeService));
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+        this.encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
         lastSyncedAt = syncService.Status.LastSyncedAt;
         this.syncService.FilesChanged += OnFilesChanged;
         this.syncService.StatusChanged += OnSyncStatusChanged;
+        this.encryptionService.StatusChanged += OnEncryptionStatusChanged;
     }
 
     /// <summary>
@@ -427,7 +435,7 @@ public partial class FilesViewModel : ViewModelBase
 
             await ReloadAsync();
         }
-        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
             DialogError = ex.Message;
         }
@@ -502,6 +510,18 @@ public partial class FilesViewModel : ViewModelBase
         ErrorMessage = null;
     }
 
+    /// <summary>
+    /// Gets whether a note is end to end encrypted, and if so whether this device can decrypt it, for its lock.
+    /// </summary>
+    /// <param name="entry">The note.</param>
+    /// <returns>Null when not encrypted; true when it can be decrypted here (green lock); false when not (red lock).</returns>
+    public bool? CanDecrypt(NoteEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        return entry.EncryptionKeyId == null ? null : encryptionService.CanDecrypt(entry.EncryptionKeyId);
+    }
+
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
@@ -509,6 +529,7 @@ public partial class FilesViewModel : ViewModelBase
         {
             syncService.FilesChanged -= OnFilesChanged;
             syncService.StatusChanged -= OnSyncStatusChanged;
+            encryptionService.StatusChanged -= OnEncryptionStatusChanged;
         }
 
         base.Dispose(disposing);
@@ -601,6 +622,15 @@ public partial class FilesViewModel : ViewModelBase
         }
     }
 
+    private async void OnEncryptionStatusChanged(object? sender, E2eStatus status)
+    {
+        // The locks change colour, and notes may now be readable or newly encrypted.
+        if (!IsBusy)
+        {
+            await ReloadSafelyAsync();
+        }
+    }
+
     private async Task ReloadSafelyAsync()
     {
         try
@@ -620,7 +650,7 @@ public partial class FilesViewModel : ViewModelBase
         {
             await action();
         }
-        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException)
+        catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
             ErrorMessage = ex.Message;
         }

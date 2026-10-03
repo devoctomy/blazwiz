@@ -1,3 +1,5 @@
+using blazwiz.Core.Cryptography;
+using blazwiz.Core.Encryption;
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
@@ -20,6 +22,8 @@ public class TrackingSyncFileStoreTests
     private readonly Mock<ISyncScheduler> mockScheduler = new();
     private readonly Mock<ISystemClock> mockClock = new();
 
+    private readonly EncryptedFileFormat format = new(new BouncyCastleAesGcmAeadCipher());
+
     public TrackingSyncFileStoreTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
@@ -29,12 +33,13 @@ public class TrackingSyncFileStoreTests
     [Fact]
     public void GivenInvalidArguments_WhenConstructing_ThenThrows()
     {
-        Assert.Throws<ArgumentException>(() => new TrackingSyncFileStore(" ", mockInner.Object, index, mockUser.Object, mockScheduler.Object, mockClock.Object));
-        Assert.Equal("inner", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, null!, index, mockUser.Object, mockScheduler.Object, mockClock.Object)).ParamName);
-        Assert.Equal("indexStore", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, null!, mockUser.Object, mockScheduler.Object, mockClock.Object)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, null!, mockScheduler.Object, mockClock.Object)).ParamName);
-        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, null!)).ParamName);
+        Assert.Throws<ArgumentException>(() => new TrackingSyncFileStore(" ", mockInner.Object, index, mockUser.Object, mockScheduler.Object, mockClock.Object, format));
+        Assert.Equal("inner", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, null!, index, mockUser.Object, mockScheduler.Object, mockClock.Object, format)).ParamName);
+        Assert.Equal("indexStore", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, null!, mockUser.Object, mockScheduler.Object, mockClock.Object, format)).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, null!, mockScheduler.Object, mockClock.Object, format)).ParamName);
+        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, null!, mockClock.Object, format)).ParamName);
+        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, null!, format)).ParamName);
+        Assert.Equal("encryptedFileFormat", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, mockClock.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -154,6 +159,53 @@ public class TrackingSyncFileStoreTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().WriteAsync(Key, [1]));
     }
 
+    [Fact]
+    public async Task GivenEncryptedContent_WhenWriteAsync_ThenIndexRecordsItsKey()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var encrypted = format.Encrypt([1, 2], "k_1", new byte[32]);
+
+        // Act
+        await sut.WriteAsync(Key, encrypted);
+
+        // Assert
+        var record = Assert.Single(index.Records);
+        Assert.True(record.Encrypted);
+        Assert.Equal("k_1", record.KeyId);
+    }
+
+    [Fact]
+    public async Task GivenEncryptedFileRewrittenPlain_WhenWriteAsync_ThenIndexKeyCleared()
+    {
+        // Arrange
+        await index.SaveAsync(new SyncIndexRecord { Profile = Profile, Owner = Owner, Key = Key, Encrypted = true, KeyId = "k_1" });
+        var sut = CreateSut();
+
+        // Act
+        await sut.WriteAsync(Key, [1, 2]);
+
+        // Assert
+        var record = Assert.Single(index.Records);
+        Assert.False(record.Encrypted);
+        Assert.Null(record.KeyId);
+    }
+
+    [Fact]
+    public async Task GivenIndexedKeys_WhenListAsync_ThenEachFileHasItsEncryptionKeyId()
+    {
+        // Arrange
+        mockInner.Setup(x => x.ListAsync(default)).ReturnsAsync([new SyncFileInfo { Key = Key }, new SyncFileInfo { Key = "notes/b.md" }]);
+        await index.SaveAsync(new SyncIndexRecord { Profile = Profile, Owner = Owner, Key = Key, Encrypted = true, KeyId = "k_1" });
+
+        // Act
+        var files = await CreateSut().ListAsync();
+
+        // Assert
+        Assert.Equal("k_1", files.Single(f => f.Key == Key).EncryptionKeyId);
+        Assert.Null(files.Single(f => f.Key == "notes/b.md").EncryptionKeyId);
+    }
+
     private TrackingSyncFileStore CreateSut() =>
-        new(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, mockClock.Object);
+        new(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, mockClock.Object, format);
 }

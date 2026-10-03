@@ -54,6 +54,12 @@
             watch(registration.waiting);
         }
 
+        // The browser checks for a new version while loading the page, so one may already be installing (its
+        // updatefound has been and gone): watch it too, or it finishes with no banner.
+        if (registration.installing) {
+            watch(registration.installing);
+        }
+
         registration.addEventListener('updatefound', function () {
             if (registration.installing) {
                 watch(registration.installing);

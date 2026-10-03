@@ -1,6 +1,7 @@
 using Blazing.Mvvm.ComponentModel;
 //#if (IncludeNotes)
 using blazwiz.Core.Sync.Connectivity;
+using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 //#endif
@@ -37,6 +38,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     private readonly ISyncStorageChannel storageChannel;
     private readonly ISyncFolderService folderService;
     private readonly IBrowserNetworkStatus browserNetworkStatus;
+    private readonly ISyncEncryptionService encryptionService;
 //#endif
     private readonly AppSettings appSettings;
 
@@ -72,6 +74,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// <param name="storageChannel">Hears about storage moves in other tabs.</param>
     /// <param name="folderService">Checks and restores access to the folder the files are kept in.</param>
     /// <param name="browserNetworkStatus">Says when the app comes back to the foreground.</param>
+    /// <param name="encryptionService">Unlocks end to end encryption before sync starts.</param>
     ///#endif
     /// <param name="appSettings">The application settings.</param>
     public MainLayoutViewModel(
@@ -91,6 +94,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         ISyncStorageChannel storageChannel,
         ISyncFolderService folderService,
         IBrowserNetworkStatus browserNetworkStatus,
+        ISyncEncryptionService encryptionService,
 //#endif
         AppSettings appSettings)
     {
@@ -110,6 +114,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         this.storageChannel = storageChannel ?? throw new ArgumentNullException(nameof(storageChannel));
         this.folderService = folderService ?? throw new ArgumentNullException(nameof(folderService));
         this.browserNetworkStatus = browserNetworkStatus ?? throw new ArgumentNullException(nameof(browserNetworkStatus));
+        this.encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
 //#endif
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
 
@@ -475,6 +480,16 @@ public partial class MainLayoutViewModel : ViewModelBase
         catch (Exception)
         {
             // The files stay where they are; sync still runs against the storage in use.
+        }
+
+        try
+        {
+            // Unlocks with this device's keys, or holds back encrypted profiles until it can.
+            await encryptionService.InitializeAsync();
+        }
+        catch (Exception)
+        {
+            // The encryption status stays unknown, so encrypted profiles wait; it is tried again once online.
         }
 
         if (!await CheckFolderAccessAsync())

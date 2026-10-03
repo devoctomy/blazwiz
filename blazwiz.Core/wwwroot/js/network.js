@@ -40,24 +40,42 @@ export function unsubscribe() {
 }
 
 const heldLocks = new Map();
-let nextLockId = 1;
+const pendingLocks = new Map();
 
-// Waits for a Web Lock and resolves with an id to release it with. The lock is held until releaseLock is called, or
-// the tab closes. Browsers without Web Locks get a lock that excludes nothing (id 0).
-export function acquireLock(name) {
+// Waits for a Web Lock and resolves with the request id, to release it with. The lock is held until releaseLock is
+// called, or the tab closes. Browsers without Web Locks get a lock that excludes nothing (empty id).
+export function acquireLock(name, requestId) {
     if (!navigator.locks || typeof navigator.locks.request !== 'function') {
-        return Promise.resolve(0);
+        return Promise.resolve('');
     }
 
+    const controller = new AbortController();
+    pendingLocks.set(requestId, controller);
     return new Promise(function (resolveAcquired, rejectAcquired) {
-        navigator.locks.request(name, function () {
+        navigator.locks.request(name, { signal: controller.signal }, function () {
             return new Promise(function (release) {
-                const id = nextLockId++;
-                heldLocks.set(id, release);
-                resolveAcquired(id);
+                pendingLocks.delete(requestId);
+                heldLocks.set(requestId, release);
+                resolveAcquired(requestId);
             });
-        }).catch(rejectAcquired);
+        }).catch(function (error) {
+            pendingLocks.delete(requestId);
+            rejectAcquired(error);
+        });
     });
+}
+
+// Called when .NET stopped waiting: drops the request if it is still queued, or releases the lock if it was granted
+// meanwhile, so it is never held with nothing to release it.
+export function cancelLock(requestId) {
+    const controller = pendingLocks.get(requestId);
+    if (controller) {
+        pendingLocks.delete(requestId);
+        controller.abort();
+        return;
+    }
+
+    releaseLock(requestId);
 }
 
 export function releaseLock(id) {

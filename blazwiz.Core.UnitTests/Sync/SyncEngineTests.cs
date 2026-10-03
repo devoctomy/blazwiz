@@ -1,3 +1,5 @@
+using blazwiz.Core.Cryptography;
+using blazwiz.Core.Encryption;
 using System.Text;
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.Exceptions;
@@ -25,6 +27,7 @@ public class SyncEngineTests
     private readonly Mock<ISyncEventLog> mockLog = new();
     private readonly List<SyncEvent> loggedEvents = [];
     private readonly Sha256ContentHasher hasher = new();
+    private readonly EncryptedFileFormat format = new(new BouncyCastleAesGcmAeadCipher());
     private readonly InMemorySyncFileStore files;
     private readonly InMemorySyncIndexStore index = new();
     private readonly FakeSyncRemoteStore remote = new();
@@ -74,12 +77,13 @@ public class SyncEngineTests
     {
         var planner = new SyncPlanner();
         var resolver = new NewestWinsConflictResolver();
-        Assert.Equal("planner", Assert.Throws<ArgumentNullException>(() => new SyncEngine(null!, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("conflictResolver", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, null!, hasher, mockUser.Object, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("contentHasher", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, null!, mockUser.Object, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, null!, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, null!)).ParamName);
+        Assert.Equal("planner", Assert.Throws<ArgumentNullException>(() => new SyncEngine(null!, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format)).ParamName);
+        Assert.Equal("conflictResolver", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, null!, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format)).ParamName);
+        Assert.Equal("contentHasher", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, null!, mockUser.Object, mockLog.Object, mockClock.Object, format)).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, null!, mockLog.Object, mockClock.Object, format)).ParamName);
+        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, null!, mockClock.Object, format)).ParamName);
+        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, null!, format)).ParamName);
+        Assert.Equal("encryptedFileFormat", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object, null!)).ParamName);
     }
 
     [Theory]
@@ -477,7 +481,7 @@ public class SyncEngineTests
                 TrackedWriteAsync(KeyA, "typed during the pass", Now).GetAwaiter().GetResult();
                 return plan;
             });
-        var sut = new SyncEngine(mockPlanner.Object, new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object);
+        var sut = new SyncEngine(mockPlanner.Object, new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format);
 
         // Act
         var result = await sut.SyncAsync(profile, false);
@@ -540,12 +544,45 @@ public class SyncEngineTests
         Assert.Equal(1, result.Uploaded);
     }
 
+    [Fact]
+    public async Task GivenEncryptedRemoteFile_WhenSyncAsync_ThenDownloadedAsIsAndIndexRecordsItsKey()
+    {
+        // Arrange
+        var encrypted = format.Encrypt(Bytes("secret"), "k_1", new byte[32]);
+        remote.Seed(KeyA, encrypted, Later);
+
+        // Act
+        await CreateSut().SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(encrypted, (await files.ReadAsync(KeyA))!.Content);
+        var record = Record(KeyA);
+        Assert.True(record.Encrypted);
+        Assert.Equal("k_1", record.KeyId);
+    }
+
+    [Fact]
+    public async Task GivenEncryptedLocalFile_WhenSyncAsync_ThenUploadedAsIsAndIndexKeepsItsKey()
+    {
+        // Arrange
+        var encrypted = format.Encrypt(Bytes("secret"), "k_1", new byte[32]);
+        await files.WriteAsync(KeyA, encrypted, Later);
+        await index.SaveAsync(new SyncIndexRecord { Profile = Profile, Owner = Owner, Key = KeyA, Dirty = true, Revision = 1 });
+
+        // Act
+        await CreateSut().SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(encrypted, remote.Objects[KeyA].Content);
+        Assert.Equal("k_1", Record(KeyA).KeyId);
+    }
+
     private static byte[] Bytes(string text) => Encoding.UTF8.GetBytes(text);
 
     private static string Text(byte[] content) => Encoding.UTF8.GetString(content);
 
     private SyncEngine CreateSut() =>
-        new(new SyncPlanner(), new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object);
+        new(new SyncPlanner(), new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format);
 
     private SyncIndexRecord Record(string key) => index.GetAsync(Profile, Owner, key).Result!;
 

@@ -1,3 +1,5 @@
+using blazwiz.Core.Cryptography;
+using blazwiz.Core.Encryption;
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
@@ -30,9 +32,9 @@ public sealed class SimulatedDevice
 
         var matcher = new GlobSyncPathMatcher("notes/**/*", includeEmptyFolders: true);
         Files = new InMemorySyncFileStore(user.Object, clock.Object);
-        TrackedFiles = new TrackingSyncFileStore(Profile, Files, Index, user.Object, Mock.Of<ISyncScheduler>(), clock.Object);
+        TrackedFiles = new TrackingSyncFileStore(Profile, Files, Index, user.Object, Mock.Of<ISyncScheduler>(), clock.Object, new EncryptedFileFormat(new BouncyCastleAesGcmAeadCipher()));
         SyncProfile = new SyncProfile(Profile, Files, Index, new S3SyncRemoteStore(targets.Object, matcher), matcher);
-        Engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), clock.Object);
+        Engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), clock.Object, new EncryptedFileFormat(new BouncyCastleAesGcmAeadCipher()));
     }
 
     /// <summary>

@@ -1,6 +1,12 @@
+using blazwiz.Core.Cryptography;
+using blazwiz.Core.Cryptography.Interfaces;
+using blazwiz.Core.Encryption;
+using blazwiz.Core.Encryption.Interfaces;
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Connectivity;
+using blazwiz.Core.Sync.Encryption;
+using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Sync.Folder;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
@@ -47,6 +53,8 @@ public static class SyncServiceCollectionExtensions
         services.TryAddSingleton<IContentHasher, Sha256ContentHasher>();
         services.TryAddSingleton<ISyncConflictResolver, NewestWinsConflictResolver>();
         services.TryAddSingleton<IS3ReachabilityProbe, S3ReachabilityProbe>();
+        services.TryAddSingleton<IAeadCipher, BouncyCastleAesGcmAeadCipher>();
+        services.TryAddSingleton<IEncryptedFileFormat, EncryptedFileFormat>();
         services.TryAddScoped<IIndexedDbClient, IndexedDbClient>();
         services.TryAddScoped<IBrowserNetworkStatus, BrowserNetworkStatus>();
         services.TryAddScoped<ISyncLockService, WebLockSyncLockService>();
@@ -76,6 +84,14 @@ public static class SyncServiceCollectionExtensions
             AddProfile(services, profile);
         }
 
+        if (options.Profiles.Any(p => p.IsEncrypted))
+        {
+            // End to end encryption (needs AddBlazwizE2eEncryption for the keys).
+            services.AddScoped<ISyncGate, E2eSyncGate>();
+            services.TryAddScoped<ISyncEncryptionSweeper, SyncEncryptionSweeper>();
+            services.TryAddScoped<ISyncEncryptionService, SyncEncryptionService>();
+        }
+
         return services;
     }
 
@@ -98,13 +114,30 @@ public static class SyncServiceCollectionExtensions
                 sp.GetRequiredService<ISystemClock>(),
                 IndexedDbSyncFileStore.DescribeStore(profile.FileDatabase, profile.ResolvedFileStoreName)));
 
-        services.AddKeyedScoped<ISyncFileStore>(name, (sp, _) => new TrackingSyncFileStore(
-            name,
-            sp.GetRequiredKeyedService<ISyncFileStore>(untrackedKey),
-            sp.GetRequiredKeyedService<ISyncIndexStore>(name),
-            sp.GetRequiredService<ISyncUserContext>(),
-            sp.GetRequiredService<ISyncScheduler>(),
-            sp.GetRequiredService<ISystemClock>()));
+        services.AddKeyedScoped<ISyncFileStore>(name, (sp, _) =>
+        {
+            ISyncFileStore store = new TrackingSyncFileStore(
+                name,
+                sp.GetRequiredKeyedService<ISyncFileStore>(untrackedKey),
+                sp.GetRequiredKeyedService<ISyncIndexStore>(name),
+                sp.GetRequiredService<ISyncUserContext>(),
+                sp.GetRequiredService<ISyncScheduler>(),
+                sp.GetRequiredService<ISystemClock>(),
+                sp.GetRequiredService<IEncryptedFileFormat>());
+
+            // App code reads and writes plaintext; the store holds (and syncs) ciphertext once encryption is on.
+            return profile.IsEncrypted
+                ? new EncryptingSyncFileStore(store, sp.GetRequiredService<IE2eKeyRing>(), sp.GetRequiredService<IEncryptedFileFormat>())
+                : store;
+        });
+
+        if (profile.IsEncrypted)
+        {
+            services.AddScoped(sp => new EncryptedSyncProfile(
+                name,
+                sp.GetRequiredKeyedService<ISyncFileStore>(name),
+                sp.GetRequiredKeyedService<ISyncIndexStore>(name)));
+        }
 
         services.AddKeyedScoped<ISyncRemoteStore>(name, (sp, _) => new S3SyncRemoteStore(
             sp.GetRequiredService<IS3SyncTargetProvider>(),

@@ -1,3 +1,6 @@
+using blazwiz.Core.Encryption.Exceptions;
+using blazwiz.Core.Encryption.Models;
+using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
@@ -17,6 +20,7 @@ public class FilesViewModelTests
     private readonly Mock<INoteNameService> mockNames = new();
     private readonly Mock<INoteTreeService> mockTree = new();
     private readonly Mock<ISyncService> mockSync = new();
+    private readonly Mock<ISyncEncryptionService> mockEncryption = new();
     private HashSet<string> lastExpandedFolderIds = [];
     private List<NoteEntry> entries =
     [
@@ -46,10 +50,10 @@ public class FilesViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(null!, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, null!, mockNames.Object, mockTree.Object, mockSync.Object)).ParamName);
-        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, null!, mockTree.Object, mockSync.Object)).ParamName);
-        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, null!, mockSync.Object)).ParamName);
+        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(null!, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockEncryption.Object)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, null!, mockNames.Object, mockTree.Object, mockSync.Object, mockEncryption.Object)).ParamName);
+        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, null!, mockTree.Object, mockSync.Object, mockEncryption.Object)).ParamName);
+        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, null!, mockSync.Object, mockEncryption.Object)).ParamName);
     }
 
     [Fact]
@@ -433,7 +437,8 @@ public class FilesViewModelTests
     [Fact]
     public void GivenNullSyncService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, null!)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, null!, mockEncryption.Object)).ParamName);
+        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -503,13 +508,58 @@ public class FilesViewModelTests
         }
     }
 
+    [Fact]
+    public void GivenEntries_WhenCanDecrypt_ThenNullForPlainAndKeyRingAnswerForEncrypted()
+    {
+        // Arrange
+        mockEncryption.Setup(x => x.CanDecrypt("k_1")).Returns(true);
+        mockEncryption.Setup(x => x.CanDecrypt("k_2")).Returns(false);
+        var sut = CreateSut();
+
+        // Act & Assert
+        Assert.Null(sut.CanDecrypt(Note("plain", "plain.md", null)));
+        Assert.True(sut.CanDecrypt(new NoteEntry { Id = "a", EncryptionKeyId = "k_1" }));
+        Assert.False(sut.CanDecrypt(new NoteEntry { Id = "b", EncryptionKeyId = "k_2" }));
+    }
+
+    [Fact]
+    public async Task GivenLoaded_WhenEncryptionStatusChanges_ThenEntriesReload()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        mockNotes.Invocations.Clear();
+
+        // Act
+        mockEncryption.Raise(x => x.StatusChanged += null, mockEncryption.Object, E2eStatus.Unlocked);
+
+        // Assert
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
+        sut.Dispose();
+        mockEncryption.Raise(x => x.StatusChanged += null, mockEncryption.Object, E2eStatus.Disabled);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenEncryptionLocked_WhenLoading_ThenErrorShown()
+    {
+        // Arrange
+        mockNotes.Setup(x => x.GetEntriesAsync()).ThrowsAsync(new E2eLockedException("locked"));
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.Equal("locked", sut.ErrorMessage);
+    }
+
     private static NoteEntry Folder(string id, string name, string? parentId) =>
         new() { Id = id, Name = name, ParentId = parentId, Kind = NoteEntryKind.Folder };
 
     private static NoteEntry Note(string id, string name, string? parentId) =>
         new() { Id = id, Name = name, ParentId = parentId, Kind = NoteEntryKind.Note };
 
-    private FilesViewModel CreateSut() => new(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object);
+    private FilesViewModel CreateSut() => new(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockEncryption.Object);
 
     private async Task<FilesViewModel> CreateLoadedSutAsync()
     {

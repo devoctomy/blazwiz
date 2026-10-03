@@ -286,7 +286,29 @@
             "blazwiz.Portal.Application.UnitTests/Services/SyncEventPresenterTests.cs",
             "blazwiz.Portal.Application.UnitTests/Services/SyncStatusPresenterTests.cs",
             "blazwiz.Portal.Application.UnitTests/ViewModels/SyncViewModelTests.cs",
-            "blazwiz.Portal.UITests/SyncTests.cs"
+            "blazwiz.Portal.UITests/SyncTests.cs",
+            "blazwiz.Core/Encryption/**",
+            "blazwiz.Core/Extensions/E2eEncryptionServiceCollectionExtensions.cs",
+            "blazwiz.Core.UnitTests/Encryption/**",
+            "blazwiz.Core.UnitTests/Extensions/E2eEncryptionServiceCollectionExtensionsTests.cs",
+            "blazwiz.Portal.Application/Services/LocalStorageE2eLocalKeyStore.cs",
+            "blazwiz.Portal.Application/Services/PasskeyUnlockService.cs",
+            "blazwiz.Portal.Application/Services/Interfaces/IPasskeyUnlockService.cs",
+            "blazwiz.Portal.Application/ViewModels/Argon2idSettingsViewModel.cs",
+            "blazwiz.Portal.Application/ViewModels/E2eBannerViewModel.cs",
+            "blazwiz.Portal.Application/ViewModels/E2eSettingsViewModel.cs",
+            "blazwiz.Portal/Components/Argon2idPanel.razor",
+            "blazwiz.Portal/Components/Argon2idPanel.razor.cs",
+            "blazwiz.Portal/Components/E2eBanner.razor",
+            "blazwiz.Portal/Components/E2eBanner.razor.cs",
+            "blazwiz.Portal/Components/E2eEncryptionSection.razor",
+            "blazwiz.Portal/Components/E2eEncryptionSection.razor.cs",
+            "blazwiz.Portal.Application.UnitTests/Services/LocalStorageE2eLocalKeyStoreTests.cs",
+            "blazwiz.Portal.Application.UnitTests/Services/PasskeyUnlockServiceTests.cs",
+            "blazwiz.Portal.Application.UnitTests/ViewModels/Argon2idSettingsViewModelTests.cs",
+            "blazwiz.Portal.Application.UnitTests/ViewModels/E2eBannerViewModelTests.cs",
+            "blazwiz.Portal.Application.UnitTests/ViewModels/E2eSettingsViewModelTests.cs",
+            "blazwiz.Portal.UITests/E2eEncryptionTests.cs"
           ]
         }
       ]
