@@ -68,6 +68,16 @@ Scenario:
 
 ### H2 (High, verify first). Markdown preview may allow script injection through Markdig generic attributes
 
+**Status: done (2026-10-03).** Confirmed first: a test showed `{onerror=...}`, `{onclick=...}` and
+`{onmouseover=...}` coming out as event handler attributes on images, links and headings. `MarkdownRenderer` now
+builds an explicit pipeline (auto identifiers, pipe and grid tables, task lists, emphasis extras, list extras,
+footnotes, definition lists, auto links) without generic attributes, and the test passes
+(`MarkdownRendererTests.GivenGenericAttributes_WhenToHtml_ThenNoEventHandlerIsRendered`). Caveats:
+- Notes is a demo feature. The renderer is behind `IMarkdownRenderer`, so a real notes app can register its own,
+  e.g. one that also sanitises the HTML with HtmlSanitizer.
+- The preview no longer supports `:::` custom containers or media link embeds.
+- Remote images still load when a note is previewed, and there is still no CSP (M2).
+
 **Where:** `blazwiz.Portal.Application/Services/MarkdownRenderer.cs:16-19`, `blazwiz.Portal/Pages/NoteEditor.razor:113`
 
 The pipeline uses `UseAdvancedExtensions()`, which includes the **GenericAttributes** extension (`{#id .class key=value}`).
@@ -445,7 +455,7 @@ Each call clones the key and then zeroes the copy. Add `bool HasKey(string name)
 ## 8. Suggested order of work
 
 1. ~~**H1**: re-check keys.json while `Disabled`, and stop plaintext uploads over encrypted records.~~ Done (see H1 status).
-2. **H2**: test the Markdig generic attributes payload, and change the pipeline if it fails.
+2. ~~**H2**: test the Markdig generic attributes payload, and change the pipeline if it fails.~~ Done (see H2 status).
 3. **H3**: make Web Lock acquisition cancellable.
 4. **M5, M6**: clear keys on logout, and handle a corrupt keys.json.
 5. **M2 / I1**: CSP via a CloudFront response headers policy, and self-host fonts.

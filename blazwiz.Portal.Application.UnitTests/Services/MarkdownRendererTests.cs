@@ -78,4 +78,18 @@ public class MarkdownRendererTests
     {
         Assert.Contains(expected, sut.ToHtml(markdown));
     }
+
+    [Theory]
+    [InlineData("![x](https://example.com/x.png){onerror=alert(1)}")]
+    [InlineData("[click](https://example.com){onclick=alert(1)}")]
+    [InlineData("# Title {onmouseover=alert(1)}")]
+    [InlineData("Some text\n{onclick=alert(1)}")]
+    public void GivenGenericAttributes_WhenToHtml_ThenNoEventHandlerIsRendered(string markdown)
+    {
+        // Act
+        var result = sut.ToHtml(markdown);
+
+        // Assert
+        Assert.DoesNotMatch(new Regex(@"<[^>]*\son\w+\s*=", RegexOptions.IgnoreCase), result);
+    }
 }

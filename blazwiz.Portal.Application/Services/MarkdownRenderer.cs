@@ -13,8 +13,18 @@ public class MarkdownRenderer : IMarkdownRenderer
 {
     private static readonly string[] SafeSchemes = ["http", "https", "mailto"];
 
+    // Extensions are listed one by one rather than UseAdvancedExtensions(), which includes generic attributes
+    // ({onerror=...}) that would let a note add event handlers to the preview.
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
-        .UseAdvancedExtensions()
+        .UseAutoIdentifiers()
+        .UsePipeTables()
+        .UseGridTables()
+        .UseTaskLists()
+        .UseEmphasisExtras()
+        .UseListExtras()
+        .UseFootnotes()
+        .UseDefinitionLists()
+        .UseAutoLinks()
         .DisableHtml()
         .Build();
 
