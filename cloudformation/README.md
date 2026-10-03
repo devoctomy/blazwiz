@@ -131,6 +131,8 @@ The policy below covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and noth
         "cognito-identity:DeleteIdentityPool",
         "cognito-identity:SetIdentityPoolRoles",
         "cognito-identity:GetIdentityPoolRoles",
+        "cognito-identity:SetPrincipalTagAttributeMap",
+        "cognito-identity:GetPrincipalTagAttributeMap",
         "cognito-identity:TagResource",
         "cognito-identity:UntagResource",
         "cognito-identity:ListTagsForResource"

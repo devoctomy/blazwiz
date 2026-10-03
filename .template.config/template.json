@@ -11,6 +11,9 @@
     "type": "solution"
   },
   "preferNameDirectory": true,
+  "guids": [
+    "a78e68c7-90e0-4f90-aa3d-73f7b2c9f2c8"
+  ],
   "symbols": {
     "Title": {
       "type": "parameter",
@@ -257,9 +260,7 @@
             "blazwiz.Core.IntTests/StepDefinitions/ReachabilityStepDefinitions.cs",
             "blazwiz.Core.IntTests/Support/**",
             "blazwiz.Portal.Models/Sync/**",
-            "blazwiz.Portal.Models/Aws/AwsTemporaryCredentials.cs",
             "blazwiz.Portal.Application/Services/AuthSyncUserContext.cs",
-            "blazwiz.Portal.Application/Services/CognitoIdentityClient.cs",
             "blazwiz.Portal.Application/Services/CognitoS3TargetProvider.cs",
             "blazwiz.Portal.Application/Services/IndexedDbNotesStateStore.cs",
             "blazwiz.Portal.Application/Services/LocalStorageOfflineModeStore.cs",
@@ -267,7 +268,6 @@
             "blazwiz.Portal.Application/Services/PersistentStorageService.cs",
             "blazwiz.Portal.Application/Services/SyncEventPresenter.cs",
             "blazwiz.Portal.Application/Services/SyncStatusPresenter.cs",
-            "blazwiz.Portal.Application/Services/Interfaces/ICognitoIdentityClient.cs",
             "blazwiz.Portal.Application/Services/Interfaces/INoteMigrationService.cs",
             "blazwiz.Portal.Application/Services/Interfaces/INotesStateStore.cs",
             "blazwiz.Portal.Application/Services/Interfaces/IPersistentStorageService.cs",
@@ -278,7 +278,6 @@
             "blazwiz.Portal/Pages/Sync.razor.cs",
             "blazwiz.Portal/wwwroot/css/sync.css",
             "blazwiz.Portal.Application.UnitTests/Services/AuthSyncUserContextTests.cs",
-            "blazwiz.Portal.Application.UnitTests/Services/CognitoIdentityClientTests.cs",
             "blazwiz.Portal.Application.UnitTests/Services/CognitoS3TargetProviderTests.cs",
             "blazwiz.Portal.Application.UnitTests/Services/IndexedDbNotesStateStoreTests.cs",
             "blazwiz.Portal.Application.UnitTests/Services/LocalStorageOfflineModeStoreTests.cs",

@@ -8,10 +8,9 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Amazon.Extensions.CognitoAuthentication" />
-<!--#if (IncludeNotes)-->
     <PackageReference Include="AWSSDK.CognitoIdentity" />
-<!--#endif-->
     <PackageReference Include="AWSSDK.CognitoIdentityProvider" />
+    <PackageReference Include="AWSSDK.SecretsManager" />
     <PackageReference Include="Blazing.Mvvm" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />

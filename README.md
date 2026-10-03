@@ -199,6 +199,12 @@ settings make the AWS SDK work in the browser, see `CognitoUserPoolClient.Browse
 `HttpClient`, and buffering responses because the SDK reads them synchronously, which WebAssembly does not
 allow. Tokens are only decoded (with `Microsoft.IdentityModel.JsonWebTokens`) to show the user's name and email.
 
+Once signed in to a deployed stack, `CognitoAwsCredentialsProvider` (behind `IAwsCredentialsProvider`) exchanges
+the ID token for temporary AWS credentials through the identity pool, holds them in memory for the session (fetching
+new ones shortly before they expire) and forgets them on sign out. Everything that calls AWS shares them, e.g.
+`SecretsManagerUserKeysStore` (behind `IUserKeysStore`), which keeps the user's keys in their own Secrets Manager
+secret, `<user pool sub>/keys`.
+
 ## Deploying to AWS
 
 Everything lives in `cloudformation/`. You need the AWS CLI v2, the .NET 10 SDK and credentials for the
@@ -266,9 +272,8 @@ deployments show up straight away. The test user is created with a permanent pas
 - **More sync**: timer based sync, signing in with no network, large files (streaming and multipart upload), an
   OPFS file store, and telling other open tabs about synced changes (see `docs/wip/s3-sync.md`).
 <!--#else-->
-- **AWS credentials in the browser**: exchange the ID token for temporary AWS credentials through the
-  Cognito identity pool, for direct access to the per-user data bucket. The infrastructure is already in place
-  (see [Deploying to AWS](#deploying-to-aws)). The notes app (`--IncludeNotes`) does this to sync notes.
+- **Per-user data**: the session's AWS credentials can already reach the user's prefix in the data bucket
+  (see [Deploying to AWS](#deploying-to-aws)). The notes app (`--IncludeNotes`) uses it to sync notes.
 <!--#endif-->
 <!--#if (false)-->
 
