@@ -1,6 +1,7 @@
 //#if (IncludeNotes)
 using blazwiz.Core.Sync.Interfaces;
 //#endif
+using System.Text.Json;
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
@@ -112,7 +113,6 @@ public class CognitoAuthenticationServiceTests
         Assert.Equal("Bob Hoskins", session.DisplayName);
         Assert.Equal(idToken, session.IdToken);
         Assert.Equal("access", session.AccessToken);
-        Assert.Equal("refresh", session.RefreshToken);
         Assert.Equal(Now, session.SignedInAt);
         Assert.Equal(Now.AddHours(1), session.ExpiresAt);
         mockLocalStorage.Verify(x => x.SetObjectAsync(CognitoAuthenticationService.SessionStorageKey, session), Times.Once);
@@ -314,17 +314,18 @@ public class CognitoAuthenticationServiceTests
     }
 
     [Fact]
-    public async Task GivenSessionWithRefreshToken_WhenLogoutAsync_ThenRemovesSessionAndRevokesToken()
+    public async Task GivenSignedIn_WhenLogoutAsync_ThenRemovesSessionAndRevokesTokenOnce()
     {
         // Arrange
-        SetupStoredSession(new UserSession { IdToken = idToken, RefreshToken = "refresh" });
+        var sut = await CreateSignedInSutAsync();
         mockCognito.Setup(x => x.RevokeAsync("refresh")).Returns(Task.CompletedTask);
 
         // Act
-        await CreateSut().LogoutAsync();
+        await sut.LogoutAsync();
+        await sut.LogoutAsync();
 
         // Assert
-        mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Exactly(2));
         mockCognito.Verify(x => x.RevokeAsync("refresh"), Times.Once);
     }
 
@@ -332,11 +333,11 @@ public class CognitoAuthenticationServiceTests
     public async Task GivenRevokeFails_WhenLogoutAsync_ThenStillSignsOut()
     {
         // Arrange
-        SetupStoredSession(new UserSession { IdToken = idToken, RefreshToken = "refresh" });
+        var sut = await CreateSignedInSutAsync();
         mockCognito.Setup(x => x.RevokeAsync("refresh")).ThrowsAsync(new HttpRequestException("offline"));
 
         // Act
-        await CreateSut().LogoutAsync();
+        await sut.LogoutAsync();
 
         // Assert
         mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
@@ -384,7 +385,7 @@ public class CognitoAuthenticationServiceTests
     public async Task GivenFreshSession_WhenGetCurrentUserAsync_ThenReturnsItWithoutRefreshing()
     {
         // Arrange
-        var session = new UserSession { IdToken = idToken, RefreshToken = "refresh", ExpiresAt = Now.Add(CognitoAuthenticationService.RefreshMargin).AddSeconds(1) };
+        var session = new UserSession { IdToken = idToken, ExpiresAt = Now.Add(CognitoAuthenticationService.RefreshMargin).AddSeconds(1) };
         SetupStoredSession(session);
 
         // Act
@@ -396,29 +397,49 @@ public class CognitoAuthenticationServiceTests
     }
 
     [Fact]
-    public async Task GivenSessionAboutToExpire_WhenGetCurrentUserAsync_ThenRefreshesAndKeepsRefreshToken()
+    public async Task GivenSessionAboutToExpire_WhenGetCurrentUserAsync_ThenRefreshesWithTheTokenFromSignIn()
     {
         // Arrange
-        var signedInAt = Now.AddDays(-2);
-        SetupStoredSession(new UserSession { Username = "bob.hoskins@example.com", IdToken = "old", RefreshToken = "refresh", SignedInAt = signedInAt, ExpiresAt = Now.AddMinutes(1) });
+        var sut = await CreateSignedInSutAsync();
+        var signedInAt = Now.AddHours(-2);
+        SetupStoredSession(new UserSession { Username = "bob.hoskins@example.com", IdToken = "old", SignedInAt = signedInAt, ExpiresAt = Now.AddMinutes(1) });
         var refreshed = Tokens(idToken);
         refreshed.RefreshToken = null;
         mockCognito.Setup(x => x.RefreshAsync("bob.hoskins@example.com", "refresh")).ReturnsAsync(refreshed);
 
         // Act
-        var result = await CreateSut().GetCurrentUserAsync();
+        var first = await sut.GetCurrentUserAsync();
+        var second = await sut.GetCurrentUserAsync();
 
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal(idToken, result.IdToken);
-        Assert.Equal("refresh", result.RefreshToken);
-        Assert.Equal(signedInAt, result.SignedInAt);
-        Assert.Equal(Now.AddHours(1), result.ExpiresAt);
-        mockLocalStorage.Verify(x => x.SetObjectAsync(CognitoAuthenticationService.SessionStorageKey, result), Times.Once);
+        // Assert: the second refresh still has the token, though Cognito did not send it again.
+        Assert.NotNull(first);
+        Assert.Equal(idToken, first.IdToken);
+        Assert.Equal(signedInAt, first.SignedInAt);
+        Assert.Equal(Now.AddHours(1), first.ExpiresAt);
+        Assert.NotNull(second);
+        mockCognito.Verify(x => x.RefreshAsync("bob.hoskins@example.com", "refresh"), Times.Exactly(2));
+        mockLocalStorage.Verify(x => x.SetObjectAsync(CognitoAuthenticationService.SessionStorageKey, first), Times.Once);
     }
 
     [Fact]
-    public async Task GivenExpiredSessionWithoutRefreshToken_WhenGetCurrentUserAsync_ThenClearsIt()
+    public async Task GivenSignedInAndRefreshed_WhenSessionSaved_ThenRefreshTokenIsNeverStored()
+    {
+        // Arrange
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(new UserSession { Username = "bob.hoskins@example.com", IdToken = "old", ExpiresAt = Now.AddMinutes(1) });
+        mockCognito.Setup(x => x.RefreshAsync("bob.hoskins@example.com", "refresh")).ReturnsAsync(Tokens(idToken));
+
+        // Act
+        await sut.GetCurrentUserAsync();
+
+        // Assert
+        var saved = mockLocalStorage.Invocations.Where(i => i.Method.Name == nameof(ILocalStorageService.SetObjectAsync)).ToList();
+        Assert.Equal(2, saved.Count);
+        Assert.All(saved, call => Assert.DoesNotContain("refresh", JsonSerializer.Serialize(call.Arguments[1])));
+    }
+
+    [Fact]
+    public async Task GivenExpiredSessionFromAnotherTabOrBeforeReload_WhenGetCurrentUserAsync_ThenClearsIt()
     {
         // Arrange
         SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(-1) });
@@ -435,11 +456,12 @@ public class CognitoAuthenticationServiceTests
     public async Task GivenRefreshRejected_WhenGetCurrentUserAsync_ThenClearsSession()
     {
         // Arrange
-        SetupStoredSession(new UserSession { IdToken = idToken, RefreshToken = "refresh", ExpiresAt = Now.AddMinutes(-1) });
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(-1) });
         mockCognito.Setup(x => x.RefreshAsync(It.IsAny<string>(), "refresh")).ThrowsAsync(new CognitoException("NotAuthorizedException", "Refresh Token has expired"));
 
         // Act
-        var result = await CreateSut().GetCurrentUserAsync();
+        var result = await sut.GetCurrentUserAsync();
 
         // Assert
         Assert.Null(result);
@@ -450,11 +472,12 @@ public class CognitoAuthenticationServiceTests
     public async Task GivenRefreshReturnsNoTokens_WhenGetCurrentUserAsync_ThenClearsSession()
     {
         // Arrange
-        SetupStoredSession(new UserSession { IdToken = idToken, RefreshToken = "refresh", ExpiresAt = Now.AddMinutes(-1) });
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(-1) });
         mockCognito.Setup(x => x.RefreshAsync(It.IsAny<string>(), "refresh")).ReturnsAsync(new CognitoSignInResult());
 
         // Act
-        var result = await CreateSut().GetCurrentUserAsync();
+        var result = await sut.GetCurrentUserAsync();
 
         // Assert
         Assert.Null(result);
@@ -465,11 +488,12 @@ public class CognitoAuthenticationServiceTests
     public async Task GivenOffline_WhenGetCurrentUserAsyncNeedsRefresh_ThenReturnsNullButKeepsSession()
     {
         // Arrange
-        SetupStoredSession(new UserSession { IdToken = idToken, RefreshToken = "refresh", ExpiresAt = Now.AddMinutes(-1) });
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(-1) });
         mockCognito.Setup(x => x.RefreshAsync(It.IsAny<string>(), "refresh")).ThrowsAsync(new HttpRequestException("offline"));
 
         // Act
-        var result = await CreateSut().GetCurrentUserAsync();
+        var result = await sut.GetCurrentUserAsync();
 
         // Assert
         Assert.Null(result);
@@ -505,7 +529,7 @@ public class CognitoAuthenticationServiceTests
     public async Task GivenExpiredSessionInOfflineMode_WhenGetCurrentUserAsync_ThenStoredSessionKeptWithoutRefreshing()
     {
         // Arrange
-        var session = new UserSession { Username = "bob", IdToken = idToken, RefreshToken = "refresh", ExpiresAt = Now.AddMinutes(-30) };
+        var session = new UserSession { Username = "bob", IdToken = idToken, ExpiresAt = Now.AddMinutes(-30) };
         SetupStoredSession(session);
         mockOfflineMode.Setup(x => x.GetAsync()).ReturnsAsync(true);
         var sut = CreateSut();
@@ -524,6 +548,15 @@ public class CognitoAuthenticationServiceTests
         mockLocalStorage
             .Setup(x => x.GetObjectAsync<UserSession>(CognitoAuthenticationService.SessionStorageKey))
             .ReturnsAsync(session);
+    }
+
+    // Signed in, so the service holds the refresh token "refresh" in memory.
+    private async Task<CognitoAuthenticationService> CreateSignedInSutAsync()
+    {
+        mockCognito.Setup(x => x.SignInAsync("bob.hoskins@example.com", Password)).ReturnsAsync(Tokens(idToken));
+        var sut = CreateSut();
+        Assert.True((await sut.LoginAsync("bob.hoskins@example.com", Password)).Success);
+        return sut;
     }
 
     private CognitoAuthenticationService CreateSut() => new(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,

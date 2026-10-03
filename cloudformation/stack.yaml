@@ -269,11 +269,13 @@ Resources:
       EnableTokenRevocation: true
       AccessTokenValidity: 60
       IdTokenValidity: 60
-      RefreshTokenValidity: 30
+      # The portal only keeps the refresh token in memory, so it renews the session while a tab stays open. This caps
+      # how long that can go on, and how long a stolen one is any use.
+      RefreshTokenValidity: 12
       TokenValidityUnits:
         AccessToken: minutes
         IdToken: minutes
-        RefreshToken: days
+        RefreshToken: hours
 
   # Identity ids are per identity pool and name each user's prefix in the data bucket, so replacing
   # the pool orphans everyone's data. Protected like the user pool.
