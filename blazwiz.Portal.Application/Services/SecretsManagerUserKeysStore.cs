@@ -7,18 +7,18 @@ using Microsoft.IdentityModel.JsonWebTokens;
 namespace blazwiz.Portal.Application.Services;
 
 /// <summary>
-/// <see cref="IUserKeysStore"/> calling Secrets Manager from the browser with the identity pool credentials. The secret
+/// <see cref="IUserKeysStore"/> calling Secrets Manager from the browser with the session's identity pool credentials. The secret
 /// is named after the user pool sub, not the identity id, because identity ids contain ':', which secret names cannot;
 /// the stack only lets each user reach the secret matching their own sub (cloudformation/stack.yaml).
 /// </summary>
 public sealed class SecretsManagerUserKeysStore(
     IAuthenticationService authService,
-    ICognitoIdentityClient identityClient,
+    IAwsCredentialsProvider credentialsProvider,
     ISecretsManagerClientFactory clientFactory)
     : IUserKeysStore
 {
     private readonly IAuthenticationService authService = authService ?? throw new ArgumentNullException(nameof(authService));
-    private readonly ICognitoIdentityClient identityClient = identityClient ?? throw new ArgumentNullException(nameof(identityClient));
+    private readonly IAwsCredentialsProvider credentialsProvider = credentialsProvider ?? throw new ArgumentNullException(nameof(credentialsProvider));
     private readonly ISecretsManagerClientFactory clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
 
     /// <inheritdoc/>
@@ -102,12 +102,12 @@ public sealed class SecretsManagerUserKeysStore(
     {
         var session = authService.IsPlaceholder ? null : await authService.GetCurrentUserAsync();
         var sub = GetSub(session?.IdToken);
-        if (sub == null)
+        var credentials = sub == null ? null : await credentialsProvider.GetCredentialsAsync(ct);
+        if (credentials == null)
         {
             throw new InvalidOperationException("The user's keys are only available when signed in with Cognito.");
         }
 
-        var credentials = await identityClient.GetCredentialsAsync(session!.IdToken!, ct);
         using var client = clientFactory.Create(credentials);
         try
         {

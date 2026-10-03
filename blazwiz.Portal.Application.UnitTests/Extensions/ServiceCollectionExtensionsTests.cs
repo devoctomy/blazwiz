@@ -59,11 +59,12 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<UserDisplayService>(scope.ServiceProvider.GetRequiredService<IUserDisplayService>());
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<NavigationMenuService>(scope.ServiceProvider.GetRequiredService<INavigationMenuService>());
-//#if (IncludeNotes)
         Assert.IsType<CognitoIdentityClient>(scope.ServiceProvider.GetRequiredService<ICognitoIdentityClient>());
-        Assert.IsType<CognitoS3TargetProvider>(scope.ServiceProvider.GetRequiredService<IS3SyncTargetProvider>());
+        Assert.IsType<CognitoAwsCredentialsProvider>(scope.ServiceProvider.GetRequiredService<IAwsCredentialsProvider>());
         Assert.IsType<SecretsManagerClientFactory>(scope.ServiceProvider.GetRequiredService<ISecretsManagerClientFactory>());
         Assert.IsType<SecretsManagerUserKeysStore>(scope.ServiceProvider.GetRequiredService<IUserKeysStore>());
+//#if (IncludeNotes)
+        Assert.IsType<CognitoS3TargetProvider>(scope.ServiceProvider.GetRequiredService<IS3SyncTargetProvider>());
         Assert.IsType<AuthSyncUserContext>(scope.ServiceProvider.GetRequiredService<ISyncUserContext>());
         Assert.IsType<LocalStorageOfflineModeStore>(scope.ServiceProvider.GetRequiredService<IOfflineModeStore>());
         Assert.IsType<PersistentStorageService>(scope.ServiceProvider.GetRequiredService<IPersistentStorageService>());
