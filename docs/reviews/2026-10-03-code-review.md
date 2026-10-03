@@ -14,7 +14,7 @@ here has been confirmed by running it. Where a finding needs a quick check first
 |---|---|---|
 | High | 3 | Fix before E2E encryption ships: leaks plaintext, allows script injection, or can stop sync |
 | Medium | 11 | Real defects or risks that can lose data or weaken security in plausible situations |
-| Low | 15 | Hardening, edge cases, and tidying |
+| Low | 14 | Hardening, edge cases, and tidying |
 | Maintainability | 8 | Design and readability, no defect today |
 
 The architecture is strong: clear layering, injectable services, AEAD everywhere with the header as associated data,
@@ -171,26 +171,10 @@ readable.
   advises random bytes with no personal data. Use 32 random bytes.
 - The PRF salt is a generic constant (`'WebAuthn PRF Registration Salt'`). HKDF already separates keys per app, so this
   is safe, but an app-specific salt would make the separation clear at the authenticator level too.
-
-### L12 (Low, was M1). PRF ceremonies only prefer user verification
-
-**Where:** `blazwiz.Portal/wwwroot/js/webauthn-bridge.js:108,134,203`, `blazwiz.Portal/Services/WebAuthnService.cs:35-46`
-
-PRF (CTAP2 `hmac-secret`) is always evaluated on the authenticator, so the physical device and at least a touch are
-always needed. The question is only whether a PIN or biometric is also needed. Every ceremony asks for
-`userVerification: 'preferred'`, and the returned `UserVerified` flag is not checked before `DeriveKeys`.
-
-- **Security:** platform authenticators (Windows Hello, Touch ID, Android) nearly always verify anyway. A roaming
-  security key with no PIN set gives a PRF output from a touch alone. Holding that key and the browser profile is then
-  enough to unlock the remembered password and the E2E key encryption key, without knowing anything.
-- **Reliability:** `hmac-secret` gives a different output depending on whether verification happened. If verification
-  happens at enrolment but not at a later sign in, or the other way round, the PRF output changes. The master key
-  then fails to unwrap and the device falls back to `NeedsSetup`, which looks like an unexplained "set up this device
-  again". The same change would break decrypting the remembered password.
-
-**Recommendation:** use `userVerification: 'required'` on every ceremony that evaluates PRF, so the output stays the
-same from one sign in to the next and a PIN-less key is not enough on its own. Checking `UserVerified` in
-`WebAuthnService` before deriving keys is a cheap extra guard.
+- Note for template users, not a defect in the target setup (a FIDO2 card that asks for touch and PIN every time, and
+  phone passkeys behind biometrics): ceremonies use `userVerification: 'preferred'` (`:108,134,203`). A security key
+  enrolled **without** a FIDO2 PIN would unlock with a touch alone. `'required'` would turn such keys away, if that
+  matters to whoever uses the template.
 
 ### L3 (Low). Minimum passphrase length is 8
 
@@ -457,4 +441,3 @@ Each call clones the key and then zeroes the copy. Add `bool HasKey(string name)
 7. **M3, M4**: bounds-check KDF settings, and add a concurrency check for keys.json writes.
 8. **M8, M9**: conflict copies, plaintext-aware comparison, and per-key write serialisation.
 9. **M10, D1–D8**: logging, consolidate the AES-GCM services, and CI.
-10. **L12**: require user verification for PRF ceremonies (a small change; can go in with any WebAuthn work).
