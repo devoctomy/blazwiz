@@ -7,7 +7,8 @@ Safe to run repeatedly. Each run:
   1. Creates / updates the CloudFormation stack "<AppName>-<Environment>" through a change set. The changes
      are listed first, replacements need confirming, and replacing the user pool, identity pool or data
      bucket is refused unless -AllowStatefulReplacement is given (see stack-policy.json).
-  2. Writes the stack outputs into wwwroot/appsettings.Production.json and publishes the portal.
+  2. Writes the stack outputs into wwwroot/appsettings.Production.json, publishes the portal and adds its
+     Content-Security-Policy (see Add-ContentSecurityPolicy in _common.ps1).
   3. Uploads the portal to S3 with sensible Cache-Control headers and invalidates CloudFront.
   4. Creates the test user (or resets their password) if -TestUserEmail is given.
 
@@ -258,6 +259,9 @@ if (-not $SkipPortal) {
     }
 
     $wwwroot = Join-Path $publishDirectory 'wwwroot'
+    Add-ContentSecurityPolicy -WwwRoot $wwwroot -Region $outputs['Region'] -DataBucketName $outputs['DataBucketName']
+    Write-Ok "Content-Security-Policy added to index.html"
+
     $bucketUri = "s3://$($outputs['PortalBucketName'])"
 
     Write-Step "Uploading portal to $bucketUri"

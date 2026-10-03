@@ -1,3 +1,4 @@
+using blazwiz.Core.Cryptography.Configuration;
 using blazwiz.Core.Cryptography;
 using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Extensions;
@@ -49,5 +50,20 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<SystemClock>(systemClock);
         Assert.IsType<GreetingService>(greetingService);
         Assert.IsType<BouncyCastleAesGcmCryptoService>(cryptoService);
+    }
+
+    [Fact]
+    public void GivenServiceCollection_WhenAddBlazwizCoreServices_ThenKeyCryptographyIsResolvable()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddBlazwizCoreServices();
+        using var provider = services.BuildServiceProvider();
+
+        // Act & Assert
+        Assert.IsType<BouncyCastleAesGcmAeadCipher>(provider.GetRequiredService<IAeadCipher>());
+        Assert.IsType<AeadKeyWrapService>(provider.GetRequiredService<IKeyWrapService>());
+        Assert.IsType<BouncyCastleArgon2idKeyDerivationService>(provider.GetRequiredService<IArgon2idKeyDerivationService>());
+        Assert.NotNull(provider.GetRequiredService<Argon2idOptions>());
     }
 }

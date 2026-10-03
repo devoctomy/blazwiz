@@ -187,9 +187,10 @@ deploying, `deploy.ps1` generates `appsettings.Production.json` with the stack's
 
 - **`CognitoAuthenticationService`** when `AwsCognito` has a region, user pool id and app client id (deployed
   builds get these from `appsettings.Production.json`). Sign-in uses SRP, so the password is never sent.
-  Invited users with a temporary password are asked to choose a new one. Tokens are kept in local storage
-  and refreshed with the refresh token when they are within 5 minutes of expiring, and signing out revokes
-  the refresh token.
+  Invited users with a temporary password are asked to choose a new one. The ID and access tokens (60
+  minutes) are kept in local storage. The refresh token is only held in memory, never stored: it renews the
+  tokens when they are within 5 minutes of expiring, for as long as the tab stays open (at most 12 hours).
+  Closing or reloading the tab means signing in again. Signing out revokes it.
 - **`LocalAuthenticationService`** (placeholder, any credentials) otherwise, e.g. local development and the UI tests.
 
 All Cognito protocol work, including SRP, is done by AWS's

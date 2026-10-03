@@ -84,6 +84,15 @@
                     {
                         <span class="file-toggle-spacer"></span>
                         <button type="button" class="file-name" title="Edit @entry.Name" @onclick="() => ViewModel.OpenNoteCommand.Execute(entry.Id)">
+                            @switch (ViewModel.CanDecrypt(entry))
+                            {
+                                case true:
+                                    <i class="bi bi-lock-fill file-lock text-success" title="End to end encrypted" aria-label="End to end encrypted"></i>
+                                    break;
+                                case false:
+                                    <i class="bi bi-lock-fill file-lock text-danger" title="End to end encrypted: set up encryption on this device to open it" aria-label="End to end encrypted, locked on this device"></i>
+                                    break;
+                            }
                             <i class="bi bi-file-earmark-text file-icon"></i>
                             <span class="file-label">@entry.Name</span>
                         </button>

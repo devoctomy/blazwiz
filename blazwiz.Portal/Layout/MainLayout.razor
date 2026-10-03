@@ -92,6 +92,7 @@ else
 
             <main class="app-content">
 @*#if (IncludeNotes)*@
+                <E2eBanner />
                 @if (ViewModel.NeedsFolderAccess)
                 {
                     <div class="alert alert-warning d-flex flex-wrap align-items-center gap-3" role="alert" id="folder-access-banner">

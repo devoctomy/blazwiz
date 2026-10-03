@@ -123,4 +123,36 @@ public class InMemoryDerivedKeyStoreTests
     {
         Assert.ThrowsAny<ArgumentException>(() => sut.TryGetKey(name!, out _));
     }
+
+    [Fact]
+    public void GivenStoredKeys_WhenRemoveKey_ThenOnlyThatKeyIsForgotten()
+    {
+        // Arrange
+        sut.SetKey("apple", [1, 2, 3]);
+        sut.SetKey("orange", [4, 5, 6]);
+
+        // Act
+        var removed = sut.RemoveKey("apple");
+
+        // Assert
+        Assert.True(removed);
+        Assert.False(sut.TryGetKey("apple", out _));
+        Assert.True(sut.TryGetKey("orange", out var orange));
+        Assert.Equal(new byte[] { 4, 5, 6 }, orange);
+    }
+
+    [Fact]
+    public void GivenNoKey_WhenRemoveKey_ThenReturnsFalse()
+    {
+        Assert.False(sut.RemoveKey("apple"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void GivenInvalidName_WhenRemoveKey_ThenThrowsArgumentException(string? name)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => sut.RemoveKey(name!));
+    }
 }

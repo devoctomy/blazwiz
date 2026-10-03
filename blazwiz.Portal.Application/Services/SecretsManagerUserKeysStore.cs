@@ -1,6 +1,7 @@
 using Amazon.Runtime;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
+using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using Microsoft.IdentityModel.JsonWebTokens;
 
@@ -61,6 +62,25 @@ public sealed class SecretsManagerUserKeysStore(
             }
 
             return null;
+        });
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> TryCreateAsync(string value, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return WithClientAsync(ct, async (client, secretName) =>
+        {
+            try
+            {
+                await client.CreateSecretAsync(new CreateSecretRequest { Name = secretName, SecretString = value }, ct);
+                return true;
+            }
+            catch (ResourceExistsException)
+            {
+                return false;
+            }
         });
     }
 

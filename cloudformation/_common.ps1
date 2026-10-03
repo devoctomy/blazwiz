@@ -237,3 +237,88 @@ function New-TempJsonFile($Value) {
     [IO.File]::WriteAllText($path, $json, (New-Object Text.UTF8Encoding($false)))
     return $path
 }
+
+function Add-ContentSecurityPolicy {
+    <#
+    .SYNOPSIS
+    Adds a Content-Security-Policy <meta> tag to a published portal's index.html.
+
+    .DESCRIPTION
+    Done after publishing because the inline import map that Blazor writes into index.html changes with every build,
+    and the policy must allow it by its hash. Doing it here keeps the policy and the page it protects in one file, so
+    they always match. Local runs are not published, so they have no policy.
+
+    The service worker checks every cached file against service-worker-assets.js, so the index.html hash there is
+    updated to match. The pre-compressed copies of index.html are deleted, as they no longer match (deploy.ps1 does
+    not upload them anyway).
+
+    What the policy allows:
+      - scripts: the app's own files, WebAssembly, and the inline import map (by hash). No other inline script or
+        event handler attributes (onerror=... etc.), so markup injected into a page cannot run.
+      - connections: the app itself, and only the AWS endpoints the portal calls in this region and data bucket.
+      - styles: the app's own files, plus inline style attributes (Blazor sets them on elements).
+      - images: the app's own files and data: URIs only. Remote images in notes are not loaded.
+      - workers: the app's own files, and blob: for the OPFS worker.
+    Framing is already refused by the X-Frame-Options header from CloudFront's managed SecurityHeadersPolicy
+    (frame-ancestors cannot be set in a <meta> policy).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$WwwRoot,
+        [Parameter(Mandatory)][string]$Region,
+        [Parameter(Mandatory)][string]$DataBucketName
+    )
+
+    $indexPath = Join-Path $WwwRoot 'index.html'
+    $utf8 = New-Object Text.UTF8Encoding($false)
+    $html = [IO.File]::ReadAllText($indexPath, $utf8)
+    if ($html -match 'http-equiv="Content-Security-Policy"') {
+        throw "$indexPath already has a Content-Security-Policy."
+    }
+
+    $scriptHashes = @()
+    foreach ($match in [regex]::Matches($html, '<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)</script>')) {
+        # Browsers hash the script text after turning CRLF (and lone CR) line breaks into LF.
+        $content = $match.Groups[1].Value -replace "`r`n?", "`n"
+        if ($content.Length -gt 0) {
+            $hash = [Security.Cryptography.SHA256]::Create().ComputeHash($utf8.GetBytes($content))
+            $scriptHashes += "'sha256-$([Convert]::ToBase64String($hash))'"
+        }
+    }
+
+    $directives = @(
+        "default-src 'self'"
+        "script-src 'self' 'wasm-unsafe-eval' $($scriptHashes -join ' ')".TrimEnd()
+        "style-src 'self' 'unsafe-inline'"
+        "img-src 'self' data:"
+        "font-src 'self'"
+        "connect-src 'self' https://cognito-idp.$Region.amazonaws.com https://cognito-identity.$Region.amazonaws.com https://secretsmanager.$Region.amazonaws.com https://$DataBucketName.s3.$Region.amazonaws.com"
+        "worker-src 'self' blob:"
+        "manifest-src 'self'"
+        "object-src 'none'"
+        "base-uri 'self'"
+        "form-action 'self'"
+    )
+    $meta = "<meta http-equiv=""Content-Security-Policy"" content=""$($directives -join '; ')"" />"
+
+    # First in <head> (after the charset), so it covers every script and stylesheet after it.
+    $charset = [regex]::Match($html, '<meta charset="[^"]*"\s*/?>')
+    if (-not $charset.Success) {
+        throw "Could not find <meta charset> in $indexPath."
+    }
+    $html = $html.Insert($charset.Index + $charset.Length, "`n    $meta")
+    [IO.File]::WriteAllText($indexPath, $html, $utf8)
+
+    $assetsPath = Join-Path $WwwRoot 'service-worker-assets.js'
+    if (Test-Path $assetsPath) {
+        $indexHash = [Convert]::ToBase64String([Security.Cryptography.SHA256]::Create().ComputeHash([IO.File]::ReadAllBytes($indexPath)))
+        $assets = [IO.File]::ReadAllText($assetsPath, $utf8)
+        $pattern = '("hash":\s*")sha256-[^"]*(",\s*"url":\s*"index\.html")'
+        if (-not [regex]::IsMatch($assets, $pattern)) {
+            throw "Could not find index.html in $assetsPath."
+        }
+        $assets = [regex]::Replace($assets, $pattern, "`${1}sha256-$indexHash`${2}")
+        [IO.File]::WriteAllText($assetsPath, $assets, $utf8)
+    }
+
+    Remove-Item -Force (Join-Path $WwwRoot 'index.html.br'), (Join-Path $WwwRoot 'index.html.gz') -ErrorAction SilentlyContinue
+}
