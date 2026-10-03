@@ -23,6 +23,7 @@
 <!--#if (IncludeNotes)-->
     <PackageVersion Include="AWSSDK.CognitoIdentity" Version="4.0.100.15" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.104" />
+    <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.15" />
 <!--#endif-->
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
 <!--#if (IncludeNotes)-->
