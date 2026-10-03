@@ -19,7 +19,7 @@ public class SecretsManagerUserKeysStoreTests
     private static readonly string IdToken = new JsonWebTokenHandler().CreateToken($$"""{"sub":"{{Sub}}"}""");
 
     private readonly Mock<IAuthenticationService> mockAuth = new();
-    private readonly Mock<ICognitoIdentityClient> mockIdentity = new();
+    private readonly Mock<IAwsCredentialsProvider> mockCredentials = new();
     private readonly Mock<ISecretsManagerClientFactory> mockFactory = new();
     private readonly Mock<IAmazonSecretsManager> mockClient = new();
     private readonly AwsTemporaryCredentials credentials = new() { IdentityId = "eu-west-2:id", AccessKeyId = "AKIA", SecretKey = "s", SessionToken = "t" };
@@ -27,16 +27,16 @@ public class SecretsManagerUserKeysStoreTests
     public SecretsManagerUserKeysStoreTests()
     {
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = "bob", IdToken = IdToken });
-        mockIdentity.Setup(x => x.GetCredentialsAsync(IdToken, It.IsAny<CancellationToken>())).ReturnsAsync(credentials);
+        mockCredentials.Setup(x => x.GetCredentialsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(credentials);
         mockFactory.Setup(x => x.Create(credentials)).Returns(mockClient.Object);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(null!, mockIdentity.Object, mockFactory.Object)).ParamName);
-        Assert.Equal("identityClient", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, null!, mockFactory.Object)).ParamName);
-        Assert.Equal("clientFactory", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockIdentity.Object, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(null!, mockCredentials.Object, mockFactory.Object)).ParamName);
+        Assert.Equal("credentialsProvider", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, null!, mockFactory.Object)).ParamName);
+        Assert.Equal("clientFactory", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class SecretsManagerUserKeysStoreTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync());
-        mockIdentity.VerifyNoOtherCalls();
+        mockCredentials.VerifyNoOtherCalls();
         mockFactory.VerifyNoOtherCalls();
     }
 
@@ -63,7 +63,7 @@ public class SecretsManagerUserKeysStoreTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync());
-        mockIdentity.VerifyNoOtherCalls();
+        mockCredentials.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -86,6 +86,18 @@ public class SecretsManagerUserKeysStoreTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SetAsync("keys"));
+    }
+
+    [Fact]
+    public async Task GivenNoCredentials_WhenGetAsync_ThenThrowsInvalidOperationExceptionWithoutCallingAws()
+    {
+        // Arrange
+        mockCredentials.Setup(x => x.GetCredentialsAsync(It.IsAny<CancellationToken>())).ReturnsAsync((AwsTemporaryCredentials?)null);
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync());
+        mockFactory.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -202,7 +214,7 @@ public class SecretsManagerUserKeysStoreTests
     public async Task GivenIdentityPoolRefusesToken_WhenGetAsync_ThenCognitoExceptionPropagates()
     {
         // Arrange
-        mockIdentity.Setup(x => x.GetCredentialsAsync(IdToken, It.IsAny<CancellationToken>())).ThrowsAsync(new CognitoException("NotAuthorizedException", "no"));
+        mockCredentials.Setup(x => x.GetCredentialsAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new CognitoException("NotAuthorizedException", "no"));
         var sut = CreateSut();
 
         // Act & Assert
@@ -234,5 +246,5 @@ public class SecretsManagerUserKeysStoreTests
     }
 
     private SecretsManagerUserKeysStore CreateSut() =>
-        new(mockAuth.Object, mockIdentity.Object, mockFactory.Object);
+        new(mockAuth.Object, mockCredentials.Object, mockFactory.Object);
 }

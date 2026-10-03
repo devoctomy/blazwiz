@@ -19,11 +19,11 @@
     <PackageVersion Include="Microsoft.JSInterop" Version="10.0.12" />
     <!-- AWS -->
     <PackageVersion Include="Amazon.Extensions.CognitoAuthentication" Version="3.1.5" />
-    <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.105.3" />
-<!--#if (IncludeNotes)-->
     <PackageVersion Include="AWSSDK.CognitoIdentity" Version="4.0.100.15" />
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.104" />
+    <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.105.3" />
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.15" />
+<!--#if (IncludeNotes)-->
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104" />
 <!--#endif-->
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
 <!--#if (IncludeNotes)-->

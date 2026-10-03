@@ -1,7 +1,5 @@
 using Amazon;
-//#if (IncludeNotes)
 using Amazon.CognitoIdentity;
-//#endif
 using Amazon.CognitoIdentityProvider;
 using Amazon.Runtime;
 using blazwiz.Core.Extensions;
@@ -56,6 +54,23 @@ public static class ServiceCollectionExtensions
             }));
         services.AddScoped<ICognitoUserPoolClient, CognitoUserPoolClient>();
 
+        // The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
+        services.AddSingleton<IAmazonCognitoIdentity>(sp => new AmazonCognitoIdentityClient(
+            new AnonymousAWSCredentials(),
+            new AmazonCognitoIdentityConfig
+            {
+                RegionEndpoint = GetRegion(sp.GetRequiredService<AwsCognitoConfig>().Region),
+                HttpClientFactory = sp.GetRequiredService<BrowserHttpClientFactory>(),
+            }));
+        services.AddScoped<ICognitoIdentityClient, CognitoIdentityClient>();
+
+        // The session's AWS credentials, fetched once signed in, held in memory and shared by everything calling AWS.
+        services.AddScoped<IAwsCredentialsProvider, CognitoAwsCredentialsProvider>();
+
+        // The user's keys, in their own Secrets Manager secret named <user pool sub>/keys.
+        services.AddSingleton<ISecretsManagerClientFactory, SecretsManagerClientFactory>();
+        services.AddScoped<IUserKeysStore, SecretsManagerUserKeysStore>();
+
         // Cognito when a user pool is configured (deployed), otherwise the placeholder login (local development).
         services.AddScoped<IAuthenticationService>(sp =>
             CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
@@ -66,21 +81,7 @@ public static class ServiceCollectionExtensions
 //#if (IncludeNotes)
         // Sync: notes are plain markdown files kept in IndexedDB, OPFS or a folder the user picks (chosen per device in
         // Settings) and synced with the user's prefix in the data bucket (docs/wip/s3-sync.md, docs/wip/opfs-storage.md).
-        // The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
-        services.AddSingleton<IAmazonCognitoIdentity>(sp => new AmazonCognitoIdentityClient(
-            new AnonymousAWSCredentials(),
-            new AmazonCognitoIdentityConfig
-            {
-                RegionEndpoint = GetRegion(sp.GetRequiredService<AwsCognitoConfig>().Region),
-                HttpClientFactory = sp.GetRequiredService<BrowserHttpClientFactory>(),
-            }));
-        services.AddScoped<ICognitoIdentityClient, CognitoIdentityClient>();
         services.AddScoped<IS3SyncTargetProvider, CognitoS3TargetProvider>();
-
-        // The user's keys, in their own Secrets Manager secret named <user pool sub>/keys.
-        services.AddSingleton<ISecretsManagerClientFactory, SecretsManagerClientFactory>();
-        services.AddScoped<IUserKeysStore, SecretsManagerUserKeysStore>();
-
         services.AddScoped<ISyncUserContext, AuthSyncUserContext>();
         services.AddScoped<IOfflineModeStore, LocalStorageOfflineModeStore>();
         services.AddScoped<IPersistentStorageService, PersistentStorageService>();
@@ -137,10 +138,8 @@ public static class ServiceCollectionExtensions
 
         return appSettings;
     }
-//#if (IncludeNotes)
 
     // Used before the settings are known to be complete; the client is only called once they are.
     private static RegionEndpoint GetRegion(string region) =>
         string.IsNullOrWhiteSpace(region) ? RegionEndpoint.USEast1 : RegionEndpoint.GetBySystemName(region);
-//#endif
 }

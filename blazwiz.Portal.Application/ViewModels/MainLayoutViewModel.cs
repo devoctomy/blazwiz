@@ -4,6 +4,7 @@ using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 //#endif
+using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Navigation;
@@ -26,6 +27,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     private readonly INavigationMenuService navigationMenuService;
     private readonly INavigationService navigationService;
     private readonly IUserDisplayService userDisplayService;
+    private readonly IAwsCredentialsProvider credentialsProvider;
 //#if (IncludeNotes)
     private readonly ISyncService syncService;
     private readonly IConnectivityService connectivityService;
@@ -60,6 +62,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// <param name="navigationMenuService">The navigation menu service.</param>
     /// <param name="navigationService">The navigation service.</param>
     /// <param name="userDisplayService">The user display service.</param>
+    /// <param name="credentialsProvider">Holds the session's AWS credentials: fetched once signed in, forgotten on sign out.</param>
     ///#if (IncludeNotes)
     /// <param name="syncService">The sync service.</param>
     /// <param name="connectivityService">The connectivity service.</param>
@@ -78,6 +81,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         INavigationMenuService navigationMenuService,
         INavigationService navigationService,
         IUserDisplayService userDisplayService,
+        IAwsCredentialsProvider credentialsProvider,
 //#if (IncludeNotes)
         ISyncService syncService,
         IConnectivityService connectivityService,
@@ -96,6 +100,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         this.navigationMenuService = navigationMenuService ?? throw new ArgumentNullException(nameof(navigationMenuService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         this.userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
+        this.credentialsProvider = credentialsProvider ?? throw new ArgumentNullException(nameof(credentialsProvider));
 //#if (IncludeNotes)
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
@@ -276,6 +281,9 @@ public partial class MainLayoutViewModel : ViewModelBase
         RefreshSync();
 //#endif
         IsReady = true;
+
+        // Signed in (or opened with a saved session): get the session's AWS credentials in the background.
+        _ = LoadAwsCredentialsAsync();
 //#if (IncludeNotes)
 
         // Signed in (or opened with a saved session): sync in the background while the page loads.
@@ -416,6 +424,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         await syncScheduler.StopAsync();
 //#endif
         await authService.LogoutAsync();
+        credentialsProvider.Clear();
         navigationService.NavigateTo("/login");
     }
 
@@ -439,6 +448,18 @@ public partial class MainLayoutViewModel : ViewModelBase
     private void OnThemeChanged(object? sender, EventArgs e)
     {
         OnPropertyChanged(nameof(ThemeIcon));
+    }
+
+    private async Task LoadAwsCredentialsAsync()
+    {
+        try
+        {
+            await credentialsProvider.GetCredentialsAsync();
+        }
+        catch (Exception ex) when (ex is CognitoException or HttpRequestException)
+        {
+            // Offline or refused: whatever needs AWS asks again when it is used.
+        }
     }
 //#if (IncludeNotes)
 
