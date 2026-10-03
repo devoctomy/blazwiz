@@ -76,7 +76,8 @@ footnotes, definition lists, auto links) without generic attributes, and the tes
 - Notes is a demo feature. The renderer is behind `IMarkdownRenderer`, so a real notes app can register its own,
   e.g. one that also sanitises the HTML with HtmlSanitizer.
 - The preview no longer supports `:::` custom containers or media link embeds.
-- Remote images still load when a note is previewed, and there is still no CSP (M2).
+- Remote images in the preview and the missing CSP were both dealt with later by M2's CSP, which blocks remote images
+  and inline event handlers.
 
 **Where:** `blazwiz.Portal.Application/Services/MarkdownRenderer.cs:16-19`, `blazwiz.Portal/Pages/NoteEditor.razor:113`
 
@@ -85,7 +86,7 @@ The pipeline uses `UseAdvancedExtensions()`, which includes the **GenericAttribu
 `![x](https://x){onerror=alert(1)}` may come out as `<img ... onerror="alert(1)">`. The preview injects it with
 `MarkupString`, so event handler attributes would run.
 
-**Impact:** script in the app origin can read the Cognito tokens, including the refresh token, from `localStorage` (M5).
+**Impact:** script in the app origin can read the Cognito tokens, including the refresh token, from `localStorage` (M2).
 It can also call into the running app while keys are unlocked. Notes sync between devices, so a note planted by anyone
 who can write to the user's S3 prefix runs on every device. With encryption on, an attacker cannot plant valid
 ciphertext. Without it, they can.
@@ -95,9 +96,36 @@ ciphertext. Without it, they can.
   `UseTaskLists()`, `UseEmphasisExtras()`, `UseAutoLinks()`, …) without `UseGenericAttributes()`.
 - Also consider whether remote images should load at all. A remote `![](https://…)` image fetches a third-party URL
   when the note is previewed.
-- Add a CSP (M5) as a second barrier.
+- Add a CSP (M2) as a second barrier.
 
 ### M2 (Medium). Remembered passwords and refresh tokens are exposed to any script in the origin
+
+**Status: done (2026-10-03).** Three changes:
+- **Refresh token never stored.** `CognitoAuthenticationService` holds it in memory only, so only the open tab can
+  renew the session. Closing or reloading the tab means signing in again (passkey quick login). `RefreshToken` was
+  removed from `UserSession` so it cannot be saved by accident, and a comment on the class explains the risk of
+  storing it. `RefreshTokenValidity` in `stack.yaml` is now 12 hours (was 30 days). The ID and access tokens (60
+  minutes) stay in `localStorage`, because reloads and offline mode need them.
+- **CSP.** `deploy.ps1` adds a `<meta>` Content-Security-Policy to the published `index.html`
+  (`Add-ContentSecurityPolicy` in `_common.ps1`), and updates its hash in `service-worker-assets.js`. It is a meta
+  tag, not a CloudFront header, because the policy must include the hash of Blazor's inline import map, which
+  changes every build. Scripts: own files, `'wasm-unsafe-eval'` and the import map only. Connections: Cognito,
+  Secrets Manager and the data bucket in the stack's region. Images: own files and `data:`. Framing is still
+  refused by the managed policy's `X-Frame-Options`.
+- **Inter self-hosted** in `wwwroot/lib/inter/` (OFL), so there are no Google Fonts requests.
+
+Tested: auth unit tests, including one checking nothing saved contains the refresh token. A published build with the
+CSP was driven in Playwright's Chromium (sign in, files, note preview, service worker install). The only things
+blocked were a remote image and an injected `onerror` handler, both planted on purpose. Checked by the user on the
+deployed app (desktop and mobile): sign in, sync, encryption settings, passkey quick login, no stored refresh token,
+update banner, font. Caveats:
+- The encrypted remembered password in `localStorage` is fine: it needs the authenticator's PRF output to decrypt.
+- Remote images in notes no longer load.
+- Publishing without `deploy.ps1` gives no CSP.
+- Sessions saved before this change keep their old refresh token in `localStorage` until the session is next
+  saved or cleared. It is ignored, not revoked.
+- Found while testing: the update banner did not show when the new version started installing while the page was
+  loading. Fixed in `js/app-update.js`, to be confirmed on the next deploy.
 
 **Where:** `blazwiz.Portal.Application/Services/CognitoAuthenticationService.cs:31,255`, `LoginViewModel.cs` (`blazwiz_saved_users`),
 `blazwiz.Portal/wwwroot/index.html`, `cloudformation/stack.yaml:114`
@@ -380,7 +408,7 @@ queued operation after it. Handle `onblocked` by rejecting after a timeout and s
 ## 4. Infrastructure (CloudFormation)
 
 ### I1 (Medium). No CSP
-See M2.
+See M2. **Done (2026-10-03)** with M2: a `<meta>` policy added at deploy time, not a CloudFront response headers policy.
 
 ### I2 (Medium). The data bucket has no versioning
 
@@ -469,7 +497,7 @@ Each call clones the key and then zeroes the copy. Add `bool HasKey(string name)
 2. ~~**H2**: test the Markdig generic attributes payload, and change the pipeline if it fails.~~ Done (see H2 status).
 3. ~~**M6** (was H3): make Web Lock acquisition cancellable.~~ Done (see M6 status).
 4. **M5, M7**: clear keys on logout, and handle a corrupt keys.json.
-5. **M2 / I1**: CSP via a CloudFront response headers policy, and self-host fonts.
+5. ~~**M2 / I1**: CSP via a CloudFront response headers policy, and self-host fonts.~~ Done (see M2 status).
 6. **M12, I2**: retain the data bucket and pools, and turn on versioning.
 7. **M3, M4**: bounds-check KDF settings, and add a concurrency check for keys.json writes.
 8. **M9, M10**: conflict copies, plaintext-aware comparison, and per-key write serialisation.

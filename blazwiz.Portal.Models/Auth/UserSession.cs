@@ -39,9 +39,4 @@ public class UserSession
     /// Gets or sets the Cognito access token, when signed in with Cognito.
     /// </summary>
     public string? AccessToken { get; set; }
-
-    /// <summary>
-    /// Gets or sets the Cognito refresh token, used to renew the other tokens when they expire.
-    /// </summary>
-    public string? RefreshToken { get; set; }
 }
