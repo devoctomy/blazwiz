@@ -7,9 +7,10 @@ namespace blazwiz.Core.Sync.Interfaces;
 public interface ISyncGate
 {
     /// <summary>
-    /// Gets whether the profile may sync now.
+    /// Works out whether the profile may sync now. Asked before every pass of the profile.
     /// </summary>
     /// <param name="profile">The profile.</param>
+    /// <param name="ct">A cancellation token.</param>
     /// <returns>True to let it sync.</returns>
-    bool CanSync(string profile);
+    Task<bool> CanSyncAsync(string profile, CancellationToken ct = default);
 }
