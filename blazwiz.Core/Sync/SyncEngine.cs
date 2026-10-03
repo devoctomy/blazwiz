@@ -1,3 +1,4 @@
+using blazwiz.Core.Encryption.Interfaces;
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
@@ -9,13 +10,18 @@ namespace blazwiz.Core.Sync;
 /// Runs one pass for one profile: snapshot both sides and the index, plan, then execute each action, updating the
 /// index straight after each one succeeds. Everything it does is written to the sync log.
 /// </summary>
+/// <remarks>
+/// It works on the stored bytes, so end to end encrypted files sync as ciphertext and it never needs the keys. It only
+/// records in the index which key a synced file is encrypted with, read from the file header.
+/// </remarks>
 public class SyncEngine(
     ISyncPlanner planner,
     ISyncConflictResolver conflictResolver,
     IContentHasher contentHasher,
     ISyncUserContext userContext,
     ISyncEventLog eventLog,
-    ISystemClock systemClock)
+    ISystemClock systemClock,
+    IEncryptedFileFormat encryptedFileFormat)
     : ISyncEngine
 {
     private readonly ISyncPlanner planner = planner ?? throw new ArgumentNullException(nameof(planner));
@@ -24,6 +30,7 @@ public class SyncEngine(
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly ISyncEventLog eventLog = eventLog ?? throw new ArgumentNullException(nameof(eventLog));
     private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly IEncryptedFileFormat encryptedFileFormat = encryptedFileFormat ?? throw new ArgumentNullException(nameof(encryptedFileFormat));
 
     /// <inheritdoc/>
     public async Task<SyncResult> SyncAsync(SyncProfile profile, bool verify, CancellationToken ct = default)
@@ -168,7 +175,7 @@ public class SyncEngine(
         }
 
         var etag = await profile.RemoteStore.PutAsync(action.Key, file.Content, file.ModifiedAt, ifMatch, ifNoneMatch, ct);
-        await SaveSyncedAsync(pass, action, contentHasher.ComputeHash(file.Content), etag, ct);
+        await SaveSyncedAsync(pass, action, file.Content, etag, ct);
         pass.Result.Uploaded++;
         AddFileEvent(pass, eventKind, action.Key, conflictDetail);
     }
@@ -197,7 +204,7 @@ public class SyncEngine(
         }
 
         await profile.FileStore.WriteAsync(action.Key, remote.Content, remote.EditedAt, ct);
-        await SaveSyncedAsync(pass, action, contentHasher.ComputeHash(remote.Content), remote.ETag, ct);
+        await SaveSyncedAsync(pass, action, remote.Content, remote.ETag, ct);
         pass.Result.Downloaded++;
         pass.Result.AddChangedLocalKey(profile.Name, action.Key);
         AddFileEvent(pass, eventKind, action.Key, conflictDetail);
@@ -218,7 +225,7 @@ public class SyncEngine(
         if (hash == contentHasher.ComputeHash(remote.Content))
         {
             // Same on both sides (e.g. an interrupted pass, or a lost index): adopt it as the base.
-            await SaveSyncedAsync(pass, action, hash, remote.ETag, ct);
+            await SaveSyncedAsync(pass, action, file.Content, remote.ETag, ct);
             pass.Result.Adopted++;
             AddEvent(pass, SyncEventKind.AlreadyInSync, action.Key, "Same on both sides, nothing to do");
             return;
@@ -333,12 +340,12 @@ public class SyncEngine(
         pass.Result.ConflictsResolved++;
     }
 
-    private async Task SaveSyncedAsync(Pass pass, SyncAction action, string hash, string etag, CancellationToken ct)
+    private async Task SaveSyncedAsync(Pass pass, SyncAction action, byte[] content, string etag, CancellationToken ct)
     {
         var profile = pass.Profile;
         var current = await profile.IndexStore.GetAsync(profile.Name, pass.Owner, action.Key, ct);
         var record = current ?? new SyncIndexRecord { Profile = profile.Name, Owner = pass.Owner, Key = action.Key };
-        record.BaseHash = hash;
+        record.BaseHash = contentHasher.ComputeHash(content);
         record.BaseETag = etag;
         record.LastSyncedAt = systemClock.UtcNow;
         if (!LocalChangedSince(action.Record, current))
@@ -347,6 +354,10 @@ public class SyncEngine(
             record.Dirty = false;
             record.Deleted = false;
             record.DeletedAt = null;
+
+            // Changed locally meanwhile: the write that changed it recorded its own key.
+            record.KeyId = encryptedFileFormat.TryGetKeyId(content, out var keyId) ? keyId : null;
+            record.Encrypted = record.KeyId != null;
         }
 
         await profile.IndexStore.SaveAsync(record, ct);

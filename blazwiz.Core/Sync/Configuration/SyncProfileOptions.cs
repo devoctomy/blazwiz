@@ -65,6 +65,12 @@ public class SyncProfileOptions
     public SyncStorageKind? DefaultStorageKind { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the files can be end to end encrypted (<c>UseEncryption</c>). Needs
+    /// <c>AddBlazwizE2eEncryption</c>.
+    /// </summary>
+    public bool IsEncrypted { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether the user can switch the storage the files are kept in.
     /// </summary>
     public bool IsSwitchable => FileStores.Count > 0;

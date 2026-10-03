@@ -61,6 +61,17 @@ public class SyncIndexRecord
     public long Revision { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the local file is end to end encrypted. Kept for quick lookup; the file's
+    /// own header is what counts.
+    /// </summary>
+    public bool Encrypted { get; set; }
+
+    /// <summary>
+    /// Gets or sets the id of the file key the local file is encrypted with, or null when it is not encrypted.
+    /// </summary>
+    public string? KeyId { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether the file has been synced at least once.
     /// </summary>
     [JsonIgnore]

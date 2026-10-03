@@ -1,3 +1,8 @@
+using blazwiz.Core.Cryptography.Interfaces;
+using blazwiz.Core.Encryption;
+using blazwiz.Core.Encryption.Interfaces;
+using blazwiz.Core.Sync.Encryption;
+using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Extensions;
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.Configuration;
@@ -190,6 +195,45 @@ public class SyncServiceCollectionExtensionsTests
         // Assert
         Assert.Same(resolver, scope.ServiceProvider.GetRequiredService<ISyncConflictResolver>());
         Assert.IsType<InMemoryLog>(scope.ServiceProvider.GetRequiredService<ISyncEventLog>());
+    }
+
+    [Fact]
+    public async Task GivenEncryptedProfile_WhenAddBlazwizSync_ThenAppStoreEncryptsAndEncryptionServicesResolve()
+    {
+        // Arrange
+        var services = CreateServices();
+        services.AddScoped(_ => Mock.Of<IUserKeysStore>());
+        services.AddScoped(_ => Mock.Of<IE2eLocalKeyStore>());
+        services.AddBlazwizE2eEncryption();
+        services.AddBlazwizSync(sync => sync
+            .AddProfile("notes", p => p.UseRemote("notes/**/*.md").UseEncryption())
+            .AddProfile("photos", p => p.UseRemote("photos/**/*")));
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        await using var scope = provider.CreateAsyncScope();
+        var sp = scope.ServiceProvider;
+
+        // Assert
+        Assert.IsType<EncryptingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
+        Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("photos"));
+        Assert.Equal("notes", Assert.Single(sp.GetServices<EncryptedSyncProfile>()).Name);
+        Assert.IsType<E2eSyncGate>(Assert.Single(sp.GetServices<ISyncGate>()));
+        Assert.IsType<SyncEncryptionSweeper>(sp.GetRequiredService<ISyncEncryptionSweeper>());
+        Assert.IsType<SyncEncryptionService>(sp.GetRequiredService<ISyncEncryptionService>());
+    }
+
+    [Fact]
+    public async Task GivenNoEncryptedProfile_WhenAddBlazwizSync_ThenNoGateOrEncryptionService()
+    {
+        // Arrange
+        var services = CreateServices();
+        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p.UseRemote("notes/**/*.md")));
+        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        await using var scope = provider.CreateAsyncScope();
+
+        // Assert
+        Assert.Empty(scope.ServiceProvider.GetServices<ISyncGate>());
+        Assert.Null(scope.ServiceProvider.GetService<ISyncEncryptionService>());
+        Assert.IsType<EncryptedFileFormat>(scope.ServiceProvider.GetRequiredService<IEncryptedFileFormat>());
     }
 
     private static ServiceCollection CreateServices()

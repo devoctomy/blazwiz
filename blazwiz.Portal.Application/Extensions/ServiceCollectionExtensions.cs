@@ -2,8 +2,11 @@ using Amazon;
 using Amazon.CognitoIdentity;
 using Amazon.CognitoIdentityProvider;
 using Amazon.Runtime;
+using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Extensions;
 //#if (IncludeNotes)
+using blazwiz.Core.Encryption;
+using blazwiz.Core.Encryption.Interfaces;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 //#endif
@@ -87,6 +90,13 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPersistentStorageService, PersistentStorageService>();
         services.AddSingleton<ISyncEventPresenter, SyncEventPresenter>();
         services.AddSingleton<ISyncStatusPresenter, SyncStatusPresenter>();
+
+        // End to end encryption of the notes (docs/wip/e2e-encryption.md): keys.json in Secrets Manager, this device's
+        // copy of the master key wrapped by a key derived from the passkey PRF.
+        services.AddBlazwizPrfKeyDerivation(prf => prf.AddKey(E2eKeyNames.KeyEncryptionKey));
+        services.AddBlazwizE2eEncryption();
+        services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
+        services.AddScoped<IPasskeyUnlockService, PasskeyUnlockService>();
         services.AddBlazwizSync(sync => sync
             .UseIndexedDbEventLog(database: "blazwiz_sync", store: "events")
             .UseEventLogRetention(maxAge: TimeSpan.FromDays(30), maxEventsPerUser: 5000)
@@ -98,7 +108,8 @@ public static class ServiceCollectionExtensions
                     .AddOpfs(root: "blazwiz_notes")
                     .AddLocalFolder()
                     .UseDefault(SyncStorageKind.IndexedDb))
-                .UseRemote("notes/**/*.md", includeEmptyFolders: true)));
+                .UseRemote("notes/**/*.md", includeEmptyFolders: true)
+                .UseEncryption()));
 
         // Notes
         services.AddScoped<INotesStateStore, IndexedDbNotesStateStore>();

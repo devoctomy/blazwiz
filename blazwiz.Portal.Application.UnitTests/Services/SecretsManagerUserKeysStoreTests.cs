@@ -1,6 +1,7 @@
 using Amazon.Runtime;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
+using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
@@ -183,6 +184,57 @@ public class SecretsManagerUserKeysStoreTests
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetAsync(null!));
+    }
+
+    [Fact]
+    public async Task GivenNoSecret_WhenTryCreateAsync_ThenCreatesSecretAndReturnsTrue()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        var created = await sut.TryCreateAsync("keys");
+
+        // Assert
+        Assert.True(created);
+        mockClient.Verify(x => x.CreateSecretAsync(It.Is<CreateSecretRequest>(r => r.Name == SecretName && r.SecretString == "keys"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenExistingSecret_WhenTryCreateAsync_ThenReturnsFalseWithoutReplacingIt()
+    {
+        // Arrange
+        mockClient.Setup(x => x.CreateSecretAsync(It.IsAny<CreateSecretRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ResourceExistsException("exists"));
+        var sut = CreateSut();
+
+        // Act
+        var created = await sut.TryCreateAsync("keys");
+
+        // Assert
+        Assert.False(created);
+        mockClient.Verify(x => x.PutSecretValueAsync(It.IsAny<PutSecretValueRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNullValue_WhenTryCreateAsync_ThenThrowsArgumentNullException()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.TryCreateAsync(null!));
+    }
+
+    [Fact]
+    public async Task GivenPlaceholderSignIn_WhenTryCreateAsync_ThenThrowsInvalidOperationException()
+    {
+        // Arrange
+        mockAuth.SetupGet(x => x.IsPlaceholder).Returns(true);
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.TryCreateAsync("keys"));
     }
 
     [Fact]

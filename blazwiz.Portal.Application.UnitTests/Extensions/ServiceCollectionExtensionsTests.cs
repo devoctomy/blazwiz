@@ -1,6 +1,10 @@
 using Amazon.CognitoIdentityProvider;
 //#if (IncludeNotes)
+using blazwiz.Core.Encryption;
+using blazwiz.Core.Encryption.Interfaces;
 using blazwiz.Core.Sync;
+using blazwiz.Core.Sync.Encryption;
+using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Sync.Interfaces;
 //#endif
 using blazwiz.Core.Cryptography;
@@ -35,6 +39,7 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddSingleton(Mock.Of<IJSRuntime>());
         services.AddSingleton(Mock.Of<IBrowserInteropService>());
+        services.AddSingleton(Mock.Of<IWebAuthnService>());
         services.AddBlazwizCoreServices();
         services.AddSingleton(new AwsCognitoConfig()); // Registered by AddPortalSettings in the portal.
         services.AddSingleton(new AwsS3Config());
@@ -55,7 +60,10 @@ public class ServiceCollectionExtensionsTests
         var prfOptions = scope.ServiceProvider.GetRequiredService<PrfKeyDerivationOptions>();
         Assert.Equal(AppIdentity.Name, prfOptions.ApplicationName);
         Assert.Equal(Guid.Parse(AppIdentity.Id), prfOptions.ApplicationId);
-        Assert.Equal([PasswordCryptoService.RememberMeKeyName], prfOptions.Keys.Select(k => k.Name));
+        Assert.Contains(PasswordCryptoService.RememberMeKeyName, prfOptions.Keys.Select(k => k.Name));
+//#if (IncludeNotes)
+        Assert.Contains(E2eKeyNames.KeyEncryptionKey, prfOptions.Keys.Select(k => k.Name));
+//#endif
         Assert.IsType<UserDisplayService>(scope.ServiceProvider.GetRequiredService<IUserDisplayService>());
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<NavigationMenuService>(scope.ServiceProvider.GetRequiredService<INavigationMenuService>());
@@ -70,7 +78,12 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<PersistentStorageService>(scope.ServiceProvider.GetRequiredService<IPersistentStorageService>());
         Assert.IsType<SyncEventPresenter>(scope.ServiceProvider.GetRequiredService<ISyncEventPresenter>());
         Assert.IsType<SyncStatusPresenter>(scope.ServiceProvider.GetRequiredService<ISyncStatusPresenter>());
-        Assert.IsType<TrackingSyncFileStore>(scope.ServiceProvider.GetRequiredKeyedService<ISyncFileStore>(NoteService.ProfileName));
+        Assert.IsType<EncryptingSyncFileStore>(scope.ServiceProvider.GetRequiredKeyedService<ISyncFileStore>(NoteService.ProfileName));
+        Assert.IsType<E2eKeyManager>(scope.ServiceProvider.GetRequiredService<IE2eKeyManager>());
+        Assert.IsType<LocalStorageE2eLocalKeyStore>(scope.ServiceProvider.GetRequiredService<IE2eLocalKeyStore>());
+        Assert.IsType<PasskeyUnlockService>(scope.ServiceProvider.GetRequiredService<IPasskeyUnlockService>());
+        Assert.IsType<SyncEncryptionService>(scope.ServiceProvider.GetRequiredService<ISyncEncryptionService>());
+        Assert.IsType<E2eSyncGate>(Assert.Single(scope.ServiceProvider.GetServices<ISyncGate>()));
         Assert.Equal([NoteService.ProfileName], scope.ServiceProvider.GetRequiredService<ISyncService>().Profiles);
         Assert.IsType<IndexedDbNotesStateStore>(scope.ServiceProvider.GetRequiredService<INotesStateStore>());
         Assert.IsType<NoteMigrationService>(scope.ServiceProvider.GetRequiredService<INoteMigrationService>());
@@ -89,6 +102,7 @@ public class ServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddSingleton(Mock.Of<IJSRuntime>());
         services.AddSingleton(Mock.Of<IBrowserInteropService>());
+        services.AddSingleton(Mock.Of<IWebAuthnService>());
         services.AddBlazwizCoreServices();
         services.AddSingleton(new AwsCognitoConfig { Region = "eu-west-2", UserPoolId = "eu-west-2_Pool", UserPoolClientId = "client" });
         services.AddSingleton(new AwsS3Config());

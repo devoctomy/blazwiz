@@ -50,6 +50,23 @@ public class InMemoryDerivedKeyStore : IDerivedKeyStore
     }
 
     /// <inheritdoc/>
+    public bool RemoveKey(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        lock (gate)
+        {
+            if (!keys.Remove(name, out var existing))
+            {
+                return false;
+            }
+
+            CryptographicOperations.ZeroMemory(existing);
+            return true;
+        }
+    }
+
+    /// <inheritdoc/>
     public void Clear()
     {
         lock (gate)
