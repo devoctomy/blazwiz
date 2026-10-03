@@ -8,7 +8,7 @@ namespace blazwiz.Core.Sync;
 /// <summary>
 /// Runs passes over the configured profiles, keeps the status, raises <see cref="FilesChanged"/> for downloads and
 /// remote deletes, and prunes the log afterwards. A network failure marks the app offline; a refused credential is
-/// refreshed once, then the pass fails.
+/// refreshed once, then the pass fails. A profile is skipped while an <see cref="ISyncGate"/> holds it back.
 /// </summary>
 public class SyncService(
     IEnumerable<SyncProfile> profiles,
@@ -17,7 +17,8 @@ public class SyncService(
     IConnectivityService connectivityService,
     ISyncUserContext userContext,
     ISyncEventLog eventLog,
-    ISystemClock systemClock)
+    ISystemClock systemClock,
+    IEnumerable<ISyncGate> gates)
     : ISyncService
 {
     private readonly IReadOnlyList<SyncProfile> profiles = (profiles ?? throw new ArgumentNullException(nameof(profiles))).ToList();
@@ -27,6 +28,7 @@ public class SyncService(
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly ISyncEventLog eventLog = eventLog ?? throw new ArgumentNullException(nameof(eventLog));
     private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly IReadOnlyList<ISyncGate> gates = (gates ?? throw new ArgumentNullException(nameof(gates))).ToList();
 
     private SyncStatus status = new SyncStatus();
 
@@ -52,10 +54,17 @@ public class SyncService(
         var total = new SyncResult { Profile = profile };
         UpdateStatus(s => s.State = SyncState.Syncing);
         string? error = null;
+        var ran = false;
         try
         {
             foreach (var item in selected)
             {
+                if (!gates.All(g => g.CanSync(item.Name)))
+                {
+                    continue;
+                }
+
+                ran = true;
                 var result = await RunProfileAsync(item, verify, ct);
                 total.Add(result);
                 if (result.ChangedLocalKeys.TryGetValue(item.Name, out var keys) && keys.Count > 0)
@@ -93,7 +102,7 @@ public class SyncService(
                 s.LastError = error;
                 s.PendingCount = pending;
                 s.ConflictsResolved = total.ConflictsResolved;
-                if (error == null && !ct.IsCancellationRequested)
+                if (error == null && ran && !ct.IsCancellationRequested)
                 {
                     s.LastSyncedAt = systemClock.UtcNow;
                 }

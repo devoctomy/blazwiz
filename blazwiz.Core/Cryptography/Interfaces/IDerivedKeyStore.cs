@@ -23,6 +23,13 @@ public interface IDerivedKeyStore
     bool TryGetKey(string name, [NotNullWhen(true)] out byte[]? key);
 
     /// <summary>
+    /// Wipes and forgets one key.
+    /// </summary>
+    /// <param name="name">The key name.</param>
+    /// <returns><see langword="true"/> when a key was held under the name.</returns>
+    bool RemoveKey(string name);
+
+    /// <summary>
     /// Wipes and forgets every key.
     /// </summary>
     void Clear();

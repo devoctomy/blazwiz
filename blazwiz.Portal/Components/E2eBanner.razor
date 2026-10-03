@@ -1,0 +1,61 @@
+@inherits MvvmComponentBase<E2eBannerViewModel>
+
+@if (ViewModel.IsVisible)
+{
+    <div class="alert alert-danger d-flex flex-wrap align-items-center gap-3" role="alert" id="e2e-banner">
+        <i class="bi bi-shield-lock fs-5"></i>
+        <span class="flex-grow-1" id="e2e-banner-text">@ViewModel.Message</span>
+        @if (ViewModel.CanUnlockWithPasskey)
+        {
+            <button type="button" class="btn btn-danger btn-sm" id="e2e-unlock-button" disabled="@ViewModel.IsWorking"
+                    @onclick="() => ViewModel.UnlockWithPasskeyCommand.ExecuteAsync(null)">
+                <i class="bi bi-fingerprint me-1"></i>Unlock with passkey
+            </button>
+        }
+        @if (ViewModel.CanSetUp)
+        {
+            <button type="button" class="btn btn-danger btn-sm" id="e2e-setup-button"
+                    @onclick="() => ViewModel.OpenSettingsCommand.Execute(null)">
+                <i class="bi bi-key me-1"></i>Set up this device
+            </button>
+        }
+        @if (ViewModel.CanResolve)
+        {
+            <button type="button" class="btn btn-danger btn-sm" id="e2e-resolve-button" disabled="@ViewModel.IsWorking"
+                    @onclick="() => ViewModel.OpenResolveDialogCommand.Execute(null)">
+                <i class="bi bi-unlock me-1"></i>Turn off on this device
+            </button>
+        }
+        @if (!string.IsNullOrEmpty(ViewModel.Error))
+        {
+            <div class="w-100 small" id="e2e-banner-error">@ViewModel.Error</div>
+        }
+    </div>
+}
+
+@if (ViewModel.IsResolveDialogOpen)
+{
+    <ModalDialog Id="e2e-resolve-dialog" Title="Turn off encryption on this device?" Icon="bi-unlock" OnClose="() => ViewModel.CloseResolveDialogCommand.Execute(null)">
+        <ChildContent>
+            <p>End to end encryption was turned off on another device, so your notes there were decrypted and synced unencrypted.</p>
+            <p>This device will decrypt its own changes that have not been synced yet, forget its keys, then sync, which brings down the decrypted notes.</p>
+            <div class="alert alert-warning mb-0" role="alert">
+                <i class="bi bi-exclamation-triangle me-1"></i>If you did not turn encryption off yourself, cancel and check your other devices first.
+            </div>
+            @if (!string.IsNullOrEmpty(ViewModel.Error))
+            {
+                <div class="text-danger mt-3">@ViewModel.Error</div>
+            }
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" disabled="@ViewModel.IsWorking" @onclick="() => ViewModel.CloseResolveDialogCommand.Execute(null)">Cancel</button>
+            <button type="button" class="btn btn-danger" id="e2e-resolve-confirm" disabled="@ViewModel.IsWorking" @onclick="() => ViewModel.ResolveCommand.ExecuteAsync(null)">
+                @if (ViewModel.IsWorking)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                }
+                Turn off on this device
+            </button>
+        </Footer>
+    </ModalDialog>
+}

@@ -36,13 +36,13 @@ public class SyncServiceTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new SyncService(null!, mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("engine", Assert.Throws<ArgumentNullException>(() => new SyncService([], null!, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("targetProvider", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, null!, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, null!, mockUser.Object, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, null!, mockLog.Object, mockClock.Object)).ParamName);
-        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, null!)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new SyncService(null!, mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [])).ParamName);
+        Assert.Equal("engine", Assert.Throws<ArgumentNullException>(() => new SyncService([], null!, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [])).ParamName);
+        Assert.Equal("targetProvider", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, null!, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [])).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, null!, mockUser.Object, mockLog.Object, mockClock.Object, [])).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, null!, mockLog.Object, mockClock.Object, [])).ParamName);
+        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, null!, mockClock.Object, [])).ParamName);
+        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, null!, [])).ParamName);
     }
 
     [Fact]
@@ -255,6 +255,46 @@ public class SyncServiceTests
     private static SyncProfile Profile(string name, ISyncIndexStore index, string pattern) =>
         new(name, Mock.Of<ISyncFileStore>(), index, Mock.Of<ISyncRemoteStore>(), new GlobSyncPathMatcher(pattern, true));
 
+    [Fact]
+    public async Task GivenGateHoldingProfile_WhenSyncAsync_ThenThatProfileIsSkipped()
+    {
+        // Arrange
+        var gate = new Mock<ISyncGate>();
+        gate.Setup(x => x.CanSync("notes")).Returns(false);
+        gate.Setup(x => x.CanSync("photos")).Returns(true);
+        var sut = new SyncService([notes, photos], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [gate.Object]);
+
+        // Act
+        await sut.SyncAsync();
+
+        // Assert
+        mockEngine.Verify(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockEngine.Verify(x => x.SyncAsync(photos, false, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(Now, sut.Status.LastSyncedAt);
+    }
+
+    [Fact]
+    public async Task GivenGateHoldingEveryProfile_WhenSyncAsync_ThenNothingRunsAndLastSyncedUnchanged()
+    {
+        // Arrange
+        var gate = new Mock<ISyncGate>();
+        var sut = new SyncService([notes, photos], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [gate.Object]);
+
+        // Act
+        await sut.SyncAsync();
+
+        // Assert
+        mockEngine.Verify(x => x.SyncAsync(It.IsAny<SyncProfile>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Null(sut.Status.LastSyncedAt);
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+    }
+
+    [Fact]
+    public void GivenNullGates_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("gates", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, null!)).ParamName);
+    }
+
     private SyncService CreateSut() =>
-        new([notes, photos], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object);
+        new([notes, photos], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, []);
 }

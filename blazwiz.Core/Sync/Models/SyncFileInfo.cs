@@ -21,6 +21,12 @@ public class SyncFileInfo
     public long Size { get; set; }
 
     /// <summary>
+    /// Gets or sets the id of the file key the file is end to end encrypted with, or null when it is not encrypted (or
+    /// not known: only the store app code is given fills it in, from the sync index).
+    /// </summary>
+    public string? EncryptionKeyId { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether this is a folder marker (the key ends with <c>/</c>).
     /// </summary>
     public bool IsFolder => Key.EndsWith('/');

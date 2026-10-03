@@ -32,6 +32,17 @@ public class SyncProfileBuilder(SyncProfileOptions options)
     }
 
     /// <summary>
+    /// Lets the user end to end encrypt the files: app code is given a store that encrypts on write and decrypts on
+    /// read once encryption is on, and the files are kept and synced as ciphertext. Needs <c>AddBlazwizE2eEncryption</c>.
+    /// </summary>
+    /// <returns>The builder.</returns>
+    public SyncProfileBuilder UseEncryption()
+    {
+        Options.IsEncrypted = true;
+        return this;
+    }
+
+    /// <summary>
     /// Keeps the index in a custom store, created from the service provider.
     /// </summary>
     /// <typeparam name="T">The store type.</typeparam>

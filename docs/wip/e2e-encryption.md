@@ -142,11 +142,26 @@ Each file is marked as it completes, so an interrupted sweep carries on with the
 - **Settings → Sync → E2E encryption:** current state, Enable / Set up this device / Change passphrase / Disable. Passphrase fields only appear inside those controlled dialogs, never on the page. Clear "there is no passphrase recovery" warning before confirming.
 - **Settings → Argon2id:** shows the build's settings (memory, iterations, parallelism, key length) and a **Benchmark** button that runs one derivation with a random passphrase and salt and shows how long it took.
 - **Files page:** a lock to the left of encrypted files. Green: the key is held, all good. Red: E2E encryption isn't set up on this device.
-- **Banner:** for `Blocked` (passkey sign in needed, hardware PRF is essential) and `NeedsSetup`.
+- **Banner:** for `Blocked` (passkey sign in needed, hardware PRF is essential), `NeedsSetup` and `DisabledElsewhere`.
+
+## Implementation notes
+
+Decided while building it, on top of the plan above:
+
+- **Reloads lock it again.** The PRF keys only live in memory, so a reload with a saved session comes back `Blocked`. The banner offers **Unlock with passkey**, which uses the passkey saved with the user on the login page (`IPasskeyUnlockService`) without signing in again, then unlocks with this device's keys.
+- **Sync gate.** `ISyncGate` (Core) lets a feature hold back a profile's passes; `ISyncService` skips a held profile. `E2eSyncGate` holds the encrypted profiles unless the status is `Unsupported`, `Unavailable`, `Disabled` or `Unlocked`, so `Unknown` (not worked out yet, or offline with no local copy) waits too. Once back online an `Unknown` status is worked out again and sync runs if it allows.
+- **Plaintext arrivals.** Besides after unlocking, the encrypt sweep also runs for a profile whenever a pass downloads files into it, so plaintext from a device that was not set up is encrypted as soon as it arrives.
+- **Index columns.** `TrackingSyncFileStore` (local writes) and `SyncEngine` (synced files) both set `Encrypted` and `KeyId` from the stored content's header. The engine still works on the stored bytes, so it never needs the keys.
+- **Store layering.** App code gets `EncryptingSyncFileStore` → `TrackingSyncFileStore` → the untracked store, so the index sees the stored (encrypted) bytes.
+- **Other tabs** are told to reload when encryption is turned on or off (the storage channel's `Changed` message); they then unlock again.
+- **Passphrases** must be at least 8 characters, and are cleared from the view model as soon as they are used.
+- **`IUserKeysStore`** now lives in Core (`blazwiz.Core.Cryptography.Interfaces`), with `TryCreateAsync`.
+- **`IDerivedKeyStore.RemoveKey`** was added, so turning encryption off only clears the `e2e-*` keys.
+- **Generic building blocks** (`IAeadCipher`, `IKeyWrapService`, `IArgon2idKeyDerivationService`, `Argon2idOptions`) are in `blazwiz.Core/Cryptography` and always included in the template; the rest is part of Notes.
 
 ## Testing
 
-- **Unit tests:** Argon2id, AEAD, key wrap, keys.json serialization, file format (including a tampered header and an unknown key), wrapped file keys swapped between ids, wrong passphrase, every service flow, encrypt/decrypt sweeps including resuming, encrypting store, index columns, sync gate, view models.
-- **UI tests:** what runs locally: the Argon2id panel and benchmark, the E2E section's states including the passkey-required one, Files page locks.
+- **Unit tests:** Argon2id (including the reference vector), AEAD (checked against .NET's `AesGcm`), key wrap, keys.json shape, file format (including a tampered header and an unknown key), wrapped file keys swapped between ids, wrong passphrase, every service flow, encrypt/decrypt sweeps including resuming, encrypting store, index columns, sync gate, view models.
+- **UI tests:** what runs locally with the placeholder sign in: the E2E section's state (not available, no banner), the Argon2id panel showing the Release settings, no locks on plain notes. The benchmark is not clicked in the UI tests: at the Release settings it can take a long time in the browser.
 - **Real flows** (enable, second device, change passphrase, disable, disabled elsewhere): tested by the user on the deployed site, same as S3 sync.
 - All four suites pass before the work is called done.

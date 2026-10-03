@@ -7,6 +7,22 @@ namespace blazwiz.Core.UnitTests.Sync.Configuration;
 public class SyncProfileBuilderTests
 {
     [Fact]
+    public void GivenProfile_WhenUseEncryption_ThenEncrypted()
+    {
+        // Arrange
+        var options = new SyncProfileOptions { Name = "notes" };
+
+        // Act
+        var builder = new SyncProfileBuilder(options);
+        var result = builder.UseEncryption();
+
+        // Assert
+        Assert.Same(builder, result);
+        Assert.True(options.IsEncrypted);
+        Assert.False(new SyncProfileOptions().IsEncrypted);
+    }
+
+    [Fact]
     public void GivenStores_WhenProfileBuilderConfigured_ThenIndexAndFileStoresSetIndependently()
     {
         // Arrange
