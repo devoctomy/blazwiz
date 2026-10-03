@@ -1,23 +1,23 @@
 namespace blazwiz.Portal.Application.Services.Interfaces;
 
 /// <summary>
-/// Provides password encryption and decryption operations using a PRF-derived key.
+/// Encrypts and decrypts remembered passwords with the remember me key derived from WebAuthn.
 /// </summary>
 public interface IPasswordCryptoService
 {
     /// <summary>
-    /// Encrypts a plain-text password using a key derived from the given PRF output.
+    /// Encrypts a plain-text password with the remember me key.
     /// </summary>
     /// <param name="password">The plain-text password to encrypt.</param>
-    /// <param name="prfOutputHex">The hex-encoded PRF output used as the encryption key.</param>
     /// <returns>The encrypted password as a Base64-encoded string.</returns>
-    Task<string> EncryptWithPrfAsync(string password, string prfOutputHex);
+    /// <exception cref="InvalidOperationException">Thrown when the remember me key has not been derived.</exception>
+    Task<string> EncryptAsync(string password);
 
     /// <summary>
-    /// Decrypts an encrypted password using a key derived from the given PRF output.
+    /// Decrypts an encrypted password with the remember me key.
     /// </summary>
     /// <param name="encryptedPasswordBase64">The Base64-encoded encrypted password.</param>
-    /// <param name="prfOutputHex">The hex-encoded PRF output used as the decryption key.</param>
     /// <returns>The decrypted plain-text password.</returns>
-    Task<string> DecryptWithPrfAsync(string encryptedPasswordBase64, string prfOutputHex);
+    /// <exception cref="InvalidOperationException">Thrown when the remember me key has not been derived.</exception>
+    Task<string> DecryptAsync(string encryptedPasswordBase64);
 }

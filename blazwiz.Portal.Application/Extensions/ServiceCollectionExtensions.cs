@@ -1,11 +1,9 @@
 using Amazon;
-//#if (IncludeNotes)
 using Amazon.CognitoIdentity;
-//#endif
 using Amazon.CognitoIdentityProvider;
 using Amazon.Runtime;
-//#if (IncludeNotes)
 using blazwiz.Core.Extensions;
+//#if (IncludeNotes)
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 //#endif
@@ -38,6 +36,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IThemeService, ThemeService>();
         services.AddScoped<IPasswordCryptoService, PasswordCryptoService>();
+
+        // Keys derived from the WebAuthn PRF output, kept in memory; features get them from IDerivedKeyStore by name.
+        services.AddBlazwizPrfKeyDerivation(prf => prf
+            .UseApplication(AppIdentity.Name, AppIdentity.Id)
+            .AddKey(PasswordCryptoService.RememberMeKeyName));
         services.AddSingleton<IUserDisplayService, UserDisplayService>();
         // The Cognito sign-in APIs are public, so the API client uses no AWS credentials.
         services.AddSingleton(_ => new BufferingHttpHandler(new HttpClientHandler()));
@@ -51,6 +54,23 @@ public static class ServiceCollectionExtensions
             }));
         services.AddScoped<ICognitoUserPoolClient, CognitoUserPoolClient>();
 
+        // The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
+        services.AddSingleton<IAmazonCognitoIdentity>(sp => new AmazonCognitoIdentityClient(
+            new AnonymousAWSCredentials(),
+            new AmazonCognitoIdentityConfig
+            {
+                RegionEndpoint = GetRegion(sp.GetRequiredService<AwsCognitoConfig>().Region),
+                HttpClientFactory = sp.GetRequiredService<BrowserHttpClientFactory>(),
+            }));
+        services.AddScoped<ICognitoIdentityClient, CognitoIdentityClient>();
+
+        // The session's AWS credentials, fetched once signed in, held in memory and shared by everything calling AWS.
+        services.AddScoped<IAwsCredentialsProvider, CognitoAwsCredentialsProvider>();
+
+        // The user's keys, in their own Secrets Manager secret named <user pool sub>/keys.
+        services.AddSingleton<ISecretsManagerClientFactory, SecretsManagerClientFactory>();
+        services.AddScoped<IUserKeysStore, SecretsManagerUserKeysStore>();
+
         // Cognito when a user pool is configured (deployed), otherwise the placeholder login (local development).
         services.AddScoped<IAuthenticationService>(sp =>
             CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
@@ -61,15 +81,6 @@ public static class ServiceCollectionExtensions
 //#if (IncludeNotes)
         // Sync: notes are plain markdown files kept in IndexedDB, OPFS or a folder the user picks (chosen per device in
         // Settings) and synced with the user's prefix in the data bucket (docs/wip/s3-sync.md, docs/wip/opfs-storage.md).
-        // The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
-        services.AddSingleton<IAmazonCognitoIdentity>(sp => new AmazonCognitoIdentityClient(
-            new AnonymousAWSCredentials(),
-            new AmazonCognitoIdentityConfig
-            {
-                RegionEndpoint = GetRegion(sp.GetRequiredService<AwsCognitoConfig>().Region),
-                HttpClientFactory = sp.GetRequiredService<BrowserHttpClientFactory>(),
-            }));
-        services.AddScoped<ICognitoIdentityClient, CognitoIdentityClient>();
         services.AddScoped<IS3SyncTargetProvider, CognitoS3TargetProvider>();
         services.AddScoped<ISyncUserContext, AuthSyncUserContext>();
         services.AddScoped<IOfflineModeStore, LocalStorageOfflineModeStore>();
@@ -127,10 +138,8 @@ public static class ServiceCollectionExtensions
 
         return appSettings;
     }
-//#if (IncludeNotes)
 
     // Used before the settings are known to be complete; the client is only called once they are.
     private static RegionEndpoint GetRegion(string region) =>
         string.IsNullOrWhiteSpace(region) ? RegionEndpoint.USEast1 : RegionEndpoint.GetBySystemName(region);
-//#endif
 }

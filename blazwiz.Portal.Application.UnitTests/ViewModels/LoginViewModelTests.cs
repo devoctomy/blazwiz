@@ -1,3 +1,4 @@
+using blazwiz.Core.Cryptography.Interfaces;
 //#if (IncludeNotes)
 using blazwiz.Core.Sync.Interfaces;
 //#endif
@@ -18,6 +19,7 @@ public class LoginViewModelTests
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<IWebAuthnService> mockWebAuthn = new();
     private readonly Mock<IPasswordCryptoService> mockPasswordCrypto = new();
+    private readonly Mock<IDerivedKeyStore> mockKeyStore = new();
 //#if (IncludeNotes)
     private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly Mock<IPersistentStorageService> mockPersistentStorage = new();
@@ -27,7 +29,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullAuthService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(null!, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(null!, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -39,7 +41,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullNavigationService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, null!, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, null!, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -51,7 +53,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullThemeService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, null!, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, null!, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -63,7 +65,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullLocalStorageService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, null!, mockWebAuthn.Object, mockPasswordCrypto.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, null!, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -75,7 +77,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullWebAuthnService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, null!, mockPasswordCrypto.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, null!, mockPasswordCrypto.Object, mockKeyStore.Object,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -87,7 +89,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullPasswordCryptoService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, null!,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, null!, mockKeyStore.Object,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -97,9 +99,21 @@ public class LoginViewModelTests
     }
 
     [Fact]
+    public void GivenNullKeyStore_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, null!,
+//#if (IncludeNotes)
+            mockConnectivity.Object,
+            mockPersistentStorage.Object,
+//#endif
+            appSettings));
+        Assert.Equal("keyStore", exception.ParamName);
+    }
+
+    [Fact]
     public void GivenNullAppSettings_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -151,6 +165,20 @@ public class LoginViewModelTests
     }
 
     [Fact]
+    public async Task GivenNoSession_WhenInitialized_ThenDerivedKeysAreCleared()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync((UserSession?)null);
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        mockKeyStore.Verify(x => x.Clear(), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenExistingSession_WhenInitialized_ThenNavigatesHome()
     {
         // Arrange
@@ -162,6 +190,7 @@ public class LoginViewModelTests
 
         // Assert
         mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+        mockKeyStore.Verify(x => x.Clear(), Times.Never);
     }
 
     [Fact]
@@ -532,8 +561,8 @@ public class LoginViewModelTests
         // Arrange
         var sut = CreateSut();
         var user = CreateWebAuthnUser("user@test.com", "cred1");
-        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, PrfOutput = "abcd" });
-        mockPasswordCrypto.Setup(x => x.DecryptWithPrfAsync("enc", "abcd")).ReturnsAsync("secret");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
         mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = true });
 
         // Act
@@ -542,6 +571,7 @@ public class LoginViewModelTests
         // Assert
         mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
         Assert.Null(sut.ErrorMessage);
+        mockKeyStore.Verify(x => x.Clear(), Times.Never);
     }
 
     [Fact]
@@ -550,8 +580,8 @@ public class LoginViewModelTests
         // Arrange
         var sut = CreateSut();
         var user = CreateWebAuthnUser("user@test.com", "cred1");
-        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, PrfOutput = "abcd" });
-        mockPasswordCrypto.Setup(x => x.DecryptWithPrfAsync("enc", "abcd")).ReturnsAsync("stale");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("stale");
         mockAuth.Setup(x => x.LoginAsync("user@test.com", "stale")).ReturnsAsync(new LoginResult { Success = false });
 
         // Act
@@ -561,6 +591,7 @@ public class LoginViewModelTests
         Assert.Equal("Biometric login failed. Please enter your password manually.", sut.ErrorMessage);
         Assert.Equal("user@test.com", sut.Username);
         mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+        mockKeyStore.Verify(x => x.Clear(), Times.Once);
     }
 
     [Fact]
@@ -569,8 +600,8 @@ public class LoginViewModelTests
         // Arrange
         var sut = CreateSut();
         var user = CreateWebAuthnUser("user@test.com", "cred1");
-        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, PrfOutput = "abcd" });
-        mockPasswordCrypto.Setup(x => x.DecryptWithPrfAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("bad tag"));
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("bad tag"));
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
@@ -579,6 +610,24 @@ public class LoginViewModelTests
         Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
         Assert.False(sut.ShowUsersList);
         Assert.False(sut.IsBusy);
+        mockKeyStore.Verify(x => x.Clear(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAuthenticatedButNoKeysDerived_WhenSelectUser_ThenFallsBackToManualLoginWithoutDecrypting()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = false });
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Equal("Biometric authentication failed. Please enter your password manually.", sut.ErrorMessage);
+        mockPasswordCrypto.Verify(x => x.DecryptAsync(It.IsAny<string>()), Times.Never);
+        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -719,11 +768,10 @@ public class LoginViewModelTests
         sut.Username = "user";
         sut.Password = "pass";
         sut.ShowWebAuthnPrompt = true;
-        var prfHex = Convert.ToHexString(new byte[32]);
         mockWebAuthn
             .Setup(x => x.RegisterAsync("user", null))
-            .ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, PrfOutput = prfHex, CredentialID = "cred1", UserID = "uid1" });
-        mockPasswordCrypto.Setup(x => x.EncryptWithPrfAsync("pass", prfHex)).ReturnsAsync("encrypted");
+            .ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, KeysDerived = true, CredentialID = "cred1", UserID = "uid1" });
+        mockPasswordCrypto.Setup(x => x.EncryptAsync("pass")).ReturnsAsync("encrypted");
 
         // Act
         await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
@@ -754,7 +802,24 @@ public class LoginViewModelTests
         // Assert
         Assert.NotNull(sut.WebAuthnErrorMessage);
         Assert.False(sut.IsWebAuthnProcessing);
-        mockPasswordCrypto.Verify(x => x.EncryptWithPrfAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        mockPasswordCrypto.Verify(x => x.EncryptAsync(It.IsAny<string>()), Times.Never);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPrfEnabledButNoKeysDerived_WhenHandleWebAuthnSetup_ThenErrorMessageIsSet()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.Username = "user";
+        mockWebAuthn.Setup(x => x.RegisterAsync("user", null)).ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, KeysDerived = false });
+
+        // Act
+        await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.NotNull(sut.WebAuthnErrorMessage);
+        mockPasswordCrypto.Verify(x => x.EncryptAsync(It.IsAny<string>()), Times.Never);
         mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
     }
 
@@ -825,8 +890,8 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullSyncDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, null!, mockPersistentStorage.Object, appSettings)).ParamName);
-        Assert.Equal("persistentStorageService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockConnectivity.Object, null!, appSettings)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, null!, mockPersistentStorage.Object, appSettings)).ParamName);
+        Assert.Equal("persistentStorageService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, mockConnectivity.Object, null!, appSettings)).ParamName);
     }
 
     [Fact]
@@ -940,7 +1005,7 @@ public class LoginViewModelTests
         return sut;
     }
 
-    private LoginViewModel CreateSut() => new(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object,
+    private LoginViewModel CreateSut() => new(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,

@@ -21,7 +21,7 @@ public class WebAuthnStoredCredential
     public DateTime CreatedAt { get; set; }
 
     /// <summary>
-    /// Gets or sets the encrypted password (encrypted with the WebAuthn PRF output).
+    /// Gets or sets the encrypted password (encrypted with the remember me key derived from the WebAuthn PRF output).
     /// </summary>
     public string? EncryptedPassword { get; set; }
 }
