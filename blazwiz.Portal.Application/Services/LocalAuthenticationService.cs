@@ -30,6 +30,9 @@ public class LocalAuthenticationService(
     private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
 
     /// <inheritdoc/>
+    public event EventHandler? SessionEnded;
+
+    /// <inheritdoc/>
     public bool IsPlaceholder => true;
 
     /// <inheritdoc/>
@@ -93,6 +96,7 @@ public class LocalAuthenticationService(
         if (session.ExpiresAt <= systemClock.UtcNow)
         {
             await LogoutAsync();
+            SessionEnded?.Invoke(this, EventArgs.Empty);
             return null;
         }
 

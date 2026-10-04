@@ -43,6 +43,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     private readonly AppSettings appSettings;
 
     private bool isReady;
+    private bool isEndingSession;
     private bool isSidebarCollapsed;
     private bool isMobileMenuOpen;
     private UserSession? currentUser;
@@ -119,6 +120,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
 
         this.themeService.ThemeChanged += OnThemeChanged;
+        this.authService.SessionEnded += OnSessionEnded;
 //#if (IncludeNotes)
         this.syncService.StatusChanged += OnSyncStatusChanged;
         this.connectivityService.StatusChanged += OnConnectivityChanged;
@@ -439,6 +441,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         if (disposing)
         {
             themeService.ThemeChanged -= OnThemeChanged;
+            authService.SessionEnded -= OnSessionEnded;
 //#if (IncludeNotes)
             syncService.StatusChanged -= OnSyncStatusChanged;
             connectivityService.StatusChanged -= OnConnectivityChanged;
@@ -453,6 +456,32 @@ public partial class MainLayoutViewModel : ViewModelBase
     private void OnThemeChanged(object? sender, EventArgs e)
     {
         OnPropertyChanged(nameof(ThemeIcon));
+    }
+
+    // The session expired or could not be renewed, and the auth service has signed out: finish signing out here
+    // (stop sync, forget the AWS credentials) and return to the login page, which wipes the keys.
+    private async void OnSessionEnded(object? sender, EventArgs e)
+    {
+        if (isEndingSession)
+        {
+            return;
+        }
+
+        isEndingSession = true;
+        try
+        {
+            await LogoutAsync();
+        }
+        catch (Exception)
+        {
+            // Event handlers must not throw; still leave for the login page.
+            credentialsProvider.Clear();
+            navigationService.NavigateTo("/login");
+        }
+        finally
+        {
+            isEndingSession = false;
+        }
     }
 
     private async Task LoadAwsCredentialsAsync()

@@ -11,7 +11,8 @@ namespace blazwiz.Portal.Application.ViewModels;
 /// <remarks>
 /// The session is read again every <see cref="ReadInterval"/>, but only while that has no side effects: reading it in
 /// the last <see cref="CognitoAuthenticationService.RefreshMargin"/> refreshes the tokens (or ends the session without
-/// a refresh token), so it is then only read again once the token has expired, as anything else using it would.
+/// a refresh token), so it is then only read again once the token has expired: straight away, which ends a session
+/// left idle at expiry (an expired token is never renewed), then every <see cref="ReadInterval"/>.
 /// </remarks>
 public partial class SessionTimerViewModel : ViewModelBase
 {
@@ -30,6 +31,7 @@ public partial class SessionTimerViewModel : ViewModelBase
 
     private ITimer? timer;
     private DateTimeOffset? expiresAt;
+    private DateTimeOffset lastReadAt;
     private DateTimeOffset nextReadAt;
     private bool isReading;
     private string text = string.Empty;
@@ -112,8 +114,8 @@ public partial class SessionTimerViewModel : ViewModelBase
         var now = timeProvider.GetUtcNow();
         if (now >= expiresAt)
         {
-            // Expired: reading now refreshes or ends the session, as any other use would.
-            return now >= nextReadAt;
+            // Expired: read straight away, which ends the session, then as often as before.
+            return lastReadAt < expiresAt || now >= nextReadAt;
         }
 
         // Read again while it has no side effects, to pick up tokens refreshed elsewhere.
@@ -130,7 +132,8 @@ public partial class SessionTimerViewModel : ViewModelBase
         finally
         {
             isReading = false;
-            nextReadAt = timeProvider.GetUtcNow() + ReadInterval;
+            lastReadAt = timeProvider.GetUtcNow();
+            nextReadAt = lastReadAt + ReadInterval;
         }
 
         UpdateText();

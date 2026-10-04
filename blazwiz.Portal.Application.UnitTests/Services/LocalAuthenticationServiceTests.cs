@@ -163,11 +163,13 @@ public class LocalAuthenticationServiceTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public async Task GivenExpiredSession_WhenGetCurrentUserAsync_ThenReturnsNullAndClearsSession(int minutesUntilExpiry)
+    public async Task GivenExpiredSession_WhenGetCurrentUserAsync_ThenReturnsNullClearsSessionAndRaisesSessionEnded(int minutesUntilExpiry)
     {
         // Arrange
         SetupStoredSession(new UserSession { Username = "bob", ExpiresAt = Now.AddMinutes(minutesUntilExpiry) });
         var sut = CreateSut();
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
 
         // Act
         var result = await sut.GetCurrentUserAsync();
@@ -175,6 +177,7 @@ public class LocalAuthenticationServiceTests
         // Assert
         Assert.Null(result);
         mockLocalStorage.Verify(x => x.RemoveItemAsync(LocalAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(1, ended);
     }
 
     private void SetupStoredSession(UserSession? session)

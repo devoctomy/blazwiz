@@ -439,26 +439,66 @@ public class CognitoAuthenticationServiceTests
     }
 
     [Fact]
-    public async Task GivenExpiredSessionFromAnotherTabOrBeforeReload_WhenGetCurrentUserAsync_ThenClearsIt()
+    public async Task GivenSessionAboutToExpireFromAnotherTabOrBeforeReload_WhenGetCurrentUserAsync_ThenEndsIt()
     {
         // Arrange
-        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(-1) });
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(1) });
+        var sut = CreateSut();
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
 
         // Act
-        var result = await CreateSut().GetCurrentUserAsync();
+        var result = await sut.GetCurrentUserAsync();
 
         // Assert
         Assert.Null(result);
         mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(1, ended);
     }
 
     [Fact]
-    public async Task GivenRefreshRejected_WhenGetCurrentUserAsync_ThenClearsSession()
+    public async Task GivenExpiredSession_WhenGetCurrentUserAsync_ThenNotRefreshedButRevokedAndEnded()
+    {
+        // Arrange (the strict Cognito mock would throw if a refresh were attempted)
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddSeconds(-1) });
+        mockCognito.Setup(x => x.RevokeAsync("refresh")).Returns(Task.CompletedTask);
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+
+        // Act
+        var result = await sut.GetCurrentUserAsync();
+
+        // Assert
+        Assert.Null(result);
+        mockCognito.Verify(x => x.RevokeAsync("refresh"), Times.Once);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(1, ended);
+    }
+
+    [Fact]
+    public async Task GivenSessionExpiringNow_WhenGetCurrentUserAsync_ThenTreatedAsExpired()
+    {
+        // Arrange (the strict Cognito mock would throw if a refresh were attempted)
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now });
+        mockCognito.Setup(x => x.RevokeAsync("refresh")).Returns(Task.CompletedTask);
+
+        // Act & Assert
+        Assert.Null(await sut.GetCurrentUserAsync());
+        mockCognito.Verify(x => x.RevokeAsync("refresh"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenRefreshRejected_WhenGetCurrentUserAsync_ThenEndsSession()
     {
         // Arrange
         var sut = await CreateSignedInSutAsync();
-        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(-1) });
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(1) });
         mockCognito.Setup(x => x.RefreshAsync(It.IsAny<string>(), "refresh")).ThrowsAsync(new CognitoException("NotAuthorizedException", "Refresh Token has expired"));
+        mockCognito.Setup(x => x.RevokeAsync("refresh")).ThrowsAsync(new CognitoException("NotAuthorizedException", "Refresh Token has expired"));
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
 
         // Act
         var result = await sut.GetCurrentUserAsync();
@@ -466,15 +506,19 @@ public class CognitoAuthenticationServiceTests
         // Assert
         Assert.Null(result);
         mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(1, ended);
     }
 
     [Fact]
-    public async Task GivenRefreshReturnsNoTokens_WhenGetCurrentUserAsync_ThenClearsSession()
+    public async Task GivenRefreshReturnsNoTokens_WhenGetCurrentUserAsync_ThenEndsSession()
     {
         // Arrange
         var sut = await CreateSignedInSutAsync();
-        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(-1) });
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(1) });
         mockCognito.Setup(x => x.RefreshAsync(It.IsAny<string>(), "refresh")).ReturnsAsync(new CognitoSignInResult());
+        mockCognito.Setup(x => x.RevokeAsync("refresh")).Returns(Task.CompletedTask);
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
 
         // Act
         var result = await sut.GetCurrentUserAsync();
@@ -482,15 +526,18 @@ public class CognitoAuthenticationServiceTests
         // Assert
         Assert.Null(result);
         mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(1, ended);
     }
 
     [Fact]
-    public async Task GivenOffline_WhenGetCurrentUserAsyncNeedsRefresh_ThenReturnsNullButKeepsSession()
+    public async Task GivenNoNetworkWhileStillValid_WhenGetCurrentUserAsyncNeedsRefresh_ThenReturnsNullButKeepsSession()
     {
         // Arrange
         var sut = await CreateSignedInSutAsync();
-        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(-1) });
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(1) });
         mockCognito.Setup(x => x.RefreshAsync(It.IsAny<string>(), "refresh")).ThrowsAsync(new HttpRequestException("offline"));
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
 
         // Act
         var result = await sut.GetCurrentUserAsync();
@@ -498,6 +545,23 @@ public class CognitoAuthenticationServiceTests
         // Assert
         Assert.Null(result);
         mockLocalStorage.Verify(x => x.RemoveItemAsync(It.IsAny<string>()), Times.Never);
+        Assert.Equal(0, ended);
+    }
+
+    [Fact]
+    public async Task GivenSignedIn_WhenLogoutAsync_ThenSessionEndedNotRaised()
+    {
+        // Arrange
+        var sut = await CreateSignedInSutAsync();
+        mockCognito.Setup(x => x.RevokeAsync("refresh")).Returns(Task.CompletedTask);
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+
+        // Act
+        await sut.LogoutAsync();
+
+        // Assert
+        Assert.Equal(0, ended);
     }
 
     private static string CreateJwt(string payloadJson) => new JsonWebTokenHandler().CreateToken(payloadJson);

@@ -127,6 +127,24 @@ public class SessionTimerViewModelTests
     }
 
     [Fact]
+    public async Task GivenExpiresSoonAfterARead_WhenTicking_ThenReadsStraightAwayAtExpiryNotAtTheNextInterval()
+    {
+        // Arrange
+        session!.ExpiresAt = Now.AddSeconds(4);
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        AdvanceSeconds(3);
+        var readsBeforeExpiry = reads;
+        AdvanceSeconds(1);
+
+        // Assert
+        Assert.Equal(1, readsBeforeExpiry);
+        Assert.Equal(2, reads);
+    }
+
+    [Fact]
     public async Task GivenDisposed_WhenTimePasses_ThenNoLongerUpdates()
     {
         // Arrange
