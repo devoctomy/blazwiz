@@ -31,6 +31,12 @@
     </div>
 </div>
 
+<div class="panel mb-4" id="offline-card">
+    <h2 class="panel-title">Offline mode</h2>
+    <p class="panel-text">Work without connecting to the sign-in service or the cloud.</p>
+    <OfflineModeSwitch />
+</div>
+
 @*#if (IncludeNotes)*@
 <div class="panel mb-4" id="sync-card">
     <h2 class="panel-title">Sync</h2>
@@ -76,10 +82,10 @@
             <i class="bi bi-arrow-repeat me-1"></i>Sync now
         </button>
         <div class="form-check form-switch mb-0">
-            <input class="form-check-input" type="checkbox" role="switch" id="settings-offline-switch"
-                   checked="@ViewModel.IsForcedOffline"
-                   @onchange="() => ViewModel.ToggleOfflineModeCommand.ExecuteAsync(null)" />
-            <label class="form-check-label" for="settings-offline-switch">Offline mode</label>
+            <input class="form-check-input" type="checkbox" role="switch" id="settings-sync-switch"
+                   checked="@ViewModel.IsSyncEnabled"
+                   @onchange="() => ViewModel.ToggleSyncCommand.ExecuteAsync(null)" />
+            <label class="form-check-label" for="settings-sync-switch">Sync</label>
         </div>
         <a href="sync" class="btn btn-link">View sync log</a>
     </div>

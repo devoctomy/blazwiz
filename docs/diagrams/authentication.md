@@ -1,0 +1,278 @@
+# Authentication (Cognito) and AWS credentials
+
+How a typed email and password becomes a signed-in session, and how that session becomes temporary AWS credentials
+for S3 and Secrets Manager.
+
+Main classes:
+
+- `LoginViewModel` (`blazwiz.Portal.Application/ViewModels/LoginViewModel.cs`)
+- `CognitoAuthenticationService` (`blazwiz.Portal.Application/Services/CognitoAuthenticationService.cs`)
+- `CognitoUserPoolClient`, which uses `Amazon.Extensions.CognitoAuthentication` for SRP (`.../Services/CognitoUserPoolClient.cs`)
+- `CognitoAwsCredentialsProvider` and `CognitoIdentityClient` (`.../Services/CognitoAwsCredentialsProvider.cs`, `.../Services/CognitoIdentityClient.cs`)
+- `MainLayoutViewModel` (`.../ViewModels/MainLayoutViewModel.cs`)
+
+When no user pool is configured (local development), `LocalAuthenticationService` takes the place of
+`CognitoAuthenticationService`. It accepts any non-empty credentials, stores an 8 hour session under
+`blazwiz_session` in localStorage, and never calls AWS.
+
+## Where things are kept
+
+| What | Where | Key / field | Lifetime |
+|---|---|---|---|
+| Session (username, display name, email, `SignedInAt`, `ExpiresAt`, **ID token**, **access token**) | localStorage | `blazwiz_cognito_session` | Survives reloads. Removed on sign out or expiry |
+| **Refresh token** | Memory | `CognitoAuthenticationService.refreshToken` | This tab only. Lost on reload or close |
+| Pending new-password challenge (username + Cognito session id) | Memory | `CognitoAuthenticationService.pendingNewPassword`, `CognitoUserPoolClient.challengedUser` | Until answered or abandoned |
+| Typed password | Memory | `LoginViewModel.Password` | Cleared by `CompleteLogin()` |
+| Remembered users (email, plus passkey data, see [prf-remember-me.md](prf-remember-me.md)) | localStorage | `blazwiz_saved_users` | Until removed from the list |
+| AWS temporary credentials (identity id, access key, secret, session token, expiration) | Memory | `CognitoAwsCredentialsProvider.cached` | Until 5 minutes before they expire, sign out, offline mode, or `Clear()` |
+| S3 client built from those credentials | Memory | `CognitoS3TargetProvider.cached` | Replaced when the credentials object changes |
+
+The refresh token is never written to storage. Anything that can run script in the origin can read localStorage, and a
+stored refresh token would let it act as the user for the token's whole validity (12 hours, `RefreshTokenValidity` in
+`cloudformation/stack.yaml`). The ID and access tokens last 60 minutes.
+
+## 1. Sign in with email and password (SRP)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant VM as LoginViewModel
+    participant Auth as CognitoAuthenticationService
+    participant UPC as CognitoUserPoolClient
+    box rgb(240,240,255) In memory
+        participant Mem as Memory (.NET fields)
+    end
+    box rgb(255,245,230) Browser storage
+        participant LS as localStorage
+    end
+    box rgb(235,250,235) AWS
+        participant UP as Cognito User Pool
+    end
+
+    User->>VM: Enter email + password, click Sign in
+    VM->>Mem: Password held in LoginViewModel.Password
+    VM->>Mem: offlineModeService.Exit() (offline flag cleared)
+    VM->>Auth: LoginAsync(email, password)
+    Auth->>Mem: pendingNewPassword = null
+    Auth->>UPC: SignInAsync(email, password)
+    UPC->>UP: Sign in using SRP-6a (the password never leaves the browser)
+    UP-->>UPC: IdToken, AccessToken, RefreshToken, ExpiresIn
+
+    alt Tokens returned
+        UPC-->>Auth: CognitoSignInResult
+        Auth->>Mem: refreshToken = result.RefreshToken
+        Auth->>Auth: CreateSession(): read email + name claims from the ID token
+        Auth->>LS: SET blazwiz_cognito_session = {username, displayName, email, signedInAt, expiresAt, idToken, accessToken}
+        Auth-->>VM: LoginResult Success
+        VM->>LS: SET blazwiz_sync_disabled (only if "start with sync off" changed)
+        opt Remember me ticked
+            VM->>LS: SET blazwiz_saved_users (adds the email)
+            Note over VM: Offers passkey setup, see prf-remember-me.md
+        end
+        VM->>Mem: Password = "" (CompleteLogin)
+        VM->>User: Navigate to /
+    else Wrong password, unconfirmed, throttled
+        UP-->>UPC: NotAuthorizedException etc.
+        UPC-->>Auth: CognitoException
+        Auth-->>VM: LoginResult Failed (friendly error)
+    else Network failure or timeout
+        UPC-->>Auth: HttpRequestException / TaskCanceledException
+        Auth-->>VM: LoginResult Failed, ServiceUnreachable = true
+    end
+```
+
+## 2. New password challenge (invited users)
+
+An invited user signs in with a temporary password and Cognito replies with `NEW_PASSWORD_REQUIRED` instead of tokens.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant VM as LoginViewModel
+    participant Auth as CognitoAuthenticationService
+    participant UPC as CognitoUserPoolClient
+    box rgb(240,240,255) In memory
+        participant Mem as Memory (.NET fields)
+    end
+    box rgb(255,245,230) Browser storage
+        participant LS as localStorage
+    end
+    box rgb(235,250,235) AWS
+        participant UP as Cognito User Pool
+    end
+
+    User->>VM: Sign in with temporary password
+    VM->>Auth: LoginAsync(email, tempPassword)
+    Auth->>UPC: SignInAsync
+    UPC->>UP: SRP sign in
+    UP-->>UPC: Challenge NEW_PASSWORD_REQUIRED + session id
+    UPC->>Mem: challengedUser = CognitoUser
+    UPC-->>Auth: ChallengeName, SessionId (no tokens)
+    Auth->>Mem: pendingNewPassword = {username, sessionId}
+    Auth-->>VM: NewPasswordRequired = true
+    VM->>Mem: Password = "", remember the Remember me choice
+    VM->>User: Show new password form
+
+    User->>VM: New password + confirmation
+    VM->>Auth: CompleteNewPasswordAsync(newPassword)
+    Auth->>UPC: CompleteNewPasswordAsync(sessionId, newPassword)
+    UPC->>UP: RespondToAuthChallenge NEW_PASSWORD_REQUIRED
+    alt Accepted
+        UP-->>UPC: Tokens
+        UPC->>Mem: challengedUser = null
+        Auth->>Mem: pendingNewPassword = null, refreshToken = result.RefreshToken
+        Auth->>LS: SET blazwiz_cognito_session
+        Auth-->>VM: Success
+        VM->>Mem: Password = NewPassword (the one to remember)
+        Note over VM: Continues as in diagram 1 (Remember me, navigate)
+    else Weak password (InvalidPasswordException)
+        Auth-->>VM: Failed, challenge kept so the user can try again
+    else Challenge expired (NotAuthorizedException)
+        Auth->>Mem: pendingNewPassword = null
+        Auth-->>VM: "Your sign-in has expired. Please sign in again."
+    end
+```
+
+## 3. Getting AWS credentials from the identity pool
+
+Once the shell loads it fetches the AWS credentials in the background. After that, anything calling AWS (sync's S3
+client, the E2E keys in Secrets Manager) asks `IAwsCredentialsProvider`, which returns the cached set until it is
+within 5 minutes of expiry.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Layout as MainLayoutViewModel
+    participant Auth as CognitoAuthenticationService
+    participant Creds as CognitoAwsCredentialsProvider
+    participant IdC as CognitoIdentityClient
+    box rgb(240,240,255) In memory
+        participant Mem as Memory (.NET fields)
+    end
+    box rgb(255,245,230) Browser storage
+        participant LS as localStorage
+    end
+    box rgb(235,250,235) AWS
+        participant IP as Cognito Identity Pool
+    end
+
+    Layout->>Auth: GetCurrentUserAsync()
+    Auth->>LS: GET blazwiz_cognito_session
+    LS-->>Auth: Session with ID token
+    Auth-->>Layout: UserSession
+    Layout-)Creds: GetCredentialsAsync() (fire and forget)
+
+    alt Placeholder auth, or no identity pool configured
+        Creds-->>Layout: null
+    else Offline mode on
+        Creds->>Mem: cached = null
+        Creds-->>Layout: null (no AWS calls in offline mode)
+    else Online
+        Creds->>Auth: GetCurrentUserAsync()
+        Auth->>LS: GET blazwiz_cognito_session
+        Note over Auth: May refresh the tokens first, see session-management.md
+        Auth-->>Creds: Session (ID token)
+        Creds->>Creds: Wait on gate (concurrent callers share one fetch)
+        Creds->>Mem: Read cached
+        alt Cached for this user and more than 5 min from expiry
+            Mem-->>Creds: AwsTemporaryCredentials
+        else Missing, other user, or near expiry
+            Creds->>Mem: cached = null
+            Creds->>IdC: GetCredentialsAsync(idToken)
+            IdC->>IP: GetId(IdentityPoolId, Logins {cognito-idp.{region}.amazonaws.com/{poolId}: idToken})
+            IP-->>IdC: IdentityId
+            IdC->>IP: GetCredentialsForIdentity(IdentityId, Logins)
+            IP-->>IdC: AccessKeyId, SecretKey, SessionToken, Expiration
+            IdC-->>Creds: AwsTemporaryCredentials
+            Creds->>Mem: cached = {username, credentials}
+        end
+        Creds-->>Layout: Credentials
+    end
+```
+
+The identity pool calls are public APIs, so the client is built with `AnonymousAWSCredentials`. The ID token is the
+only proof. The identity id names the user's prefix in the data bucket (`{identityId}/notes/...`).
+
+## 4. Using the credentials: S3 and Secrets Manager
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Sync as Sync / ConnectivityService
+    participant Target as CognitoS3TargetProvider
+    participant Keys as SecretsManagerUserKeysStore
+    participant Creds as CognitoAwsCredentialsProvider
+    box rgb(240,240,255) In memory
+        participant Mem as Memory (.NET fields)
+    end
+    box rgb(235,250,235) AWS
+        participant S3 as S3 data bucket
+        participant SM as Secrets Manager
+    end
+
+    Sync->>Target: GetTargetAsync()
+    Target->>Creds: GetCredentialsAsync()
+    Creds-->>Target: Credentials (cached or fresh, diagram 3)
+    alt Same credentials object as last time
+        Target->>Mem: Reuse cached S3SyncTarget
+    else New credentials
+        Target->>Mem: Dispose old client, cached = {credentials, new AmazonS3Client}
+    end
+    Target-->>Sync: S3SyncTarget(client, bucket, "{identityId}/")
+    Sync->>S3: ListObjectsV2 / GetObject / PutObject / DeleteObject
+
+    alt S3 answers 403
+        S3-->>Sync: Forbidden
+        Sync->>Target: Invalidate()
+        Target->>Creds: Clear()
+        Creds->>Mem: cached = null
+        Target->>Mem: Dispose S3 client
+        Note over Sync: SyncService retries the profile once with new credentials
+    end
+
+    Keys->>Creds: GetCredentialsAsync()
+    Creds-->>Keys: Credentials
+    Keys->>Keys: Read "sub" claim from the ID token
+    Keys->>SM: GetSecretValue / CreateSecret / PutSecretValue "{sub}/keys"
+```
+
+## 5. Sign out
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Layout as MainLayoutViewModel
+    participant Sched as SyncScheduler
+    participant Auth as CognitoAuthenticationService
+    participant Creds as CognitoAwsCredentialsProvider
+    participant Login as LoginViewModel
+    box rgb(240,240,255) In memory
+        participant Mem as Memory (.NET fields)
+    end
+    box rgb(255,245,230) Browser storage
+        participant LS as localStorage
+    end
+    box rgb(235,250,235) AWS
+        participant UP as Cognito User Pool
+    end
+
+    User->>Layout: Sign out
+    Layout->>Sched: StopAsync() (cancel passes, reset status)
+    Layout->>Auth: LogoutAsync()
+    Auth->>Mem: pendingNewPassword = null, offline session cleared
+    Auth->>Mem: token = refreshToken, refreshToken = null
+    Auth->>LS: REMOVE blazwiz_cognito_session
+    opt Had a refresh token and not in offline mode
+        Auth->>UP: RevokeToken(refreshToken) (best effort)
+    end
+    Layout->>Creds: Clear()
+    Creds->>Mem: cached = null
+    Layout->>Login: Navigate to /login
+    Login->>Auth: GetCurrentUserAsync() returns null
+    Login->>Mem: DerivedKeyStore.Clear() (zeroes PRF-derived and E2E keys)
+    Login->>LS: GET blazwiz_saved_users (show remembered users)
+    Note over LS: Notes, sync index, event log and E2E device keys stay, partitioned by user
+```

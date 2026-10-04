@@ -23,7 +23,7 @@ public class SyncEventPresenter : ISyncEventPresenter
         [SyncEventKind.Failed] = Create("bi-x-circle", "text-danger", "Failed", SyncEventGroup.Errors),
         [SyncEventKind.WentOffline] = Create("bi-wifi-off", "text-body-secondary", "Offline", SyncEventGroup.Connectivity),
         [SyncEventKind.WentOnline] = Create("bi-wifi", "text-success", "Online", SyncEventGroup.Connectivity),
-        [SyncEventKind.OfflineModeChanged] = Create("bi-airplane", "text-body-secondary", "Offline mode", SyncEventGroup.Connectivity),
+        [SyncEventKind.OfflineModeChanged] = Create("bi-airplane", "text-body-secondary", "Offline mode or sync switched", SyncEventGroup.Connectivity),
     };
 
     /// <inheritdoc/>

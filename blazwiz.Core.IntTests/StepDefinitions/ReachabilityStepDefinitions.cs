@@ -1,5 +1,6 @@
 using Amazon.Runtime;
 using Amazon.S3;
+using blazwiz.Core.Offline;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.Interfaces;
@@ -30,7 +31,8 @@ public sealed class ReachabilityStepDefinitions(TestContext testContext)
     [When("connectivity is checked")]
     public async Task WhenConnectivityIsChecked()
     {
-        var offlineMode = new Mock<IOfflineModeStore>();
+        var syncEnabled = new Mock<ISyncEnabledStore>();
+        syncEnabled.Setup(x => x.GetAsync()).ReturnsAsync(true);
         var browser = new Mock<IBrowserNetworkStatus>();
         browser.Setup(x => x.IsOnlineAsync()).ReturnsAsync(true);
         var targets = new Mock<IS3SyncTargetProvider>();
@@ -38,7 +40,8 @@ public sealed class ReachabilityStepDefinitions(TestContext testContext)
         var user = new Mock<ISyncUserContext>();
 
         using var sut = new ConnectivityService(
-            offlineMode.Object,
+            new OfflineModeService(),
+            syncEnabled.Object,
             browser.Object,
             targets.Object,
             new S3ReachabilityProbe(),

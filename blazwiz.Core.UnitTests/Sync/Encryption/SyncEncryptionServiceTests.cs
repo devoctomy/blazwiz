@@ -62,11 +62,11 @@ public class SyncEncryptionServiceTests
             .ReturnsAsync(0);
         mockSync.Setup(x => x.SyncAsync(Profile, false, It.IsAny<CancellationToken>())).Callback(() => calls.Add("sync")).ReturnsAsync(new SyncResult());
         mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => new ConnectivityStatus { IsOnline = online && !forcedOffline });
-        mockConnectivity.SetupGet(x => x.IsForcedOffline).Returns(() => forcedOffline);
-        mockConnectivity.Setup(x => x.SetForcedOfflineAsync(It.IsAny<bool>())).Callback<bool>(v =>
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(() => !forcedOffline);
+        mockConnectivity.Setup(x => x.SetSyncEnabledAsync(It.IsAny<bool>())).Callback<bool>(v =>
         {
-            calls.Add(v ? "offline" : "online");
-            forcedOffline = v;
+            calls.Add(v ? "online" : "offline");
+            forcedOffline = !v;
         }).Returns(Task.CompletedTask);
         mockLock.Setup(x => x.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(Mock.Of<IAsyncDisposable>());
         mockChannel.Setup(x => x.PostAsync(It.IsAny<SyncStorageChannelMessage>())).Callback<SyncStorageChannelMessage>(m => calls.Add($"post-{m}")).Returns(Task.CompletedTask);

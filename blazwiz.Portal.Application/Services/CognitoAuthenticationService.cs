@@ -1,6 +1,5 @@
-//#if (IncludeNotes)
-using blazwiz.Core.Sync.Interfaces;
-//#endif
+using blazwiz.Core.Offline.Interfaces;
+using blazwiz.Core.Offline.Models;
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
@@ -22,16 +21,19 @@ namespace blazwiz.Portal.Application.Services;
 /// for the token's whole validity (<c>RefreshTokenValidity</c> in <c>cloudformation/stack.yaml</c>), from anywhere.
 /// To keep sessions across restarts, at least: keep that validity short, add a Content-Security-Policy, and consider
 /// a backend that holds the tokens (backend for frontend) rather than the browser.
+/// <para>
+/// In offline mode nothing here calls Cognito: the session is an offline one held in <see cref="IOfflineSessionStore"/>,
+/// with no tokens, and it ends at its expiry or when offline mode is turned off.
+/// </para>
 /// </remarks>
 public class CognitoAuthenticationService(
     ICognitoUserPoolClient cognitoClient,
     ILocalStorageService localStorageService,
     IUserDisplayService userDisplayService,
-//#if (IncludeNotes)
-    IOfflineModeStore offlineModeStore,
-//#endif
+    IOfflineModeService offlineModeService,
+    IOfflineSessionStore offlineSessionStore,
     ISystemClock systemClock)
-    : IAuthenticationService
+    : IAuthenticationService, IDisposable
 {
     /// <summary>
     /// The local storage key the session is stored under.
@@ -49,13 +51,13 @@ public class CognitoAuthenticationService(
     private readonly ICognitoUserPoolClient cognitoClient = cognitoClient ?? throw new ArgumentNullException(nameof(cognitoClient));
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
     private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
-//#if (IncludeNotes)
-    private readonly IOfflineModeStore offlineModeStore = offlineModeStore ?? throw new ArgumentNullException(nameof(offlineModeStore));
-//#endif
+    private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
+    private readonly IOfflineSessionStore offlineSessionStore = offlineSessionStore ?? throw new ArgumentNullException(nameof(offlineSessionStore));
     private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
 
     private PendingNewPassword? pendingNewPassword;
     private string? refreshToken;
+    private bool isListening;
 
     /// <inheritdoc/>
     public event EventHandler? SessionEnded;
@@ -97,8 +99,51 @@ public class CognitoAuthenticationService(
         }
         catch (HttpRequestException)
         {
-            return Failed(ConnectionError);
+            return Unreachable();
         }
+        catch (TaskCanceledException)
+        {
+            // The request timed out.
+            return Unreachable();
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<LoginResult> SignInOfflineAsync(string username, OfflineEntryReason reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+
+        pendingNewPassword = null;
+        refreshToken = null;
+        await localStorageService.RemoveItemAsync(SessionStorageKey);
+        var trimmed = username.Trim();
+        var session = offlineSessionStore.Start(trimmed, userDisplayService.GetDisplayNameFromUsername(trimmed), trimmed.Contains('@') ? trimmed : null);
+        ListenForOfflineModeChanges();
+        offlineModeService.Enter(reason);
+        return new LoginResult
+        {
+            Success = true,
+            Session = session,
+        };
+    }
+
+    /// <inheritdoc/>
+    public async Task GoOfflineAsync()
+    {
+        var current = await GetCurrentUserAsync()
+            ?? throw new InvalidOperationException("Sign in before turning offline mode on.");
+        if (current.IsOffline)
+        {
+            return;
+        }
+
+        offlineSessionStore.Start(current.Username, current.DisplayName, current.Email);
+        var token = refreshToken;
+        refreshToken = null;
+        await localStorageService.RemoveItemAsync(SessionStorageKey);
+        await RevokeAsync(token);
+        ListenForOfflineModeChanges();
+        offlineModeService.Enter(OfflineEntryReason.Chosen);
     }
 
     /// <inheritdoc/>
@@ -143,26 +188,34 @@ public class CognitoAuthenticationService(
     public async Task LogoutAsync()
     {
         pendingNewPassword = null;
+        offlineSessionStore.Clear();
         var token = refreshToken;
         refreshToken = null;
         await localStorageService.RemoveItemAsync(SessionStorageKey);
-
-        if (!string.IsNullOrEmpty(token))
-        {
-            try
-            {
-                await cognitoClient.RevokeAsync(token);
-            }
-            catch (Exception ex) when (ex is CognitoException or HttpRequestException)
-            {
-                // Best effort: the session is already gone from this browser.
-            }
-        }
+        await RevokeAsync(token);
     }
 
     /// <inheritdoc/>
     public async Task<UserSession?> GetCurrentUserAsync()
     {
+        var offline = offlineSessionStore.Session;
+        if (offline != null)
+        {
+            if (offline.ExpiresAt <= systemClock.UtcNow)
+            {
+                await EndSessionAsync();
+                return null;
+            }
+
+            return offline;
+        }
+
+        if (offlineModeService.IsOffline)
+        {
+            // Offline mode with no offline session: nobody is signed in, and nothing may call Cognito.
+            return null;
+        }
+
         var session = await localStorageService.GetObjectAsync<UserSession>(SessionStorageKey);
         if (session == null)
         {
@@ -180,14 +233,6 @@ public class CognitoAuthenticationService(
             return session;
         }
 
-//#if (IncludeNotes)
-        if (await offlineModeStore.GetAsync())
-        {
-            // Offline mode makes no network calls: keep the stored session and refresh it once back online.
-            return session;
-        }
-
-//#endif
         if (session.ExpiresAt <= systemClock.UtcNow)
         {
             // Not used while it was valid, so it is not brought back to life: renewing only happens before expiry.
@@ -229,12 +274,34 @@ public class CognitoAuthenticationService(
         }
     }
 
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (isListening)
+        {
+            offlineModeService.Changed -= OnOfflineModeChanged;
+            isListening = false;
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
     private static LoginResult Failed(string error)
     {
         return new LoginResult
         {
             Success = false,
             Error = error,
+        };
+    }
+
+    private static LoginResult Unreachable()
+    {
+        return new LoginResult
+        {
+            Success = false,
+            Error = ConnectionError,
+            ServiceUnreachable = true,
         };
     }
 
@@ -266,6 +333,50 @@ public class CognitoAuthenticationService(
         catch (ArgumentException)
         {
             return null;
+        }
+    }
+
+    // Revokes a refresh token, best effort. Never while offline: offline mode makes no calls to Cognito.
+    private async Task RevokeAsync(string? token)
+    {
+        if (string.IsNullOrEmpty(token) || offlineModeService.IsOffline)
+        {
+            return;
+        }
+
+        try
+        {
+            await cognitoClient.RevokeAsync(token);
+        }
+        catch (Exception ex) when (ex is CognitoException or HttpRequestException)
+        {
+            // Best effort: the session is already gone from this browser.
+        }
+    }
+
+    private void ListenForOfflineModeChanges()
+    {
+        if (!isListening)
+        {
+            offlineModeService.Changed += OnOfflineModeChanged;
+            isListening = true;
+        }
+    }
+
+    // Turning offline mode off ends an offline session: there are no tokens to carry on with, so the user signs in
+    // online again.
+    private async void OnOfflineModeChanged(object? sender, bool isOffline)
+    {
+        try
+        {
+            if (!isOffline && offlineSessionStore.Session != null)
+            {
+                await EndSessionAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // Event handlers must not throw.
         }
     }
 

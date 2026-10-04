@@ -1,3 +1,4 @@
+using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Aws;
@@ -6,12 +7,13 @@ namespace blazwiz.Portal.Application.Services;
 
 /// <summary>
 /// <see cref="IAwsCredentialsProvider"/> holding the identity pool credentials in memory per user, until they are
-/// close to expiry or cleared. Concurrent callers share a single fetch.
+/// close to expiry or cleared. Concurrent callers share a single fetch. None are fetched, or handed out, in offline mode.
 /// </summary>
 public sealed class CognitoAwsCredentialsProvider(
     IAuthenticationService authService,
     ICognitoIdentityClient identityClient,
     AwsCognitoConfig cognitoConfig,
+    IOfflineModeService offlineModeService,
     ISystemClock systemClock)
     : IAwsCredentialsProvider, IDisposable
 {
@@ -23,6 +25,7 @@ public sealed class CognitoAwsCredentialsProvider(
     private readonly IAuthenticationService authService = authService ?? throw new ArgumentNullException(nameof(authService));
     private readonly ICognitoIdentityClient identityClient = identityClient ?? throw new ArgumentNullException(nameof(identityClient));
     private readonly AwsCognitoConfig cognitoConfig = cognitoConfig ?? throw new ArgumentNullException(nameof(cognitoConfig));
+    private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
     private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
     private readonly SemaphoreSlim gate = new SemaphoreSlim(1, 1);
 
@@ -41,6 +44,13 @@ public sealed class CognitoAwsCredentialsProvider(
     {
         if (authService.IsPlaceholder || !IsConfigured)
         {
+            return null;
+        }
+
+        if (offlineModeService.IsOffline)
+        {
+            // Offline mode makes no AWS calls, and credentials fetched before it must not be used during it.
+            Clear();
             return null;
         }
 

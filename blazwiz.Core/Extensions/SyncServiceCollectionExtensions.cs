@@ -2,6 +2,8 @@ using blazwiz.Core.Cryptography;
 using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Encryption;
 using blazwiz.Core.Encryption.Interfaces;
+using blazwiz.Core.Offline;
+using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Connectivity;
@@ -27,7 +29,7 @@ public static class SyncServiceCollectionExtensions
 {
     /// <summary>
     /// Adds the sync engine and its profiles. The app must also register <see cref="IS3SyncTargetProvider"/>,
-    /// <see cref="ISyncUserContext"/> and <see cref="IOfflineModeStore"/>.
+    /// <see cref="ISyncUserContext"/> and <see cref="ISyncEnabledStore"/>.
     /// </summary>
     /// <remarks>
     /// Each profile's file store is registered as a keyed <see cref="ISyncFileStore"/> under the profile name, already
@@ -49,6 +51,7 @@ public static class SyncServiceCollectionExtensions
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<ISystemClock, SystemClock>();
+        services.TryAddSingleton<IOfflineModeService, OfflineModeService>();
         services.TryAddSingleton<ISyncPlanner, SyncPlanner>();
         services.TryAddSingleton<IContentHasher, Sha256ContentHasher>();
         services.TryAddSingleton<ISyncConflictResolver, NewestWinsConflictResolver>();

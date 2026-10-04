@@ -2,6 +2,7 @@ using Amazon.Runtime;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using blazwiz.Core.Cryptography.Interfaces;
+using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using Microsoft.IdentityModel.JsonWebTokens;
 
@@ -15,12 +16,14 @@ namespace blazwiz.Portal.Application.Services;
 public sealed class SecretsManagerUserKeysStore(
     IAuthenticationService authService,
     IAwsCredentialsProvider credentialsProvider,
-    ISecretsManagerClientFactory clientFactory)
+    ISecretsManagerClientFactory clientFactory,
+    IOfflineModeService offlineModeService)
     : IUserKeysStore
 {
     private readonly IAuthenticationService authService = authService ?? throw new ArgumentNullException(nameof(authService));
     private readonly IAwsCredentialsProvider credentialsProvider = credentialsProvider ?? throw new ArgumentNullException(nameof(credentialsProvider));
     private readonly ISecretsManagerClientFactory clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+    private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
 
     /// <inheritdoc/>
     public Task<string?> GetAsync(CancellationToken ct = default) =>
@@ -120,6 +123,13 @@ public sealed class SecretsManagerUserKeysStore(
 
     private async Task<T> WithClientAsync<T>(CancellationToken ct, Func<IAmazonSecretsManager, string, Task<T>> action)
     {
+        if (!authService.IsPlaceholder && offlineModeService.IsOffline)
+        {
+            // Not "cannot be used in this session" (InvalidOperationException), which would turn encryption off
+            // here: offline, the keys are just out of reach, so this device's own copy is used.
+            throw new HttpRequestException("Offline mode: the user's keys cannot be fetched.");
+        }
+
         var session = authService.IsPlaceholder ? null : await authService.GetCurrentUserAsync();
         var sub = GetSub(session?.IdToken);
         var credentials = sub == null ? null : await credentialsProvider.GetCredentialsAsync(ct);

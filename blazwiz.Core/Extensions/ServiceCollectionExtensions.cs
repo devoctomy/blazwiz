@@ -3,6 +3,8 @@ using blazwiz.Core.Cryptography.Configuration;
 using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Greetings;
 using blazwiz.Core.Greetings.Interfaces;
+using blazwiz.Core.Offline;
+using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Time;
 using blazwiz.Core.Time.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +27,7 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.AddSingleton<ISystemClock, SystemClock>();
+        services.TryAddSingleton<IOfflineModeService, OfflineModeService>();
         services.AddScoped<IGreetingService, GreetingService>();
         services.AddScoped<ICryptoService, BouncyCastleAesGcmCryptoService>();
         services.TryAddSingleton<IAeadCipher, BouncyCastleAesGcmAeadCipher>();

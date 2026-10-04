@@ -1,3 +1,4 @@
+using blazwiz.Core.Offline.Models;
 using blazwiz.Portal.Models.Auth;
 
 namespace blazwiz.Portal.Application.Services.Interfaces;
@@ -36,6 +37,25 @@ public interface IAuthenticationService
     /// <param name="newPassword">The new password.</param>
     /// <returns>The result of the login attempt.</returns>
     Task<LoginResult> CompleteNewPasswordAsync(string newPassword);
+
+    /// <summary>
+    /// Signs in offline, without the sign-in service, and turns offline mode on. Call only once the user has proved
+    /// who they are on this device: their passkey decrypted the password remembered for them. Any online session is
+    /// dropped.
+    /// </summary>
+    /// <param name="username">The remembered user's email address.</param>
+    /// <param name="reason">Why offline: chosen, or the sign-in service could not be reached.</param>
+    /// <returns>The result, with the offline session.</returns>
+    Task<LoginResult> SignInOfflineAsync(string username, OfflineEntryReason reason);
+
+    /// <summary>
+    /// Turns offline mode on for the signed-in user: the session becomes an offline one lasting
+    /// <see cref="Core.Offline.OfflineModeService.SessionLength"/> from now, and the online session is ended (its
+    /// refresh token revoked first, while still online).
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="InvalidOperationException">Nobody is signed in.</exception>
+    Task GoOfflineAsync();
 
     /// <summary>
     /// Signs the current user out and clears their session.
