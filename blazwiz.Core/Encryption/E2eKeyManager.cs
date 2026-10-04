@@ -279,18 +279,69 @@ public class E2eKeyManager(
     }
 
     /// <inheritdoc/>
-    public async Task UnlockLocalCopyAsync(CancellationToken ct = default)
+    public async Task UnlockLocalCopyAsync(string? passphrase = null, CancellationToken ct = default)
     {
-        var kek = GetKeyEncryptionKey();
+        var local = await localKeyStore.GetAsync();
+        if (local?.CachedDocument == null)
+        {
+            throw new InvalidOperationException("This device has no keys to unlock.");
+        }
+
+        var document = Parse(local.CachedDocument);
+        if (derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
+        {
+            try
+            {
+                if (TryUnlock(document, kek, local.WrappedMasterKey))
+                {
+                    keyRing.SetWriteMode(E2eWriteMode.Plaintext);
+                    return;
+                }
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(kek);
+            }
+        }
+
+        // No passkey, or not the one this device was set up with (e.g. registered again): the copy of keys.json has
+        // the master key wrapped by the passphrase too.
+        if (string.IsNullOrEmpty(passphrase))
+        {
+            throw new E2ePassphraseRequiredException();
+        }
+
+        var masterKey = await UnwrapWithPassphraseAsync(document, passphrase, ct);
         try
         {
-            var local = await localKeyStore.GetAsync();
-            if (local?.CachedDocument == null || !TryUnlock(Parse(local.CachedDocument), kek, local.WrappedMasterKey))
-            {
-                throw new InvalidOperationException("This device's keys could not be unlocked.");
-            }
+            UnlockFileKeys(document, masterKey);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(masterKey);
+        }
 
-            keyRing.SetWriteMode(E2eWriteMode.Plaintext);
+        keyRing.SetWriteMode(E2eWriteMode.Plaintext);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> CanUnlockLocalCopyWithPasskeyAsync()
+    {
+        var local = await localKeyStore.GetAsync();
+        if (local?.CachedDocument == null || !derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
+        {
+            return false;
+        }
+
+        try
+        {
+            var masterKey = keyWrapService.Unwrap(kek, local.WrappedMasterKey);
+            CryptographicOperations.ZeroMemory(masterKey);
+            return true;
+        }
+        catch (CryptographicException)
+        {
+            return false;
         }
         finally
         {

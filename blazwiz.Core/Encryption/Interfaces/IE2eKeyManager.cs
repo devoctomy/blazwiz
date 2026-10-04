@@ -90,12 +90,22 @@ public interface IE2eKeyManager
     Task VerifyPassphraseAsync(string passphrase, CancellationToken ct = default);
 
     /// <summary>
-    /// When encryption was turned off on another device: unlocks with this device's wrapped master key and its copy of
-    /// keys.json, writing plaintext, so local encrypted changes can be decrypted before the keys are forgotten.
+    /// When encryption was turned off on another device: unlocks with this device's copy of keys.json, writing
+    /// plaintext, so local encrypted changes can be decrypted before the keys are forgotten. The passkey is tried
+    /// first; if it cannot unwrap this device's master key, the passphrase unwraps the copy's.
     /// </summary>
+    /// <param name="passphrase">The passphrase, used when the passkey cannot unlock the keys, or null.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task UnlockLocalCopyAsync(CancellationToken ct = default);
+    /// <exception cref="Exceptions.E2ePassphraseRequiredException">The passkey cannot unlock the keys and no passphrase was given.</exception>
+    /// <exception cref="Exceptions.E2eWrongPassphraseException">The passphrase is not correct.</exception>
+    Task UnlockLocalCopyAsync(string? passphrase = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets whether the passkey can unlock this device's keys, without unlocking them.
+    /// </summary>
+    /// <returns>True when this device has keys and the passkey unwraps its master key.</returns>
+    Task<bool> CanUnlockLocalCopyWithPasskeyAsync();
 
     /// <summary>
     /// Disables encryption everywhere: deletes keys.json and this device's keys, and forgets the unlocked keys. Files

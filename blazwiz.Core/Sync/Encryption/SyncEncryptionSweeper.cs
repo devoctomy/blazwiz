@@ -31,6 +31,19 @@ public sealed class SyncEncryptionSweeper(
     }
 
     /// <inheritdoc/>
+    public async Task<int> CountPendingEncryptedAsync(CancellationToken ct = default)
+    {
+        var owner = await GetOwnerAsync();
+        var count = 0;
+        foreach (var profile in profiles)
+        {
+            count += (await profile.IndexStore.GetAllAsync(profile.Name, owner, ct)).Count(r => r.Encrypted && r.Dirty && !r.Deleted);
+        }
+
+        return count;
+    }
+
+    /// <inheritdoc/>
     public Task<int> EncryptAsync(IProgress<E2eProgress>? progress = null, string? profile = null, CancellationToken ct = default)
     {
         return SweepAsync(E2eStep.EncryptFiles, progress, ct, (item, file) =>

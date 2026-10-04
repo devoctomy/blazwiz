@@ -42,6 +42,7 @@ else
                     <span class="sidebar-label user-meta">
                         <span class="user-name">@ViewModel.CurrentUser?.DisplayName</span>
                         <small class="user-sub">@(ViewModel.CurrentUser?.Email ?? ViewModel.CurrentUser?.Username)</small>
+                        <SessionTimer />
                     </span>
                 </NavLink>
                 <button type="button"
