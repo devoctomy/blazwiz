@@ -1,14 +1,19 @@
 namespace blazwiz.Core.Sync.Connectivity;
 
 /// <summary>
-/// Why the app is offline, in the order the checks run.
+/// Why sync cannot reach the cloud, in the order the checks run.
 /// </summary>
 public enum OfflineReason
 {
     /// <summary>
-    /// The user turned on offline mode.
+    /// The app is in offline mode, so nothing calls AWS.
     /// </summary>
-    ForcedOffline,
+    OfflineMode,
+
+    /// <summary>
+    /// The user turned sync off.
+    /// </summary>
+    SyncDisabled,
 
     /// <summary>
     /// The browser reports no network.

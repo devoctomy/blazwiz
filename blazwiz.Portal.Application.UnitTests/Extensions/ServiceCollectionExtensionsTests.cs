@@ -74,7 +74,8 @@ public class ServiceCollectionExtensionsTests
 //#if (IncludeNotes)
         Assert.IsType<CognitoS3TargetProvider>(scope.ServiceProvider.GetRequiredService<IS3SyncTargetProvider>());
         Assert.IsType<AuthSyncUserContext>(scope.ServiceProvider.GetRequiredService<ISyncUserContext>());
-        Assert.IsType<LocalStorageOfflineModeStore>(scope.ServiceProvider.GetRequiredService<IOfflineModeStore>());
+        Assert.IsType<LocalStorageSyncEnabledStore>(scope.ServiceProvider.GetRequiredService<ISyncEnabledStore>());
+        Assert.IsType<InMemoryOfflineSessionStore>(scope.ServiceProvider.GetRequiredService<IOfflineSessionStore>());
         Assert.IsType<PersistentStorageService>(scope.ServiceProvider.GetRequiredService<IPersistentStorageService>());
         Assert.IsType<SyncEventPresenter>(scope.ServiceProvider.GetRequiredService<ISyncEventPresenter>());
         Assert.IsType<SyncStatusPresenter>(scope.ServiceProvider.GetRequiredService<ISyncStatusPresenter>());

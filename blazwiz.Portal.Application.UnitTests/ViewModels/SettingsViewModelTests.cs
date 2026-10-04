@@ -511,18 +511,18 @@ public class SettingsViewModelTests
     }
 
     [Fact]
-    public async Task GivenOfflineModeOn_WhenToggled_ThenTurnedOff()
+    public async Task GivenSyncOff_WhenToggled_ThenTurnedOn()
     {
         // Arrange
-        mockConnectivity.SetupGet(x => x.IsForcedOffline).Returns(true);
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(false);
         var sut = CreateSut();
 
         // Act
-        await sut.ToggleOfflineModeCommand.ExecuteAsync(null);
+        await sut.ToggleSyncCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.True(sut.IsForcedOffline);
-        mockConnectivity.Verify(x => x.SetForcedOfflineAsync(false), Times.Once);
+        Assert.False(sut.IsSyncEnabled);
+        mockConnectivity.Verify(x => x.SetSyncEnabledAsync(true), Times.Once);
     }
 
     [Fact]

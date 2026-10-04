@@ -6,7 +6,8 @@ public class ConnectivityStatusTests
 {
     [Theory]
     [InlineData(true, null, "Online")]
-    [InlineData(false, OfflineReason.ForcedOffline, "Offline: offline mode")]
+    [InlineData(false, OfflineReason.OfflineMode, "Offline: offline mode")]
+    [InlineData(false, OfflineReason.SyncDisabled, "Sync turned off")]
     [InlineData(false, OfflineReason.NoNetwork, "Offline: no network")]
     [InlineData(false, OfflineReason.NoCredentials, "Offline: no credentials")]
     [InlineData(false, OfflineReason.Unreachable, "Offline: S3 unreachable")]
