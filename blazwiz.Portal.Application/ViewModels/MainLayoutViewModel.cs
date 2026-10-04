@@ -259,9 +259,9 @@ public partial class MainLayoutViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gets a value indicating whether offline mode is on.
+    /// Gets a value indicating whether sync is turned on.
     /// </summary>
-    public bool IsForcedOffline => connectivityService.IsForcedOffline;
+    public bool IsSyncEnabled => connectivityService.IsSyncEnabled;
 
     /// <summary>
     /// Gets a value indicating whether Sync now can be used (online and not already syncing).
@@ -360,13 +360,13 @@ public partial class MainLayoutViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Turns offline mode on or off. It is remembered until switched off.
+    /// Turns sync on or off. It is remembered until switched back.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
-    public async Task ToggleOfflineModeAsync()
+    public async Task ToggleSyncAsync()
     {
-        await connectivityService.SetForcedOfflineAsync(!connectivityService.IsForcedOffline);
+        await connectivityService.SetSyncEnabledAsync(!connectivityService.IsSyncEnabled);
         RefreshSync();
     }
 
@@ -581,7 +581,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(SyncPill));
         OnPropertyChanged(nameof(SyncStatus));
-        OnPropertyChanged(nameof(IsForcedOffline));
+        OnPropertyChanged(nameof(IsSyncEnabled));
         OnPropertyChanged(nameof(CanSyncNow));
     }
 

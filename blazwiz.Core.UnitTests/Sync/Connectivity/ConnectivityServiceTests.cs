@@ -1,4 +1,6 @@
 using Amazon.S3;
+using blazwiz.Core.Offline;
+using blazwiz.Core.Offline.Models;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.Interfaces;
@@ -10,7 +12,8 @@ namespace blazwiz.Core.UnitTests.Sync.Connectivity;
 
 public class ConnectivityServiceTests
 {
-    private readonly Mock<IOfflineModeStore> mockOfflineStore = new();
+    private readonly OfflineModeService offlineMode = new();
+    private readonly Mock<ISyncEnabledStore> mockSyncStore = new();
     private readonly Mock<IBrowserNetworkStatus> mockBrowser = new();
     private readonly Mock<IS3SyncTargetProvider> mockTargets = new();
     private readonly Mock<IS3ReachabilityProbe> mockProbe = new();
@@ -23,7 +26,7 @@ public class ConnectivityServiceTests
 
     public ConnectivityServiceTests()
     {
-        mockOfflineStore.Setup(x => x.GetAsync()).ReturnsAsync(false);
+        mockSyncStore.Setup(x => x.GetAsync()).ReturnsAsync(true);
         mockBrowser.Setup(x => x.IsOnlineAsync()).ReturnsAsync(true);
         mockTargets.Setup(x => x.GetTargetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(target);
         mockProbe.Setup(x => x.IsReachableAsync(target, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
@@ -34,14 +37,15 @@ public class ConnectivityServiceTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("offlineModeStore", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(null!, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, time)).ParamName);
-        Assert.Equal("browserNetworkStatus", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(mockOfflineStore.Object, null!, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, time)).ParamName);
-        Assert.Equal("targetProvider", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(mockOfflineStore.Object, mockBrowser.Object, null!, mockProbe.Object, mockLog.Object, mockUser.Object, options, time)).ParamName);
-        Assert.Equal("reachabilityProbe", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(mockOfflineStore.Object, mockBrowser.Object, mockTargets.Object, null!, mockLog.Object, mockUser.Object, options, time)).ParamName);
-        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(mockOfflineStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, null!, mockUser.Object, options, time)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(mockOfflineStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, null!, options, time)).ParamName);
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(mockOfflineStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, null!, time)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(mockOfflineStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, null!)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(null!, mockSyncStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, time)).ParamName);
+        Assert.Equal("syncEnabledStore", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(offlineMode, null!, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, time)).ParamName);
+        Assert.Equal("browserNetworkStatus", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(offlineMode, mockSyncStore.Object, null!, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, time)).ParamName);
+        Assert.Equal("targetProvider", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(offlineMode, mockSyncStore.Object, mockBrowser.Object, null!, mockProbe.Object, mockLog.Object, mockUser.Object, options, time)).ParamName);
+        Assert.Equal("reachabilityProbe", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(offlineMode, mockSyncStore.Object, mockBrowser.Object, mockTargets.Object, null!, mockLog.Object, mockUser.Object, options, time)).ParamName);
+        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(offlineMode, mockSyncStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, null!, mockUser.Object, options, time)).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(offlineMode, mockSyncStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, null!, options, time)).ParamName);
+        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(offlineMode, mockSyncStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, null!, time)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new ConnectivityService(offlineMode, mockSyncStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, null!)).ParamName);
     }
 
     [Fact]
@@ -65,18 +69,18 @@ public class ConnectivityServiceTests
     }
 
     [Fact]
-    public async Task GivenOfflineMode_WhenCheckAsync_ThenForcedOfflineWithNoNetworkCalls()
+    public async Task GivenSyncTurnedOff_WhenCheckAsync_ThenSyncDisabledWithNoNetworkCalls()
     {
         // Arrange
-        mockOfflineStore.Setup(x => x.GetAsync()).ReturnsAsync(true);
+        mockSyncStore.Setup(x => x.GetAsync()).ReturnsAsync(false);
         using var sut = CreateSut();
 
         // Act
         var result = await sut.CheckAsync();
 
         // Assert
-        Assert.Equal(OfflineReason.ForcedOffline, result.Reason);
-        Assert.True(sut.IsForcedOffline);
+        Assert.Equal(OfflineReason.SyncDisabled, result.Reason);
+        Assert.False(sut.IsSyncEnabled);
         mockBrowser.Verify(x => x.IsOnlineAsync(), Times.Never);
         mockTargets.Verify(x => x.GetTargetAsync(It.IsAny<CancellationToken>()), Times.Never);
         mockProbe.VerifyNoOtherCalls();
@@ -240,66 +244,121 @@ public class ConnectivityServiceTests
     }
 
     [Fact]
-    public async Task GivenOnline_WhenOfflineModeTurnedOn_ThenSavedLoggedAndForcedOffline()
+    public async Task GivenOnline_WhenSyncTurnedOff_ThenSavedLoggedAndSyncDisabled()
     {
         // Arrange
         using var sut = CreateSut();
         await sut.CheckAsync();
 
         // Act
-        await sut.SetForcedOfflineAsync(true);
+        await sut.SetSyncEnabledAsync(false);
 
         // Assert
-        mockOfflineStore.Verify(x => x.SetAsync(true), Times.Once);
-        Assert.Equal(OfflineReason.ForcedOffline, sut.Status.Reason);
+        mockSyncStore.Verify(x => x.SetAsync(false), Times.Once);
+        Assert.Equal(OfflineReason.SyncDisabled, sut.Status.Reason);
         var entry = Assert.Single(logged);
         Assert.Equal(SyncEventKind.OfflineModeChanged, entry.Kind);
-        Assert.Equal("Offline mode turned on", entry.Message);
+        Assert.Equal("Sync turned off", entry.Message);
     }
 
     [Fact]
-    public async Task GivenOfflineMode_WhenTurnedOff_ThenCheckedAgainImmediately()
+    public async Task GivenSyncTurnedOff_WhenTurnedOn_ThenCheckedAgainImmediately()
     {
         // Arrange
-        mockOfflineStore.Setup(x => x.GetAsync()).ReturnsAsync(true);
+        mockSyncStore.Setup(x => x.GetAsync()).ReturnsAsync(false);
         using var sut = CreateSut();
         await sut.CheckAsync();
 
         // Act
-        await sut.SetForcedOfflineAsync(false);
+        await sut.SetSyncEnabledAsync(true);
 
         // Assert
         Assert.True(sut.Status.IsOnline);
-        Assert.Contains(logged, e => e.Message == "Offline mode turned off");
+        Assert.Contains(logged, e => e.Message == "Sync turned on");
         Assert.Contains(logged, e => e.Kind == SyncEventKind.WentOnline);
     }
 
     [Fact]
-    public async Task GivenOfflineModeUnchanged_WhenSetForcedOfflineAsync_ThenNotLoggedAgain()
+    public async Task GivenSyncUnchanged_WhenSetSyncEnabledAsync_ThenNotLoggedAgain()
     {
         // Arrange
         using var sut = CreateSut();
 
         // Act
-        await sut.SetForcedOfflineAsync(false);
+        await sut.SetSyncEnabledAsync(true);
 
         // Assert
         Assert.DoesNotContain(logged, e => e.Kind == SyncEventKind.OfflineModeChanged);
     }
 
     [Fact]
-    public async Task GivenCachedOnlineStatus_WhenOfflineModeLoadedAsOn_ThenCacheIsNotUsed()
+    public async Task GivenCachedOnlineStatus_WhenSyncTurnedOff_ThenCacheIsNotUsed()
     {
         // Arrange
         using var sut = CreateSut();
         await sut.CheckAsync();
-        await sut.SetForcedOfflineAsync(true);
+        await sut.SetSyncEnabledAsync(false);
 
         // Act
         var result = await sut.CheckAsync();
 
         // Assert
-        Assert.Equal(OfflineReason.ForcedOffline, result.Reason);
+        Assert.Equal(OfflineReason.SyncDisabled, result.Reason);
+    }
+
+    [Fact]
+    public async Task GivenOnline_WhenOfflineModeEntered_ThenOfflineModeWithNoNetworkCallsAndLogged()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+        mockBrowser.Invocations.Clear();
+        mockTargets.Invocations.Clear();
+
+        // Act
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        var result = await sut.CheckAsync();
+
+        // Assert
+        Assert.Equal(OfflineReason.OfflineMode, result.Reason);
+        Assert.Contains(logged, e => e.Message == "Offline mode turned on");
+        mockBrowser.Verify(x => x.IsOnlineAsync(), Times.Never);
+        mockTargets.Verify(x => x.GetTargetAsync(It.IsAny<CancellationToken>()), Times.Never);
+        Assert.False(sut.IsRecheckScheduled);
+    }
+
+    [Fact]
+    public async Task GivenOfflineModeAndSyncOff_WhenCheckAsync_ThenOfflineModeIsTheReason()
+    {
+        mockSyncStore.Setup(x => x.GetAsync()).ReturnsAsync(false);
+        offlineMode.Enter(OfflineEntryReason.SignInUnreachable);
+        using var sut = CreateSut();
+        Assert.Equal(OfflineReason.OfflineMode, (await sut.CheckAsync()).Reason);
+    }
+
+    [Fact]
+    public async Task GivenOfflineMode_WhenExited_ThenCheckedAgainAndOnline()
+    {
+        // Arrange
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+
+        // Act
+        offlineMode.Exit();
+
+        // Assert
+        Assert.True(sut.Status.IsOnline);
+        Assert.Contains(logged, e => e.Message == "Offline mode turned off");
+    }
+
+    [Fact]
+    public void GivenDisposed_WhenOfflineModeEntered_ThenNotChecked()
+    {
+        var sut = CreateSut();
+        sut.Dispose();
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        Assert.Empty(logged);
     }
 
     [Fact]
@@ -363,5 +422,5 @@ public class ConnectivityServiceTests
     }
 
     private ConnectivityService CreateSut() =>
-        new(mockOfflineStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, time);
+        new(offlineMode, mockSyncStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, time);
 }

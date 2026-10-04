@@ -22,6 +22,13 @@ public class SyncStatusPresenter : ISyncStatusPresenter
             return Create("Syncing", "Syncing your changes", "bi-arrow-repeat", "info", isSyncing: true);
         }
 
+        if (!connectivity.IsOnline && connectivity.Reason == OfflineReason.SyncDisabled)
+        {
+            return pending > 0
+                ? Create($"Sync off · {pending} pending", $"Sync is turned off. {pendingText}.", "bi-pause-circle", "secondary", isOffline: true)
+                : Create("Sync off", "Sync is turned off.", "bi-pause-circle", "secondary", isOffline: true);
+        }
+
         if (!connectivity.IsOnline && connectivity.Reason != null)
         {
             var reason = connectivity.Describe();

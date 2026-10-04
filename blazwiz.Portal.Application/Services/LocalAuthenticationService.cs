@@ -1,3 +1,5 @@
+using blazwiz.Core.Offline.Interfaces;
+using blazwiz.Core.Offline.Models;
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
@@ -12,8 +14,10 @@ namespace blazwiz.Portal.Application.Services;
 public class LocalAuthenticationService(
     ILocalStorageService localStorageService,
     IUserDisplayService userDisplayService,
+    IOfflineModeService offlineModeService,
+    IOfflineSessionStore offlineSessionStore,
     ISystemClock systemClock)
-    : IAuthenticationService
+    : IAuthenticationService, IDisposable
 {
     /// <summary>
     /// The local storage key the session is stored under.
@@ -27,7 +31,11 @@ public class LocalAuthenticationService(
 
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
     private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
+    private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
+    private readonly IOfflineSessionStore offlineSessionStore = offlineSessionStore ?? throw new ArgumentNullException(nameof(offlineSessionStore));
     private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+
+    private bool isListening;
 
     /// <inheritdoc/>
     public event EventHandler? SessionEnded;
@@ -81,12 +89,63 @@ public class LocalAuthenticationService(
     /// <inheritdoc/>
     public async Task LogoutAsync()
     {
+        offlineSessionStore.Clear();
         await localStorageService.RemoveItemAsync(SessionStorageKey);
+    }
+
+    /// <inheritdoc/>
+    public async Task<LoginResult> SignInOfflineAsync(string username, OfflineEntryReason reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+
+        await localStorageService.RemoveItemAsync(SessionStorageKey);
+        var trimmed = username.Trim();
+        var session = offlineSessionStore.Start(trimmed, userDisplayService.GetDisplayNameFromUsername(trimmed), trimmed.Contains('@') ? trimmed : null);
+        ListenForOfflineModeChanges();
+        offlineModeService.Enter(reason);
+        return new LoginResult
+        {
+            Success = true,
+            Session = session,
+        };
+    }
+
+    /// <inheritdoc/>
+    public async Task GoOfflineAsync()
+    {
+        var current = await GetCurrentUserAsync()
+            ?? throw new InvalidOperationException("Sign in before turning offline mode on.");
+        if (current.IsOffline)
+        {
+            return;
+        }
+
+        offlineSessionStore.Start(current.Username, current.DisplayName, current.Email);
+        await localStorageService.RemoveItemAsync(SessionStorageKey);
+        ListenForOfflineModeChanges();
+        offlineModeService.Enter(OfflineEntryReason.Chosen);
     }
 
     /// <inheritdoc/>
     public async Task<UserSession?> GetCurrentUserAsync()
     {
+        var offline = offlineSessionStore.Session;
+        if (offline != null)
+        {
+            if (offline.ExpiresAt <= systemClock.UtcNow)
+            {
+                await EndSessionAsync();
+                return null;
+            }
+
+            return offline;
+        }
+
+        if (offlineModeService.IsOffline)
+        {
+            return null;
+        }
+
         var session = await localStorageService.GetObjectAsync<UserSession>(SessionStorageKey);
         if (session == null)
         {
@@ -95,11 +154,53 @@ public class LocalAuthenticationService(
 
         if (session.ExpiresAt <= systemClock.UtcNow)
         {
-            await LogoutAsync();
-            SessionEnded?.Invoke(this, EventArgs.Empty);
+            await EndSessionAsync();
             return null;
         }
 
         return session;
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        if (isListening)
+        {
+            offlineModeService.Changed -= OnOfflineModeChanged;
+            isListening = false;
+        }
+
+        GC.SuppressFinalize(this);
+    }
+
+    private async Task EndSessionAsync()
+    {
+        await LogoutAsync();
+        SessionEnded?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ListenForOfflineModeChanges()
+    {
+        if (!isListening)
+        {
+            offlineModeService.Changed += OnOfflineModeChanged;
+            isListening = true;
+        }
+    }
+
+    // Turning offline mode off ends an offline session, so the user signs in online again.
+    private async void OnOfflineModeChanged(object? sender, bool isOffline)
+    {
+        try
+        {
+            if (!isOffline && offlineSessionStore.Session != null)
+            {
+                await EndSessionAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // Event handlers must not throw.
+        }
     }
 }
