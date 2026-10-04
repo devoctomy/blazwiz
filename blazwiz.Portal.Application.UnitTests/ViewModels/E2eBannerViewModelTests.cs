@@ -1,3 +1,4 @@
+using blazwiz.Core.Encryption.Exceptions;
 using blazwiz.Core.Encryption.Models;
 using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Sync.Interfaces;
@@ -123,30 +124,110 @@ public class E2eBannerViewModelTests
     }
 
     [Fact]
-    public async Task GivenDisabledElsewhere_WhenResolve_ThenServiceResolvesAndDialogCloses()
+    public async Task GivenDisabledElsewhere_WhenResolve_ThenServiceResolvesWithoutPassphraseAndDialogCloses()
     {
         // Arrange
         status = E2eStatus.DisabledElsewhere;
-        hasPasskeyKeys = true;
         var sut = CreateSut();
-        sut.OpenResolveDialog();
+        await sut.OpenResolveDialogAsync();
 
         // Act
         await sut.ResolveAsync();
 
         // Assert
         Assert.True(sut.CanResolve);
-        mockEncryption.Verify(x => x.ResolveDisabledElsewhereAsync(It.IsAny<CancellationToken>()), Times.Once);
+        Assert.False(sut.ResolveNeedsPassphrase);
+        mockEncryption.Verify(x => x.ResolveDisabledElsewhereAsync(null, It.IsAny<CancellationToken>()), Times.Once);
         Assert.False(sut.IsResolveDialogOpen);
+    }
+
+    [Fact]
+    public async Task GivenPassphraseNeeded_WhenOpenResolveDialog_ThenAsksForItAndResolvesWithIt()
+    {
+        // Arrange
+        status = E2eStatus.DisabledElsewhere;
+        mockEncryption.Setup(x => x.ResolveNeedsPassphraseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var sut = CreateSut();
+        await sut.OpenResolveDialogAsync();
+        sut.ResolvePassphrase = "my passphrase";
+
+        // Act
+        await sut.ResolveAsync();
+
+        // Assert
+        mockEncryption.Verify(x => x.ResolveDisabledElsewhereAsync("my passphrase", It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(string.Empty, sut.ResolvePassphrase);
+        Assert.False(sut.IsResolveDialogOpen);
+    }
+
+    [Fact]
+    public async Task GivenPassphraseNeededButEmpty_WhenResolve_ThenErrorAndNotResolved()
+    {
+        // Arrange
+        mockEncryption.Setup(x => x.ResolveNeedsPassphraseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var sut = CreateSut();
+        await sut.OpenResolveDialogAsync();
+
+        // Act
+        await sut.ResolveAsync();
+
+        // Assert
+        Assert.Equal("Enter your passphrase.", sut.Error);
+        mockEncryption.Verify(x => x.ResolveDisabledElsewhereAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPassphraseRequiredOnResolve_WhenResolve_ThenAsksForItAndDialogStaysOpen()
+    {
+        // Arrange
+        mockEncryption.Setup(x => x.ResolveDisabledElsewhereAsync(null, It.IsAny<CancellationToken>())).ThrowsAsync(new E2ePassphraseRequiredException());
+        var sut = CreateSut();
+        await sut.OpenResolveDialogAsync();
+
+        // Act
+        await sut.ResolveAsync();
+
+        // Assert
+        Assert.True(sut.ResolveNeedsPassphrase);
+        Assert.NotNull(sut.Error);
+        Assert.True(sut.IsResolveDialogOpen);
+    }
+
+    [Fact]
+    public async Task GivenWrongPassphrase_WhenResolve_ThenErrorAndDialogStaysOpen()
+    {
+        // Arrange
+        mockEncryption.Setup(x => x.ResolveNeedsPassphraseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        mockEncryption.Setup(x => x.ResolveDisabledElsewhereAsync("wrong", It.IsAny<CancellationToken>())).ThrowsAsync(new E2eWrongPassphraseException());
+        var sut = CreateSut();
+        await sut.OpenResolveDialogAsync();
+        sut.ResolvePassphrase = "wrong";
+
+        // Act
+        await sut.ResolveAsync();
+
+        // Assert
+        Assert.Equal("That passphrase is not correct. Try again.", sut.Error);
+        Assert.True(sut.IsResolveDialogOpen);
+    }
+
+    [Fact]
+    public async Task GivenCheckFails_WhenOpenResolveDialog_ThenOpensWithoutAskingForPassphrase()
+    {
+        mockEncryption.Setup(x => x.ResolveNeedsPassphraseAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new IOException("disk"));
+        var sut = CreateSut();
+        await sut.OpenResolveDialogAsync();
+        Assert.True(sut.IsResolveDialogOpen);
+        Assert.False(sut.ResolveNeedsPassphrase);
     }
 
     [Fact]
     public async Task GivenResolveFails_WhenResolve_ThenErrorAndDialogStaysOpen()
     {
         // Arrange
-        mockEncryption.Setup(x => x.ResolveDisabledElsewhereAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("no keys"));
+        mockEncryption.Setup(x => x.ResolveDisabledElsewhereAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("no keys"));
         var sut = CreateSut();
-        sut.OpenResolveDialog();
+        await sut.OpenResolveDialogAsync();
 
         // Act
         await sut.ResolveAsync();

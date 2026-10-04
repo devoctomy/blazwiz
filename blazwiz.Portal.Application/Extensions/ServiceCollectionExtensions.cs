@@ -16,6 +16,7 @@ using blazwiz.Portal.Models.Aws;
 using blazwiz.Portal.Models.Settings;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace blazwiz.Portal.Application.Extensions;
 
@@ -35,6 +36,8 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        // The clock and timers (e.g. the session countdown). Also added by sync, hence TryAdd.
+        services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<ILocalStorageService, LocalStorageService>();
         services.AddScoped<IUserSettingsService, UserSettingsService>();
         services.AddScoped<IThemeService, ThemeService>();

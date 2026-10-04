@@ -1,4 +1,5 @@
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Encryption.Exceptions;
 using blazwiz.Core.Encryption.Models;
 using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Sync.Interfaces;
@@ -21,6 +22,8 @@ public partial class E2eBannerViewModel : ViewModelBase
     private bool hasSavedPasskey;
     private bool isWorking;
     private bool isResolveDialogOpen;
+    private bool resolveNeedsPassphrase;
+    private string resolvePassphrase = string.Empty;
     private string? error;
 
     /// <summary>
@@ -76,9 +79,10 @@ public partial class E2eBannerViewModel : ViewModelBase
     public bool CanSetUp => Status == E2eStatus.NeedsSetup && encryptionService.HasPasskeyKeys;
 
     /// <summary>
-    /// Gets a value indicating whether to offer finishing turning encryption off.
+    /// Gets a value indicating whether to offer finishing turning encryption off. The passkey is not required: with no
+    /// changes to decrypt the keys are not needed, and otherwise the passphrase can unlock them.
     /// </summary>
-    public bool CanResolve => Status == E2eStatus.DisabledElsewhere && encryptionService.HasPasskeyKeys;
+    public bool CanResolve => Status == E2eStatus.DisabledElsewhere;
 
     /// <summary>
     /// Gets a value indicating whether an action is running.
@@ -96,6 +100,25 @@ public partial class E2eBannerViewModel : ViewModelBase
     {
         get => isResolveDialogOpen;
         private set => SetProperty(ref isResolveDialogOpen, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether finishing turning encryption off needs the passphrase, so the confirmation asks
+    /// for it.
+    /// </summary>
+    public bool ResolveNeedsPassphrase
+    {
+        get => resolveNeedsPassphrase;
+        private set => SetProperty(ref resolveNeedsPassphrase, value);
+    }
+
+    /// <summary>
+    /// Gets or sets the passphrase entered in the confirmation, when it is needed.
+    /// </summary>
+    public string ResolvePassphrase
+    {
+        get => resolvePassphrase;
+        set => SetProperty(ref resolvePassphrase, value ?? string.Empty);
     }
 
     /// <summary>
@@ -154,12 +177,24 @@ public partial class E2eBannerViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Shows the confirmation to finish turning encryption off.
+    /// Shows the confirmation to finish turning encryption off, asking for the passphrase if it will be needed.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
-    public void OpenResolveDialog()
+    public async Task OpenResolveDialogAsync()
     {
         Error = null;
+        ResolvePassphrase = string.Empty;
+        try
+        {
+            ResolveNeedsPassphrase = await encryptionService.ResolveNeedsPassphraseAsync();
+        }
+        catch (Exception)
+        {
+            // Asked for when resolving, if it turns out to be needed.
+            ResolveNeedsPassphrase = false;
+        }
+
         IsResolveDialogOpen = true;
     }
 
@@ -171,6 +206,7 @@ public partial class E2eBannerViewModel : ViewModelBase
     {
         if (!IsWorking)
         {
+            ResolvePassphrase = string.Empty;
             IsResolveDialogOpen = false;
         }
     }
@@ -182,10 +218,30 @@ public partial class E2eBannerViewModel : ViewModelBase
     [RelayCommand]
     public async Task ResolveAsync()
     {
+        if (ResolveNeedsPassphrase && string.IsNullOrEmpty(ResolvePassphrase))
+        {
+            Error = "Enter your passphrase.";
+            return;
+        }
+
+        var passphrase = ResolveNeedsPassphrase ? ResolvePassphrase : null;
+        ResolvePassphrase = string.Empty;
         await RunAsync(async () =>
         {
-            await encryptionService.ResolveDisabledElsewhereAsync();
-            IsResolveDialogOpen = false;
+            try
+            {
+                await encryptionService.ResolveDisabledElsewhereAsync(passphrase);
+                IsResolveDialogOpen = false;
+            }
+            catch (E2ePassphraseRequiredException ex)
+            {
+                ResolveNeedsPassphrase = true;
+                Error = ex.Message;
+            }
+            catch (E2eWrongPassphraseException)
+            {
+                Error = "That passphrase is not correct. Try again.";
+            }
         });
     }
 

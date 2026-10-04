@@ -436,6 +436,83 @@ public class E2eKeyManagerTests
     }
 
     [Fact]
+    public async Task GivenPasskeyRegisteredAgain_WhenUnlockLocalCopyAsyncWithoutPassphrase_ThenThrowsPassphraseRequiredAndKeepsRefusing()
+    {
+        // Arrange
+        var reloaded = await DisableElsewhereAndReloadWithOtherPasskeyAsync();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<E2ePassphraseRequiredException>(() => reloaded.Manager.UnlockLocalCopyAsync());
+        Assert.Equal(E2eWriteMode.Refuse, reloaded.Ring.WriteMode);
+    }
+
+    [Fact]
+    public async Task GivenPasskeyRegisteredAgain_WhenUnlockLocalCopyAsyncWithPassphrase_ThenKeysHeldWritingPlaintext()
+    {
+        // Arrange
+        var reloaded = await DisableElsewhereAndReloadWithOtherPasskeyAsync();
+
+        // Act
+        await reloaded.Manager.UnlockLocalCopyAsync(Passphrase);
+
+        // Assert
+        Assert.NotNull(reloaded.Ring.ActiveKeyId);
+        Assert.Equal(E2eWriteMode.Plaintext, reloaded.Ring.WriteMode);
+    }
+
+    [Fact]
+    public async Task GivenNoPasskeyKeys_WhenUnlockLocalCopyAsyncWithPassphrase_ThenKeysHeldWritingPlaintext()
+    {
+        // Arrange
+        await device.Manager.EnableAsync(Passphrase);
+        userKeys.Value = null;
+        var reloaded = device.Reload(withKek: false);
+        await reloaded.Manager.InitializeAsync();
+
+        // Act
+        await reloaded.Manager.UnlockLocalCopyAsync(Passphrase);
+
+        // Assert
+        Assert.NotNull(reloaded.Ring.ActiveKeyId);
+        Assert.Equal(E2eWriteMode.Plaintext, reloaded.Ring.WriteMode);
+    }
+
+    [Fact]
+    public async Task GivenPasskeyRegisteredAgain_WhenUnlockLocalCopyAsyncWithWrongPassphrase_ThenThrowsWrongPassphrase()
+    {
+        var reloaded = await DisableElsewhereAndReloadWithOtherPasskeyAsync();
+        await Assert.ThrowsAsync<E2eWrongPassphraseException>(() => reloaded.Manager.UnlockLocalCopyAsync("not the passphrase"));
+        Assert.Equal(E2eWriteMode.Refuse, reloaded.Ring.WriteMode);
+    }
+
+    [Fact]
+    public async Task GivenSamePasskey_WhenCanUnlockLocalCopyWithPasskeyAsync_ThenTrueWithoutUnlocking()
+    {
+        // Arrange
+        await device.Manager.EnableAsync(Passphrase);
+        userKeys.Value = null;
+        var reloaded = device.Reload();
+        await reloaded.Manager.InitializeAsync();
+
+        // Act & Assert
+        Assert.True(await reloaded.Manager.CanUnlockLocalCopyWithPasskeyAsync());
+        Assert.Null(reloaded.Ring.ActiveKeyId);
+    }
+
+    [Fact]
+    public async Task GivenPasskeyRegisteredAgain_WhenCanUnlockLocalCopyWithPasskeyAsync_ThenFalse()
+    {
+        var reloaded = await DisableElsewhereAndReloadWithOtherPasskeyAsync();
+        Assert.False(await reloaded.Manager.CanUnlockLocalCopyWithPasskeyAsync());
+    }
+
+    [Fact]
+    public async Task GivenNoLocalCopy_WhenCanUnlockLocalCopyWithPasskeyAsync_ThenFalse()
+    {
+        Assert.False(await device.Manager.CanUnlockLocalCopyWithPasskeyAsync());
+    }
+
+    [Fact]
     public async Task GivenKeysDeletedElsewhere_WhenForgetDeviceAsync_ThenLocalKeysGoneAndDisabled()
     {
         // Arrange
@@ -483,6 +560,18 @@ public class E2eKeyManagerTests
         Assert.False(await device.Manager.IsEnabledAsync());
         await device.Manager.EnableAsync(Passphrase);
         Assert.True(await device.Manager.IsEnabledAsync());
+    }
+
+    // Encryption on with this device set up, then turned off elsewhere, and the passkey registered again here: the new
+    // passkey's key cannot unwrap this device's master key.
+    private async Task<Device> DisableElsewhereAndReloadWithOtherPasskeyAsync()
+    {
+        await device.Manager.EnableAsync(Passphrase);
+        userKeys.Value = null;
+        var reloaded = device.Reload(withKek: false);
+        reloaded.DerivedKeys.SetKey(E2eKeyNames.KeyEncryptionKey, RandomNumberGenerator.GetBytes(32));
+        Assert.Equal(E2eStatus.DisabledElsewhere, await reloaded.Manager.InitializeAsync());
+        return reloaded;
     }
 
     private Device NewDevice(bool withKek = true)

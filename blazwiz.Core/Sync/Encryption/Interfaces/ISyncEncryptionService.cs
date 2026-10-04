@@ -77,11 +77,23 @@ public interface ISyncEncryptionService
 
     /// <summary>
     /// Once encryption was turned off on another device: decrypts this device's encrypted changes not yet synced (with
-    /// its own copy of the keys), forgets this device's keys, and syncs, which brings down the decrypted files.
+    /// its own copy of the keys), forgets this device's keys, and syncs, which brings down the decrypted files. With no
+    /// such changes, the keys are not needed, so they are forgotten without being unlocked.
     /// </summary>
+    /// <param name="passphrase">The passphrase, used when the passkey cannot unlock this device's keys, or null.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task ResolveDisabledElsewhereAsync(CancellationToken ct = default);
+    /// <exception cref="Core.Encryption.Exceptions.E2ePassphraseRequiredException">Changes must be decrypted, the passkey cannot unlock the keys and no passphrase was given.</exception>
+    /// <exception cref="Core.Encryption.Exceptions.E2eWrongPassphraseException">Wrong passphrase.</exception>
+    Task ResolveDisabledElsewhereAsync(string? passphrase = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets whether finishing turning encryption off on this device needs the passphrase: it has encrypted changes not
+    /// yet synced, and the passkey cannot unlock its keys.
+    /// </summary>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>True when the passphrase is needed.</returns>
+    Task<bool> ResolveNeedsPassphraseAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Gets whether this device can decrypt files encrypted with a key.

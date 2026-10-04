@@ -20,6 +20,13 @@ public interface ISyncEncryptionSweeper
     Task<int> CountEncryptedAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Counts the files the index marks as encrypted that have local changes not yet synced.
+    /// </summary>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>The number of encrypted files with changes not yet synced.</returns>
+    Task<int> CountPendingEncryptedAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Encrypts every file not yet marked as encrypted. The key ring must be encrypting writes.
     /// </summary>
     /// <param name="progress">Reports <see cref="E2eStep.EncryptFiles"/> as files are done.</param>

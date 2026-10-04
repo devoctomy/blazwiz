@@ -44,7 +44,9 @@ public class SyncEncryptionServiceTests
             .Returns(Task.CompletedTask);
         mockKeys.Setup(x => x.VerifyPassphraseAsync(Passphrase, It.IsAny<CancellationToken>())).Callback(() => calls.Add("verify")).Returns(Task.CompletedTask);
         mockKeys.Setup(x => x.RemoveAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("remove")).Returns(Task.CompletedTask);
-        mockKeys.Setup(x => x.UnlockLocalCopyAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("unlock-local")).Returns(Task.CompletedTask);
+        mockKeys.Setup(x => x.UnlockLocalCopyAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Callback<string?, CancellationToken>((p, _) => calls.Add(p == null ? "unlock-local" : $"unlock-local-{p}"))
+            .Returns(Task.CompletedTask);
         mockKeys.Setup(x => x.ForgetDeviceAsync()).Callback(() => calls.Add("forget")).Returns(Task.CompletedTask);
         mockKeys.Setup(x => x.SetUpDeviceAsync(Passphrase, It.IsAny<CancellationToken>())).Callback(() =>
         {
@@ -278,12 +280,61 @@ public class SyncEncryptionServiceTests
     }
 
     [Fact]
-    public async Task GivenDisabledElsewhere_WhenResolveDisabledElsewhereAsync_ThenDecryptsPendingForgetsAndSyncs()
+    public async Task GivenDisabledElsewhereWithPendingChanges_WhenResolveDisabledElsewhereAsync_ThenDecryptsPendingForgetsAndSyncs()
+    {
+        status = E2eStatus.DisabledElsewhere;
+        mockSweeper.Setup(x => x.CountPendingEncryptedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(2);
+        using var sut = CreateSut();
+        await sut.ResolveDisabledElsewhereAsync();
+        Assert.Equal(["unlock-local", "decrypt-pending", "forget", "sync-now"], calls);
+    }
+
+    [Fact]
+    public async Task GivenDisabledElsewhereWithNoPendingChanges_WhenResolveDisabledElsewhereAsync_ThenForgetsAndSyncsWithoutUnlocking()
     {
         status = E2eStatus.DisabledElsewhere;
         using var sut = CreateSut();
         await sut.ResolveDisabledElsewhereAsync();
-        Assert.Equal(["unlock-local", "decrypt-pending", "forget", "sync-now"], calls);
+        Assert.Equal(["forget", "sync-now"], calls);
+    }
+
+    [Fact]
+    public async Task GivenPassphrase_WhenResolveDisabledElsewhereAsync_ThenUnlocksWithIt()
+    {
+        status = E2eStatus.DisabledElsewhere;
+        mockSweeper.Setup(x => x.CountPendingEncryptedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        using var sut = CreateSut();
+        await sut.ResolveDisabledElsewhereAsync(Passphrase);
+        Assert.Equal([$"unlock-local-{Passphrase}", "decrypt-pending", "forget", "sync-now"], calls);
+    }
+
+    [Fact]
+    public async Task GivenPassphraseRequired_WhenResolveDisabledElsewhereAsync_ThenThrowsAndKeepsTheKeys()
+    {
+        // Arrange
+        status = E2eStatus.DisabledElsewhere;
+        mockSweeper.Setup(x => x.CountPendingEncryptedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        mockKeys.Setup(x => x.UnlockLocalCopyAsync(null, It.IsAny<CancellationToken>())).ThrowsAsync(new E2ePassphraseRequiredException());
+        using var sut = CreateSut();
+
+        // Act
+        await Assert.ThrowsAsync<E2ePassphraseRequiredException>(() => sut.ResolveDisabledElsewhereAsync());
+
+        // Assert
+        Assert.Empty(calls);
+    }
+
+    [Theory]
+    [InlineData(0, false, false)]
+    [InlineData(0, true, false)]
+    [InlineData(1, true, false)]
+    [InlineData(1, false, true)]
+    public async Task GivenPendingAndPasskey_WhenResolveNeedsPassphraseAsync_ThenTrueOnlyWhenChangesNeedTheKeysAndThePasskeyCannotUnlock(int pending, bool passkeyUnlocks, bool expected)
+    {
+        mockSweeper.Setup(x => x.CountPendingEncryptedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(pending);
+        mockKeys.Setup(x => x.CanUnlockLocalCopyWithPasskeyAsync()).ReturnsAsync(passkeyUnlocks);
+        using var sut = CreateSut();
+        Assert.Equal(expected, await sut.ResolveNeedsPassphraseAsync());
     }
 
     [Fact]

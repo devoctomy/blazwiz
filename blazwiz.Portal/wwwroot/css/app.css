@@ -373,6 +373,12 @@ code {
     text-overflow: ellipsis;
 }
 
+.user-session {
+    color: var(--bw-text-muted);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
 .sidebar-logout:hover {
     color: var(--bs-danger);
     background: rgba(var(--bs-danger-rgb), 0.08);

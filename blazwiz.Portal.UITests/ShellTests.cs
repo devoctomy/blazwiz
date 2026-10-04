@@ -59,6 +59,17 @@ public class ShellTests : TestBase
     }
 
     [TestMethod]
+    public async Task GivenSignedInUser_WhenShellShown_ThenSessionCountdownIsUnderTheUsername()
+    {
+        await LoginAsync();
+
+        var timer = Page.Locator("#nav-profile #session-timer");
+        await Expect(timer).ToHaveTextAsync(new Regex(@"^Session (\d+:)?\d{2}:\d{2}$"));
+        var first = await timer.TextContentAsync();
+        await Expect(timer).Not.ToHaveTextAsync(first!, new() { Timeout = 5000 });
+    }
+
+    [TestMethod]
     public async Task GivenSignedInUser_WhenLoggingOut_ThenLoginPageIsShownAndSessionIsCleared()
     {
         await LoginAsync();

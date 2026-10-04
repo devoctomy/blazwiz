@@ -181,16 +181,28 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
     }
 
     /// <inheritdoc/>
-    public async Task ResolveDisabledElsewhereAsync(CancellationToken ct = default)
+    public async Task ResolveDisabledElsewhereAsync(string? passphrase = null, CancellationToken ct = default)
     {
         await RunExclusiveAsync(async () =>
         {
-            await keyManager.UnlockLocalCopyAsync(ct);
-            await sweeper.DecryptAsync(null, pendingOnly: true, ct);
+            // Encrypted files already synced are replaced by the decrypted copies on the next sync; only changes made
+            // here and not yet synced need the keys.
+            if (await sweeper.CountPendingEncryptedAsync(ct) > 0)
+            {
+                await keyManager.UnlockLocalCopyAsync(passphrase, ct);
+                await sweeper.DecryptAsync(null, pendingOnly: true, ct);
+            }
+
             await keyManager.ForgetDeviceAsync();
         });
 
         await scheduler.SyncNowAsync();
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> ResolveNeedsPassphraseAsync(CancellationToken ct = default)
+    {
+        return await sweeper.CountPendingEncryptedAsync(ct) > 0 && !await keyManager.CanUnlockLocalCopyWithPasskeyAsync();
     }
 
     /// <inheritdoc/>

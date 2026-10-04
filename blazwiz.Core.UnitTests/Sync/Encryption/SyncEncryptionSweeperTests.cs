@@ -130,6 +130,29 @@ public class SyncEncryptionSweeperTests
     }
 
     [Fact]
+    public async Task GivenSyncedAndPendingEncryptedFiles_WhenCountPendingEncryptedAsync_ThenOnlyUnsyncedCounted()
+    {
+        // Arrange
+        await appStore.WriteAsync("notes/plain.md", Bytes("pear"));
+        Unlock();
+        await appStore.WriteAsync("notes/synced.md", Bytes("apple"));
+        await SyncedAsync();
+        await appStore.WriteAsync("notes/pending.md", Bytes("orange"));
+
+        // Act & Assert
+        Assert.Equal(1, await sut.CountPendingEncryptedAsync());
+    }
+
+    [Fact]
+    public async Task GivenAllSynced_WhenCountPendingEncryptedAsync_ThenZero()
+    {
+        Unlock();
+        await appStore.WriteAsync("notes/synced.md", Bytes("apple"));
+        await SyncedAsync();
+        Assert.Equal(0, await sut.CountPendingEncryptedAsync());
+    }
+
+    [Fact]
     public async Task GivenPendingOnly_WhenDecryptAsync_ThenOnlyUnsyncedChangesDecrypted()
     {
         // Arrange
