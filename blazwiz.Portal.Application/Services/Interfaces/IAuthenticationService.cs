@@ -8,6 +8,13 @@ namespace blazwiz.Portal.Application.Services.Interfaces;
 public interface IAuthenticationService
 {
     /// <summary>
+    /// Raised when <see cref="GetCurrentUserAsync"/> finds the session over (its token expired, or it could not be
+    /// renewed) and has signed the user out, so the app can return to the login page. Not raised by
+    /// <see cref="LogoutAsync"/>.
+    /// </summary>
+    event EventHandler? SessionEnded;
+
+    /// <summary>
     /// Gets a value indicating whether this is the placeholder sign-in that accepts any credentials.
     /// </summary>
     bool IsPlaceholder { get; }

@@ -58,6 +58,9 @@ public class CognitoAuthenticationService(
     private string? refreshToken;
 
     /// <inheritdoc/>
+    public event EventHandler? SessionEnded;
+
+    /// <inheritdoc/>
     public bool IsPlaceholder => false;
 
     /// <summary>
@@ -185,10 +188,17 @@ public class CognitoAuthenticationService(
         }
 
 //#endif
+        if (session.ExpiresAt <= systemClock.UtcNow)
+        {
+            // Not used while it was valid, so it is not brought back to life: renewing only happens before expiry.
+            await EndSessionAsync();
+            return null;
+        }
+
         if (string.IsNullOrEmpty(refreshToken))
         {
             // Signed in from another tab, or before a reload: this tab cannot renew it.
-            await localStorageService.RemoveItemAsync(SessionStorageKey);
+            await EndSessionAsync();
             return null;
         }
 
@@ -197,8 +207,7 @@ public class CognitoAuthenticationService(
             var result = await cognitoClient.RefreshAsync(session.Username, refreshToken);
             if (string.IsNullOrEmpty(result.IdToken))
             {
-                refreshToken = null;
-                await localStorageService.RemoveItemAsync(SessionStorageKey);
+                await EndSessionAsync();
                 return null;
             }
 
@@ -210,13 +219,12 @@ public class CognitoAuthenticationService(
         catch (CognitoException)
         {
             // The refresh token has expired or been revoked.
-            refreshToken = null;
-            await localStorageService.RemoveItemAsync(SessionStorageKey);
+            await EndSessionAsync();
             return null;
         }
         catch (HttpRequestException)
         {
-            // Offline: keep the stored session so it can be refreshed once back online.
+            // Offline: keep the stored session so it can be refreshed once back online, while it is still valid.
             return null;
         }
     }
@@ -259,6 +267,13 @@ public class CognitoAuthenticationService(
         {
             return null;
         }
+    }
+
+    // Signs out (revoking the refresh token, if this tab has one) and tells the app, so it returns to the login page.
+    private async Task EndSessionAsync()
+    {
+        await LogoutAsync();
+        SessionEnded?.Invoke(this, EventArgs.Empty);
     }
 
     private async Task<LoginResult> HandleSignInResultAsync(CognitoSignInResult result, string username)

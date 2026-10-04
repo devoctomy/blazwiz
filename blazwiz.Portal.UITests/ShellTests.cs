@@ -70,6 +70,25 @@ public class ShellTests : TestBase
     }
 
     [TestMethod]
+    public async Task GivenSessionAboutToExpire_WhenLeftIdle_ThenLoginPageIsShownAtExpiry()
+    {
+        await LoginAsync();
+
+        // Make the stored session expire a few seconds from now, then reload so the app reads it.
+        await Page.EvaluateAsync(@"() => {
+            const session = JSON.parse(localStorage.getItem('blazwiz_session'));
+            session.ExpiresAt = new Date(Date.now() + 4000).toISOString();
+            localStorage.setItem('blazwiz_session', JSON.stringify(session));
+        }");
+        await Page.ReloadAsync();
+        await Expect(Page.Locator("#session-timer")).ToBeVisibleAsync();
+
+        // Nothing is clicked: the countdown reaching zero ends the session.
+        await Expect(Page.Locator("#login-button")).ToBeVisibleAsync(new() { Timeout = 15000 });
+        await ExpectLoginPageAsync();
+    }
+
+    [TestMethod]
     public async Task GivenSignedInUser_WhenLoggingOut_ThenLoginPageIsShownAndSessionIsCleared()
     {
         await LoginAsync();

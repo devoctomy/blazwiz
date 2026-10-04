@@ -326,6 +326,34 @@ public class MainLayoutViewModelTests
         Assert.Equal(["logout", "clear"], order);
     }
 
+    [Fact]
+    public void GivenSessionEnded_WhenRaised_ThenCredentialsForgottenAndLoginShown()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, EventArgs.Empty);
+
+        // Assert
+        mockCredentials.Verify(x => x.Clear(), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("/login"), Times.Once);
+    }
+
+    [Fact]
+    public void GivenDisposed_WhenSessionEnded_ThenNothingHappens()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.Dispose();
+
+        // Act
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, EventArgs.Empty);
+
+        // Assert
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
 //#if (IncludeNotes)
     [Fact]
     public void GivenNullSyncDependencies_WhenConstructing_ThenThrowsArgumentNullException()
@@ -723,6 +751,14 @@ public class MainLayoutViewModelTests
 
         // Assert
         Assert.Equal(["stop", "logout"], order);
+    }
+
+    [Fact]
+    public void GivenSessionEnded_WhenRaised_ThenSyncStopped()
+    {
+        using var sut = CreateSut();
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, EventArgs.Empty);
+        mockScheduler.Verify(x => x.StopAsync(), Times.Once);
     }
 
     [Fact]
