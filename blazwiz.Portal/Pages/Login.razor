@@ -118,6 +118,14 @@
                 }
             </div>
 
+            <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" role="switch" id="signin-offline"
+                       @bind="ViewModel.SignInOffline"
+                       disabled="@ViewModel.IsBusy" />
+                <label class="form-check-label" for="signin-offline">Sign in offline</label>
+                <div class="form-text">For accounts with a passkey. No connection needed: sync and some features are off, and the session lasts 15 minutes.</div>
+            </div>
+
             @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
             {
                 <div class="alert alert-danger py-2 small mt-3" role="alert" id="login-error">
@@ -227,12 +235,12 @@
                 <div class="advanced-options-body" id="advanced-options">
                     <div class="form-check">
                         <input type="checkbox"
-                               id="start-offline"
+                               id="start-sync-off"
                                class="form-check-input"
-                               @bind="ViewModel.StartInOfflineMode"
+                               @bind="ViewModel.StartWithSyncOff"
                                disabled="@ViewModel.IsBusy" />
-                        <label class="form-check-label" for="start-offline">Start in offline mode</label>
-                        <div class="form-text">Use your notes on this device without connecting to the cloud. Changes sync when you turn it off.</div>
+                        <label class="form-check-label" for="start-sync-off">Start with sync turned off</label>
+                        <div class="form-text">Use your notes on this device without syncing them with the cloud. Changes sync when you turn sync back on.</div>
                     </div>
                 </div>
             }

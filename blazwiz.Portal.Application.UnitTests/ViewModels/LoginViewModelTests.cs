@@ -1,4 +1,6 @@
 using blazwiz.Core.Cryptography.Interfaces;
+using blazwiz.Core.Offline;
+using blazwiz.Core.Offline.Models;
 //#if (IncludeNotes)
 using blazwiz.Core.Sync.Interfaces;
 //#endif
@@ -20,16 +22,25 @@ public class LoginViewModelTests
     private readonly Mock<IWebAuthnService> mockWebAuthn = new();
     private readonly Mock<IPasswordCryptoService> mockPasswordCrypto = new();
     private readonly Mock<IDerivedKeyStore> mockKeyStore = new();
+    private readonly OfflineModeService offlineMode = new();
 //#if (IncludeNotes)
     private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly Mock<IPersistentStorageService> mockPersistentStorage = new();
 //#endif
     private readonly AppSettings appSettings = new() { ApplicationTitle = "Test App", EnablePortalLoginAuthn = true };
 
+    public LoginViewModelTests()
+    {
+//#if (IncludeNotes)
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(true);
+//#endif
+        mockAuth.Setup(x => x.SignInOfflineAsync(It.IsAny<string>(), It.IsAny<OfflineEntryReason>())).ReturnsAsync(new LoginResult { Success = true });
+    }
+
     [Fact]
     public void GivenNullAuthService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(null!, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(null!, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -41,7 +52,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullNavigationService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, null!, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, null!, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -53,7 +64,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullThemeService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, null!, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, null!, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -65,7 +76,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullLocalStorageService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, null!, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, null!, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -77,7 +88,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullWebAuthnService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, null!, mockPasswordCrypto.Object, mockKeyStore.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, null!, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -89,7 +100,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullPasswordCryptoService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, null!, mockKeyStore.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, null!, mockKeyStore.Object, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -101,7 +112,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullKeyStore_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, null!,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, null!, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -113,7 +124,7 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullAppSettings_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,
@@ -556,6 +567,121 @@ public class LoginViewModelTests
     }
 
     [Fact]
+    public void GivenNullOfflineModeService_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, null!,
+//#if (IncludeNotes)
+            mockConnectivity.Object,
+            mockPersistentStorage.Object,
+//#endif
+            appSettings));
+        Assert.Equal("offlineModeService", exception.ParamName);
+    }
+
+    [Fact]
+    public async Task GivenSignInOfflineTicked_WhenSelectUser_ThenPasskeyProvesItAndSignsInOfflineWithoutTheSignInService()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.SignInOffline = true;
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        mockPasswordCrypto.Verify(x => x.DecryptAsync("enc"), Times.Once);
+        mockAuth.Verify(x => x.SignInOfflineAsync("user@test.com", OfflineEntryReason.Chosen), Times.Once);
+        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenSignInOfflineTickedButPasskeyFails_WhenSelectUser_ThenNotSignedIn()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.SignInOffline = true;
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("bad tag"));
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        mockAuth.Verify(x => x.SignInOfflineAsync(It.IsAny<string>(), It.IsAny<OfflineEntryReason>()), Times.Never);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenSignInServiceUnreachable_WhenSelectUser_ThenSignedInOfflineInstead()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = false, ServiceUnreachable = true });
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        mockAuth.Verify(x => x.SignInOfflineAsync("user@test.com", OfflineEntryReason.SignInUnreachable), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenSignInRefused_WhenSelectUser_ThenNeverSignedInOffline()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = false, Error = "User is disabled." });
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        mockAuth.Verify(x => x.SignInOfflineAsync(It.IsAny<string>(), It.IsAny<OfflineEntryReason>()), Times.Never);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOfflineModeOn_WhenSigningInWithAPassword_ThenOfflineModeLeftFirst()
+    {
+        // Arrange
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        var offlineDuringLogin = true;
+        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .Callback(() => offlineDuringLogin = offlineMode.IsOffline)
+            .ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "pw";
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        Assert.False(offlineDuringLogin);
+    }
+
+    [Fact]
+    public async Task GivenStillInOfflineMode_WhenInitialized_ThenSignInOfflineTicked()
+    {
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        Assert.True(sut.SignInOffline);
+    }
+
+    [Fact]
     public async Task GivenUserWithWebAuthnAndPrf_WhenSelectUser_ThenDecryptsPasswordAndSignsIn()
     {
         // Arrange
@@ -890,15 +1016,15 @@ public class LoginViewModelTests
     [Fact]
     public void GivenNullSyncDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, null!, mockPersistentStorage.Object, appSettings)).ParamName);
-        Assert.Equal("persistentStorageService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, mockConnectivity.Object, null!, appSettings)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, null!, mockPersistentStorage.Object, appSettings)).ParamName);
+        Assert.Equal("persistentStorageService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, mockConnectivity.Object, null!, appSettings)).ParamName);
     }
 
     [Fact]
-    public async Task GivenOfflineModeSaved_WhenInitialized_ThenAdvancedOptionsExpandedAndTicked()
+    public async Task GivenSyncTurnedOff_WhenInitialized_ThenAdvancedOptionsExpandedAndTicked()
     {
         // Arrange
-        mockConnectivity.SetupGet(x => x.IsForcedOffline).Returns(true);
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(false);
         var sut = CreateSut();
 
         // Act
@@ -907,7 +1033,7 @@ public class LoginViewModelTests
         // Assert
         mockConnectivity.Verify(x => x.InitializeAsync(), Times.Once);
         Assert.True(sut.IsAdvancedOptionsExpanded);
-        Assert.True(sut.StartInOfflineMode);
+        Assert.True(sut.StartWithSyncOff);
     }
 
     [Fact]
@@ -921,51 +1047,51 @@ public class LoginViewModelTests
 
         // Assert
         Assert.False(sut.IsAdvancedOptionsExpanded);
-        Assert.False(sut.StartInOfflineMode);
+        Assert.False(sut.StartWithSyncOff);
         sut.ToggleAdvancedOptionsCommand.Execute(null);
         Assert.True(sut.IsAdvancedOptionsExpanded);
     }
 
     [Fact]
-    public async Task GivenStartInOfflineModeTicked_WhenSignedIn_ThenOfflineModeTurnedOnBeforeNavigatingAndStorageRequested()
+    public async Task GivenStartWithSyncOffTicked_WhenSignedIn_ThenSyncTurnedOffBeforeNavigatingAndStorageRequested()
     {
         // Arrange
         var order = new List<string>();
         mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = true });
-        mockConnectivity.Setup(x => x.SetForcedOfflineAsync(true)).Callback(() => order.Add("offline")).Returns(Task.CompletedTask);
+        mockConnectivity.Setup(x => x.SetSyncEnabledAsync(false)).Callback(() => order.Add("sync-off")).Returns(Task.CompletedTask);
         mockPersistentStorage.Setup(x => x.RequestAfterSignInAsync()).Callback(() => order.Add("storage")).Returns(Task.CompletedTask);
         mockNavigation.Setup(x => x.NavigateTo("/")).Callback(() => order.Add("navigate"));
         var sut = CreateSut();
         sut.Username = "bob";
         sut.Password = "pw";
-        sut.StartInOfflineMode = true;
+        sut.StartWithSyncOff = true;
 
         // Act
         await sut.LoginAsync();
 
         // Assert
-        Assert.Equal(["offline", "storage", "navigate"], order);
+        Assert.Equal(["sync-off", "storage", "navigate"], order);
     }
 
     [Fact]
-    public async Task GivenOfflineModeSavedButUnticked_WhenSignedIn_ThenOfflineModeTurnedOff()
+    public async Task GivenSyncOffButUnticked_WhenSignedIn_ThenSyncTurnedOn()
     {
         // Arrange
-        mockConnectivity.SetupGet(x => x.IsForcedOffline).Returns(true);
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(false);
         mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = true });
         var sut = CreateSut();
         await sut.OnInitializedAsync();
-        sut.StartInOfflineMode = false;
+        sut.StartWithSyncOff = false;
 
         // Act
         await sut.LoginAsync();
 
         // Assert
-        mockConnectivity.Verify(x => x.SetForcedOfflineAsync(false), Times.Once);
+        mockConnectivity.Verify(x => x.SetSyncEnabledAsync(true), Times.Once);
     }
 
     [Fact]
-    public async Task GivenOptionUnchanged_WhenSignedIn_ThenOfflineModeLeftAlone()
+    public async Task GivenOptionUnchanged_WhenSignedIn_ThenSyncLeftAlone()
     {
         // Arrange
         mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = true });
@@ -975,7 +1101,7 @@ public class LoginViewModelTests
         await sut.LoginAsync();
 
         // Assert
-        mockConnectivity.Verify(x => x.SetForcedOfflineAsync(It.IsAny<bool>()), Times.Never);
+        mockConnectivity.Verify(x => x.SetSyncEnabledAsync(It.IsAny<bool>()), Times.Never);
         mockPersistentStorage.Verify(x => x.RequestAfterSignInAsync(), Times.Once);
     }
 
@@ -1005,7 +1131,7 @@ public class LoginViewModelTests
         return sut;
     }
 
-    private LoginViewModel CreateSut() => new(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object,
+    private LoginViewModel CreateSut() => new(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
 //#if (IncludeNotes)
             mockConnectivity.Object,
             mockPersistentStorage.Object,

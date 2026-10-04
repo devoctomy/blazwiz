@@ -242,7 +242,7 @@ public class SyncServiceCollectionExtensionsTests
         services.AddSingleton(Mock.Of<IJSRuntime>());
         services.AddScoped(_ => Mock.Of<IS3SyncTargetProvider>());
         services.AddScoped(_ => Mock.Of<ISyncUserContext>());
-        services.AddScoped(_ => Mock.Of<IOfflineModeStore>());
+        services.AddScoped(_ => Mock.Of<ISyncEnabledStore>());
         return services;
     }
 

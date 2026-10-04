@@ -33,7 +33,8 @@ public class ConnectivityStatus
 
         return Reason switch
         {
-            OfflineReason.ForcedOffline => "Offline: offline mode",
+            OfflineReason.OfflineMode => "Offline: offline mode",
+            OfflineReason.SyncDisabled => "Sync turned off",
             OfflineReason.NoNetwork => "Offline: no network",
             OfflineReason.NoCredentials => "Offline: no credentials",
             OfflineReason.Unreachable => "Offline: S3 unreachable",

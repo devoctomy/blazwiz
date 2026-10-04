@@ -50,37 +50,38 @@ public class SyncTests : TestBase
     }
 
     [TestMethod]
-    public async Task GivenNoCloud_WhenOfflineModeSwitchedOn_ThenReasonIsOfflineModeAndItSurvivesAReload()
+    public async Task GivenNoCloud_WhenSyncSwitchedOff_ThenPillSaysSyncOffAndItSurvivesAReload()
     {
         await LoginAsync();
         var pill = Page.Locator("#sync-status-pill");
         await pill.ClickAsync();
 
-        await Page.Locator("#offline-mode-switch").CheckAsync();
-        await Expect(pill).ToHaveAttributeAsync("title", new Regex("Offline: offline mode"));
+        await Page.Locator("#sync-enabled-switch").UncheckAsync();
+        await Expect(pill).ToHaveAttributeAsync("title", new Regex("Sync is turned off"));
+        await Expect(pill).ToContainTextAsync("Sync off");
 
         await Page.ReloadAsync();
-        await Expect(Page.Locator("#sync-status-pill")).ToHaveAttributeAsync("title", new Regex("Offline: offline mode"));
+        await Expect(Page.Locator("#sync-status-pill")).ToHaveAttributeAsync("title", new Regex("Sync is turned off"));
         await Page.Locator("#sync-status-pill").ClickAsync();
-        await Expect(Page.Locator("#offline-mode-switch")).ToBeCheckedAsync();
+        await Expect(Page.Locator("#sync-enabled-switch")).Not.ToBeCheckedAsync();
     }
 
     [TestMethod]
-    public async Task GivenOfflineModeOn_WhenSigningOutAndBackIn_ThenAdvancedOptionsShowItAndUntickingTurnsItOff()
+    public async Task GivenSyncOff_WhenSigningOutAndBackIn_ThenAdvancedOptionsShowItAndUntickingTurnsSyncOn()
     {
         await LoginAsync();
         await Page.Locator("#sync-status-pill").ClickAsync();
-        await Page.Locator("#offline-mode-switch").CheckAsync();
-        await Expect(Page.Locator("#sync-status-pill")).ToHaveAttributeAsync("title", new Regex("offline mode"));
+        await Page.Locator("#sync-enabled-switch").UncheckAsync();
+        await Expect(Page.Locator("#sync-status-pill")).ToHaveAttributeAsync("title", new Regex("Sync is turned off"));
         await Page.Locator(".sync-popover-backdrop").ClickAsync();
 
         await Page.Locator("#logout-button").ClickAsync();
         await ExpectLoginPageAsync();
         await Expect(Page.Locator("#advanced-options")).ToBeVisibleAsync();
-        await Expect(Page.Locator("#start-offline")).ToBeCheckedAsync();
+        await Expect(Page.Locator("#start-sync-off")).ToBeCheckedAsync();
         await ScreenshotAsync("AdvancedOptions");
 
-        await Page.Locator("#start-offline").UncheckAsync();
+        await Page.Locator("#start-sync-off").UncheckAsync();
         await Page.Locator("#username").FillAsync("bob.hoskins@example.com");
         await Page.Locator("#password").FillAsync("password123");
         await Page.Locator("#login-button").ClickAsync();
@@ -90,7 +91,7 @@ public class SyncTests : TestBase
     }
 
     [TestMethod]
-    public async Task GivenNoOfflineMode_WhenOpeningLogin_ThenAdvancedOptionsCollapsed()
+    public async Task GivenSyncOn_WhenOpeningLogin_ThenAdvancedOptionsCollapsed()
     {
         await GoToLoginAsync();
 
@@ -98,7 +99,62 @@ public class SyncTests : TestBase
         await Expect(Page.Locator("#advanced-options")).Not.ToBeVisibleAsync();
 
         await Page.Locator("#advanced-options-toggle").ClickAsync();
-        await Expect(Page.Locator("#start-offline")).Not.ToBeCheckedAsync();
+        await Expect(Page.Locator("#start-sync-off")).Not.ToBeCheckedAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenSignedIn_WhenOfflineModeTurnedOnInSettings_ThenBannerOfflineCountdownAndNoSync()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+
+        await Page.Locator("#offline-mode-switch").CheckAsync();
+
+        await Expect(Page.Locator("#offline-banner")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#offline-banner-text")).ToContainTextAsync("You're in offline mode");
+        await Expect(Page.Locator("#session-timer")).ToHaveTextAsync(new Regex(@"^Offline 1[45]:\d{2}$"));
+        await Expect(Page.Locator("#sync-status-pill")).ToHaveAttributeAsync("title", new Regex("Offline: offline mode"));
+        await Expect(Page.Locator("#e2e-status")).ToContainTextAsync("You're offline");
+        await ScreenshotAsync("OfflineMode");
+    }
+
+    [TestMethod]
+    public async Task GivenOfflineMode_WhenTurnedOff_ThenLoginPageIsShown()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#offline-mode-switch").CheckAsync();
+        await Expect(Page.Locator("#offline-banner")).ToBeVisibleAsync();
+
+        // A click, not UncheckAsync: the page leaves for the login page before the switch could be seen unticked.
+        await Page.Locator("#offline-mode-switch").ClickAsync();
+
+        await ExpectLoginPageAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenOfflineMode_WhenSignInOnlineClicked_ThenLoginPageIsShown()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#offline-mode-switch").CheckAsync();
+
+        await Page.Locator("#offline-banner-sign-in").ClickAsync();
+
+        await ExpectLoginPageAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenOfflineMode_WhenPageReloaded_ThenOfflineSessionIsGoneAndLoginPageIsShown()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#offline-mode-switch").CheckAsync();
+        await Expect(Page.Locator("#offline-banner")).ToBeVisibleAsync();
+
+        await Page.ReloadAsync();
+
+        await ExpectLoginPageAsync();
     }
 
     [TestMethod]
@@ -106,7 +162,7 @@ public class SyncTests : TestBase
     {
         await LoginAsync();
         await Page.Locator("#sync-status-pill").ClickAsync();
-        await Page.Locator("#offline-mode-switch").CheckAsync();
+        await Page.Locator("#sync-enabled-switch").UncheckAsync();
         await Page.Locator(".sync-popover-backdrop").ClickAsync();
 
         await Page.Locator("#nav-sync").ClickAsync();
@@ -114,23 +170,23 @@ public class SyncTests : TestBase
 
         var log = Page.Locator("#sync-log");
         await Expect(log).ToContainTextAsync("Offline: no credentials");
-        await Expect(log).ToContainTextAsync("Offline mode turned on");
+        await Expect(log).ToContainTextAsync("Sync turned off");
         await Expect(log.Locator(".bi-wifi-off").First).ToBeVisibleAsync();
         await Expect(log.Locator(".bi-airplane").First).ToBeVisibleAsync();
         await ScreenshotAsync("SyncLog");
 
         await Page.Locator("#sync-search").FillAsync("credentials");
         await Expect(log).ToContainTextAsync("Offline: no credentials");
-        await Expect(log).Not.ToContainTextAsync("Offline mode turned on");
+        await Expect(log).Not.ToContainTextAsync("Sync turned off");
         await Page.Locator("#sync-search").FillAsync(string.Empty);
 
         await Page.Locator(".sync-filter[data-group='Connectivity']").ClickAsync();
-        await Expect(log).ToContainTextAsync("Offline mode turned on");
+        await Expect(log).ToContainTextAsync("Sync turned off");
         await Page.Locator(".sync-filter[data-group='Uploads']").ClickAsync();
         await Expect(Page.Locator("#sync-log-empty")).ToBeVisibleAsync();
 
         await Page.ReloadAsync();
-        await Expect(Page.Locator("#sync-log")).ToContainTextAsync("Offline mode turned on");
+        await Expect(Page.Locator("#sync-log")).ToContainTextAsync("Sync turned off");
     }
 
     [TestMethod]

@@ -1,5 +1,7 @@
 using blazwiz.Core.Encryption.Exceptions;
 using blazwiz.Core.Encryption.Models;
+using blazwiz.Core.Offline;
+using blazwiz.Core.Offline.Models;
 using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Portal.Application.ViewModels;
 using blazwiz.Portal.Models.Sync;
@@ -12,6 +14,7 @@ public class E2eSettingsViewModelTests
     private const string Passphrase = "correct horse battery staple";
 
     private readonly Mock<ISyncEncryptionService> mockEncryption = new();
+    private readonly OfflineModeService offlineMode = new();
     private E2eStatus status = E2eStatus.Disabled;
 
     public E2eSettingsViewModelTests()
@@ -23,7 +26,8 @@ public class E2eSettingsViewModelTests
     [Fact]
     public void GivenNullService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eSettingsViewModel(null!)).ParamName);
+        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eSettingsViewModel(null!, offlineMode)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new E2eSettingsViewModel(mockEncryption.Object, null!)).ParamName);
     }
 
     [Theory]
@@ -312,5 +316,39 @@ public class E2eSettingsViewModelTests
         Assert.Equal(expected, E2eSettingsViewModel.GetStepLabel(step));
     }
 
-    private E2eSettingsViewModel CreateSut() => new(mockEncryption.Object);
+    [Theory]
+    [InlineData(E2eStatus.Unknown)]
+    [InlineData(E2eStatus.Disabled)]
+    public void GivenOfflineWithNoKeysOnThisDevice_WhenGettingStatus_ThenOffOnThisDeviceAndSaysOffline(E2eStatus current)
+    {
+        status = current;
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        using var sut = CreateSut();
+        Assert.Equal($"Off on this device. {E2eSettingsViewModel.OfflineNote}", sut.StatusText);
+        Assert.False(sut.CanEnable);
+    }
+
+    [Fact]
+    public void GivenOfflineAndUnlocked_WhenGettingStatus_ThenOnSaysOfflineAndCannotBeChanged()
+    {
+        status = E2eStatus.Unlocked;
+        offlineMode.Enter(OfflineEntryReason.SignInUnreachable);
+        using var sut = CreateSut();
+        Assert.StartsWith("On.", sut.StatusText);
+        Assert.EndsWith(E2eSettingsViewModel.OfflineNote, sut.StatusText);
+        Assert.False(sut.CanManage);
+    }
+
+    [Fact]
+    public void GivenOfflineModeChanges_WhenRaised_ThenStatusNotified()
+    {
+        using var sut = CreateSut();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        Assert.Contains(nameof(E2eSettingsViewModel.StatusText), changed);
+        Assert.Contains(nameof(E2eSettingsViewModel.CanEnable), changed);
+    }
+
+    private E2eSettingsViewModel CreateSut() => new(mockEncryption.Object, offlineMode);
 }

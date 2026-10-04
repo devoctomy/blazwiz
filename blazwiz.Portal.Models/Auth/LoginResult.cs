@@ -25,4 +25,10 @@ public class LoginResult
     /// e.g. when they were invited with a temporary password.
     /// </summary>
     public bool NewPasswordRequired { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the sign-in service could not be reached (no network, or no answer).
+    /// Not set when it answered and refused the sign in.
+    /// </summary>
+    public bool ServiceUnreachable { get; set; }
 }

@@ -682,16 +682,17 @@ public class MainLayoutViewModelTests
     }
 
     [Fact]
-    public async Task GivenOfflineModeOff_WhenToggled_ThenTurnedOn()
+    public async Task GivenSyncOn_WhenToggled_ThenTurnedOff()
     {
         // Arrange
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(true);
         var sut = CreateSut();
 
         // Act
-        await sut.ToggleOfflineModeCommand.ExecuteAsync(null);
+        await sut.ToggleSyncCommand.ExecuteAsync(null);
 
         // Assert
-        mockConnectivity.Verify(x => x.SetForcedOfflineAsync(true), Times.Once);
+        mockConnectivity.Verify(x => x.SetSyncEnabledAsync(false), Times.Once);
     }
 
     [Fact]

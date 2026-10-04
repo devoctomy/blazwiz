@@ -283,38 +283,39 @@ public class SyncViewModelTests
     }
 
     [Fact]
-    public async Task GivenStatus_WhenInitialized_ThenHeaderShowsStatusPendingAndOfflineMode()
+    public async Task GivenStatus_WhenInitialized_ThenHeaderShowsStatusPendingAndSyncOff()
     {
         // Arrange
-        mockConnectivity.SetupGet(x => x.IsForcedOffline).Returns(true);
-        connectivity = new ConnectivityStatus { Reason = OfflineReason.ForcedOffline, LastCheckedAt = Now };
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(false);
+        connectivity = new ConnectivityStatus { Reason = OfflineReason.SyncDisabled, LastCheckedAt = Now };
         var sut = CreateSut();
 
         // Act
         await sut.OnInitializedAsync();
 
         // Assert
-        Assert.Equal("Offline · 2 pending", sut.Status.Text);
+        Assert.Equal("Sync off · 2 pending", sut.Status.Text);
         Assert.Equal(2, sut.SyncStatus.PendingCount);
-        Assert.True(sut.IsForcedOffline);
+        Assert.False(sut.IsSyncEnabled);
         Assert.False(sut.CanSyncNow);
         Assert.False(sut.ShowProfileFilter);
     }
 
     [Fact]
-    public async Task GivenOnline_WhenSyncNowAndToggleOfflineMode_ThenDelegated()
+    public async Task GivenOnline_WhenSyncNowAndToggleSync_ThenDelegated()
     {
         // Arrange
         connectivity = new ConnectivityStatus { IsOnline = true, LastCheckedAt = Now };
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(true);
         var sut = CreateSut();
 
         // Act
         await sut.SyncNowCommand.ExecuteAsync(null);
-        await sut.ToggleOfflineModeCommand.ExecuteAsync(null);
+        await sut.ToggleSyncCommand.ExecuteAsync(null);
 
         // Assert
         mockScheduler.Verify(x => x.SyncNowAsync(), Times.Once);
-        mockConnectivity.Verify(x => x.SetForcedOfflineAsync(true), Times.Once);
+        mockConnectivity.Verify(x => x.SetSyncEnabledAsync(false), Times.Once);
     }
 
     [Fact]

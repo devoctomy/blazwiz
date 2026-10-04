@@ -3,8 +3,9 @@ using blazwiz.Core.Sync.Connectivity;
 namespace blazwiz.Core.Sync.Interfaces;
 
 /// <summary>
-/// Decides whether the app is online, checking (in order) offline mode, the browser's network, AWS credentials and
-/// whether S3 is reachable. The cheapest checks come first, and offline mode makes no network calls at all.
+/// Decides whether sync can reach the cloud, checking (in order) offline mode, whether sync is turned on, the
+/// browser's network, AWS credentials and whether S3 is reachable. The cheapest checks come first, and offline mode or
+/// sync turned off make no network calls at all.
 /// </summary>
 public interface IConnectivityService
 {
@@ -19,22 +20,22 @@ public interface IConnectivityService
     ConnectivityStatus Status { get; }
 
     /// <summary>
-    /// Gets a value indicating whether the user has turned on offline mode. Call <see cref="InitializeAsync"/> first.
+    /// Gets a value indicating whether sync is turned on. Call <see cref="InitializeAsync"/> first.
     /// </summary>
-    bool IsForcedOffline { get; }
+    bool IsSyncEnabled { get; }
 
     /// <summary>
-    /// Loads the saved offline mode setting. Safe to call more than once.
+    /// Loads the saved sync setting. Safe to call more than once.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task InitializeAsync();
 
     /// <summary>
-    /// Turns offline mode on or off, saves it, and checks the connection again.
+    /// Turns sync on or off, saves it, and checks the connection again.
     /// </summary>
-    /// <param name="forcedOffline">True to turn offline mode on.</param>
+    /// <param name="enabled">True to turn sync on.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task SetForcedOfflineAsync(bool forcedOffline);
+    Task SetSyncEnabledAsync(bool enabled);
 
     /// <summary>
     /// Checks the connection, reusing a recent result.

@@ -1,7 +1,6 @@
-//#if (IncludeNotes)
-using blazwiz.Core.Sync.Interfaces;
-//#endif
 using System.Text.Json;
+using blazwiz.Core.Offline;
+using blazwiz.Core.Offline.Models;
 using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
@@ -23,38 +22,33 @@ public class CognitoAuthenticationServiceTests
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<IUserDisplayService> mockUserDisplay = new();
     private readonly Mock<ISystemClock> mockSystemClock = new();
-//#if (IncludeNotes)
-    private readonly Mock<IOfflineModeStore> mockOfflineMode = new();
-//#endif
+    private readonly OfflineModeService offlineMode = new();
+    private readonly InMemoryOfflineSessionStore offlineSessions;
     private readonly string idToken = CreateJwt("""{"email":"bob.hoskins@example.com","cognito:username":"5f2c1a7e"}""");
+
+    private DateTimeOffset now = Now;
 
     public CognitoAuthenticationServiceTests()
     {
-        mockSystemClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockSystemClock.SetupGet(x => x.UtcNow).Returns(() => now);
+        mockUserDisplay.Setup(x => x.GetDisplayNameFromUsername(It.IsAny<string>())).Returns("Bob Hoskins");
+        offlineSessions = new InMemoryOfflineSessionStore(mockSystemClock.Object);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         Assert.Equal("cognitoClient", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(null!, mockLocalStorage.Object, mockUserDisplay.Object,
-//#if (IncludeNotes)
-            mockOfflineMode.Object,
-//#endif
+            offlineMode, offlineSessions,
             mockSystemClock.Object)).ParamName);
         Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, null!, mockUserDisplay.Object,
-//#if (IncludeNotes)
-            mockOfflineMode.Object,
-//#endif
+            offlineMode, offlineSessions,
             mockSystemClock.Object)).ParamName);
         Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, null!,
-//#if (IncludeNotes)
-            mockOfflineMode.Object,
-//#endif
+            offlineMode, offlineSessions,
             mockSystemClock.Object)).ParamName);
         Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
-//#if (IncludeNotes)
-            mockOfflineMode.Object,
-//#endif
+            offlineMode, offlineSessions,
             null!)).ParamName);
     }
 
@@ -181,6 +175,134 @@ public class CognitoAuthenticationServiceTests
 
         // Assert
         Assert.Equal("Could not reach the sign-in service. Check your connection and try again.", result.Error);
+        Assert.True(result.ServiceUnreachable);
+    }
+
+    [Fact]
+    public async Task GivenTimeout_WhenLoginAsync_ThenUnreachable()
+    {
+        mockCognito.Setup(x => x.SignInAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new TaskCanceledException("timed out"));
+        var result = await CreateSut().LoginAsync("bob@example.com", Password);
+        Assert.True(result.ServiceUnreachable);
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public async Task GivenSignInRefused_WhenLoginAsync_ThenNotUnreachable()
+    {
+        mockCognito.Setup(x => x.SignInAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new CognitoException("NotAuthorizedException", "User is disabled."));
+        var result = await CreateSut().LoginAsync("bob@example.com", Password);
+        Assert.False(result.ServiceUnreachable);
+        Assert.False(result.Success);
+    }
+
+    [Fact]
+    public void GivenNullOfflineDependencies_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockSystemClock.Object)).ParamName);
+        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockSystemClock.Object)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenRemembered_WhenSignInOfflineAsync_ThenOfflineSessionWithoutCallingCognito()
+    {
+        // Arrange (the strict Cognito mock would throw on any call)
+        using var sut = CreateSut();
+
+        // Act
+        var result = await sut.SignInOfflineAsync("bob.hoskins@example.com", OfflineEntryReason.Chosen);
+
+        // Assert
+        Assert.True(result.Success);
+        var session = await sut.GetCurrentUserAsync();
+        Assert.True(session!.IsOffline);
+        Assert.Null(session.IdToken);
+        Assert.Equal(Now.Add(OfflineModeService.SessionLength), session.ExpiresAt);
+        Assert.Equal(OfflineEntryReason.Chosen, offlineMode.Reason);
+        mockLocalStorage.Verify(x => x.SetObjectAsync(It.IsAny<string>(), It.IsAny<UserSession>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOfflineSessionExpired_WhenGetCurrentUserAsync_ThenEndedWithoutCallingCognito()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob.hoskins@example.com", OfflineEntryReason.Chosen);
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+        now = Now.Add(OfflineModeService.SessionLength);
+
+        // Act & Assert
+        Assert.Null(await sut.GetCurrentUserAsync());
+        Assert.Equal(1, ended);
+    }
+
+    [Fact]
+    public async Task GivenOfflineSession_WhenOfflineModeTurnedOff_ThenSessionEnded()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob.hoskins@example.com", OfflineEntryReason.SignInUnreachable);
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+
+        // Act
+        offlineMode.Exit();
+
+        // Assert
+        Assert.Equal(1, ended);
+        Assert.Null(offlineSessions.Session);
+    }
+
+    [Fact]
+    public async Task GivenSignedInOnline_WhenGoOfflineAsync_ThenRefreshTokenRevokedFirstAndSessionOfflineForFifteenMinutes()
+    {
+        // Arrange
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(new UserSession { Username = "bob.hoskins@example.com", DisplayName = "Bob Hoskins", IdToken = idToken, ExpiresAt = Now.AddHours(1) });
+        var order = new List<string>();
+        mockCognito.Setup(x => x.RevokeAsync("refresh")).Callback(() => order.Add(offlineMode.IsOffline ? "revoke-offline" : "revoke-online")).Returns(Task.CompletedTask);
+
+        // Act
+        await sut.GoOfflineAsync();
+
+        // Assert
+        Assert.Equal(["revoke-online"], order);
+        var session = await sut.GetCurrentUserAsync();
+        Assert.True(session!.IsOffline);
+        Assert.Equal(Now.Add(OfflineModeService.SessionLength), session.ExpiresAt);
+        Assert.Null(session.IdToken);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNobodySignedIn_WhenGoOfflineAsync_ThenThrows()
+    {
+        using var sut = CreateSut();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GoOfflineAsync());
+        Assert.False(offlineMode.IsOffline);
+    }
+
+    [Fact]
+    public async Task GivenOfflineModeWithoutOfflineSession_WhenGetCurrentUserAsync_ThenNobodyAndStoredSessionNotUsed()
+    {
+        // Arrange (an expired stored session would otherwise be refreshed, a call to Cognito)
+        SetupStoredSession(new UserSession { IdToken = idToken, ExpiresAt = Now.AddMinutes(1) });
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        using var sut = CreateSut();
+
+        // Act & Assert
+        Assert.Null(await sut.GetCurrentUserAsync());
+        mockLocalStorage.Verify(x => x.GetObjectAsync<UserSession>(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOfflineSession_WhenLogoutAsync_ThenForgottenWithoutCallingCognito()
+    {
+        using var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob.hoskins@example.com", OfflineEntryReason.Chosen);
+        await sut.LogoutAsync();
+        Assert.Null(offlineSessions.Session);
     }
 
     [Fact]
@@ -582,31 +704,6 @@ public class CognitoAuthenticationServiceTests
         return sut;
     }
 
-//#if (IncludeNotes)
-    [Fact]
-    public void GivenNullOfflineModeStore_WhenConstructing_ThenThrowsArgumentNullException()
-    {
-        Assert.Equal("offlineModeStore", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!, mockSystemClock.Object)).ParamName);
-    }
-
-    [Fact]
-    public async Task GivenExpiredSessionInOfflineMode_WhenGetCurrentUserAsync_ThenStoredSessionKeptWithoutRefreshing()
-    {
-        // Arrange
-        var session = new UserSession { Username = "bob", IdToken = idToken, ExpiresAt = Now.AddMinutes(-30) };
-        SetupStoredSession(session);
-        mockOfflineMode.Setup(x => x.GetAsync()).ReturnsAsync(true);
-        var sut = CreateSut();
-
-        // Act
-        var result = await sut.GetCurrentUserAsync();
-
-        // Assert (the strict Cognito mock would throw if a refresh were attempted)
-        Assert.Same(session, result);
-        mockLocalStorage.Verify(x => x.RemoveItemAsync(It.IsAny<string>()), Times.Never);
-    }
-
-//#endif
     private void SetupStoredSession(UserSession? session)
     {
         mockLocalStorage
@@ -624,8 +721,6 @@ public class CognitoAuthenticationServiceTests
     }
 
     private CognitoAuthenticationService CreateSut() => new(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
-//#if (IncludeNotes)
-        mockOfflineMode.Object,
-//#endif
+        offlineMode, offlineSessions,
         mockSystemClock.Object);
 }
