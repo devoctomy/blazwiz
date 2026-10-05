@@ -1,5 +1,6 @@
 using System.Globalization;
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Encryption.Exceptions;
 using blazwiz.Core.Encryption.Models;
 using blazwiz.Core.Sync.Encryption.Interfaces;
@@ -20,6 +21,11 @@ public partial class E2eSettingsViewModel : ViewModelBase
     public const int MinPassphraseLength = 8;
 
     /// <summary>
+    /// Added to the status line in offline mode.
+    /// </summary>
+    public const string OfflineNote = "You're offline, so this is this device's own state, and encryption can't be changed until you sign in online.";
+
+    /// <summary>
     /// The warning shown before a passphrase is set.
     /// </summary>
     public const string NoRecoveryWarning = "There is no passphrase recovery. If you forget your passphrase, nobody can decrypt your notes, including us.";
@@ -36,6 +42,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
     ];
 
     private readonly ISyncEncryptionService encryptionService;
+    private readonly IOfflineModeService offlineModeService;
 
     private E2eDialogKind? activeDialog;
     private string passphrase = string.Empty;
@@ -51,10 +58,13 @@ public partial class E2eSettingsViewModel : ViewModelBase
     /// Initializes a new instance of the <see cref="E2eSettingsViewModel"/> class.
     /// </summary>
     /// <param name="encryptionService">End to end encryption of the synced files.</param>
-    public E2eSettingsViewModel(ISyncEncryptionService encryptionService)
+    /// <param name="offlineModeService">Offline mode: the keys in the cloud can't be reached, so nothing can be changed.</param>
+    public E2eSettingsViewModel(ISyncEncryptionService encryptionService, IOfflineModeService offlineModeService)
     {
         this.encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
+        this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
         this.encryptionService.StatusChanged += OnStatusChanged;
+        this.offlineModeService.Changed += OnOfflineModeChanged;
     }
 
     /// <summary>
@@ -63,34 +73,29 @@ public partial class E2eSettingsViewModel : ViewModelBase
     public E2eStatus Status => encryptionService.Status;
 
     /// <summary>
-    /// Gets the status line.
+    /// Gets a value indicating whether offline mode is on.
     /// </summary>
-    public string StatusText => Status switch
-    {
-        E2eStatus.Unlocked => "On. Your notes are encrypted on this device before they are synced.",
-        E2eStatus.Disabled => "Off.",
-        E2eStatus.NeedsSetup => "On, but this device has not been set up yet. Enter your passphrase to read and sync your notes here.",
-        E2eStatus.Blocked => "On, but locked: use your passkey to unlock it.",
-        E2eStatus.DisabledElsewhere => "Turned off on another device.",
-        E2eStatus.Unavailable => "Off. Sign in with your passkey to turn it on: it needs the hardware PRF key your passkey provides.",
-        E2eStatus.Unsupported => "Not available with this sign in.",
-        _ => "Checking…",
-    };
+    public bool IsOffline => offlineModeService.IsOffline;
+
+    /// <summary>
+    /// Gets the status line. In offline mode it describes this device's own state, and says so.
+    /// </summary>
+    public string StatusText => IsOffline ? $"{OfflineStatusText} {OfflineNote}" : OnlineStatusText;
 
     /// <summary>
     /// Gets a value indicating whether encryption can be turned on.
     /// </summary>
-    public bool CanEnable => Status == E2eStatus.Disabled;
+    public bool CanEnable => !IsOffline && Status == E2eStatus.Disabled;
 
     /// <summary>
     /// Gets a value indicating whether this device can be set up.
     /// </summary>
-    public bool CanSetUp => Status == E2eStatus.NeedsSetup && encryptionService.HasPasskeyKeys;
+    public bool CanSetUp => !IsOffline && Status == E2eStatus.NeedsSetup && encryptionService.HasPasskeyKeys;
 
     /// <summary>
     /// Gets a value indicating whether the passphrase can be changed, or encryption turned off.
     /// </summary>
-    public bool CanManage => Status == E2eStatus.Unlocked;
+    public bool CanManage => !IsOffline && Status == E2eStatus.Unlocked;
 
     /// <summary>
     /// Gets the dialog shown, or null.
@@ -178,6 +183,26 @@ public partial class E2eSettingsViewModel : ViewModelBase
     /// </summary>
     public bool IsEditing => !IsWorking && !IsFinished && Steps.Count == 0;
 
+    // Offline the cloud copy of the keys can't be checked: with no copy on this device the status is unknown, which
+    // here simply means encryption is off on this device.
+    private string OfflineStatusText => Status switch
+    {
+        E2eStatus.Unknown or E2eStatus.Disabled or E2eStatus.Unavailable => "Off on this device.",
+        _ => OnlineStatusText,
+    };
+
+    private string OnlineStatusText => Status switch
+    {
+        E2eStatus.Unlocked => "On. Your notes are encrypted on this device before they are synced.",
+        E2eStatus.Disabled => "Off.",
+        E2eStatus.NeedsSetup => "On, but this device has not been set up yet. Enter your passphrase to read and sync your notes here.",
+        E2eStatus.Blocked => "On, but locked: use your passkey to unlock it.",
+        E2eStatus.DisabledElsewhere => "Turned off on another device.",
+        E2eStatus.Unavailable => "Off. Sign in with your passkey to turn it on: it needs the hardware PRF key your passkey provides.",
+        E2eStatus.Unsupported => "Not available with this sign in.",
+        _ => "Checking…",
+    };
+
     /// <summary>
     /// Gets the description of a step, as the step list shows it.
     /// </summary>
@@ -264,6 +289,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
         if (disposing)
         {
             encryptionService.StatusChanged -= OnStatusChanged;
+            offlineModeService.Changed -= OnOfflineModeChanged;
         }
 
         base.Dispose(disposing);
@@ -444,6 +470,12 @@ public partial class E2eSettingsViewModel : ViewModelBase
 
     private void OnStatusChanged(object? sender, E2eStatus e)
     {
+        RefreshStatus();
+    }
+
+    private void OnOfflineModeChanged(object? sender, bool isOffline)
+    {
+        OnPropertyChanged(nameof(IsOffline));
         RefreshStatus();
     }
 

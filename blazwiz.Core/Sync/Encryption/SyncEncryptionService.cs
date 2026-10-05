@@ -37,7 +37,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
     /// <param name="profiles">The encrypted profiles.</param>
     /// <param name="syncService">Runs the passes.</param>
     /// <param name="scheduler">Asks for passes once encryption allows them.</param>
-    /// <param name="connectivityService">Offline mode, and whether the app is online.</param>
+    /// <param name="connectivityService">Turns sync off while files change, and whether the app is online.</param>
     /// <param name="lockService">The cross tab sync lock.</param>
     /// <param name="channel">Tells other tabs to reload.</param>
     public SyncEncryptionService(
@@ -98,7 +98,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
             await SyncEncryptedProfilesAsync(requireComplete: false, ct);
             Report(progress, E2eStep.Sync, true);
 
-            await WhileOfflineAsync(progress, async () =>
+            await WhileSyncOffAsync(progress, async () =>
             {
                 Report(progress, E2eStep.CheckExistingKeys, false);
                 if (await keyManager.IsEnabledAsync(ct))
@@ -157,7 +157,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
             await SyncEncryptedProfilesAsync(requireComplete: true, ct);
             Report(progress, E2eStep.Sync, true);
 
-            await WhileOfflineAsync(progress, async () =>
+            await WhileSyncOffAsync(progress, async () =>
             {
                 keyRing.SetWriteMode(E2eWriteMode.Plaintext);
                 try
@@ -250,13 +250,13 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
         }
     }
 
-    // Offline mode stops passes (in every tab) while files change; it is put back as it was afterwards, and going back
+    // Turning sync off stops passes (in every tab) while files change; it is put back as it was afterwards, and going back
     // online syncs the changed files.
-    private async Task WhileOfflineAsync(IProgress<E2eProgress>? progress, Func<Task> action)
+    private async Task WhileSyncOffAsync(IProgress<E2eProgress>? progress, Func<Task> action)
     {
-        var wasOffline = connectivityService.IsForcedOffline;
+        var wasOff = !connectivityService.IsSyncEnabled;
         Report(progress, E2eStep.GoOffline, false);
-        await connectivityService.SetForcedOfflineAsync(true);
+        await connectivityService.SetSyncEnabledAsync(false);
         Report(progress, E2eStep.GoOffline, true);
         try
         {
@@ -265,9 +265,9 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
         finally
         {
             Report(progress, E2eStep.GoOnline, false);
-            if (!wasOffline)
+            if (!wasOff)
             {
-                await connectivityService.SetForcedOfflineAsync(false);
+                await connectivityService.SetSyncEnabledAsync(true);
             }
 
             Report(progress, E2eStep.GoOnline, true);

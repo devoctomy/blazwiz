@@ -32,10 +32,22 @@ public class SyncStatusPresenterTests
     [Fact]
     public void GivenOfflineWithPendingChanges_WhenPresent_ThenPendingCountShown()
     {
-        var result = sut.Present(new SyncStatus { PendingCount = 1 }, new ConnectivityStatus { Reason = OfflineReason.ForcedOffline });
+        var result = sut.Present(new SyncStatus { PendingCount = 1 }, new ConnectivityStatus { Reason = OfflineReason.OfflineMode });
 
         Assert.Equal("Offline · 1 pending", result.Text);
         Assert.Equal("Offline: offline mode. 1 change waiting to sync.", result.Tooltip);
+    }
+
+    [Theory]
+    [InlineData(0, "Sync off", "Sync is turned off.")]
+    [InlineData(2, "Sync off · 2 pending", "Sync is turned off. 2 changes waiting to sync.")]
+    public void GivenSyncTurnedOff_WhenPresent_ThenSyncOffNotOffline(int pending, string text, string tooltip)
+    {
+        var result = sut.Present(new SyncStatus { PendingCount = pending }, new ConnectivityStatus { Reason = OfflineReason.SyncDisabled });
+
+        Assert.Equal(text, result.Text);
+        Assert.Equal(tooltip, result.Tooltip);
+        Assert.True(result.IsOffline);
     }
 
     [Fact]

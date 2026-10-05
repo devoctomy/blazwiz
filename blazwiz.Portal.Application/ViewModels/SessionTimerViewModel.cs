@@ -1,12 +1,14 @@
 using System.Globalization;
 using Blazing.Mvvm.ComponentModel;
+using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
 /// <summary>
-/// ViewModel for the countdown under the user's name: how long until the session's current token expires.
+/// ViewModel for the countdown under the user's name: how long until the session's current token expires, or, in
+/// offline mode, until the offline session ends.
 /// </summary>
 /// <remarks>
 /// The session is read again every <see cref="ReadInterval"/>, but only while that has no side effects: reading it in
@@ -27,10 +29,12 @@ public partial class SessionTimerViewModel : ViewModelBase
     public static readonly TimeSpan ReadInterval = TimeSpan.FromSeconds(30);
 
     private readonly IAuthenticationService authService;
+    private readonly IOfflineModeService offlineModeService;
     private readonly TimeProvider timeProvider;
 
     private ITimer? timer;
     private DateTimeOffset? expiresAt;
+    private bool isOffline;
     private DateTimeOffset lastReadAt;
     private DateTimeOffset nextReadAt;
     private bool isReading;
@@ -40,15 +44,18 @@ public partial class SessionTimerViewModel : ViewModelBase
     /// Initializes a new instance of the <see cref="SessionTimerViewModel"/> class.
     /// </summary>
     /// <param name="authService">The authentication service.</param>
+    /// <param name="offlineModeService">Offline mode: turning it on or off changes the session, so it is read again.</param>
     /// <param name="timeProvider">The clock and timers.</param>
-    public SessionTimerViewModel(IAuthenticationService authService, TimeProvider timeProvider)
+    public SessionTimerViewModel(IAuthenticationService authService, IOfflineModeService offlineModeService, TimeProvider timeProvider)
     {
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
         this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        this.offlineModeService.Changed += OnOfflineModeChanged;
     }
 
     /// <summary>
-    /// Gets the countdown text, e.g. "Session 54:12", or "Session expired".
+    /// Gets the countdown text, e.g. "Session 54:12", "Offline 12:34", or "Session expired".
     /// </summary>
     public string Text
     {
@@ -90,6 +97,7 @@ public partial class SessionTimerViewModel : ViewModelBase
     {
         if (disposing)
         {
+            offlineModeService.Changed -= OnOfflineModeChanged;
             timer?.Dispose();
             timer = null;
         }
@@ -102,6 +110,18 @@ public partial class SessionTimerViewModel : ViewModelBase
         return remaining.TotalHours >= 1
             ? remaining.ToString(@"h\:mm\:ss", CultureInfo.InvariantCulture)
             : remaining.ToString(@"mm\:ss", CultureInfo.InvariantCulture);
+    }
+
+    private async void OnOfflineModeChanged(object? sender, bool isOffline)
+    {
+        try
+        {
+            await ReadSessionAsync();
+        }
+        catch (Exception)
+        {
+            // Event handlers must not throw; the next tick reads again.
+        }
     }
 
     private bool ShouldRead()
@@ -127,7 +147,9 @@ public partial class SessionTimerViewModel : ViewModelBase
         isReading = true;
         try
         {
-            expiresAt = (await authService.GetCurrentUserAsync())?.ExpiresAt;
+            var session = await authService.GetCurrentUserAsync();
+            expiresAt = session?.ExpiresAt;
+            isOffline = session?.IsOffline == true;
         }
         finally
         {
@@ -149,7 +171,7 @@ public partial class SessionTimerViewModel : ViewModelBase
 
         var remaining = expiresAt.Value - timeProvider.GetUtcNow();
         Text = remaining > TimeSpan.Zero
-            ? $"Session {Format(TimeSpan.FromSeconds(Math.Ceiling(remaining.TotalSeconds)))}"
+            ? $"{(isOffline ? "Offline" : "Session")} {Format(TimeSpan.FromSeconds(Math.Ceiling(remaining.TotalSeconds)))}"
             : "Session expired";
     }
 }

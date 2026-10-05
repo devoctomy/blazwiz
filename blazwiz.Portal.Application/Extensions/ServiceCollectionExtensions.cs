@@ -78,6 +78,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserKeysStore, SecretsManagerUserKeysStore>();
 
         // Cognito when a user pool is configured (deployed), otherwise the placeholder login (local development).
+        // The offline session, held in memory and shared by whichever authentication service is used.
+        services.AddScoped<IOfflineSessionStore, InMemoryOfflineSessionStore>();
         services.AddScoped<IAuthenticationService>(sp =>
             CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
                 ? ActivatorUtilities.CreateInstance<CognitoAuthenticationService>(sp)
@@ -89,7 +91,7 @@ public static class ServiceCollectionExtensions
         // Settings) and synced with the user's prefix in the data bucket (docs/wip/s3-sync.md, docs/wip/opfs-storage.md).
         services.AddScoped<IS3SyncTargetProvider, CognitoS3TargetProvider>();
         services.AddScoped<ISyncUserContext, AuthSyncUserContext>();
-        services.AddScoped<IOfflineModeStore, LocalStorageOfflineModeStore>();
+        services.AddScoped<ISyncEnabledStore, LocalStorageSyncEnabledStore>();
         services.AddScoped<IPersistentStorageService, PersistentStorageService>();
         services.AddSingleton<ISyncEventPresenter, SyncEventPresenter>();
         services.AddSingleton<ISyncStatusPresenter, SyncStatusPresenter>();

@@ -1,5 +1,7 @@
 using Blazing.Mvvm.ComponentModel;
 using blazwiz.Core.Cryptography.Interfaces;
+using blazwiz.Core.Offline.Interfaces;
+using blazwiz.Core.Offline.Models;
 //#if (IncludeNotes)
 using blazwiz.Core.Sync.Interfaces;
 //#endif
@@ -27,6 +29,7 @@ public partial class LoginViewModel : ViewModelBase
     private readonly IWebAuthnService webAuthnService;
     private readonly IPasswordCryptoService passwordCryptoService;
     private readonly IDerivedKeyStore keyStore;
+    private readonly IOfflineModeService offlineModeService;
 //#if (IncludeNotes)
     private readonly IConnectivityService connectivityService;
     private readonly IPersistentStorageService persistentStorageService;
@@ -50,9 +53,10 @@ public partial class LoginViewModel : ViewModelBase
     private bool showWebAuthnPrompt;
     private bool isWebAuthnProcessing;
     private string? webAuthnErrorMessage;
+    private bool signInOffline;
 //#if (IncludeNotes)
     private bool isAdvancedOptionsExpanded;
-    private bool startInOfflineMode;
+    private bool startWithSyncOff;
 //#endif
 
     /// <summary>
@@ -65,8 +69,9 @@ public partial class LoginViewModel : ViewModelBase
     /// <param name="webAuthnService">The WebAuthn service for passkey authentication.</param>
     /// <param name="passwordCryptoService">The password crypto service, using the remember me key derived from WebAuthn.</param>
     /// <param name="keyStore">The keys derived from WebAuthn, forgotten when nobody is signed in.</param>
+    /// <param name="offlineModeService">Offline mode, for signing in offline.</param>
     ///#if (IncludeNotes)
-    /// <param name="connectivityService">The connectivity service, for offline mode.</param>
+    /// <param name="connectivityService">The connectivity service, for turning sync off at sign in.</param>
     /// <param name="persistentStorageService">Asks the browser for persistent storage after sign in.</param>
     ///#endif
     /// <param name="appSettings">The application settings.</param>
@@ -78,6 +83,7 @@ public partial class LoginViewModel : ViewModelBase
         IWebAuthnService webAuthnService,
         IPasswordCryptoService passwordCryptoService,
         IDerivedKeyStore keyStore,
+        IOfflineModeService offlineModeService,
 //#if (IncludeNotes)
         IConnectivityService connectivityService,
         IPersistentStorageService persistentStorageService,
@@ -91,6 +97,7 @@ public partial class LoginViewModel : ViewModelBase
         this.webAuthnService = webAuthnService ?? throw new ArgumentNullException(nameof(webAuthnService));
         this.passwordCryptoService = passwordCryptoService ?? throw new ArgumentNullException(nameof(passwordCryptoService));
         this.keyStore = keyStore ?? throw new ArgumentNullException(nameof(keyStore));
+        this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
 //#if (IncludeNotes)
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
         this.persistentStorageService = persistentStorageService ?? throw new ArgumentNullException(nameof(persistentStorageService));
@@ -194,6 +201,16 @@ public partial class LoginViewModel : ViewModelBase
     public string? WebAuthnErrorMessage { get => webAuthnErrorMessage; set => SetProperty(ref webAuthnErrorMessage, value); }
 
     /// <summary>
+    /// Gets or sets a value indicating whether to sign in offline with a remembered account: the passkey proves who
+    /// the user is on this device, and nothing calls the sign-in service or AWS.
+    /// </summary>
+    public bool SignInOffline
+    {
+        get => signInOffline;
+        set => SetProperty(ref signInOffline, value);
+    }
+
+    /// <summary>
     /// Gets the Bootstrap icon for the theme toggle button.
     /// </summary>
     public string ThemeIcon => themeService.IsDark ? "bi-sun" : "bi-moon-stars";
@@ -210,12 +227,12 @@ public partial class LoginViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gets or sets a value indicating whether to sign in with offline mode on, so the first sync makes no network calls.
+    /// Gets or sets a value indicating whether to sign in with sync turned off, so the first sync makes no network calls.
     /// </summary>
-    public bool StartInOfflineMode
+    public bool StartWithSyncOff
     {
-        get => startInOfflineMode;
-        set => SetProperty(ref startInOfflineMode, value);
+        get => startWithSyncOff;
+        set => SetProperty(ref startWithSyncOff, value);
     }
 //#endif
 
@@ -238,6 +255,9 @@ public partial class LoginViewModel : ViewModelBase
 
         // Nobody is signed in (signed out, or the session expired), so no keys should be held.
         keyStore.Clear();
+
+        // Still in offline mode (e.g. its session expired): offer signing in offline again.
+        SignInOffline = offlineModeService.IsOffline;
         await LoadSavedUsersAsync();
 //#if (IncludeNotes)
         await LoadAdvancedOptionsAsync();
@@ -260,6 +280,8 @@ public partial class LoginViewModel : ViewModelBase
         IsBusy = true;
         try
         {
+            // A typed password can only be checked by the sign-in service, so this is always an online sign in.
+            offlineModeService.Exit();
             var result = await authService.LoginAsync(Username, Password);
             if (result.Success)
             {
@@ -581,8 +603,16 @@ public partial class LoginViewModel : ViewModelBase
 
             if (authResult.Success && authResult.KeysDerived)
             {
+                // Decrypting the remembered password proves the passkey (and the user's fingerprint or PIN) on this
+                // device, which is all an offline sign in has to go on.
                 var decryptedPassword = await passwordCryptoService.DecryptAsync(user.WebAuthnCredential.EncryptedPassword!);
+                if (SignInOffline)
+                {
+                    await SignInOfflineAsync(user.Email, OfflineEntryReason.Chosen);
+                    return;
+                }
 
+                offlineModeService.Exit();
                 var loginResult = await authService.LoginAsync(user.Email, decryptedPassword);
 
                 if (loginResult.Success)
@@ -591,6 +621,11 @@ public partial class LoginViewModel : ViewModelBase
                     await ApplySignInOptionsAsync();
 //#endif
                     navigationService.NavigateTo("/");
+                }
+                else if (loginResult.ServiceUnreachable)
+                {
+                    // Only when the sign-in service could not be reached: never when it refused the sign in.
+                    await SignInOfflineAsync(user.Email, OfflineEntryReason.SignInUnreachable);
                 }
                 else
                 {
@@ -616,6 +651,15 @@ public partial class LoginViewModel : ViewModelBase
         }
     }
 
+    private async Task SignInOfflineAsync(string email, OfflineEntryReason reason)
+    {
+        await authService.SignInOfflineAsync(email, reason);
+//#if (IncludeNotes)
+        await ApplySignInOptionsAsync();
+//#endif
+        navigationService.NavigateTo("/");
+    }
+
     private void FallbackToManualLogin(SavedUser user)
     {
         // The keys came from a biometric sign in that failed, so they must not outlive it.
@@ -631,18 +675,18 @@ public partial class LoginViewModel : ViewModelBase
     private async Task LoadAdvancedOptionsAsync()
     {
         await connectivityService.InitializeAsync();
-        StartInOfflineMode = connectivityService.IsForcedOffline;
-        IsAdvancedOptionsExpanded = StartInOfflineMode;
+        StartWithSyncOff = !connectivityService.IsSyncEnabled;
+        IsAdvancedOptionsExpanded = StartWithSyncOff;
     }
 
     private async Task ApplySignInOptionsAsync()
     {
         try
         {
-            // Before the first sync after sign in starts, so offline mode makes no network calls at all.
-            if (StartInOfflineMode != connectivityService.IsForcedOffline)
+            // Before the first sync after sign in starts, so sync turned off makes no network calls at all.
+            if (StartWithSyncOff == connectivityService.IsSyncEnabled)
             {
-                await connectivityService.SetForcedOfflineAsync(StartInOfflineMode);
+                await connectivityService.SetSyncEnabledAsync(!StartWithSyncOff);
             }
 
             // Straight after the sign-in click, so Firefox's permission prompt appears at a sensible moment.

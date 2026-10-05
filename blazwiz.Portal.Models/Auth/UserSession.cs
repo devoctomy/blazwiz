@@ -39,4 +39,10 @@ public class UserSession
     /// Gets or sets the Cognito access token, when signed in with Cognito.
     /// </summary>
     public string? AccessToken { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this is an offline session: no tokens, held in memory only, and ended
+    /// at <see cref="ExpiresAt"/> or when offline mode is turned off.
+    /// </summary>
+    public bool IsOffline { get; set; }
 }
