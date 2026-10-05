@@ -2,6 +2,8 @@ using Amazon.Runtime;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using blazwiz.Core.Cryptography.Interfaces;
+using blazwiz.Core.Offline;
+using blazwiz.Core.Offline.Models;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
@@ -23,6 +25,7 @@ public class SecretsManagerUserKeysStoreTests
     private readonly Mock<IAwsCredentialsProvider> mockCredentials = new();
     private readonly Mock<ISecretsManagerClientFactory> mockFactory = new();
     private readonly Mock<IAmazonSecretsManager> mockClient = new();
+    private readonly OfflineModeService offlineMode = new();
     private readonly AwsTemporaryCredentials credentials = new() { IdentityId = "eu-west-2:id", AccessKeyId = "AKIA", SecretKey = "s", SessionToken = "t" };
 
     public SecretsManagerUserKeysStoreTests()
@@ -35,9 +38,23 @@ public class SecretsManagerUserKeysStoreTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(null!, mockCredentials.Object, mockFactory.Object)).ParamName);
-        Assert.Equal("credentialsProvider", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, null!, mockFactory.Object)).ParamName);
-        Assert.Equal("clientFactory", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(null!, mockCredentials.Object, mockFactory.Object, offlineMode)).ParamName);
+        Assert.Equal("credentialsProvider", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, null!, mockFactory.Object, offlineMode)).ParamName);
+        Assert.Equal("clientFactory", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, null!, offlineMode)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, mockFactory.Object, null!)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenOfflineMode_WhenGetAsync_ThenThrowsUnreachableNotUnsupportedWithoutCallingAws()
+    {
+        // Arrange (unsupported would turn encryption off here; offline the keys are only out of reach)
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync());
+        mockCredentials.VerifyNoOtherCalls();
+        mockFactory.VerifyNoOtherCalls();
     }
 
     [Fact]
@@ -298,5 +315,5 @@ public class SecretsManagerUserKeysStoreTests
     }
 
     private SecretsManagerUserKeysStore CreateSut() =>
-        new(mockAuth.Object, mockCredentials.Object, mockFactory.Object);
+        new(mockAuth.Object, mockCredentials.Object, mockFactory.Object, offlineMode);
 }

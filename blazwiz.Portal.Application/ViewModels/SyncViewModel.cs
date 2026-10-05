@@ -10,7 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 namespace blazwiz.Portal.Application.ViewModels;
 
 /// <summary>
-/// ViewModel for the Sync page: the sync status, Sync now and offline mode, and the sync log with search, filter
+/// ViewModel for the Sync page: the sync status, Sync now and turning sync on or off, and the sync log with search, filter
 /// chips, grouping by pass and by day, paging and live updates.
 /// </summary>
 public partial class SyncViewModel : ViewModelBase
@@ -90,9 +90,9 @@ public partial class SyncViewModel : ViewModelBase
     public SyncStatus SyncStatus => syncService.Status;
 
     /// <summary>
-    /// Gets a value indicating whether offline mode is on.
+    /// Gets a value indicating whether sync is turned on.
     /// </summary>
-    public bool IsForcedOffline => connectivityService.IsForcedOffline;
+    public bool IsSyncEnabled => connectivityService.IsSyncEnabled;
 
     /// <summary>
     /// Gets a value indicating whether Sync now can be used.
@@ -270,13 +270,13 @@ public partial class SyncViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Turns offline mode on or off.
+    /// Turns sync on or off. It is remembered until switched back.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
-    public async Task ToggleOfflineModeAsync()
+    public async Task ToggleSyncAsync()
     {
-        await connectivityService.SetForcedOfflineAsync(!connectivityService.IsForcedOffline);
+        await connectivityService.SetSyncEnabledAsync(!connectivityService.IsSyncEnabled);
         RefreshStatus();
     }
 
@@ -479,7 +479,7 @@ public partial class SyncViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(Status));
         OnPropertyChanged(nameof(SyncStatus));
-        OnPropertyChanged(nameof(IsForcedOffline));
+        OnPropertyChanged(nameof(IsSyncEnabled));
         OnPropertyChanged(nameof(CanSyncNow));
     }
 

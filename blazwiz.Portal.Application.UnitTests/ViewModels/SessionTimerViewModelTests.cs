@@ -1,3 +1,5 @@
+using blazwiz.Core.Offline;
+using blazwiz.Core.Offline.Models;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Application.ViewModels;
 using blazwiz.Portal.Models.Auth;
@@ -12,6 +14,7 @@ public class SessionTimerViewModelTests
 
     private readonly Mock<IAuthenticationService> mockAuth = new();
     private readonly FakeTimeProvider time = new(Now);
+    private readonly OfflineModeService offlineMode = new();
     private UserSession? session = new() { Username = "bob@example.com", ExpiresAt = Now.AddMinutes(54).AddSeconds(12) };
     private int reads;
 
@@ -23,8 +26,24 @@ public class SessionTimerViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(null!, time)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(mockAuth.Object, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(null!, offlineMode, time)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(mockAuth.Object, null!, time)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(mockAuth.Object, offlineMode, null!)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenOnlineSession_WhenOfflineModeTurnedOn_ThenReadAgainStraightAway()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        session = new UserSession { Username = "bob", ExpiresAt = Now.AddMinutes(15), IsOffline = true };
+
+        // Act
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+
+        // Assert
+        Assert.Equal("Offline 15:00", sut.Text);
     }
 
     [Fact]
@@ -42,6 +61,15 @@ public class SessionTimerViewModelTests
         using var sut = CreateSut();
         await sut.OnInitializedAsync();
         Assert.Equal("Session 2:00:00", sut.Text);
+    }
+
+    [Fact]
+    public async Task GivenOfflineSession_WhenInitialized_ThenShowsOfflineCountdown()
+    {
+        session = new UserSession { Username = "bob", ExpiresAt = Now.AddMinutes(12).AddSeconds(34), IsOffline = true };
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        Assert.Equal("Offline 12:34", sut.Text);
     }
 
     [Fact]
@@ -167,5 +195,5 @@ public class SessionTimerViewModelTests
         }
     }
 
-    private SessionTimerViewModel CreateSut() => new(mockAuth.Object, time);
+    private SessionTimerViewModel CreateSut() => new(mockAuth.Object, offlineMode, time);
 }
