@@ -16,9 +16,17 @@ public class SyncEventQuery
     public IReadOnlyCollection<SyncEventKind>? Kinds { get; set; }
 
     /// <summary>
-    /// Gets or sets text that the message, key, detail or profile must contain (case insensitive), or null.
+    /// Gets or sets text that the message (see <see cref="Describe"/>), key, detail or profile must contain (case
+    /// insensitive), or null.
     /// </summary>
     public string? Text { get; set; }
+
+    /// <summary>
+    /// Gets or sets how the app describes an event to the user, so <see cref="Text"/> finds what is shown on screen.
+    /// Events keep a code, not their text (it is translated as it is shown), so without this only the key, detail and
+    /// profile are searched.
+    /// </summary>
+    public Func<SyncEvent, string>? Describe { get; set; }
 
     /// <summary>
     /// Gets or sets the earliest time to include, or null.

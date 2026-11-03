@@ -352,6 +352,7 @@ public partial class SyncViewModel : ViewModelBase
             Profile = activeProfile,
             Kinds = activeGroup == null ? null : eventPresenter.GetKinds(activeGroup.Value),
             Text = string.IsNullOrWhiteSpace(SearchText) ? null : SearchText,
+            Describe = eventPresenter.Describe,
             Take = pages * PageSize,
         };
 

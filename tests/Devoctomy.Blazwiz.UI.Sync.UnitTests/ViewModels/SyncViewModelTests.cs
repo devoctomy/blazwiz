@@ -228,6 +228,25 @@ public class SyncViewModelTests
     }
 
     [Fact]
+    public async Task GivenSearchText_WhenSearching_ThenTheShownTextIsSearchedToo()
+    {
+        // Arrange
+        Add(new SyncEvent { Kind = SyncEventKind.WentOffline, Code = SyncEventCodes.WentOffline, Arguments = ["NoCredentials"], Timestamp = Now });
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        sut.SearchText = "credentials";
+        time.Advance(SyncViewModel.SearchDebounce);
+        await WaitForAsync(() => queries.Count == 2);
+
+        // Assert: the query describes events as the page shows them.
+        var describe = queries[^1].Describe;
+        Assert.NotNull(describe);
+        Assert.Contains("credentials", describe(new SyncEvent { Kind = SyncEventKind.WentOffline, Code = SyncEventCodes.WentOffline, Arguments = ["NoCredentials"] }), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task GivenMoreEntries_WhenLoadMore_ThenNextPageRequested()
     {
         // Arrange
