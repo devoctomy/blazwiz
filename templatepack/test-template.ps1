@@ -39,6 +39,9 @@ param(
     # Only create these apps (by name, e.g. -Only NoNotes), not all of them.
     [string[]]$Only,
 
+    # Where to put the packages, generated apps and their test results. Defaults to a new folder in the temp folder.
+    [string]$WorkRoot,
+
     # What to upgrade an app from, to simulate an upgrade: a folder holding a copy of the repository (e.g. before a
     # change), or a git tag or commit (read with git archive).
     [string]$UpgradeFrom
@@ -48,7 +51,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $templateRoot = Join-Path $repositoryRoot 'template'
 $runId = [DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
-$workRoot = Join-Path ([IO.Path]::GetTempPath()) "blazwiz-template-test-$runId"
+$workRoot = if ($WorkRoot) { $WorkRoot } else { Join-Path ([IO.Path]::GetTempPath()) "blazwiz-template-test-$runId" }
 $script:Failures = New-Object System.Collections.Generic.List[string]
 
 # Name, extra options, and whether the generated app includes tests.
@@ -150,7 +153,7 @@ try {
         Write-Step "App '$name' $($case.Options -join ' ')"
         $output = Join-Path $workRoot "apps/$name"
 
-        if (-not (Invoke-Checked "'$name' is created" { dotnet new blazwiz -n $name -o $output @($case.Options) --debug:custom-hive $hive })) {
+        if (-not (Invoke-Checked "'$name' is created" { dotnet new blazwiz -n $name -o $output @($case.Options) --no-restore --debug:custom-hive $hive })) {
             continue
         }
 
@@ -251,7 +254,7 @@ try {
         $basePackage = Get-ChildItem -Path (Join-Path $workRoot 'upgrade-template') -Filter 'Devoctomy.Blazwiz.Templates.*.nupkg' | Select-Object -First 1
         $upgraded = Join-Path $workRoot 'apps/Upgraded'
         if ((Invoke-Checked "$UpgradeFrom template installs" { dotnet new install $basePackage.FullName --debug:custom-hive $baseHive }) -and
-            (Invoke-Checked "'Upgraded' is created from $UpgradeFrom" { dotnet new blazwiz -n Upgraded -o $upgraded --debug:custom-hive $baseHive })) {
+            (Invoke-Checked "'Upgraded' is created from $UpgradeFrom" { dotnet new blazwiz -n Upgraded -o $upgraded --no-restore --debug:custom-hive $baseHive })) {
             Use-Packages -App $upgraded -Version $baseVersion -Feed $feed
 
             # Customise it as an app would: a page of its own, and the theme re-branded through the framework's tokens.

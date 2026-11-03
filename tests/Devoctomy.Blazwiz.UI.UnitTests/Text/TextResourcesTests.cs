@@ -4,7 +4,7 @@ using System.Resources;
 using Devoctomy.Blazwiz.Auth.Exceptions;
 using Devoctomy.Blazwiz.UI.Text;
 
-namespace Devoctomy.Blazwiz.Tests.Text;
+namespace Devoctomy.Blazwiz.UI.UnitTests.Text;
 
 /// <summary>
 /// Every code the framework can produce has text, so users never see a raw code or key.

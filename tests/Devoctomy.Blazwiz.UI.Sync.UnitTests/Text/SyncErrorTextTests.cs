@@ -4,7 +4,7 @@ using Devoctomy.Blazwiz.UI.Sync.Text;
 using Devoctomy.Blazwiz.UI.Text;
 using Devoctomy.Blazwiz.UI.Sync.UnitTests;
 
-namespace Devoctomy.Blazwiz.Tests.Text;
+namespace Devoctomy.Blazwiz.UI.Sync.UnitTests.Text;
 
 /// <summary>
 /// The sync module's error codes, described with its own text (<see cref="SyncUiText"/>).

@@ -1,6 +1,9 @@
-# Builds and tests the packages and the template on every push and pull request: the repository's tests (unit,
-# integration, Playwright UI), then the packages and template packed and every template option built and tested
-# against them (templatepack/test-template.ps1). The release workflow only publishes a commit this has passed.
+# Builds and tests the packages and the template on every push and pull request. The release workflow only publishes a
+# commit this has passed.
+#
+# - test: build, then each group of tests with dotnet test (unit, integration, UI).
+# - template: packs the packages and the template, then creates apps with every template option and builds and tests
+#   them against the packed packages (templatepack/test-template.ps1, which is not plain dotnet test).
 name: CI
 
 on:
@@ -15,15 +18,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # Fresh MSBuild processes for every build (docs/techdebt/static-web-assets-compression.md).
+  MSBUILDDISABLENODEREUSE: 1
+
 jobs:
   test:
     runs-on: windows-latest
-    timeout-minutes: 90
-    env:
-      DOTNET_NOLOGO: true
-      DOTNET_CLI_TELEMETRY_OPTOUT: true
-      # Fresh MSBuild processes for every build (docs/techdebt/static-web-assets-compression.md).
-      MSBUILDDISABLENODEREUSE: 1
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -35,15 +39,25 @@ jobs:
         shell: pwsh
         run: ./eng/check-versions.ps1
 
+      - name: Restore
+        run: dotnet restore blazwiz.slnx
+
+      - name: Build
+        run: dotnet build blazwiz.slnx --no-restore
+
+      - name: Unit tests
+        run: dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UnitTests" --logger trx --results-directory TestResults/unit
+
+      - name: Integration tests
+        run: dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~IntTests" --logger trx --results-directory TestResults/integration
+
       - name: Install the Playwright browser
         shell: pwsh
-        run: |
-          dotnet build template/MyApp.Portal.UITests --nologo -v q
-          ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
+        run: ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
 
-      - name: Test the repository, packages and template
-        shell: pwsh
-        run: ./templatepack/test-template.ps1
+      # The UI tests build and start the portal themselves (Release); its output is in TestResults/portal.log.
+      - name: UI tests
+        run: dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UITests" --logger trx --results-directory TestResults/ui
 
       - name: Upload test results
         if: ${{ !success() }}
@@ -51,5 +65,35 @@ jobs:
         with:
           name: test-results
           path: |
-            **/TestResults/**
+            TestResults/**
+            **/bin/Debug/net10.0/TestResults/**
+          if-no-files-found: ignore
+
+  template:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install the Playwright browser
+        shell: pwsh
+        run: |
+          dotnet build template/MyApp.Portal.UITests --nologo -v q
+          ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
+
+      # The repository's own tests run in the test job.
+      - name: Pack, then create, build and test apps from the template
+        shell: pwsh
+        run: ./templatepack/test-template.ps1 -SkipRepositoryTests -KeepOutput -WorkRoot "${{ runner.temp }}/template-test"
+
+      - name: Upload the generated apps' test results
+        if: ${{ !success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: template-test-results
+          path: ${{ runner.temp }}/template-test/apps/*/*.UITests/bin/Debug/net10.0/TestResults/**
           if-no-files-found: ignore

@@ -59,6 +59,12 @@
       "displayName": "Notes example",
       "description": "Include the notes example: the Files page and a markdown note editor, synced by the sync module. Needs Sync."
     },
+    "skipRestore": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Skip restoring the app's packages after creating it."
+    },
     "IncludeSync": {
       "type": "computed",
       "value": "(Sync)"
@@ -255,6 +261,7 @@
     {
       "description": "Restore NuGet packages.",
       "manualInstructions": [ { "text": "Run 'dotnet restore'" } ],
+      "condition": "(!skipRestore)",
       "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
       "continueOnError": true
     }

@@ -106,9 +106,14 @@ Everything must pass before work is considered done, **including the UI tests**:
 
 ```powershell
 dotnet build blazwiz.slnx
-dotnet test blazwiz.slnx                         # every package's unit tests, the integration and template tests
-dotnet test template/MyApp.Portal.UITests        # or run it on its own
+dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UnitTests"
+dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~IntTests"
+dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UITests"
+./templatepack/test-template.ps1 -SkipRepositoryTests   # the packages and template: generated apps built and tested
 ```
+
+These are the steps CI runs (`.github/workflows/ci.yml`). Test namespaces must contain the project's suffix
+(`.UnitTests`, `.IntTests`, `.UITests`), or the filters miss them.
 
 - The UI tests start the portal themselves (`dotnet run -c Release` on a free port). They take about two minutes.
   The portal's output goes to `template/MyApp.Portal.UITests/bin/Debug/net10.0/TestResults/portal.log`. Don't build
@@ -147,8 +152,9 @@ package version is ordinary .NET and needs no test; the change does. Before 1.0 
 
 ## CI and releases
 
-- `.github/workflows/ci.yml` runs `templatepack/test-template.ps1` on every push and pull request. Keep it passing
-  locally first: CI cannot be run from here.
+- `.github/workflows/ci.yml` runs on every push and pull request: build, then unit, integration and UI tests as
+  separate `dotnet test` steps, and in a parallel job `templatepack/test-template.ps1 -SkipRepositoryTests` (packages
+  and template). Keep them passing locally first: CI cannot be run from here.
 - `.github/workflows/release.yml` publishes to nuget.org only a commit CI has passed: a `v*` tag on main publishes the
   version, a manual run on another branch publishes `<version>-beta.<run>` (`docs/releasing.md`). Never push tags or
   run the release yourself (rule 3).

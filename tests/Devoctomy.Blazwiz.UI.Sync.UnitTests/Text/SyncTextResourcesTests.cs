@@ -7,7 +7,7 @@ using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Text;
 using Devoctomy.Blazwiz.UI.Text;
 
-namespace Devoctomy.Blazwiz.Tests.Text;
+namespace Devoctomy.Blazwiz.UI.Sync.UnitTests.Text;
 
 /// <summary>
 /// Every code the sync module can produce has text, so users never see a raw code or key.
