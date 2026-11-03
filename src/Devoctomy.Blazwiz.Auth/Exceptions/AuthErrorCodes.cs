@@ -70,4 +70,54 @@ public static class AuthErrorCodes
     /// The new password does not meet the password rules.
     /// </summary>
     public const string InvalidPassword = "Auth.InvalidPassword";
+
+    /// <summary>
+    /// A password field was left empty.
+    /// </summary>
+    public const string PasswordsRequired = "Auth.PasswordsRequired";
+
+    /// <summary>
+    /// The new password and its confirmation are different.
+    /// </summary>
+    public const string PasswordsDoNotMatch = "Auth.PasswordsDoNotMatch";
+
+    /// <summary>
+    /// The email address was left empty.
+    /// </summary>
+    public const string EmailRequired = "Auth.EmailRequired";
+
+    /// <summary>
+    /// The verification code was left empty.
+    /// </summary>
+    public const string CodeRequired = "Auth.CodeRequired";
+
+    /// <summary>
+    /// The current password given to change it is not correct.
+    /// </summary>
+    public const string CurrentPasswordWrong = "Auth.CurrentPasswordWrong";
+
+    /// <summary>
+    /// The verification code is not correct.
+    /// </summary>
+    public const string CodeMismatch = "Auth.CodeMismatch";
+
+    /// <summary>
+    /// The verification code has expired.
+    /// </summary>
+    public const string CodeExpired = "Auth.CodeExpired";
+
+    /// <summary>
+    /// The password cannot be changed or reset in offline mode.
+    /// </summary>
+    public const string PasswordChangeOffline = "Auth.PasswordChangeOffline";
+
+    /// <summary>
+    /// The sign-in service refused to change the password for another reason.
+    /// </summary>
+    public const string PasswordChangeFailed = "Auth.PasswordChangeFailed";
+
+    /// <summary>
+    /// The sign-in service refused to reset the password for another reason.
+    /// </summary>
+    public const string PasswordResetFailed = "Auth.PasswordResetFailed";
 }

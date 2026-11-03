@@ -3,6 +3,7 @@ using Devoctomy.Blazwiz.Auth.Cognito.Extensions;
 using Devoctomy.Blazwiz.Core.Extensions;
 using Devoctomy.Blazwiz.UI.Extensions;
 using Devoctomy.Blazwiz.UI.Models;
+using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MyApp.Portal;
@@ -79,4 +80,13 @@ builder.Services.AddMvvm(options =>
     options.RegisterViewModelsFromAssemblyContaining<DashboardViewModel>();
 });
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// The language the user chose in Settings (or the browser's), applied before the app starts. Add languages with
+// Text:SupportedCultures in wwwroot/appsettings.json, and their text with resources (see the README).
+await using (var scope = host.Services.CreateAsyncScope())
+{
+    await scope.ServiceProvider.GetRequiredService<ICultureService>().ApplySavedCultureAsync();
+}
+
+await host.RunAsync();

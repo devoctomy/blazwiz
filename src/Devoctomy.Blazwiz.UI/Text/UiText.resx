@@ -306,4 +306,115 @@
   <data name="Nav.Settings.Description" xml:space="preserve">
     <value>Appearance and application preferences.</value>
   </data>
+  <data name="Error.Auth.PasswordsRequired" xml:space="preserve">
+    <value>Fill in every password field.</value>
+  </data>
+  <data name="Error.Auth.PasswordsDoNotMatch" xml:space="preserve">
+    <value>The new passwords do not match.</value>
+  </data>
+  <data name="Error.Auth.EmailRequired" xml:space="preserve">
+    <value>Enter your email address.</value>
+  </data>
+  <data name="Error.Auth.CodeRequired" xml:space="preserve">
+    <value>Enter the code we sent you.</value>
+  </data>
+  <data name="Error.Auth.CurrentPasswordWrong" xml:space="preserve">
+    <value>Your current password is not correct.</value>
+  </data>
+  <data name="Error.Auth.CodeMismatch" xml:space="preserve">
+    <value>That code is not correct. Check it and try again.</value>
+  </data>
+  <data name="Error.Auth.CodeExpired" xml:space="preserve">
+    <value>That code has expired. Ask for a new one.</value>
+  </data>
+  <data name="Error.Auth.PasswordChangeOffline" xml:space="preserve">
+    <value>Changing your password needs a connection. Turn offline mode off and try again.</value>
+  </data>
+  <data name="Error.Auth.PasswordChangeFailed" xml:space="preserve">
+    <value>Your password could not be changed. Try again later.</value>
+  </data>
+  <data name="Error.Auth.PasswordResetFailed" xml:space="preserve">
+    <value>Your password could not be reset. Try again later.</value>
+  </data>
+  <data name="Profile.ChangePassword.Title" xml:space="preserve">
+    <value>Change password</value>
+  </data>
+  <data name="Profile.ChangePassword.Current" xml:space="preserve">
+    <value>Current password</value>
+  </data>
+  <data name="Profile.ChangePassword.New" xml:space="preserve">
+    <value>New password</value>
+  </data>
+  <data name="Profile.ChangePassword.Confirm" xml:space="preserve">
+    <value>Confirm new password</value>
+  </data>
+  <data name="Profile.ChangePassword.Submit" xml:space="preserve">
+    <value>Change password</value>
+  </data>
+  <data name="Profile.ChangePassword.Changing" xml:space="preserve">
+    <value>Changing your password…</value>
+  </data>
+  <data name="Profile.ChangePassword.Done" xml:space="preserve">
+    <value>Your password has been changed.</value>
+  </data>
+  <data name="Profile.ChangePassword.DonePasskeyForgotten" xml:space="preserve">
+    <value>Your password has been changed. Sign in with it once on this device to use your passkey again.</value>
+  </data>
+  <data name="Login.ForgotPassword" xml:space="preserve">
+    <value>Forgot your password?</value>
+  </data>
+  <data name="ForgotPassword.PageTitle" xml:space="preserve">
+    <value>Reset password - {0}</value>
+  </data>
+  <data name="ForgotPassword.Title" xml:space="preserve">
+    <value>Reset your password</value>
+  </data>
+  <data name="ForgotPassword.Request.Intro" xml:space="preserve">
+    <value>Enter your email address and we will send you a code to reset your password.</value>
+  </data>
+  <data name="ForgotPassword.Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="ForgotPassword.SendCode" xml:space="preserve">
+    <value>Send code</value>
+  </data>
+  <data name="ForgotPassword.Sending" xml:space="preserve">
+    <value>Sending…</value>
+  </data>
+  <data name="ForgotPassword.Reset.Intro" xml:space="preserve">
+    <value>If {0} has an account, we have sent it a code. Enter the code and your new password.</value>
+  </data>
+  <data name="ForgotPassword.Code" xml:space="preserve">
+    <value>Code</value>
+  </data>
+  <data name="ForgotPassword.NewPassword" xml:space="preserve">
+    <value>New password</value>
+  </data>
+  <data name="ForgotPassword.Confirm" xml:space="preserve">
+    <value>Confirm new password</value>
+  </data>
+  <data name="ForgotPassword.Submit" xml:space="preserve">
+    <value>Reset password</value>
+  </data>
+  <data name="ForgotPassword.Resetting" xml:space="preserve">
+    <value>Resetting…</value>
+  </data>
+  <data name="ForgotPassword.ResendCode" xml:space="preserve">
+    <value>Send a new code</value>
+  </data>
+  <data name="ForgotPassword.Done" xml:space="preserve">
+    <value>Your password has been reset. Sign in with your new password.</value>
+  </data>
+  <data name="ForgotPassword.BackToSignIn" xml:space="preserve">
+    <value>Back to sign in</value>
+  </data>
+  <data name="Settings.Language.Title" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings.Language.Text" xml:space="preserve">
+    <value>The language the app is shown in. Changing it reloads the app.</value>
+  </data>
+  <data name="Settings.Language.Label" xml:space="preserve">
+    <value>Language</value>
+  </data>
 </root>

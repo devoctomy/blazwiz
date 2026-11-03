@@ -476,7 +476,7 @@ the riskiest phase. Doing it before splitting projects keeps the diff readable.
   `test-template.ps1`.
   - [x] `--Sync` and `--Notes`, tested in `test-template.ps1`.
   - [x] `--Encryption`: not offered. Whether to sync without E2E is the app developer's choice, not supported yet
-    (decided 2026-11-03); see "Syncing without end to end encryption" in `docs/backlog/v1-feature-ideas.md`. The
+    (decided 2026-11-03); see `docs/backlog/sync-without-encryption.md`. The
     template docs say why.
 - [x] Exit check: no mention of notes in `src/` (section 5).
 - [x] Exit check: the pseudo-localisation Playwright run finds no hard-coded visible text. Each package ships its
@@ -489,13 +489,22 @@ the riskiest phase. Doing it before splitting projects keeps the diff readable.
     that. Not covered yet: the end to end encryption settings (only shown when signed in with Cognito) and dialogs.
 
 ### Phase 3: missing user features
-- [ ] U14: change password (Profile page), forgot password and confirm code (login page), using
-  `Amazon.Extensions.CognitoAuthentication`.
-- [ ] Placeholder (local) auth gets matching no-op implementations, so local development still works.
-- [ ] UI tests for each flow, with the Cognito parts covered by the existing `@aws` integration tests.
-- [ ] Optional, same pattern: MFA (TOTP), self sign-up toggle.
-- [ ] Language option in Settings and culture applied at startup (section 4, "Text and localisation", point 6). Add a
-  second culture to the template's test app to prove it end to end.
+- [x] U14: change password (Profile page), forgot password and confirm code (login page), using
+  `Amazon.Extensions.CognitoAuthentication`. `IPasswordService` (Auth), `CognitoPasswordService` (Auth.Cognito), the
+  `ChangePasswordForm` on the Profile page, and the `/forgot-password` framework page (`BlazwizPages.ForgotPassword`),
+  linked from the sign-in page. A remembered password is encrypted again after a change, or forgotten.
+- [x] Placeholder (local) auth gets matching no-op implementations, so local development still works
+  (`LocalPasswordService`: checks what was filled in, then accepts anything).
+- [x] UI tests for each flow (`PasswordTests`, against the placeholder sign in). The Cognito calls are covered by unit
+  tests of `CognitoUserPoolClient` and `CognitoPasswordService`; there are no `@aws` Cognito scenarios yet (the existing
+  ones are for S3 sync), so the real user pool is only exercised by `test-auth.ps1` and by hand.
+- [ ] Optional, same pattern: MFA (TOTP), self sign-up toggle. Not done in Phase 3; the library supports TOTP
+  (`AssociateSoftwareTokenAsync`, `VerifySoftwareTokenAsync`). Both are backlog items,
+  `docs/backlog/mfa-totp.md` and `docs/backlog/self-sign-up.md`, to ship with the AWS base stack (U15), since both need user pool changes.
+- [x] Language option in Settings and culture applied at startup (section 4, "Text and localisation", point 6). Add a
+  second culture to the template's test app to prove it end to end. `ICultureService`, the Language section in
+  Settings, and `Text:SupportedCultures` in configuration; `LanguageTests` turns on a second culture through the
+  settings file (the template itself stays single-language) and checks the reload applies it.
 
 ### Phase 4: release process and infrastructure
 - [ ] CI: build, test, pack and validate on pull requests. Publish every package and the template package to

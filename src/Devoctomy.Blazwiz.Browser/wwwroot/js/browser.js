@@ -4,6 +4,10 @@ export function setTheme(theme) {
     document.documentElement.setAttribute('data-bs-theme', theme);
 }
 
+export function setLanguage(language) {
+    document.documentElement.setAttribute('lang', language);
+}
+
 export function getPreferredTheme() {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }

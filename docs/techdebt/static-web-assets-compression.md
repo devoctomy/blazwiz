@@ -16,6 +16,19 @@ It has only been seen in Release builds made by `dotnet run` (the UI tests start
 builds of the same output in other ways (single-threaded `-m:1` builds, Debug builds of the solution). Clean builds,
 no-change rebuilds and incremental rebuilds after a source change did not reproduce it when tried on their own.
 
+Seen again 2026-11-03 (Phase 3), on `Devoctomy.Blazwiz.UI.Sync.lib.module.js`: the UI tests' `dotnet run -c Release`
+failed, and straight afterwards `dotnet build template/MyApp.Portal -c Release` on the same `obj` folders succeeded,
+without cleaning. So the stale state is not permanent, and the failure is tied to the build `dotnet run` does (the
+UI tests start the portal that way, with `ASPNETCORE_ENVIRONMENT=Development` and `--no-launch-profile`).
+
+**Cause found** (same day): MSBuild node reuse. The UI tests run `dotnet test`, which builds the test project and
+leaves its MSBuild worker processes running; the portal's `dotnet run` then builds in those reused processes, and
+the static web assets tasks fail. Confirmed by switching it on and off: with `MSBUILDDISABLENODEREUSE=1` the same
+runs pass, without it they fail, each time. Running `dotnet run` or `dotnet build` on their own works.
+
+**Fix:** `TestBase` starts the portal with `MSBUILDDISABLENODEREUSE=1`. Release pipelines build once in fresh
+processes, so they are not affected.
+
 ## Known reports (searched 2026-11-03)
 
 No report matches exactly (`ApplyCompressionNegotiation`, duplicate key on a Razor class library's JS initializer,
@@ -37,7 +50,7 @@ SDK 10.0.401). The closest are the same family of static web assets failures, al
 So the likely cause is the SDK's cached static web assets state (`obj/**/*.dswa.cache.json`, `staticwebassets.*.json`)
 going stale between builds made in different ways, which matches only interleaved builds failing here.
 
-## Workaround
+## Workaround (before the fix)
 
 Delete `src/*/obj/Release`, `src/*/bin/Release`, `template/*/obj/Release` and `template/*/bin/Release`, then build
 again. The UI tests report it as "Portal process exited early"; the cause is in
@@ -45,8 +58,8 @@ again. The UI tests report it as "Portal process exited early"; the cause is in
 
 ## To do
 
-- When it happens again, keep the `obj/Release` folders and capture a binary log (`dotnet build -bl`) before cleaning,
-  so the duplicate input can be traced (what the maintainers ask for in the reports above).
+- Reproduce it outside our tests (a test project's build followed by an app's `dotnet run` reusing its nodes), and
+  report it to dotnet/sdk if it reproduces on a minimal project.
 - Find a reliable reproduction (SDK 10.0.401), and check whether apps building against the packages (rather than the
   packages' source) can hit it.
 - If it is an SDK bug with JS initializers in Razor class libraries, report it to dotnet/sdk with the reproduction.

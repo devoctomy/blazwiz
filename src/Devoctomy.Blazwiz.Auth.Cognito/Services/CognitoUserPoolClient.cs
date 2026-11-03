@@ -10,7 +10,8 @@ namespace Devoctomy.Blazwiz.Auth.Cognito.Services;
 
 /// <summary>
 /// <see cref="ICognitoUserPoolClient"/> using AWS's Amazon.Extensions.CognitoAuthentication library for
-/// SRP sign-in, the new password challenge and token refresh. Only translates to and from the library's types.
+/// SRP sign-in, the new password challenge, token refresh and password changes and resets. Only translates to and
+/// from the library's types.
 /// </summary>
 public class CognitoUserPoolClient : ICognitoUserPoolClient
 {
@@ -98,6 +99,38 @@ public class CognitoUserPoolClient : ICognitoUserPoolClient
                 Token = refreshToken,
             });
 
+            return true;
+        });
+    }
+
+    /// <inheritdoc/>
+    public Task ChangePasswordAsync(string username, string idToken, string accessToken, DateTimeOffset expiresAt, string currentPassword, string newPassword)
+    {
+        return CallAsync(async () =>
+        {
+            var user = CreateUser(username);
+            user.SessionTokens = new CognitoUserSession(idToken, accessToken, null, DateTime.UtcNow, expiresAt.UtcDateTime);
+            await user.ChangePasswordAsync(currentPassword, newPassword);
+            return true;
+        });
+    }
+
+    /// <inheritdoc/>
+    public Task ForgotPasswordAsync(string username)
+    {
+        return CallAsync(async () =>
+        {
+            await CreateUser(username).ForgotPasswordAsync();
+            return true;
+        });
+    }
+
+    /// <inheritdoc/>
+    public Task ConfirmForgotPasswordAsync(string username, string code, string newPassword)
+    {
+        return CallAsync(async () =>
+        {
+            await CreateUser(username).ConfirmForgotPasswordAsync(code, newPassword);
             return true;
         });
     }

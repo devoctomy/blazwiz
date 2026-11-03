@@ -1,6 +1,6 @@
 #nullable enable
-const Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/browser.js" -> string!
 Devoctomy.Blazwiz.Browser.Extensions.BrowserServiceCollectionExtensions
+static Devoctomy.Blazwiz.Browser.Extensions.BrowserServiceCollectionExtensions.AddBlazwizBrowser(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult
 Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult.Error.get -> string?
 Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult.Error.set -> void
@@ -33,10 +33,13 @@ Devoctomy.Blazwiz.Browser.Services.BrowserInteropService
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.BrowserInteropService(Microsoft.JSInterop.IJSRuntime! jsRuntime) -> void
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.FocusFirstInputAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.GetPreferredThemeAsync() -> System.Threading.Tasks.Task<string!>!
+const Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/browser.js" -> string!
+Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.SetDocumentLanguageAsync(string! language) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.SetThemeAsync(string! theme) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.FocusFirstInputAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.GetPreferredThemeAsync() -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.SetDocumentLanguageAsync(string! language) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.SetThemeAsync(string! theme) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService.GetItemAsync(string! key) -> System.Threading.Tasks.Task<string?>!
@@ -65,4 +68,3 @@ Devoctomy.Blazwiz.Browser.Services.WebAuthnService
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.AuthenticateAsync(string! credentialId) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult!>!
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.RegisterAsync(string! username, string? userId) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult!>!
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.WebAuthnService(Microsoft.JSInterop.IJSRuntime! jsRuntime, Devoctomy.Blazwiz.Cryptography.Interfaces.IPrfKeyDerivator! prfKeyDerivator) -> void
-static Devoctomy.Blazwiz.Browser.Extensions.BrowserServiceCollectionExtensions.AddBlazwizBrowser(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

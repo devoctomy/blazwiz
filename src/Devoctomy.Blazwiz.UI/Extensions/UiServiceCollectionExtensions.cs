@@ -33,6 +33,11 @@ public static class UiServiceCollectionExtensions
     public const string PseudoLocalizationSetting = "Text:PseudoLocalization";
 
     /// <summary>
+    /// The setting listing the languages the app offers, e.g. <c>["en-GB", "fr-FR"]</c>; the first is the default.
+    /// </summary>
+    public const string SupportedCulturesSetting = "Text:SupportedCultures";
+
+    /// <summary>
     /// Adds the app shell and everything it uses (core, cryptography, browser and sign in). Needs
     /// <c>AddBlazwizApp</c> first. Add modules and replace or turn off pages afterwards.
     /// </summary>
@@ -61,6 +66,15 @@ public static class UiServiceCollectionExtensions
             services.AddBlazwizText(text => text.UsePseudoLocalization());
         }
 
+        // The languages the app offers (Text:SupportedCultures, e.g. ["en-GB", "fr-FR"]); the first is the default.
+        var cultures = configuration.GetSection(SupportedCulturesSetting).Get<string[]>();
+        if (cultures is { Length: > 0 })
+        {
+            services.AddBlazwizText(text => text.SupportedCultures(cultures));
+        }
+
+        services.TryAddScoped<ICultureService, CultureService>();
+
         services.TryAddScoped<IUserSettingsService, UserSettingsService>();
         services.TryAddScoped<IThemeService, ThemeService>();
         services.TryAddSingleton<IAppBuildInfo, AppBuildInfo>();
@@ -73,12 +87,14 @@ public static class UiServiceCollectionExtensions
         });
 
         services.ReplacePage<LoginView>(BlazwizPages.Login);
+        services.ReplacePage<ForgotPasswordView>(BlazwizPages.ForgotPassword);
         services.ReplacePage<ProfileView>(BlazwizPages.Profile);
         services.ReplacePage<SettingsView>(BlazwizPages.Settings);
 
         services.AddShellComponent<OfflineBanner>(ShellRegion.Banners, order: 0);
 
         services.AddSettingsSection<AppearanceSettingsSection>(SettingsOrder.Appearance);
+        services.AddSettingsSection<LanguageSettingsSection>(SettingsOrder.Language);
         services.AddSettingsSection<OfflineSettingsSection>(SettingsOrder.Offline);
         services.AddSettingsSection<AboutSettingsSection>(SettingsOrder.About);
 
@@ -104,6 +120,11 @@ public static class UiServiceCollectionExtensions
         /// The Appearance section (theme).
         /// </summary>
         public const int Appearance = 100;
+
+        /// <summary>
+        /// The Language section, shown when the app supports more than one language.
+        /// </summary>
+        public const int Language = 150;
 
         /// <summary>
         /// The Offline mode section.

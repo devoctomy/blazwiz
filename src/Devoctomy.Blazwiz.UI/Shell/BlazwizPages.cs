@@ -13,6 +13,12 @@ public static class BlazwizPages
     public const string Login = "login";
 
     /// <summary>
+    /// The page for resetting a forgotten password, <c>/forgot-password</c>. Turning it off also hides the link to it
+    /// on the sign-in page.
+    /// </summary>
+    public const string ForgotPassword = "forgot-password";
+
+    /// <summary>
     /// The signed-in user's profile, <c>/profile</c>.
     /// </summary>
     public const string Profile = "profile";

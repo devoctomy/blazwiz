@@ -1,4 +1,17 @@
 #nullable enable
+Devoctomy.Blazwiz.UI.Components.ChangePasswordForm
+~override Devoctomy.Blazwiz.UI.Components.ChangePasswordForm.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Components.ChangePasswordForm.ChangePasswordForm() -> void
+Devoctomy.Blazwiz.UI.Components.ErrorAlert
+~override Devoctomy.Blazwiz.UI.Components.ErrorAlert.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Components.ErrorAlert.ErrorAlert() -> void
+Devoctomy.Blazwiz.UI.Components.ErrorAlert.Id.get -> string!
+Devoctomy.Blazwiz.UI.Components.ErrorAlert.Id.set -> void
+Devoctomy.Blazwiz.UI.Components.ErrorAlert.Message.get -> string?
+Devoctomy.Blazwiz.UI.Components.ErrorAlert.Message.set -> void
+Devoctomy.Blazwiz.UI.Components.ForgotPasswordLink
+~override Devoctomy.Blazwiz.UI.Components.ForgotPasswordLink.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Components.ForgotPasswordLink.ForgotPasswordLink() -> void
 Devoctomy.Blazwiz.UI.Components.ModalDialog
 ~override Devoctomy.Blazwiz.UI.Components.ModalDialog.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 Devoctomy.Blazwiz.UI.Components.ModalDialog.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
@@ -43,6 +56,9 @@ Devoctomy.Blazwiz.UI.Components.Settings.AboutSettingsSection.AboutSettingsSecti
 Devoctomy.Blazwiz.UI.Components.Settings.AppearanceSettingsSection
 Devoctomy.Blazwiz.UI.Components.Settings.AppearanceSettingsSection.AppearanceSettingsSection() -> void
 ~override Devoctomy.Blazwiz.UI.Components.Settings.AppearanceSettingsSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Components.Settings.LanguageSettingsSection
+~override Devoctomy.Blazwiz.UI.Components.Settings.LanguageSettingsSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Components.Settings.LanguageSettingsSection.LanguageSettingsSection() -> void
 Devoctomy.Blazwiz.UI.Components.Settings.OfflineSettingsSection
 ~override Devoctomy.Blazwiz.UI.Components.Settings.OfflineSettingsSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 Devoctomy.Blazwiz.UI.Components.Settings.OfflineSettingsSection.OfflineSettingsSection() -> void
@@ -79,7 +95,9 @@ const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.PseudoLocali
 Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrder
 const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrder.About = 10000 -> int
 const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrder.Appearance = 100 -> int
+const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrder.Language = 150 -> int
 const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrder.Offline = 200 -> int
+const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SupportedCulturesSetting = "Text:SupportedCultures" -> string!
 Devoctomy.Blazwiz.UI.Layout.LoginLayout
 ~override Devoctomy.Blazwiz.UI.Layout.LoginLayout.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 Devoctomy.Blazwiz.UI.Layout.LoginLayout.LoginLayout() -> void
@@ -96,6 +114,16 @@ Devoctomy.Blazwiz.UI.Models.AppSettings.CopyrightMessage.get -> string!
 Devoctomy.Blazwiz.UI.Models.AppSettings.CopyrightMessage.set -> void
 Devoctomy.Blazwiz.UI.Models.AppSettings.EnablePortalLoginAuthn.get -> bool
 Devoctomy.Blazwiz.UI.Models.AppSettings.EnablePortalLoginAuthn.set -> void
+Devoctomy.Blazwiz.UI.Models.CultureOption
+Devoctomy.Blazwiz.UI.Models.CultureOption.CultureOption() -> void
+Devoctomy.Blazwiz.UI.Models.CultureOption.DisplayName.get -> string!
+Devoctomy.Blazwiz.UI.Models.CultureOption.DisplayName.set -> void
+Devoctomy.Blazwiz.UI.Models.CultureOption.Name.get -> string!
+Devoctomy.Blazwiz.UI.Models.CultureOption.Name.set -> void
+Devoctomy.Blazwiz.UI.Models.ForgotPasswordStep
+Devoctomy.Blazwiz.UI.Models.ForgotPasswordStep.Done = 2 -> Devoctomy.Blazwiz.UI.Models.ForgotPasswordStep
+Devoctomy.Blazwiz.UI.Models.ForgotPasswordStep.Request = 0 -> Devoctomy.Blazwiz.UI.Models.ForgotPasswordStep
+Devoctomy.Blazwiz.UI.Models.ForgotPasswordStep.Reset = 1 -> Devoctomy.Blazwiz.UI.Models.ForgotPasswordStep
 Devoctomy.Blazwiz.UI.Models.NavigationItem
 Devoctomy.Blazwiz.UI.Models.NavigationItem.Description.get -> string!
 Devoctomy.Blazwiz.UI.Models.NavigationItem.Description.set -> void
@@ -123,6 +151,9 @@ Devoctomy.Blazwiz.UI.Models.UserSettings.SidebarCollapsed.set -> void
 Devoctomy.Blazwiz.UI.Models.UserSettings.Theme.get -> string?
 Devoctomy.Blazwiz.UI.Models.UserSettings.Theme.set -> void
 Devoctomy.Blazwiz.UI.Models.UserSettings.UserSettings() -> void
+Devoctomy.Blazwiz.UI.Pages.ForgotPasswordPage
+~override Devoctomy.Blazwiz.UI.Pages.ForgotPasswordPage.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Pages.ForgotPasswordPage.ForgotPasswordPage() -> void
 Devoctomy.Blazwiz.UI.Pages.LoginPage
 ~override Devoctomy.Blazwiz.UI.Pages.LoginPage.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 Devoctomy.Blazwiz.UI.Pages.LoginPage.LoginPage() -> void
@@ -141,10 +172,22 @@ Devoctomy.Blazwiz.UI.Services.AppBuildInfo.AppBuildInfo(System.Reflection.Assemb
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.BuildTime.get -> string?
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.IsDebugBuild.get -> bool
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.Version.get -> string!
+Devoctomy.Blazwiz.UI.Services.CultureService
+Devoctomy.Blazwiz.UI.Services.CultureService.ApplySavedCultureAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Services.CultureService.ChangeCultureAsync(string! name) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Services.CultureService.CultureService(Devoctomy.Blazwiz.Core.Text.TextOptions! textOptions, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService! browserInteropService, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService) -> void
+Devoctomy.Blazwiz.UI.Services.CultureService.CurrentCulture.get -> System.Globalization.CultureInfo!
+const Devoctomy.Blazwiz.UI.Services.CultureService.StorageKey = "culture" -> string!
+Devoctomy.Blazwiz.UI.Services.CultureService.SupportedCultures.get -> System.Collections.Generic.IReadOnlyList<System.Globalization.CultureInfo!>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.BuildTime.get -> string?
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.IsDebugBuild.get -> bool
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.Version.get -> string!
+Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService
+Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService.ApplySavedCultureAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService.ChangeCultureAsync(string! name) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService.CurrentCulture.get -> System.Globalization.CultureInfo!
+Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService.SupportedCultures.get -> System.Collections.Generic.IReadOnlyList<System.Globalization.CultureInfo!>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.INavigationMenuService
 Devoctomy.Blazwiz.UI.Services.Interfaces.INavigationMenuService.GetMainItems() -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.NavigationItem!>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService
@@ -174,6 +217,7 @@ Devoctomy.Blazwiz.UI.Services.UserSettingsService.SaveSettingsAsync(Devoctomy.Bl
 const Devoctomy.Blazwiz.UI.Services.UserSettingsService.StorageKey = "user_settings" -> string!
 Devoctomy.Blazwiz.UI.Services.UserSettingsService.UserSettingsService(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService) -> void
 Devoctomy.Blazwiz.UI.Shell.BlazwizPages
+const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.ForgotPassword = "forgot-password" -> string!
 const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.Login = "login" -> string!
 const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.Profile = "profile" -> string!
 const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.Settings = "settings" -> string!
@@ -249,6 +293,42 @@ Devoctomy.Blazwiz.UI.ViewModels.AppearanceSettingsViewModel.AppearanceSettingsVi
 Devoctomy.Blazwiz.UI.ViewModels.AppearanceSettingsViewModel.CurrentTheme.get -> string!
 override Devoctomy.Blazwiz.UI.ViewModels.AppearanceSettingsViewModel.Dispose(bool disposing) -> void
 Devoctomy.Blazwiz.UI.ViewModels.AppearanceSettingsViewModel.SelectThemeAsync(string! theme) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.ChangePasswordAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.ChangePasswordViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordService! passwordService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService! passwordCryptoService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.ConfirmNewPassword.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.ConfirmNewPassword.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.CurrentPassword.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.CurrentPassword.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.ErrorMessage.get -> string?
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.IsBusy.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.NewPassword.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.NewPassword.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.SuccessMessage.get -> string?
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.AppSettings.get -> Devoctomy.Blazwiz.UI.Models.AppSettings!
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.BackToSignIn() -> void
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.Code.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.Code.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.ConfirmNewPassword.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.ConfirmNewPassword.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.Email.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.Email.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.ErrorMessage.get -> string?
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.ForgotPasswordViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordService! passwordService, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.UI.Models.AppSettings! appSettings) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.IsBusy.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.NewPassword.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.NewPassword.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.RequestCodeAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.ResetPasswordAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.StartAgain() -> void
+Devoctomy.Blazwiz.UI.ViewModels.ForgotPasswordViewModel.Step.get -> Devoctomy.Blazwiz.UI.Models.ForgotPasswordStep
+Devoctomy.Blazwiz.UI.ViewModels.LanguageSettingsViewModel
+Devoctomy.Blazwiz.UI.ViewModels.LanguageSettingsViewModel.ChangeAsync(string? name) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.LanguageSettingsViewModel.Current.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.LanguageSettingsViewModel.IsVisible.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.LanguageSettingsViewModel.LanguageSettingsViewModel(Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService! cultureService) -> void
+Devoctomy.Blazwiz.UI.ViewModels.LanguageSettingsViewModel.Options.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.CultureOption!>!
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.AppSettings.get -> Devoctomy.Blazwiz.UI.Models.AppSettings!
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.CancelNewPassword() -> void
@@ -351,6 +431,9 @@ Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.TickAsync() -> System.Thre
 Devoctomy.Blazwiz.UI.ViewModels.SettingsViewModel
 Devoctomy.Blazwiz.UI.ViewModels.SettingsViewModel.Sections.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
 Devoctomy.Blazwiz.UI.ViewModels.SettingsViewModel.SettingsViewModel(Devoctomy.Blazwiz.UI.Shell.Interfaces.ISettingsSectionRegistry! sectionRegistry) -> void
+Devoctomy.Blazwiz.UI.Views.ForgotPasswordView
+~override Devoctomy.Blazwiz.UI.Views.ForgotPasswordView.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Views.ForgotPasswordView.ForgotPasswordView() -> void
 Devoctomy.Blazwiz.UI.Views.LoginView
 ~override Devoctomy.Blazwiz.UI.Views.LoginView.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 Devoctomy.Blazwiz.UI.Views.LoginView.LoginView() -> void

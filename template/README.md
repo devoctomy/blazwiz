@@ -141,6 +141,26 @@ Put your services in `MyApp.Portal.Application/Services` (interface in `Services
 Add a matching test file in `MyApp.Portal.Application.UnitTests`.
 <!--#endif-->
 
+### Languages
+
+The framework's text is English. To offer more languages, list them in `wwwroot/appsettings.json` (the first is the
+default) and add their text as resources:
+
+```json
+"Text": { "SupportedCultures": [ "en-GB", "fr-FR" ] }
+```
+
+Settings then shows a Language choice, kept on the device; until the user picks one, the browser's language is used
+when the app has it. Translate the framework's text with a resource of your own, e.g. `Text/AppText.fr.resx` with the
+framework's keys (`Settings.Language.Title`, ...), added with `AddBlazwizText(text => text.AddOverrides<AppText>())`.
+Dates and numbers follow the language without any work.
+
+### Passwords
+
+Signed-in users change their password on the Profile page; the sign-in page links to resetting a forgotten one
+(`/forgot-password`, sent by email by Cognito). Replace or turn off that page like any framework page, e.g.
+`builder.Services.DisablePage(BlazwizPages.ForgotPassword)`, which also hides the link.
+
 ### Theming
 
 The app uses Bootstrap 5.3 colour modes (`data-bs-theme="light|dark"` on `<html>`). The framework's colours are CSS
