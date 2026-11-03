@@ -36,7 +36,7 @@ public class LanguageTests : TestBase
         // Assert
         await Expect(Page.Locator("html")).ToHaveAttributeAsync("lang", "fr-FR");
         await Expect(Page.Locator("#language-select")).ToHaveValueAsync("fr-FR");
-        await Page.GotoAsync($"{ServerUrl}/profile");
+        await GoToAsync("/profile");
         await Expect(Page.Locator("dd").Nth(1)).ToContainTextAsync("novembre");
         await ScreenshotAsync("French");
 

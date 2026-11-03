@@ -53,7 +53,7 @@ public class PseudoLocalizationTests : TestBase
     public async Task GivenPseudoLocalization_WhenResettingAForgottenPassword_ThenAllTextIsFromResources()
     {
         // Arrange
-        await Page.GotoAsync($"{ServerUrl}/forgot-password");
+        await GoToAsync("/forgot-password");
         await Expect(Page.Locator("#forgot-password-title")).ToContainTextAsync("[!!");
         await AssertNoHardCodedTextAsync("forgot password page");
 
@@ -78,7 +78,7 @@ public class PseudoLocalizationTests : TestBase
         await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("[!!");
         await AssertNoHardCodedTextAsync("settings page");
 
-        await Page.GotoAsync($"{ServerUrl}/profile");
+        await GoToAsync("/profile");
         await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("[!!");
         await AssertNoHardCodedTextAsync("profile page");
 //#if (IncludeSync)
