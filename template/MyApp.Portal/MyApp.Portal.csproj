@@ -3,6 +3,8 @@
     <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <!-- Formatting data (dates, numbers) for every culture, so the app can switch language at runtime. -->
+    <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
   </PropertyGroup>
   <!-- Release builds are stamped with when they were built (UTC), shown in Settings > About, so a deployed build can be
        told apart from the last one. Debug builds are not, so they still build incrementally. -->

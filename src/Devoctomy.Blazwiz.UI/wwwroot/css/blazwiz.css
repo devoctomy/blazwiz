@@ -919,3 +919,10 @@ code {
 .loading-progress-text:after {
     content: var(--blazor-load-percentage-text, "Loading");
 }
+
+/* ---------- Profile: change password ---------- */
+
+#change-password form,
+.language-select {
+    max-width: 28rem;
+}

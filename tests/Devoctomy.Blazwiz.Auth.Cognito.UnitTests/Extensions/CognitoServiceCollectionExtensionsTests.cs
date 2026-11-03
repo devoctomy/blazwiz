@@ -36,6 +36,7 @@ public class CognitoServiceCollectionExtensionsTests
         await using var provider = services.BuildValidated();
         await using var scope = provider.CreateAsyncScope();
         Assert.IsType<CognitoAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
+        Assert.IsType<CognitoPasswordService>(scope.ServiceProvider.GetRequiredService<IPasswordService>());
         Assert.IsType<CognitoUserPoolClient>(scope.ServiceProvider.GetRequiredService<ICognitoUserPoolClient>());
         Assert.IsType<CognitoIdentityClient>(scope.ServiceProvider.GetRequiredService<ICognitoIdentityClient>());
         Assert.IsType<CognitoAwsCredentialsProvider>(scope.ServiceProvider.GetRequiredService<IAwsCredentialsProvider>());
@@ -55,7 +56,9 @@ public class CognitoServiceCollectionExtensionsTests
         await using var provider = services.BuildValidated();
         await using var scope = provider.CreateAsyncScope();
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
+        Assert.IsType<LocalPasswordService>(scope.ServiceProvider.GetRequiredService<IPasswordService>());
         Assert.Single(services, d => d.ServiceType == typeof(IAuthenticationService));
+        Assert.Single(services, d => d.ServiceType == typeof(IPasswordService));
     }
 
     [Fact]

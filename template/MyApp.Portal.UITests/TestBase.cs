@@ -66,6 +66,10 @@ public class TestBase : PageTest
         Directory.CreateDirectory(ResultsDirectory);
         serverLog = new StreamWriter(Path.Combine(ResultsDirectory, "portal.log"), append: false) { AutoFlush = true };
         serverProcess.StartInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
+
+        // Build the portal in fresh MSBuild processes. Reusing the ones left by building the tests intermittently fails
+        // the static web assets compression step ("An item with the same key has already been added").
+        serverProcess.StartInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
         serverProcess.OutputDataReceived += (_, e) => WriteServerLog(e.Data);
         serverProcess.ErrorDataReceived += (_, e) => WriteServerLog(e.Data);
         serverProcess.Start();

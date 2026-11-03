@@ -300,6 +300,76 @@ public class CognitoUserPoolClientTests
             });
     }
 
+    [Fact]
+    public async Task GivenSignedInUser_WhenChangePasswordAsync_ThenCognitoChangesItWithTheAccessToken()
+    {
+        // Arrange
+        mockProvider
+            .Setup(x => x.ChangePasswordAsync(It.IsAny<ChangePasswordRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChangePasswordResponse { ResponseMetadata = new ResponseMetadata() });
+        var sut = CreateSut();
+
+        // Act
+        await sut.ChangePasswordAsync("bob@example.com", "id", "access", DateTimeOffset.UtcNow.AddMinutes(30), "old-pass", "new-pass");
+
+        // Assert
+        mockProvider.Verify(
+            x => x.ChangePasswordAsync(It.Is<ChangePasswordRequest>(r => r.AccessToken == "access" && r.PreviousPassword == "old-pass" && r.ProposedPassword == "new-pass"), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenWrongCurrentPassword_WhenChangePasswordAsync_ThenThrowsCognitoException()
+    {
+        // Arrange
+        mockProvider
+            .Setup(x => x.ChangePasswordAsync(It.IsAny<ChangePasswordRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotAuthorizedException("Incorrect username or password.") { ErrorCode = "NotAuthorizedException" });
+        var sut = CreateSut();
+
+        // Act
+        var exception = await Assert.ThrowsAsync<CognitoException>(() => sut.ChangePasswordAsync("bob@example.com", "id", "access", DateTimeOffset.UtcNow.AddMinutes(30), "wrong", "new-pass"));
+
+        // Assert
+        Assert.Equal("NotAuthorizedException", exception.ErrorType);
+    }
+
+    [Fact]
+    public async Task GivenUsername_WhenForgotPasswordAsync_ThenCognitoSendsACode()
+    {
+        // Arrange
+        mockProvider
+            .Setup(x => x.ForgotPasswordAsync(It.IsAny<ForgotPasswordRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ForgotPasswordResponse { ResponseMetadata = new ResponseMetadata() });
+        var sut = CreateSut();
+
+        // Act
+        await sut.ForgotPasswordAsync("bob@example.com");
+
+        // Assert
+        mockProvider.Verify(
+            x => x.ForgotPasswordAsync(It.Is<ForgotPasswordRequest>(r => r.Username == "bob@example.com" && r.ClientId == "client-123"), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenCode_WhenConfirmForgotPasswordAsync_ThenCognitoSetsTheNewPassword()
+    {
+        // Arrange
+        mockProvider
+            .Setup(x => x.ConfirmForgotPasswordAsync(It.IsAny<ConfirmForgotPasswordRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ConfirmForgotPasswordResponse { ResponseMetadata = new ResponseMetadata() });
+        var sut = CreateSut();
+
+        // Act
+        await sut.ConfirmForgotPasswordAsync("bob@example.com", "123456", "new-pass");
+
+        // Assert
+        mockProvider.Verify(
+            x => x.ConfirmForgotPasswordAsync(It.Is<ConfirmForgotPasswordRequest>(r => r.Username == "bob@example.com" && r.ConfirmationCode == "123456" && r.Password == "new-pass" && r.ClientId == "client-123"), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
     private void SetupNewPasswordRequiredChallenge()
     {
         mockProvider

@@ -46,4 +46,32 @@ public interface ICognitoUserPoolClient
     /// <exception cref="Exceptions.CognitoException">Cognito rejected the request.</exception>
     /// <exception cref="HttpRequestException">Cognito could not be reached.</exception>
     Task RevokeAsync(string refreshToken);
+
+    /// <summary>
+    /// Changes a signed-in user's password.
+    /// </summary>
+    /// <param name="username">The user's username.</param>
+    /// <param name="idToken">The session's ID token.</param>
+    /// <param name="accessToken">The session's access token.</param>
+    /// <param name="expiresAt">When the tokens expire.</param>
+    /// <param name="currentPassword">The current password.</param>
+    /// <param name="newPassword">The new password.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task ChangePasswordAsync(string username, string idToken, string accessToken, DateTimeOffset expiresAt, string currentPassword, string newPassword);
+
+    /// <summary>
+    /// Sends the user a verification code for resetting their password.
+    /// </summary>
+    /// <param name="username">The user's username.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task ForgotPasswordAsync(string username);
+
+    /// <summary>
+    /// Sets a new password with the verification code sent by <see cref="ForgotPasswordAsync"/>.
+    /// </summary>
+    /// <param name="username">The user's username.</param>
+    /// <param name="code">The verification code.</param>
+    /// <param name="newPassword">The new password.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task ConfirmForgotPasswordAsync(string username, string code, string newPassword);
 }

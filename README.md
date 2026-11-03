@@ -75,8 +75,8 @@ dotnet pack templatepack -c Release # the template package
 There is no option to sync without end to end encryption (yet). Whether an app may do that will be the app
 developer's choice, never its users', and it is not supported until it can be done with clear warnings: without
 encryption, files sit in S3 as plain text that anyone who can read the bucket (the AWS account's operators, leaked
-credentials, backups and old versions) can read, with access control as the only protection. See "Syncing without end
-to end encryption" in `docs/backlog/v1-feature-ideas.md`.
+credentials, backups and old versions) can read, with access control as the only protection. See
+`docs/backlog/sync-without-encryption.md`.
 
 In the template the app is called `MyApp`: `MyApp` in projects, namespaces and identifiers, `myapp` for AWS names and
 browser storage keys, `MYAPP_` for environment variables. Optional content uses comment markers

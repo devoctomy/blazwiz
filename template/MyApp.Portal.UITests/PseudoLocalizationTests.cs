@@ -50,6 +50,23 @@ public class PseudoLocalizationTests : TestBase
     }
 
     [TestMethod]
+    public async Task GivenPseudoLocalization_WhenResettingAForgottenPassword_ThenAllTextIsFromResources()
+    {
+        // Arrange
+        await Page.GotoAsync($"{ServerUrl}/forgot-password");
+        await Expect(Page.Locator("#forgot-password-title")).ToContainTextAsync("[!!");
+        await AssertNoHardCodedTextAsync("forgot password page");
+
+        // Act
+        await Page.Locator("#reset-email").FillAsync(Username);
+        await Page.Locator("#send-code-button").ClickAsync();
+
+        // Assert
+        await Expect(Page.Locator("#reset-intro")).ToBeVisibleAsync();
+        await AssertNoHardCodedTextAsync("reset password form");
+    }
+
+    [TestMethod]
     public async Task GivenPseudoLocalization_WhenOpeningEachFrameworkPage_ThenAllTextIsFromResources()
     {
         // Arrange

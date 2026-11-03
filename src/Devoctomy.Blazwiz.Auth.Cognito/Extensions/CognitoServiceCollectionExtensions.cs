@@ -69,11 +69,16 @@ public static class CognitoServiceCollectionExtensions
         services.TryAddScoped<IAwsCredentialsProvider, CognitoAwsCredentialsProvider>();
         services.AddSessionLifecycleHandler<AwsCredentialsSessionHandler>();
 
-        // Cognito when a user pool is configured (deployed), otherwise the placeholder sign in (local development).
+        // Cognito when a user pool is configured (deployed), otherwise the placeholder sign in and password changes
+        // (local development).
         services.Replace(ServiceDescriptor.Scoped<IAuthenticationService>(sp =>
             CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
                 ? ActivatorUtilities.CreateInstance<CognitoAuthenticationService>(sp)
                 : ActivatorUtilities.CreateInstance<LocalAuthenticationService>(sp)));
+        services.Replace(ServiceDescriptor.Scoped<IPasswordService>(sp =>
+            CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
+                ? ActivatorUtilities.CreateInstance<CognitoPasswordService>(sp)
+                : ActivatorUtilities.CreateInstance<LocalPasswordService>(sp)));
         return services;
     }
 

@@ -40,6 +40,7 @@ public static class AuthServiceCollectionExtensions
         services.TryAddSingleton<IUserDisplayService, UserDisplayService>();
         services.TryAddScoped<IOfflineSessionStore, InMemoryOfflineSessionStore>();
         services.TryAddScoped<IAuthenticationService, LocalAuthenticationService>();
+        services.TryAddScoped<IPasswordService, LocalPasswordService>();
         services.TryAddScoped<ISessionLifecycle, SessionLifecycle>();
 
         // Keys derived from the WebAuthn PRF output, kept in memory; features get them from IDerivedKeyStore by name.

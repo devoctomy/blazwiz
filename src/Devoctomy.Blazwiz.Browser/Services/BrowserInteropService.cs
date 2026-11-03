@@ -33,6 +33,13 @@ public sealed class BrowserInteropService(IJSRuntime jsRuntime)
     }
 
     /// <inheritdoc/>
+    public async Task SetDocumentLanguageAsync(string language)
+    {
+        var js = await GetModuleAsync();
+        await js.InvokeVoidAsync("setLanguage", language);
+    }
+
+    /// <inheritdoc/>
     public async Task FocusFirstInputAsync(ElementReference element)
     {
         var js = await GetModuleAsync();

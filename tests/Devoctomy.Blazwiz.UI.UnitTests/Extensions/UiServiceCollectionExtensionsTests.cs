@@ -49,6 +49,11 @@ public class UiServiceCollectionExtensionsTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<MainLayoutViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<LoginViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SettingsViewModel>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ChangePasswordViewModel>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ForgotPasswordViewModel>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<LanguageSettingsViewModel>());
+        Assert.IsType<CultureService>(scope.ServiceProvider.GetRequiredService<ICultureService>());
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<ICultureService>().SupportedCultures);
     }
 
     [Fact]
@@ -64,9 +69,32 @@ public class UiServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
         var pages = provider.GetRequiredService<IPageRegistry>();
         Assert.Equal(typeof(LoginView), pages.GetComponent(BlazwizPages.Login));
+        Assert.Equal(typeof(ForgotPasswordView), pages.GetComponent(BlazwizPages.ForgotPassword));
         Assert.Equal(typeof(ProfileView), pages.GetComponent(BlazwizPages.Profile));
         Assert.Equal(typeof(SettingsView), pages.GetComponent(BlazwizPages.Settings));
         Assert.Contains(provider.GetServices<NavigationItem>(), i => i.PageKey == BlazwizPages.Settings);
+    }
+
+    [Fact]
+    public void GivenSupportedCulturesInConfiguration_WhenAddBlazwizUi_ThenTheAppOffersThem()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Text:SupportedCultures:0"] = "en-GB",
+                ["Text:SupportedCultures:1"] = "fr-FR",
+            })
+            .Build();
+        var services = TestServices.Create();
+
+        // Act
+        services.AddBlazwizUi(configuration);
+
+        // Assert
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        Assert.Equal(["en-GB", "fr-FR"], scope.ServiceProvider.GetRequiredService<ICultureService>().SupportedCultures.Select(c => c.Name));
     }
 
     [Fact]

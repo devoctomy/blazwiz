@@ -54,6 +54,19 @@ public class BrowserInteropServiceTests
     }
 
     [Fact]
+    public async Task GivenLanguage_WhenSetDocumentLanguageAsync_ThenModuleSetsIt()
+    {
+        // Arrange
+        var sut = new BrowserInteropService(mockJs.Object);
+
+        // Act
+        await sut.SetDocumentLanguageAsync("fr-FR");
+
+        // Assert
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("setLanguage", It.Is<object?[]>(a => (string?)a[0] == "fr-FR")), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenElement_WhenFocusFirstInputAsync_ThenModuleFocusesIt()
     {
         // Arrange

@@ -21,6 +21,13 @@ public interface IBrowserInteropService
     Task<string> GetPreferredThemeAsync();
 
     /// <summary>
+    /// Sets the document's language (<c>lang</c> on <c>&lt;html&gt;</c>), e.g. <c>fr-FR</c>.
+    /// </summary>
+    /// <param name="language">The language tag.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task SetDocumentLanguageAsync(string language);
+
+    /// <summary>
     /// Focuses (and selects the text of) the first input in an element, or its first button if it has no inputs.
     /// </summary>
     /// <param name="element">The element, e.g. a dialog.</param>
