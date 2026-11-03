@@ -19,13 +19,15 @@
     <NoDefaultExcludes>true</NoDefaultExcludes>
     <!-- Template content is not a library, so the lib/ folder warnings do not apply. -->
     <NoWarn>$(NoWarn);NU5128;NU5110;NU5111</NoWarn>
-    <TemplateRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\template'))</TemplateRoot>
+    <TemplateRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../template'))</TemplateRoot>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="$(TemplateRoot)\**\*"
-          Exclude="$(TemplateRoot)\.vs\**;$(TemplateRoot)\.idea\**;$(TemplateRoot)\**\bin\**;$(TemplateRoot)\**\obj\**;$(TemplateRoot)\**\TestResults\**;$(TemplateRoot)\**\*.user;$(TemplateRoot)\publish\**;$(TemplateRoot)\**\appsettings.Production.json"
+    <!-- Forward slashes: with backslashes, a pack on Linux gives every file a path starting content/blazwiz//, which
+         dotnet new then creates from the root of the file system. -->
+    <None Include="$(TemplateRoot)/**/*"
+          Exclude="$(TemplateRoot)/.vs/**;$(TemplateRoot)/.idea/**;$(TemplateRoot)/**/bin/**;$(TemplateRoot)/**/obj/**;$(TemplateRoot)/**/TestResults/**;$(TemplateRoot)/**/*.user;$(TemplateRoot)/publish/**;$(TemplateRoot)/**/appsettings.Production.json"
           Pack="true"
-          PackagePath="content\blazwiz\" />
+          PackagePath="content/blazwiz/" />
   </ItemGroup>
 </Project>
