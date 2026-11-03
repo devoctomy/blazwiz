@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Test helpers for blazwiz apps: the framework's real text resources, and checks that an app's text overrides still match the framework.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Core\Devoctomy.Blazwiz.Core.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.UI\Devoctomy.Blazwiz.UI.csproj" />
+  </ItemGroup>
+</Project>

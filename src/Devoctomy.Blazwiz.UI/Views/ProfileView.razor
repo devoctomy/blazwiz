@@ -1,0 +1,30 @@
+@using Devoctomy.Blazwiz.UI.Components
+@using Devoctomy.Blazwiz.UI.Text
+@using Devoctomy.Blazwiz.UI.ViewModels
+@inherits MvvmComponentBase<ProfileViewModel>
+@inject IStringLocalizer<UiText> Text
+
+<PageHeader Title="@Text["Profile.Title"]" Icon="bi-person-circle" Subtitle="@Text["Profile.Subtitle"]" />
+
+@if (ViewModel.User != null)
+{
+    <div class="panel profile-panel">
+        <span class="avatar avatar-lg">@ViewModel.Initials</span>
+        <div>
+            <h2 class="profile-name" id="profile-name">@ViewModel.User.DisplayName</h2>
+            <p class="profile-sub">@ViewModel.User.Username</p>
+        </div>
+    </div>
+
+    <div class="panel mt-4">
+        <h2 class="panel-title">@Text["Profile.Session"]</h2>
+        <dl class="detail-list">
+            <dt>@Text["Profile.Email"]</dt>
+            <dd>@(ViewModel.User.Email ?? Text["Profile.EmailNotSet"])</dd>
+            <dt>@Text["Profile.SignedIn"]</dt>
+            <dd>@ViewModel.User.SignedInAt.ToLocalTime().ToString("f")</dd>
+            <dt>@Text["Profile.Expires"]</dt>
+            <dd>@ViewModel.User.ExpiresAt.ToLocalTime().ToString("f")</dd>
+        </dl>
+    </div>
+}

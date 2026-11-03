@@ -1,9 +1,0 @@
-@inherits MvvmComponentBase<SettingsViewModel>
-@inject IStringLocalizer<UiText> Text
-
-<PageHeader Title="@Text["Settings.Title"]" Icon="bi-gear" Subtitle="@Text["Settings.Subtitle"]" />
-
-@foreach (var section in ViewModel.Sections)
-{
-    <DynamicComponent Type="section" />
-}

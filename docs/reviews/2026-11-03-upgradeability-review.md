@@ -251,18 +251,36 @@ All packages are versioned together, so the app has one version number to bump (
 
 | Package | Kind | Contains (moved from) | Depends on |
 |---|---|---|---|
-| `Devoctomy.Blazwiz.Core` | class lib | Options (`BlazwizAppOptions`), clock, offline mode, storage key builder, data migration contract, session lifecycle contract, text infrastructure (override-aware localiser factory, plural rules, error codes) (Core: `Time`, `Offline`) | — |
-| `Devoctomy.Blazwiz.Cryptography` | class lib | AEAD, Argon2id, HKDF, key wrap, PRF key derivation (Core: `Cryptography`) | Core, BouncyCastle |
-| `Devoctomy.Blazwiz.Browser` | RCL | Local storage, theme interop, WebAuthn bridge plus simplewebauthn, network status, web locks, broadcast channel, storage durability, app-update banner. All ES modules. (Portal `Services/*`, `wwwroot/js/*`; Core `Connectivity`, `Storage`) | Core |
-| `Devoctomy.Blazwiz.Auth` | class lib | `IAuthenticationService`, sessions, saved users, remember-me, passkey quick login, offline sign-in, placeholder (local) provider, password-change contracts | Core, Cryptography, Browser |
-| `Devoctomy.Blazwiz.Auth.Cognito` | class lib | User pool and identity pool clients, `CognitoAuthenticationService`, AWS credentials provider, `BrowserHttpClientFactory`, change and forgot password | Auth, AWS SDK |
-| `Devoctomy.Blazwiz.Sync` | RCL | Engine, planner, scheduler, IndexedDB, OPFS and folder stores, JS modules (Core: `Sync` minus S3) | Core, Browser |
-| `Devoctomy.Blazwiz.Sync.S3` | class lib | S3 remote store, reachability probe, Cognito S3 target provider | Sync, Auth.Cognito, AWSSDK.S3 |
-| `Devoctomy.Blazwiz.Encryption` | class lib | E2E key manager, key ring, file format, sync encryption, Secrets Manager key store (Core: `Encryption`, `Sync/Encryption`) | Sync, Cryptography |
-| `Devoctomy.Blazwiz.UI` | RCL | `BlazwizShell`, `BlazwizRouter`, theme CSS, `ModalDialog`, `PageHeader`, `SessionTimer`, `OfflineBanner`, Login, Profile and Settings pages, `ChangePasswordForm`, the registries (U3, U5), and their view models | Auth, Browser |
-| `Devoctomy.Blazwiz.UI.Sync` | RCL | Sync page, sync pill and popover, folder banner, storage settings section, E2E banner and settings, Argon2id panel, and their view models | UI, Sync, Encryption |
-| `Devoctomy.Blazwiz.Testing` | class lib | Playwright `TestBase`, fakes (`FakeSyncRemoteStore`, key stores), helpers for app tests | — |
+| `Devoctomy.Blazwiz.Core` | class lib | App identity (`AddBlazwizApp`, `BlazwizAppOptions`), storage key builder, offline mode, text infrastructure (override-aware localiser factory, plural rules), `BlazwizException` and error codes | — |
+| `Devoctomy.Blazwiz.Cryptography` | class lib | AEAD, Argon2id, HKDF, key wrap, PRF key derivation (`AddBlazwizCryptography`, `AddBlazwizPrfKeyDerivation`) | Core, BouncyCastle |
+| `Devoctomy.Blazwiz.Encryption` | class lib | E2E key management: key manager, key ring, file format, the user keys store contract (`AddBlazwizE2eEncryption`) | Core, Cryptography |
+| `Devoctomy.Blazwiz.Browser` | RCL | Local storage, theme and focus interop (`js/browser.js`), WebAuthn bridge plus simplewebauthn (loaded by its JS initializer) (`AddBlazwizBrowser`) | Core, Cryptography |
+| `Devoctomy.Blazwiz.Auth` | class lib | `IAuthenticationService`, sessions and their lifecycle (`ISessionLifecycleHandler`), remember-me, offline sign-in, placeholder (local) provider (`AddBlazwizAuth`, `AddSessionLifecycleHandler`) | Core, Cryptography, Browser |
+| `Devoctomy.Blazwiz.Auth.Cognito` | class lib | User pool and identity pool clients, `CognitoAuthenticationService`, AWS credentials provider, `BrowserHttpClientFactory`; binds `AwsCognito` (`AddBlazwizCognito`) | Auth, AWS SDK |
+| `Devoctomy.Blazwiz.Sync` | RCL | Engine, planner, scheduler, IndexedDB, OPFS and folder stores, the S3 remote store, sync-side encryption, connectivity, locks, channel, storage durability, and their JS modules (`AddBlazwizSync`) | Core, Cryptography, Encryption, Browser, AWSSDK.S3 |
+| `Devoctomy.Blazwiz.UI` | RCL | `BlazwizRouter`, layout, theme CSS (`css/blazwiz.css`), `ModalDialog`, `PageHeader`, `SessionTimer`, `OfflineBanner`, Login, Profile and Settings pages, the registries and extension points, `UiText`, the app update banner (JS initializer), and their view models; binds `AppSettings` (`AddBlazwizUi`) | Auth, Browser |
+| `Devoctomy.Blazwiz.UI.Sync` | RCL | Sync page, sync pill and popover, folder banner, storage settings, E2E banner and settings, Argon2id panel, `SyncUiText`, the Cognito, S3 and Secrets Manager glue, and their view models; binds `AwsS3`; its CSS is added by its JS initializer (`AddBlazwizSyncModule`) | UI, Auth.Cognito, Sync, Encryption, AWSSDK.SecretsManager |
+| `Devoctomy.Blazwiz.Testing` | class lib | `FrameworkText`: the framework's real text for app tests, and `UnknownOverrideKeys` to check an app's overrides still name framework text | Core, UI |
 | `Devoctomy.Blazwiz.Templates` | template | A small app that references the packages | — |
+
+**As built in Phase 2** (differences from the first version of this table):
+
+- Encryption is key management only, and Sync depends on it. The sync-side encryption (encrypting store, sweeper,
+  gate) stays in Sync, which is what uses it.
+- There is no `Sync.S3`: the S3 remote store is wired into the engine, so it stays in Sync. The Cognito, S3 target and
+  Secrets Manager glue lives in UI.Sync, the one place that knows both sign-in and sync.
+- The session lifecycle contracts are in Auth, not Core. Network status, locks, the broadcast channel and storage
+  durability are only used by sync, so they are in Sync, not Browser.
+- The data migration contract (U13) is not in Core yet; it is Phase 4 work.
+- Testing holds `FrameworkText` only. The fakes and Playwright base class stay in the repository's tests
+  (`tests/Devoctomy.Blazwiz.TestSupport`, the template's UI tests) until an app needs them.
+- In the template the app is called `MyApp` (`myapp`, `MYAPP_`), not `blazwiz`, so the template's replacements never
+  touch `Devoctomy.Blazwiz`. The route classes are `LoginPage`, `ProfilePage`, `SettingsPage` and `SyncPage`.
+- New extension point: `AddPageAssembly`, so the router finds a module's pages (the Sync page is in UI.Sync).
+- `IAuthenticationService.RefreshMargin` tells the session timer when reading the session has side effects, so UI
+  does not depend on Cognito.
+- Tests: one unit test project per package (`tests/Devoctomy.Blazwiz.<Package>.UnitTests`), referencing only that
+  package; the integration tests are `tests/Devoctomy.Blazwiz.Sync.IntTests`.
 
 Two more splits could be made later if they prove useful: `Encryption.Aws` (Secrets Manager key store) and
 `Auth.Abstractions`.
@@ -440,19 +458,35 @@ the riskiest phase. Doing it before splitting projects keeps the diff readable.
   app's own UI tests.
 
 ### Phase 2: split into packages
-- [ ] Restructure into `src/`, `tests/` and `template/` (section 4).
-- [ ] Create the projects in the package table and move the code. Rename namespaces to `Devoctomy.Blazwiz.*`.
-- [ ] Each package gets an `AddBlazwiz*()` that registers its services and view models (U11) and binds its options
+- [x] Restructure into `src/`, `tests/` and `template/` (section 4).
+- [x] Create the projects in the package table and move the code. Rename namespaces to `Devoctomy.Blazwiz.*`.
+- [x] One unit test project per package (`tests/Devoctomy.Blazwiz.<Package>.UnitTests`).
+- [x] Every unit test marks its parts with `// Arrange`, `// Act` and `// Assert` comments.
+- [x] Each package gets an `AddBlazwiz*()` that registers its services and view models (U11) and binds its options
   section (U10).
-- [ ] Convert global scripts to ES modules and JS initializers (U8). Split the CSS (U9).
-- [ ] Add PublicApiAnalyzers and package validation (U12). Ship 0.x previews first, so the API can still change
+- [x] Convert global scripts to ES modules and JS initializers (U8). Split the CSS (U9).
+- [x] Add PublicApiAnalyzers and package validation (U12). Ship 0.x previews first, so the API can still change
   before 1.0.
-- [ ] Rewrite `test-template.ps1` to pack to a local feed and build the generated apps against it.
-- [ ] Replace `--IncludeNotes` with `--Sync`, `--Encryption` and `--Notes` (D6). Test each combination in
+  - [x] Package validation on every package (`EnablePackageValidation`); it compares against the previous release once
+    `PackageValidationBaselineVersion` is set at the first release.
+  - [x] PublicApiAnalyzers on every package: `PublicAPI.Unshipped.txt` lists the whole public API (nothing is shipped
+    yet). RS0041 is off (agreed): the Razor generator emits `BuildRenderTree` without nullable annotations.
+- [x] Rewrite `test-template.ps1` to pack to a local feed and build the generated apps against it.
+- [x] Replace `--IncludeNotes` with `--Sync`, `--Encryption` and `--Notes` (D6). Test each combination in
   `test-template.ps1`.
-- [ ] Exit check: no mention of notes in `src/` (section 5).
-- [ ] Exit check: the pseudo-localisation Playwright run finds no hard-coded visible text. Each package ships its
+  - [x] `--Sync` and `--Notes`, tested in `test-template.ps1`.
+  - [x] `--Encryption`: not offered. Whether to sync without E2E is the app developer's choice, not supported yet
+    (decided 2026-11-03); see "Syncing without end to end encryption" in `docs/backlog/v1-feature-ideas.md`. The
+    template docs say why.
+- [x] Exit check: no mention of notes in `src/` (section 5).
+- [x] Exit check: the pseudo-localisation Playwright run finds no hard-coded visible text. Each package ships its
   generated list of text keys, and `TextOverrides.AssertValid()` is available in `Devoctomy.Blazwiz.Testing`.
+  - [x] `FrameworkText.UnknownOverrideKeys` in `Devoctomy.Blazwiz.Testing` (in place of `TextOverrides.AssertValid()`),
+    used by the template's `NotesTextTests`.
+  - [x] The pseudo-localisation run: `PseudoLocalizationTests` in the template's UI tests turns on
+    `Text:PseudoLocalization` (`TextBuilder.UsePseudoLocalization()`) and checks the login, Settings, Profile and Sync
+    pages and the shell. It found the sidebar's framework items were literal text; `NavigationItem.TextResource` fixed
+    that. Not covered yet: the end to end encryption settings (only shown when signed in with Cognito) and dialogs.
 
 ### Phase 3: missing user features
 - [ ] U14: change password (Profile page), forgot password and confirm code (login page), using

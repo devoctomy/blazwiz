@@ -1,0 +1,372 @@
+#nullable enable
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idPanel
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idPanel.Argon2idPanel() -> void
+~override Devoctomy.Blazwiz.UI.Sync.Components.Argon2idPanel.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eBanner
+~override Devoctomy.Blazwiz.UI.Sync.Components.E2eBanner.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eBanner.E2eBanner() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eEncryptionSection
+~override Devoctomy.Blazwiz.UI.Sync.Components.E2eEncryptionSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eEncryptionSection.E2eEncryptionSection() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.FolderAccessBanner
+~override Devoctomy.Blazwiz.UI.Sync.Components.FolderAccessBanner.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Components.FolderAccessBanner.FolderAccessBanner() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.StartSyncOffOption
+~override Devoctomy.Blazwiz.UI.Sync.Components.StartSyncOffOption.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Components.StartSyncOffOption.StartSyncOffOption() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.StorageMigrationOverlay
+~override Devoctomy.Blazwiz.UI.Sync.Components.StorageMigrationOverlay.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Components.StorageMigrationOverlay.StorageMigrationOverlay() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.SyncPill
+~override Devoctomy.Blazwiz.UI.Sync.Components.SyncPill.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Components.SyncPill.SyncPill() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.SyncSettingsSection
+~override Devoctomy.Blazwiz.UI.Sync.Components.SyncSettingsSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Components.SyncSettingsSection.SyncSettingsSection() -> void
+Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions
+static Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.AddBlazwizSyncModule(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Action<Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.ConfigurationSection = "AwsS3" -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.AwsS3Config
+Devoctomy.Blazwiz.UI.Sync.Models.AwsS3Config.AwsS3Config() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.AwsS3Config.DataBucketName.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.AwsS3Config.DataBucketName.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.AwsS3Config.Region.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.AwsS3Config.Region.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
+Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.ChangePassphrase = 2 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
+Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Disable = 3 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
+Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Enable = 0 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
+Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.SetUp = 1 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.Detail.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.Detail.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.E2eStepItem() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.Label.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.Label.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.State.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.State.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.Step.get -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.Step.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState.Done = 2 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState.Failed = 3 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState.Pending = 0 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState
+Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState.Running = 1 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eStepState
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup.Activity = 0 -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup.Conflicts = 4 -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup.Connectivity = 6 -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup.Deletes = 3 -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup.Downloads = 2 -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup.Errors = 5 -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup.Uploads = 1 -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.ColorClass.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.ColorClass.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.Group.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.Group.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.Icon.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.Icon.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.Label.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.Label.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation.SyncEventPresentation() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip
+Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip.Group.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup?
+Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip.Group.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip.IsActive.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip.IsActive.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip.Label.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip.Label.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip.SyncFilterChip() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay.Date.get -> System.DateOnly
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay.Date.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay.Label.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay.Label.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay.Rows.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow!>!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay.Rows.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay.SyncLogDay() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Count.get -> int
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Count.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Detail.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Detail.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.ExactTime.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.ExactTime.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Id.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Id.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Key.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Key.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Message.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Message.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Presentation.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Presentation.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Profile.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Profile.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.RelativeTime.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.RelativeTime.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.SyncLogEntry() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Timestamp.get -> System.DateTimeOffset
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry.Timestamp.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.Children.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry!>!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.Children.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.HasErrors.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.HasErrors.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.Header.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncLogEntry!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.Header.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.Id.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.Id.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.IsExpanded.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.IsExpanded.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.SyncLogRow() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Icon.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Icon.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.IsOffline.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.IsOffline.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.IsSyncing.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.IsSyncing.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.SyncStatusPresentation() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Text.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Text.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Tone.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Tone.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Tooltip.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Tooltip.set -> void
+Devoctomy.Blazwiz.UI.Sync.Pages.SyncPage
+~override Devoctomy.Blazwiz.UI.Sync.Pages.SyncPage.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Pages.SyncPage.SyncPage() -> void
+Devoctomy.Blazwiz.UI.Sync.Services.AuthSyncUserContext
+Devoctomy.Blazwiz.UI.Sync.Services.AuthSyncUserContext.AuthSyncUserContext(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.AuthSyncUserContext.GetUserIdAsync() -> System.Threading.Tasks.Task<string?>!
+Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider
+Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.CognitoS3TargetProvider(Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.IAwsCredentialsProvider! credentialsProvider, Devoctomy.Blazwiz.UI.Sync.Models.AwsS3Config! s3Config, Devoctomy.Blazwiz.Auth.Cognito.Services.BrowserHttpClientFactory! httpClientFactory) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.Dispose() -> void
+Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.GetTargetAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.S3SyncTarget?>!
+Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.Invalidate() -> void
+Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.IsConfigured.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IPasskeyUnlockService
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IPasskeyUnlockService.CanUnlockAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IPasskeyUnlockService.UnlockAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory.Create(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials! credentials) -> Amazon.SecretsManager.IAmazonSecretsManager!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter.Describe(Devoctomy.Blazwiz.Sync.Models.SyncEvent! entry) -> string!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter.DescribeGroup(Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup? group) -> string!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter.DescribePass(Devoctomy.Blazwiz.Sync.Models.SyncEvent? completed) -> string!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter.GetKinds(Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup group) -> System.Collections.Generic.IReadOnlyCollection<Devoctomy.Blazwiz.Sync.Models.SyncEventKind>!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter.Present(Devoctomy.Blazwiz.Sync.Models.SyncEventKind kind) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor.Changed -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor.CheckAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor.FolderName.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor.NeedsAccess.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor.ReconnectAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor.Start() -> void
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor.Stop() -> void
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter.DescribeConnectivity(Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> string!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter.Present(Devoctomy.Blazwiz.Sync.Models.SyncStatus! status, Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
+Devoctomy.Blazwiz.UI.Sync.Services.PasskeyUnlockService
+Devoctomy.Blazwiz.UI.Sync.Services.PasskeyUnlockService.CanUnlockAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.PasskeyUnlockService.PasskeyUnlockService(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService! webAuthnService) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.PasskeyUnlockService.UnlockAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory.Create(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials! credentials) -> Amazon.SecretsManager.IAmazonSecretsManager!
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory.SecretsManagerClientFactory(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsCognitoConfig! cognitoConfig, Devoctomy.Blazwiz.Auth.Cognito.Services.BrowserHttpClientFactory! httpClientFactory) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.DeleteAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.GetAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.SecretsManagerUserKeysStore(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.IAwsCredentialsProvider! credentialsProvider, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory! clientFactory, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.SetAsync(string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.TryCreateAsync(string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption
+Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption.ApplyAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption.IsSet.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption.LoadAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption.StartSyncOffSignInOption(Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption.StartWithSyncOff.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption.StartWithSyncOff.set -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SyncEventPresenter
+Devoctomy.Blazwiz.UI.Sync.Services.SyncEventPresenter.Describe(Devoctomy.Blazwiz.Sync.Models.SyncEvent! entry) -> string!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncEventPresenter.DescribeGroup(Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup? group) -> string!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncEventPresenter.DescribePass(Devoctomy.Blazwiz.Sync.Models.SyncEvent? completed) -> string!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncEventPresenter.GetKinds(Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup group) -> System.Collections.Generic.IReadOnlyCollection<Devoctomy.Blazwiz.Sync.Models.SyncEventKind>!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncEventPresenter.Present(Devoctomy.Blazwiz.Sync.Models.SyncEventKind kind) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventPresentation!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncEventPresenter.SyncEventPresenter(Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.Core.Text.Interfaces.ITextPlurals! plurals, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.Changed -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.CheckAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.Dispose() -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.FolderName.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.NeedsAccess.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.ReconnectAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.Start() -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.Stop() -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SyncFolderAccessMonitor.SyncFolderAccessMonitor(Devoctomy.Blazwiz.Sync.Interfaces.ISyncFolderService! folderService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.Sync.Interfaces.IBrowserNetworkStatus! browserNetworkStatus, Devoctomy.Blazwiz.UI.Shell.Interfaces.IShellContentService! shellContentService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler
+Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.OnSessionStartedAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.OnShellLoadingAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.OnSignedInAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.OnSigningOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.Order.get -> int
+Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.SyncSessionHandler(Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService! storageMigrationService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageChannel! storageChannel, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService! encryptionService, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor! folderAccessMonitor, Devoctomy.Blazwiz.Sync.Interfaces.IPersistentStorageService! persistentStorageService) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter
+Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.DescribeConnectivity(Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> string!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.Present(Devoctomy.Blazwiz.Sync.Models.SyncStatus! status, Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.SyncStatusPresenter(Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.Core.Text.Interfaces.ITextPlurals! plurals, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Argon2idSettingsViewModel(Devoctomy.Blazwiz.Cryptography.Interfaces.IArgon2idKeyDerivationService! argon2, Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions! options, System.TimeProvider! timeProvider, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.BenchmarkAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.IsRunning.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MemoryText.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Parameters.get -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Result.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.CanResolve.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.CanSetUp.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.CanUnlockWithPasskey.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.CloseResolveDialog() -> void
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Dispose(bool disposing) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.E2eBannerViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService! encryptionService, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IPasskeyUnlockService! passkeyUnlockService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.IsResolveDialogOpen.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.IsVisible.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.IsWorking.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Message.get -> string!
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.OpenResolveDialogAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.OpenSettings() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.ResolveAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.ResolveNeedsPassphrase.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.ResolvePassphrase.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.ResolvePassphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Status.get -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.UnlockWithPasskeyAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.AcknowledgedNoRecovery.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.AcknowledgedNoRecovery.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.ActiveDialog.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.CanEnable.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.CanManage.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.CanSetUp.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.CloseDialog() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.ConfirmDialogAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.ConfirmPassphrase.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.ConfirmPassphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.CurrentPassphrase.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.CurrentPassphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.DialogError.get -> string?
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.Dispose(bool disposing) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.E2eSettingsViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService! encryptionService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.GetStepLabel(Devoctomy.Blazwiz.Encryption.Models.E2eStep step) -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.IsEditing.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.IsFinished.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.IsOffline.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.IsWorking.get -> bool
+const Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.MinPassphraseLength = 8 -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.NoRecoveryWarning.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.OpenDialog(Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind kind) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.Passphrase.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.Passphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.Status.get -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.StatusText.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eSettingsViewModel.Steps.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem!>!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FolderAccessBannerViewModel
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.FolderAccessBannerViewModel.Dispose(bool disposing) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FolderAccessBannerViewModel.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FolderAccessBannerViewModel.FolderAccessBannerViewModel(Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor! monitor) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FolderAccessBannerViewModel.FolderName.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FolderAccessBannerViewModel.IsVisible.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FolderAccessBannerViewModel.ReconnectAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.StorageMigrationOverlayViewModel
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.StorageMigrationOverlayViewModel.Dispose(bool disposing) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.StorageMigrationOverlayViewModel.IsVisible.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.StorageMigrationOverlayViewModel.StorageMigrationOverlayViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageChannel! storageChannel, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.CanSyncNow.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.ClosePopover() -> void
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.Dispose(bool disposing) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.IsPopoverOpen.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.IsSyncEnabled.get -> bool
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.Pill.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.Status.get -> Devoctomy.Blazwiz.Sync.Models.SyncStatus!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.SyncNowAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.SyncPillViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter! syncStatusPresenter) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.TogglePopover() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.ToggleSyncAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.CanSwitchStorage.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.CanSyncNow.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.CloseStorageDialog() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.ConfirmStorageChangeAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.ConnectivityText.get -> string!
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.Dispose(bool disposing) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.FolderName.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.GetStorageName(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.InstallHint.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.IsFolderSupported.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.IsMigrating.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.IsOpfsSupported.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.IsStorageDialogOpen.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.IsStorageKnown.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.IsStoragePersisted.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.IsSyncEnabled.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.LastErrorText.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.MigrationText.get -> string?
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.PendingFileCount.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.PendingStorageKind.get -> Devoctomy.Blazwiz.Sync.Models.SyncStorageKind?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.PendingStorageName.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.RequestStorageChangeAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.ShowInstallHint.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.StorageError.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.StorageKind.get -> Devoctomy.Blazwiz.Sync.Models.SyncStorageKind
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.StorageText.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncDisplay.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncNowAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncSettingsViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter! syncStatusPresenter, Devoctomy.Blazwiz.Sync.Interfaces.IStorageDurabilityService! storageDurabilityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver! storageResolver, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService! storageMigrationService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncFolderService! folderService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncStatus.get -> Devoctomy.Blazwiz.Sync.Models.SyncStatus!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.ToggleSyncAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.ActiveGroup.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.ActiveProfile.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.CanSyncNow.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.Chips.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.SyncFilterChip!>!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.ClearLogAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.CloseClearDialog() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.Days.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.SyncLogDay!>!
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.Dispose(bool disposing) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.HasMore.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.IsClearDialogOpen.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.IsLoading.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.IsSyncEnabled.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.LoadMoreAsync() -> System.Threading.Tasks.Task!
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+const Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.PageSize = 200 -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.Profiles.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SearchText.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SearchText.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SelectGroupAsync(Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup? group) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SelectProfileAsync(string? profile) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.ShowClearDialog() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.ShowProfileFilter.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.Status.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SyncNowAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SyncStatus.get -> Devoctomy.Blazwiz.Sync.Models.SyncStatus!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SyncViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncEventLog! eventLog, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter! eventPresenter, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter! statusPresenter, Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, System.TimeProvider! timeProvider, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.ToggleRow(string! rowId) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.ToggleSyncAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Views.SyncView
+~override Devoctomy.Blazwiz.UI.Sync.Views.SyncView.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Sync.Views.SyncView.SyncView() -> void
+Devoctomy.Blazwiz.UI.Sync._Imports
+Devoctomy.Blazwiz.UI.Sync._Imports.Execute() -> void
+Devoctomy.Blazwiz.UI.Sync._Imports._Imports() -> void
+static readonly Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SearchDebounce -> System.TimeSpan

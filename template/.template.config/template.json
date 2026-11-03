@@ -1,0 +1,262 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Nick Pateman",
+  "classifications": [ "Web", "Blazor", "WebAssembly", "PWA", "AWS", "Cognito" ],
+  "identity": "Devoctomy.Blazwiz",
+  "name": "Blazor WebAssembly PWA with AWS Cognito (blazwiz)",
+  "description": "A Blazor WebAssembly progressive web app built on the blazwiz framework packages: signs in with AWS Cognito, syncs files with S3 and works offline, with CloudFormation scripts to host it on S3 and CloudFront.",
+  "shortName": "blazwiz",
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "preferNameDirectory": true,
+  "guids": [
+    "a78e68c7-90e0-4f90-aa3d-73f7b2c9f2c8"
+  ],
+  "symbols": {
+    "Title": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "",
+      "displayName": "Title",
+      "description": "Shown in the browser tab, on the login page, in the PWA manifest and in the copyright. Defaults to the name. Avoid quotes."
+    },
+    "Description": {
+      "type": "parameter",
+      "datatype": "text",
+      "defaultValue": "Sign in to continue.",
+      "displayName": "Description",
+      "description": "Shown under the title on the login page.",
+      "replaces": "Sign in to continue.",
+      "onlyIf": [ { "after": "\"ApplicationDescription\": \"" } ]
+    },
+    "IncludeTests": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "displayName": "Include tests",
+      "description": "Include the unit and UI test projects."
+    },
+    "IncludeShowcase": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "displayName": "Include the Showcase page",
+      "description": "Include the Showcase page of themed buttons, alerts, forms and tables to copy from."
+    },
+    "Sync": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "displayName": "Sync",
+      "description": "Include the sync module (Devoctomy.Blazwiz.UI.Sync): files kept in the browser or a local folder, synced with the user's S3 prefix with end to end encryption, the Sync page and offline sync. Syncing without encryption is not supported yet (see the README)."
+    },
+    "Notes": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "displayName": "Notes example",
+      "description": "Include the notes example: the Files page and a markdown note editor, synced by the sync module. Needs Sync."
+    },
+    "IncludeSync": {
+      "type": "computed",
+      "value": "(Sync)"
+    },
+    "IncludeNotes": {
+      "type": "computed",
+      "value": "(Sync && Notes)"
+    },
+    "appNamespace": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "namespace",
+      "replaces": "MyApp",
+      "fileRename": "MyApp",
+      "description": "The name with the user's casing, made valid for C# (projects, namespaces, folders and files)."
+    },
+    "appSlug": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "slug",
+      "replaces": "myapp",
+      "description": "Lower case letters and numbers, starting with a letter: AWS stack, bucket and role names, and browser storage keys."
+    },
+    "appUpper": {
+      "type": "derived",
+      "valueSource": "name",
+      "valueTransform": "upper",
+      "replaces": "MYAPP",
+      "description": "Environment variable prefixes such as MYAPP_UITEST_URL."
+    },
+    "appTitle": {
+      "type": "generated",
+      "generator": "coalesce",
+      "parameters": {
+        "sourceVariableName": "Title",
+        "fallbackVariableName": "name"
+      },
+      "replaces": "MyApp",
+      "onlyIf": [
+        { "after": "\"ApplicationTitle\": \"" },
+        { "after": "\"CopyrightMessage\": \"© 2026 " },
+        { "after": "<title>" },
+        { "after": "apple-mobile-web-app-title\" content=\"" },
+        { "after": "\"name\": \"" },
+        { "after": "\"short_name\": \"" },
+        { "after": "ToHaveTitleAsync(\"Sign in - " },
+        { "after": "ToHaveTextAsync(\"" },
+        { "after": "# " }
+      ]
+    },
+    "copyrightYear": {
+      "type": "generated",
+      "generator": "now",
+      "parameters": {
+        "format": "yyyy"
+      },
+      "replaces": "2026",
+      "onlyIf": [ { "after": "© " } ]
+    }
+  },
+  "forms": {
+    "namespace": {
+      "identifier": "chain",
+      "steps": [ "invalidToUnderscore", "prefixLeadingDigitWithUnderscore" ]
+    },
+    "slug": {
+      "identifier": "chain",
+      "steps": [ "lowerCaseInvariant", "removeNonLowerAlphanumeric", "prefixLeadingDigitWithLetter", "truncateTo21" ]
+    },
+    "upper": {
+      "identifier": "chain",
+      "steps": [ "upperCaseInvariant", "nonUpperAlphanumericToUnderscore", "prefixLeadingDigitWithUnderscore" ]
+    },
+    "invalidToUnderscore": {
+      "identifier": "replace",
+      "pattern": "[^A-Za-z0-9_]",
+      "replacement": "_"
+    },
+    "prefixLeadingDigitWithUnderscore": {
+      "identifier": "replace",
+      "pattern": "^([0-9])",
+      "replacement": "_$1"
+    },
+    "removeNonLowerAlphanumeric": {
+      "identifier": "replace",
+      "pattern": "[^a-z0-9]",
+      "replacement": ""
+    },
+    "prefixLeadingDigitWithLetter": {
+      "identifier": "replace",
+      "pattern": "^([0-9])",
+      "replacement": "a$1"
+    },
+    "truncateTo21": {
+      "identifier": "replace",
+      "pattern": "^(.{21}).+$",
+      "replacement": "$1"
+    },
+    "nonUpperAlphanumericToUnderscore": {
+      "identifier": "replace",
+      "pattern": "[^A-Z0-9]",
+      "replacement": "_"
+    }
+  },
+  "sources": [
+    {
+      "source": "./",
+      "target": "./",
+      "exclude": [
+        ".template.config/**",
+        ".vs/**",
+        ".idea/**",
+        "**/[Bb]in/**",
+        "**/[Oo]bj/**",
+        "**/TestResults/**",
+        "**/*.user",
+        "publish/**",
+        "Directory.Build.targets",
+        "**/appsettings.Production.json"
+      ],
+      "modifiers": [
+        {
+          "condition": "(!IncludeTests)",
+          "exclude": [
+            "MyApp.Portal.Application.UnitTests/**",
+            "MyApp.Portal.UITests/**"
+          ]
+        },
+        {
+          "condition": "(!IncludeShowcase)",
+          "exclude": [
+            "MyApp.Portal/Pages/Showcase.razor",
+            "MyApp.Portal/Pages/Showcase.razor.cs"
+          ]
+        },
+        {
+          "condition": "(!IncludeSync)",
+          "exclude": [
+            "MyApp.Portal.UITests/SyncTests.cs",
+            "MyApp.Portal.UITests/E2eEncryptionTests.cs"
+          ]
+        },
+        {
+          "condition": "(!IncludeNotes)",
+          "exclude": [
+            "MyApp.Portal.Models/Notes/**",
+            "MyApp.Portal.Application/Exceptions/NotesException.cs",
+            "MyApp.Portal.Application/Extensions/NotesServiceCollectionExtensions.cs",
+            "MyApp.Portal.Application/Resources/WelcomeNote.md",
+            "MyApp.Portal.Application/Services/IndexedDbNotesStateStore.cs",
+            "MyApp.Portal.Application/Services/MarkdownFormatService.cs",
+            "MyApp.Portal.Application/Services/MarkdownRenderer.cs",
+            "MyApp.Portal.Application/Services/NoteNameService.cs",
+            "MyApp.Portal.Application/Services/NoteService.cs",
+            "MyApp.Portal.Application/Services/NoteTreeService.cs",
+            "MyApp.Portal.Application/Services/Interfaces/IMarkdownFormatService.cs",
+            "MyApp.Portal.Application/Services/Interfaces/IMarkdownRenderer.cs",
+            "MyApp.Portal.Application/Services/Interfaces/INoteEditorInteropService.cs",
+            "MyApp.Portal.Application/Services/Interfaces/INoteNameService.cs",
+            "MyApp.Portal.Application/Services/Interfaces/INoteService.cs",
+            "MyApp.Portal.Application/Services/Interfaces/INoteTreeService.cs",
+            "MyApp.Portal.Application/Services/Interfaces/INotesStateStore.cs",
+            "MyApp.Portal.Application/Text/NotesText.cs",
+            "MyApp.Portal.Application/Text/NotesText.resx",
+            "MyApp.Portal.Application/ViewModels/FilesViewModel.cs",
+            "MyApp.Portal.Application/ViewModels/NoteEditorViewModel.cs",
+            "MyApp.Portal/Pages/Files.razor",
+            "MyApp.Portal/Pages/Files.razor.cs",
+            "MyApp.Portal/Pages/NoteEditor.razor",
+            "MyApp.Portal/Pages/NoteEditor.razor.cs",
+            "MyApp.Portal/Services/NoteEditorInteropService.cs",
+            "MyApp.Portal/wwwroot/css/notes.css",
+            "MyApp.Portal/wwwroot/js/notes.js",
+            "MyApp.Portal.Application.UnitTests/Extensions/NotesServiceCollectionExtensionsTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/IndexedDbNotesStateStoreTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/MarkdownFormatServiceTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/MarkdownRendererTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/NoteNameServiceTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/NoteServiceTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/NoteTreeServiceTests.cs",
+            "MyApp.Portal.Application.UnitTests/Text/NotesTextTests.cs",
+            "MyApp.Portal.Application.UnitTests/ViewModels/FilesViewModelTests.cs",
+            "MyApp.Portal.Application.UnitTests/ViewModels/NoteEditorViewModelTests.cs",
+            "MyApp.Portal.UITests/NotesTests.cs"
+          ]
+        }
+      ]
+    }
+  ],
+  "primaryOutputs": [
+    { "path": "MyApp.slnx" }
+  ],
+  "postActions": [
+    {
+      "description": "Restore NuGet packages.",
+      "manualInstructions": [ { "text": "Run 'dotnet restore'" } ],
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "continueOnError": true
+    }
+  ]
+}

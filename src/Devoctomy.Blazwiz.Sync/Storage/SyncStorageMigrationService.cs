@@ -1,0 +1,229 @@
+using Devoctomy.Blazwiz.Sync.Configuration;
+using Devoctomy.Blazwiz.Sync.Exceptions;
+using Devoctomy.Blazwiz.Sync.Interfaces;
+using Devoctomy.Blazwiz.Sync.Models;
+
+namespace Devoctomy.Blazwiz.Sync.Storage;
+
+/// <summary>
+/// Moves the signed in user's files between storages. Each profile is moved under its cross tab sync lock, so no pass
+/// runs meanwhile in any tab, and every step is recorded in <see cref="ISyncStorageStateStore"/> so a move cut short
+/// is undone (while copying) or finished (while clearing the source) by <see cref="RecoverAsync"/>.
+/// </summary>
+/// <remarks>
+/// When online, each profile is synced first (still under the lock), so a move straight after the first sign in moves
+/// the downloaded files rather than an empty store. Files are copied byte for byte with their modified times, and the
+/// sync index is not touched, so nothing is uploaded or downloaded again afterwards.
+/// </remarks>
+public class SyncStorageMigrationService(
+    SyncOptions options,
+    ISyncStorageResolver resolver,
+    ISyncStorageStateStore stateStore,
+    ISyncScheduler scheduler,
+    ISyncLockService lockService,
+    ISyncStorageChannel channel,
+    ISyncService syncService,
+    IConnectivityService connectivityService)
+    : ISyncStorageMigrationService
+{
+    private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly ISyncStorageResolver resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
+    private readonly ISyncStorageStateStore stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
+    private readonly ISyncScheduler scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
+    private readonly ISyncLockService lockService = lockService ?? throw new ArgumentNullException(nameof(lockService));
+    private readonly ISyncStorageChannel channel = channel ?? throw new ArgumentNullException(nameof(channel));
+    private readonly ISyncService syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+    private readonly IConnectivityService connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
+
+    /// <inheritdoc/>
+    public async Task MigrateAsync(SyncStorageKind target, IProgress<SyncStorageMigrationProgress>? progress = null, CancellationToken ct = default)
+    {
+        var profiles = new List<string>();
+        foreach (var profile in GetSwitchableProfiles().Where(p => resolver.GetKinds(p).Contains(target)))
+        {
+            if ((await resolver.GetStateAsync(profile)).Kind != target)
+            {
+                profiles.Add(profile);
+            }
+        }
+
+        if (profiles.Count == 0)
+        {
+            return;
+        }
+
+        var wasStarted = scheduler.IsStarted;
+        await scheduler.StopAsync();
+        await channel.PostAsync(SyncStorageChannelMessage.Migrating);
+        try
+        {
+            foreach (var profile in profiles)
+            {
+                await MigrateProfileAsync(profile, target, progress, ct);
+            }
+        }
+        finally
+        {
+            await channel.PostAsync(SyncStorageChannelMessage.Changed);
+            if (wasStarted)
+            {
+                _ = RestartSyncAsync();
+            }
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task RecoverAsync(CancellationToken ct = default)
+    {
+        foreach (var profile in GetSwitchableProfiles())
+        {
+            if ((await resolver.GetStateAsync(profile)).MigrationPhase == null)
+            {
+                continue;
+            }
+
+            await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile, ct))
+            {
+                // Read again under the lock: another tab may have been moving the files, and has now finished.
+                var state = await resolver.GetStateAsync(profile);
+                switch (state.MigrationPhase)
+                {
+                    case SyncStorageMigrationPhase.Copying:
+                        var source = state.MigrationFrom ?? state.Kind;
+                        if (state.MigrationTo is SyncStorageKind partial && partial != source)
+                        {
+                            await ClearAsync(resolver.GetStore(profile, partial));
+                        }
+
+                        await SaveAsync(state, source);
+                        break;
+
+                    case SyncStorageMigrationPhase.Cleanup:
+                        if (state.MigrationFrom is SyncStorageKind old && old != state.Kind)
+                        {
+                            await ClearAsync(resolver.GetStore(profile, old));
+                        }
+
+                        await SaveAsync(state, state.Kind);
+                        break;
+                }
+            }
+        }
+    }
+
+    private static async Task ClearAsync(ISyncFileStore store)
+    {
+        foreach (var file in await store.ListAsync())
+        {
+            await store.DeleteAsync(file.Key);
+        }
+    }
+
+    private static async Task CopyAsync(string profile, ISyncFileStore source, ISyncFileStore destination, IProgress<SyncStorageMigrationProgress>? progress, CancellationToken ct)
+    {
+        var files = await source.ListAsync(ct);
+        progress?.Report(new SyncStorageMigrationProgress(profile, 0, files.Count));
+        var done = 0;
+        foreach (var info in files)
+        {
+            ct.ThrowIfCancellationRequested();
+            var file = await source.ReadAsync(info.Key, ct)
+                ?? throw new SyncStorageMigrationException(SyncErrorCodes.StorageReadFailed, info.Key);
+            await destination.WriteAsync(file.Key, file.Content, file.ModifiedAt, ct);
+
+            var copy = await destination.ReadAsync(file.Key, ct);
+            if (copy == null || !copy.Content.AsSpan().SequenceEqual(file.Content))
+            {
+                throw new SyncStorageMigrationException(SyncErrorCodes.StorageCopyMismatch, info.Key);
+            }
+
+            progress?.Report(new SyncStorageMigrationProgress(profile, ++done, files.Count));
+        }
+    }
+
+    private async Task MigrateProfileAsync(string profile, SyncStorageKind target, IProgress<SyncStorageMigrationProgress>? progress, CancellationToken ct)
+    {
+        await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile, ct))
+        {
+            var state = await resolver.GetStateAsync(profile);
+            var from = state.Kind;
+            if (from == target)
+            {
+                return;
+            }
+
+            // Bring this device up to date first, e.g. straight after the first sign in, before anything has been
+            // downloaded. Offline, what is here is moved and the rest arrives in the new storage later.
+            progress?.Report(new SyncStorageMigrationProgress(profile, 0, 0, isSyncing: true));
+            if ((await connectivityService.CheckAsync(ct)).IsOnline)
+            {
+                await syncService.SyncAsync(profile, verify: false, ct);
+            }
+
+            var source = resolver.GetStore(profile, from);
+            var destination = resolver.GetStore(profile, target);
+            if (target == SyncStorageKind.LocalFolder && (await destination.ListAsync(ct)).Count > 0)
+            {
+                // The user's own folder: never clear files the app did not put there.
+                throw new SyncStorageMigrationException(SyncErrorCodes.StorageFolderNotEmpty, profile);
+            }
+
+            await SaveAsync(state, from, from, target, SyncStorageMigrationPhase.Copying);
+            try
+            {
+                // Anything left from an earlier move that was undone.
+                await ClearAsync(destination);
+                await CopyAsync(profile, source, destination, progress, ct);
+            }
+            catch (Exception)
+            {
+                await SaveAsync(state, from);
+                try
+                {
+                    await ClearAsync(destination);
+                }
+                catch (Exception)
+                {
+                    // The next move clears it first; report the failure that stopped this one.
+                }
+
+                throw;
+            }
+
+            // The target is in use from here; clearing the source is finished by RecoverAsync if cut short.
+            await SaveAsync(state, target, from, target, SyncStorageMigrationPhase.Cleanup);
+            await ClearAsync(source);
+            await SaveAsync(state, target);
+        }
+    }
+
+    private IEnumerable<string> GetSwitchableProfiles()
+    {
+        return options.Profiles.Select(p => p.Name).Where(resolver.IsSwitchable);
+    }
+
+    private Task SaveAsync(SyncStorageState state, SyncStorageKind kind, SyncStorageKind? from = null, SyncStorageKind? to = null, SyncStorageMigrationPhase? phase = null)
+    {
+        return stateStore.SaveAsync(new SyncStorageState
+        {
+            Profile = state.Profile,
+            Owner = state.Owner,
+            Kind = kind,
+            MigrationFrom = from,
+            MigrationTo = to,
+            MigrationPhase = phase,
+        });
+    }
+
+    private async Task RestartSyncAsync()
+    {
+        try
+        {
+            await scheduler.StartAsync();
+        }
+        catch (Exception)
+        {
+            // Sync failures show in the status and the sync log; the files are already moved.
+        }
+    }
+}

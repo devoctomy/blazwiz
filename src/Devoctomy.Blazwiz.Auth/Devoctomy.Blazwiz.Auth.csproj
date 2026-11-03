@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Sign in for blazwiz apps: the authentication contract, sessions and their lifecycle, offline sign in, remembered passwords.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Core\Devoctomy.Blazwiz.Core.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Cryptography\Devoctomy.Blazwiz.Cryptography.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Browser\Devoctomy.Blazwiz.Browser.csproj" />
+  </ItemGroup>
+</Project>

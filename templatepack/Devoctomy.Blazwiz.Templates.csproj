@@ -1,17 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
-    Packs the repository as a dotnet new template: dotnet pack templatepack -c Release
-    The template settings are in ../.template.config. This project is not part of blazwiz.slnx.
+    Packs the template app as a dotnet new template: dotnet pack templatepack -c Release
+    The template content is ../template, its settings are in ../template/.template.config. This project is not part of
+    blazwiz.slnx. Its version is the framework's (Directory.Build.props), so a template creates apps using the packages
+    released with it.
   -->
   <PropertyGroup>
     <PackageType>Template</PackageType>
     <PackageId>Devoctomy.Blazwiz.Templates</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
+    <IsPackable>true</IsPackable>
     <Title>blazwiz: Blazor WebAssembly PWA with AWS Cognito</Title>
-    <Authors>Nick Pateman</Authors>
-    <Description>dotnet new template for a Blazor WebAssembly progressive web app that signs in with AWS Cognito, with CloudFormation scripts to host it on S3 and CloudFront.</Description>
-    <PackageTags>dotnet-new;templates;blazor;webassembly;pwa;aws;cognito;cloudformation</PackageTags>
-    <TargetFramework>net10.0</TargetFramework>
+    <Description>dotnet new template for a Blazor WebAssembly progressive web app built on the blazwiz framework packages: signs in with AWS Cognito, syncs files with S3 and works offline, with CloudFormation scripts to host it on S3 and CloudFront.</Description>
+    <PackageTags>dotnet-new;templates;blazor;webassembly;pwa;aws;cognito;cloudformation;blazwiz</PackageTags>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <IncludeContentInPack>true</IncludeContentInPack>
     <EnableDefaultItems>false</EnableDefaultItems>
@@ -19,12 +19,12 @@
     <NoDefaultExcludes>true</NoDefaultExcludes>
     <!-- Template content is not a library, so the lib/ folder warnings do not apply. -->
     <NoWarn>$(NoWarn);NU5128;NU5110;NU5111</NoWarn>
-    <RepositoryRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))</RepositoryRoot>
+    <TemplateRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\template'))</TemplateRoot>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="$(RepositoryRoot)\**\*"
-          Exclude="$(RepositoryRoot)\.git\**;$(RepositoryRoot)\.vs\**;$(RepositoryRoot)\.idea\**;$(RepositoryRoot)\**\bin\**;$(RepositoryRoot)\**\obj\**;$(RepositoryRoot)\**\TestResults\**;$(RepositoryRoot)\**\*.user;$(RepositoryRoot)\publish\**;$(RepositoryRoot)\templatepack\**;$(RepositoryRoot)\**\appsettings.Production.json"
+    <None Include="$(TemplateRoot)\**\*"
+          Exclude="$(TemplateRoot)\.vs\**;$(TemplateRoot)\.idea\**;$(TemplateRoot)\**\bin\**;$(TemplateRoot)\**\obj\**;$(TemplateRoot)\**\TestResults\**;$(TemplateRoot)\**\*.user;$(TemplateRoot)\publish\**;$(TemplateRoot)\**\appsettings.Production.json"
           Pack="true"
           PackagePath="content\blazwiz\" />
   </ItemGroup>

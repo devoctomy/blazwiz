@@ -26,21 +26,28 @@ Instructions for AI coding agents working in this repository.
 
 ## Project
 
-blazwiz is a Blazor WebAssembly PWA that signs in with AWS Cognito, syncs files to S3 with optional end to end
-encryption, and works offline. It is also a `dotnet new` template (`.template.config/`, `templatepack/`).
+blazwiz is a framework for Blazor WebAssembly PWAs that sign in with AWS Cognito, sync files to S3 with end
+to end encryption, and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
+that creates an app built on them.
 
-It is being restructured from "a template you fork" into "a framework you upgrade": NuGet packages
-(`Devoctomy.Blazwiz.*`) plus a small template app. The plan, the findings (U*, T*) and the decisions (D*) are in
-`docs/reviews/2026-11-03-upgradeability-review.md`. Read it before structural work, and tick off its checkboxes as
-items are completed.
+The restructure from "a template you fork" into "a framework you upgrade" is planned in
+`docs/reviews/2026-11-03-upgradeability-review.md`, with the findings (U*, T*) and decisions (D*). Read it before
+structural work, and tick off its checkboxes as items are completed.
 
-- `blazwiz.Core`: framework logic (cryptography, E2E encryption, sync engine, offline mode, browser storage clients
-  and their JS modules in `wwwroot/js`). No UI.
-- `blazwiz.Portal.Application`: view models (Blazing.Mvvm) and services. Unit testable, no Razor.
-- `blazwiz.Portal.Models`: DTOs and settings. No logic.
-- `blazwiz.Portal`: Razor pages, layouts, components and `wwwroot`. Markup only: each page inherits
-  `MvvmComponentBase<TViewModel>`, and the logic lives in the view model.
-- `cloudformation/`: the AWS stack (CloudFront, S3, Cognito, IAM) and deploy scripts.
+- `src/Devoctomy.Blazwiz.<Package>`: the packages. `Core` (app identity, storage names, offline mode, text, coded
+  errors), `Cryptography`, `Encryption` (E2E keys), `Browser` (storage, theme, navigation, WebAuthn and their JS),
+  `Auth` (sign-in contract, sessions, lifecycle), `Auth.Cognito`, `Sync` (the engine and its JS modules), `UI` (the
+  app shell, its pages and extension points), `UI.Sync` (the sync module's UI and wiring) and `Testing` (helpers for
+  apps' tests). The package table in the plan says which depends on which; keep it that way.
+- In `UI` and `UI.Sync`, Razor files are markup only: each view inherits `MvvmComponentBase<TViewModel>`, and the
+  logic lives in the view model.
+- `tests/Devoctomy.Blazwiz.<Package>.UnitTests`: one unit test project per package, referencing only that package
+  (and `tests/Devoctomy.Blazwiz.TestSupport` for shared fakes). `tests/Devoctomy.Blazwiz.Sync.IntTests`: Reqnroll
+  integration tests of sync.
+- `template/`: the template app (`MyApp.Portal`, `.Application`, `.Models`, their tests), `.template.config/` and
+  the AWS stack (`template/cloudformation`). In this repository it builds against the packages' source
+  (`template/Directory.Build.targets`); generated apps use the packages.
+- `templatepack/`: packs the template; `test-template.ps1` checks packages and template together.
 - `docs/versioning.md`: the SemVer policy and what counts as public API.
 
 The project is in development and unreleased. Nobody uses it yet.
@@ -51,64 +58,80 @@ The project is in development and unreleased. Nobody uses it yet.
   data: no migrations, no legacy keys, no shims. Change formats and names freely, and remove old compatibility code
   when you find it.
 - **No static helper classes.** Logic goes in injectable services, as an interface plus an implementation,
-  registered through an `Add*` extension method.
+  registered through an `Add*` extension method. Each package registers its own services, view models and
+  configuration section.
 - **No hand-rolled cryptography or protocols.** Use official libraries, for example BouncyCastle, and
   `Amazon.Extensions.CognitoAuthentication` for SRP and Cognito flows.
-- **Notes is an example, not the framework.** The notes feature (Files page, note editor, markdown services) shows
-  how to use sync and storage. Framework code must not mention notes in code, names or user-facing text.
+- **Notes is an example, not the framework.** The notes feature (Files page, note editor, markdown services) lives in
+  the template app and shows how to use sync and storage. Packages must not mention notes in code, names or
+  user-facing text.
 - **Name browser storage with short names only.** The storage clients add the app's prefix
-  (`IAppStorageKeys`, set up with `AddBlazwizApp`). Never write a literal like `"blazwiz_session"`.
+  (`IAppStorageKeys`, set up with `AddBlazwizApp`). Never write a literal like `"myapp_session"`.
 - **Use `TimeProvider`** for time, and `FakeTimeProvider` in tests.
-- Optional template content uses comment markers such as `//#if (IncludeNotes)`. Keep the repository building with
-  everything included. Modules plug into the shell's extension points (shell regions, Settings sections, sign-in
-  options, session lifecycle handlers, navigation items, page replacement) instead of `#if` blocks in shared classes.
+- **Unit tests** are named `Given<State>_When<Action>_Then<Outcome>`, and every test method marks its parts with
+  `// Arrange`, `// Act` and `// Assert` comments (`// Act & Assert` where the assert does the acting, e.g.
+  `Assert.Throws`). Unit test projects end in `.UnitTests`, one per package.
+- **Packages bring their own browser assets.** JS goes in ES modules imported by the service that uses them, or in
+  the package's JS initializer (`wwwroot/<PackageId>.lib.module.js`), never in the app's `index.html` or `wwwroot`.
+  Modules plug into the shell's extension points (shell regions, Settings sections, sign-in options, session
+  lifecycle handlers, navigation items, page assemblies, page replacement) instead of `#if` blocks in shared classes.
+- User-facing text comes from `.resx` resources (`UiText`, `SyncUiText`), never literals, so apps can reword and
+  translate it. Sidebar items use `NavigationItem.TextResource`. `PseudoLocalizationTests` (template UI tests) fails
+  on visible framework text that does not come from resources.
 
-## Keeping the repository a valid template
+## Keeping the template valid
 
-- Write the app name as `blazwiz`. The only other forms allowed are `Blazwiz` in identifiers and `BLAZWIZ_` in
-  environment variable names. The template replaces all of them.
+- In `template/`, write the app name as `MyApp` (projects, namespaces, identifiers), `myapp` (AWS names, browser
+  storage) or `MYAPP_` (environment variables). The template replaces all of them. `blazwiz` and `Devoctomy.Blazwiz`
+  name the framework and are left alone.
 - Where the title is displayed (rather than the name), add the text just before it to the `appTitle` symbol's
-  `onlyIf` list in `.template.config/template.json`.
+  `onlyIf` list in `template/.template.config/template.json`.
+- Optional content uses comment markers: `//#if (IncludeSync)`, `<!--#if (IncludeNotes)-->`, `@*#if (IncludeSync)*@`.
+  Where both branches are code, use C# `#if (IncludeNotes)` / `#else`: `template/Directory.Build.targets` defines
+  every option for the repository build, and `dotnet new` resolves the directives in generated apps. Keep markers out
+  of projects that use StyleCop; put them in `Program.cs`, Razor files or project files.
 - When adding or removing files that belong to an optional feature, update the matching `exclude` list in
-  `.template.config/template.json`.
-- Files that are only for this repository must not end up in generated apps: add them to the `exclude` list in
-  `.template.config/template.json`, as this file is.
+  `template.json`. Files only for this repository must be excluded there too (as `Directory.Build.targets` is).
 
 ## Build and test
 
 Prerequisites: .NET 10 SDK. The first time, install the Playwright browser:
 
 ```powershell
-dotnet build blazwiz.Portal.UITests
-pwsh blazwiz.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
+dotnet build template/MyApp.Portal.UITests
+pwsh template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
 ```
 
-All four suites must pass before work is considered done, **including the UI tests**:
+Everything must pass before work is considered done, **including the UI tests**:
 
 ```powershell
 dotnet build blazwiz.slnx
-dotnet test blazwiz.Core.UnitTests
-dotnet test blazwiz.Core.IntTests
-dotnet test blazwiz.Portal.Application.UnitTests
-dotnet test blazwiz.Portal.UITests
+dotnet test blazwiz.slnx                         # every package's unit tests, the integration and template tests
+dotnet test template/MyApp.Portal.UITests        # or run it on its own
 ```
 
 - The UI tests start the portal themselves (`dotnet run -c Release` on a free port). They take about two minutes.
-  The portal's output goes to `blazwiz.Portal.UITests/bin/Debug/net10.0/TestResults/portal.log`. Don't build while
-  they run.
+  The portal's output goes to `template/MyApp.Portal.UITests/bin/Debug/net10.0/TestResults/portal.log`. Don't build
+  while they run.
 - Integration scenarios tagged `@aws` are skipped unless the `BLAZWIZ_INTTEST_AWS_*` environment variables are set.
   Skipping them locally is expected. The maintainer tests real S3 sync in the deployed app.
-- Warnings are errors (`Directory.Build.props`), and StyleCop runs on the library projects. Rules turned off for the
-  whole solution (including SA1633, the file header) are in `analyzers.globalconfig`, not `.editorconfig`: sections
-  in `.editorconfig` stop applying when a build sees the folder with different casing (`E:\Source` against
+- Warnings are errors (`Directory.Build.props`), and StyleCop runs on the packages. Rules turned off for the whole
+  solution (including SA1633, the file header) are in `analyzers.globalconfig`, not `.editorconfig`: sections in
+  `.editorconfig` stop applying when a build sees the folder with different casing (`E:\Source` against
   `E:\source`). Fix warnings. Don't suppress them without the maintainer's agreement.
-- Keep `//#if` template markers out of projects that use StyleCop. Put conditional registrations in
-  `blazwiz.Portal/Program.cs`, Razor files or project files.
-- `./templatepack/test-template.ps1` packs the template, creates apps with awkward names and options, and checks that
-  each one builds, passes its tests and has no `blazwiz` left in it. Run it after changing template content or
-  `.template.config/`.
+- Each package lists its public API in `PublicAPI.Unshipped.txt` (PublicApiAnalyzers). A public API change fails the
+  build until the list is updated, so it is reviewed: add or remove the lines the analyzer reports (RS0016, RS0017).
+  Never edit `PublicAPI.Shipped.txt`; the maintainer moves entries there at a release.
+- Builds sometimes fail in the static web assets compression step: "file is being used by another process" on a `.gz`
+  file, or "An item with the same key has already been added" for a package's JS initializer (`*.lib.module.js`). It
+  is intermittent and not a code error. Delete `src/*/obj/Release` and `template/*/obj/Release` (and their `bin`) and
+  build again; when the UI tests fail because "Portal process exited early", check `portal.log` for it first. See
+  `docs/techdebt/static-web-assets-compression.md`.
+- `./templatepack/test-template.ps1` packs the packages (with a version unique to the run) and the template, creates
+  apps with awkward names and every option, and checks each one has no `MyApp` left, builds against the packages and
+  passes its tests. Run it after changing packages' public surface, template content or `.template.config/`.
 
 ## Deploying
 
-`cloudformation/deploy.ps1` creates or updates real AWS resources. Never run `deploy.ps1`, `remove.ps1` or
+`template/cloudformation/deploy.ps1` creates or updates real AWS resources. Never run `deploy.ps1`, `remove.ps1` or
 `test-auth.ps1` unless the maintainer asks for that exact action.

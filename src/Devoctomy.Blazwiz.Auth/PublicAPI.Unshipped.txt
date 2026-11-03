@@ -1,0 +1,138 @@
+#nullable enable
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.ChallengeUnsupported = "Auth.ChallengeUnsupported" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.CredentialsRequired = "Auth.CredentialsRequired" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.InvalidPassword = "Auth.InvalidPassword" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.NewPasswordRequired = "Auth.NewPasswordRequired" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.NotAuthorized = "Auth.NotAuthorized" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.NotSignedIn = "Auth.NotSignedIn" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.PasswordResetRequired = "Auth.PasswordResetRequired" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.SignInAgain = "Auth.SignInAgain" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.SignInExpired = "Auth.SignInExpired" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.SignInFailed = "Auth.SignInFailed" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.TooManyAttempts = "Auth.TooManyAttempts" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.Unreachable = "Auth.Unreachable" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.UserNotConfirmed = "Auth.UserNotConfirmed" -> string!
+const Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.SessionStorageKey = "session" -> string!
+const Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.RememberMeKeyName = "rememberme" -> string!
+Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes
+Devoctomy.Blazwiz.Auth.Extensions.AuthServiceCollectionExtensions
+Devoctomy.Blazwiz.Auth.Models.LoginResult
+Devoctomy.Blazwiz.Auth.Models.LoginResult.ErrorArguments.get -> System.Collections.Generic.IReadOnlyList<object!>!
+Devoctomy.Blazwiz.Auth.Models.LoginResult.ErrorArguments.set -> void
+Devoctomy.Blazwiz.Auth.Models.LoginResult.ErrorCode.get -> string?
+Devoctomy.Blazwiz.Auth.Models.LoginResult.ErrorCode.set -> void
+Devoctomy.Blazwiz.Auth.Models.LoginResult.LoginResult() -> void
+Devoctomy.Blazwiz.Auth.Models.LoginResult.NewPasswordRequired.get -> bool
+Devoctomy.Blazwiz.Auth.Models.LoginResult.NewPasswordRequired.set -> void
+Devoctomy.Blazwiz.Auth.Models.LoginResult.ServiceUnreachable.get -> bool
+Devoctomy.Blazwiz.Auth.Models.LoginResult.ServiceUnreachable.set -> void
+Devoctomy.Blazwiz.Auth.Models.LoginResult.Session.get -> Devoctomy.Blazwiz.Auth.Models.UserSession?
+Devoctomy.Blazwiz.Auth.Models.LoginResult.Session.set -> void
+Devoctomy.Blazwiz.Auth.Models.LoginResult.Success.get -> bool
+Devoctomy.Blazwiz.Auth.Models.LoginResult.Success.set -> void
+Devoctomy.Blazwiz.Auth.Models.SavedUser
+Devoctomy.Blazwiz.Auth.Models.SavedUser.Email.get -> string!
+Devoctomy.Blazwiz.Auth.Models.SavedUser.Email.set -> void
+Devoctomy.Blazwiz.Auth.Models.SavedUser.SavedUser() -> void
+Devoctomy.Blazwiz.Auth.Models.SavedUser.WebAuthnCredential.get -> Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential?
+Devoctomy.Blazwiz.Auth.Models.SavedUser.WebAuthnCredential.set -> void
+Devoctomy.Blazwiz.Auth.Models.SavedUsersData
+Devoctomy.Blazwiz.Auth.Models.SavedUsersData.SavedUsersData() -> void
+Devoctomy.Blazwiz.Auth.Models.SavedUsersData.Users.get -> System.Collections.Generic.List<Devoctomy.Blazwiz.Auth.Models.SavedUser!>!
+Devoctomy.Blazwiz.Auth.Models.SavedUsersData.Users.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession
+Devoctomy.Blazwiz.Auth.Models.UserSession.AccessToken.get -> string?
+Devoctomy.Blazwiz.Auth.Models.UserSession.AccessToken.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession.DisplayName.get -> string!
+Devoctomy.Blazwiz.Auth.Models.UserSession.DisplayName.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession.Email.get -> string?
+Devoctomy.Blazwiz.Auth.Models.UserSession.Email.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession.ExpiresAt.get -> System.DateTimeOffset
+Devoctomy.Blazwiz.Auth.Models.UserSession.ExpiresAt.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession.IdToken.get -> string?
+Devoctomy.Blazwiz.Auth.Models.UserSession.IdToken.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession.IsOffline.get -> bool
+Devoctomy.Blazwiz.Auth.Models.UserSession.IsOffline.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession.SignedInAt.get -> System.DateTimeOffset
+Devoctomy.Blazwiz.Auth.Models.UserSession.SignedInAt.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession.Username.get -> string!
+Devoctomy.Blazwiz.Auth.Models.UserSession.Username.set -> void
+Devoctomy.Blazwiz.Auth.Models.UserSession.UserSession() -> void
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.CreatedAt.get -> System.DateTime
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.CreatedAt.set -> void
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.CredentialID.get -> string!
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.CredentialID.set -> void
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.EncryptedPassword.get -> string?
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.EncryptedPassword.set -> void
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.UserID.get -> string!
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.UserID.set -> void
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.WebAuthnStoredCredential() -> void
+Devoctomy.Blazwiz.Auth.Services.InMemoryOfflineSessionStore
+Devoctomy.Blazwiz.Auth.Services.InMemoryOfflineSessionStore.Clear() -> void
+Devoctomy.Blazwiz.Auth.Services.InMemoryOfflineSessionStore.InMemoryOfflineSessionStore(System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.Auth.Services.InMemoryOfflineSessionStore.Session.get -> Devoctomy.Blazwiz.Auth.Models.UserSession?
+Devoctomy.Blazwiz.Auth.Services.InMemoryOfflineSessionStore.Start(string! username, string! displayName, string? email) -> Devoctomy.Blazwiz.Auth.Models.UserSession!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.CompleteNewPasswordAsync(string! newPassword) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.GetCurrentUserAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.UserSession?>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.GoOfflineAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.IsPlaceholder.get -> bool
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.LoginAsync(string! username, string! password) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.LogoutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.RefreshMargin.get -> System.TimeSpan
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.SessionEnded -> System.EventHandler?
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.SignInOfflineAsync(string! username, Devoctomy.Blazwiz.Core.Offline.Models.OfflineEntryReason reason) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IOfflineSessionStore
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IOfflineSessionStore.Clear() -> void
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IOfflineSessionStore.Session.get -> Devoctomy.Blazwiz.Auth.Models.UserSession?
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IOfflineSessionStore.Start(string! username, string! displayName, string? email) -> Devoctomy.Blazwiz.Auth.Models.UserSession!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService.DecryptAsync(string! encryptedPasswordBase64) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService.EncryptAsync(string! password) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IUserDisplayService
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IUserDisplayService.GetDisplayNameFromUsername(string! username) -> string!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IUserDisplayService.GetInitials(string? displayName) -> string!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.CompleteNewPasswordAsync(string! newPassword) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.Dispose() -> void
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.GetCurrentUserAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.UserSession?>!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.GoOfflineAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.IsPlaceholder.get -> bool
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.LocalAuthenticationService(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IUserDisplayService! userDisplayService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IOfflineSessionStore! offlineSessionStore, System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.LoginAsync(string! username, string! password) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.LogoutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.RefreshMargin.get -> System.TimeSpan
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.SessionEnded -> System.EventHandler?
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.SignInOfflineAsync(string! username, Devoctomy.Blazwiz.Core.Offline.Models.OfflineEntryReason reason) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService
+Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.DecryptAsync(string! encryptedPasswordBase64) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.EncryptAsync(string! password) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.PasswordCryptoService(Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService! cryptoService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
+Devoctomy.Blazwiz.Auth.Services.UserDisplayService
+Devoctomy.Blazwiz.Auth.Services.UserDisplayService.GetDisplayNameFromUsername(string! username) -> string!
+Devoctomy.Blazwiz.Auth.Services.UserDisplayService.GetInitials(string? displayName) -> string!
+Devoctomy.Blazwiz.Auth.Services.UserDisplayService.UserDisplayService() -> void
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle.SessionStartedAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle.ShellLoadingAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle.SignedInAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle.SignedOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle.SigningOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycleHandler
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycleHandler.OnSessionStartedAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycleHandler.OnShellLoadingAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycleHandler.OnSignedInAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycleHandler.OnSignedOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycleHandler.OnSigningOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycleHandler.Order.get -> int
+Devoctomy.Blazwiz.Auth.Sessions.SessionLifecycle
+Devoctomy.Blazwiz.Auth.Sessions.SessionLifecycle.SessionLifecycle(System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycleHandler!>! handlers) -> void
+Devoctomy.Blazwiz.Auth.Sessions.SessionLifecycle.SessionStartedAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.SessionLifecycle.ShellLoadingAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.SessionLifecycle.SignedInAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.SessionLifecycle.SignedOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.SessionLifecycle.SigningOutAsync() -> System.Threading.Tasks.Task!
+static Devoctomy.Blazwiz.Auth.Extensions.AuthServiceCollectionExtensions.AddBlazwizAuth(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Devoctomy.Blazwiz.Auth.Extensions.AuthServiceCollectionExtensions.AddSessionLifecycleHandler<THandler>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static readonly Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.SessionDuration -> System.TimeSpan

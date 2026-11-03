@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Analyzer rules turned off for the whole solution (including SA1633, the file header). -->
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)analyzers.globalconfig" />
+  </ItemGroup>
+</Project>

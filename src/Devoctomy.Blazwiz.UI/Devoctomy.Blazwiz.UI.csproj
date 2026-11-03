@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <Description>The blazwiz app shell: layout, sign in, profile and settings pages, theme, and the extension points modules and apps add to.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+    <PackageReference Include="Blazing.Mvvm" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Core\Devoctomy.Blazwiz.Core.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Cryptography\Devoctomy.Blazwiz.Cryptography.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Browser\Devoctomy.Blazwiz.Browser.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Auth\Devoctomy.Blazwiz.Auth.csproj" />
+  </ItemGroup>
+</Project>

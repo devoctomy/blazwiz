@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <Description>Offline-first file sync for blazwiz apps: files kept in IndexedDB, OPFS or a local folder and synced with S3, with optional end to end encryption.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" />
+    <PackageReference Include="Microsoft.JSInterop" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Core\Devoctomy.Blazwiz.Core.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Cryptography\Devoctomy.Blazwiz.Cryptography.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Encryption\Devoctomy.Blazwiz.Encryption.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Browser\Devoctomy.Blazwiz.Browser.csproj" />
+  </ItemGroup>
+</Project>
