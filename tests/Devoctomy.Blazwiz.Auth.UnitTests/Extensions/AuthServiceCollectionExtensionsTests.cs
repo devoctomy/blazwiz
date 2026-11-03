@@ -9,6 +9,8 @@ using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Cryptography.Configuration;
 using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
+using Devoctomy.Blazwiz.Auth.Migrations;
+using Devoctomy.Blazwiz.Auth.Migrations.Interfaces;
 
 namespace Devoctomy.Blazwiz.Auth.UnitTests.Extensions;
 
@@ -99,7 +101,36 @@ public class AuthServiceCollectionExtensionsTests
         // Assert
         await using var provider = services.BuildValidated();
         await using var scope = provider.CreateAsyncScope();
-        Assert.IsType<TestHandler>(Assert.Single(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>()));
+        Assert.Single(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>(), h => h is TestHandler);
+    }
+
+    [Fact]
+    public async Task GivenAMigration_WhenAddDataMigration_ThenTheRunnerHasItAndRunsFirst()
+    {
+        // Arrange
+        var services = TestServices.Create();
+        services.AddBlazwizAuth();
+
+        // Act
+        services.AddDataMigration<TestMigration>().AddDataMigration<TestMigration>();
+
+        // Assert
+        await using var provider = services.BuildValidated();
+        await using var scope = provider.CreateAsyncScope();
+        Assert.IsType<TestMigration>(Assert.Single(scope.ServiceProvider.GetServices<IDataMigration>()));
+        Assert.IsType<DataMigrationRunner>(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>().OrderBy(h => h.Order).First());
+        Assert.Throws<ArgumentNullException>(() => AuthServiceCollectionExtensions.AddDataMigration<TestMigration>(null!));
+    }
+
+    private sealed class TestMigration : IDataMigration
+    {
+        public string Area => "Test";
+
+        public int Version => 1;
+
+        public DataMigrationScope Scope => DataMigrationScope.App;
+
+        public Task MigrateAsync(DataMigrationContext context) => Task.CompletedTask;
     }
 
     private sealed class TestHandler : ISessionLifecycleHandler

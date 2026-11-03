@@ -40,7 +40,7 @@ public class CognitoServiceCollectionExtensionsTests
         Assert.IsType<CognitoUserPoolClient>(scope.ServiceProvider.GetRequiredService<ICognitoUserPoolClient>());
         Assert.IsType<CognitoIdentityClient>(scope.ServiceProvider.GetRequiredService<ICognitoIdentityClient>());
         Assert.IsType<CognitoAwsCredentialsProvider>(scope.ServiceProvider.GetRequiredService<IAwsCredentialsProvider>());
-        Assert.IsType<AwsCredentialsSessionHandler>(Assert.Single(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>()));
+        Assert.Single(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>(), h => h is AwsCredentialsSessionHandler);
     }
 
     [Fact]

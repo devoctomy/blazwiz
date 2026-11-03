@@ -417,4 +417,7 @@
   <data name="Settings.Language.Label" xml:space="preserve">
     <value>Language</value>
   </data>
+  <data name="Settings.About.Framework" xml:space="preserve">
+    <value>blazwiz version</value>
+  </data>
 </root>

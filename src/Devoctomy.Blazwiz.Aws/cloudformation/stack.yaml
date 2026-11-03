@@ -1,13 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  myapp - static Blazor WebAssembly PWA hosted on private S3 behind CloudFront, with a Cognito
+  blazwiz base stack - static Blazor WebAssembly PWA hosted on private S3 behind CloudFront, with a Cognito
   user pool for sign-in and an identity pool that gives signed-in users temporary AWS credentials,
   scoped to their own prefix in a private data bucket and their own '<sub>/keys' secret.
 
 Parameters:
   AppName:
     Type: String
-    Default: myapp
     AllowedPattern: '^[a-z][a-z0-9]{1,20}$'
     ConstraintDescription: Lowercase letters and numbers, starting with a letter (max 21 characters). No hyphens, as Cognito identity pool names do not allow them.
     Description: Short lowercase application name, used to name resources.
@@ -373,34 +372,56 @@ Resources:
       Roles:
         authenticated: !GetAtt AuthenticatedRole.Arn
 
+# Every output is exported as <stack name>-<output>, for the app's own stack (cloudformation/app.yaml in the app) to
+# import. An exported value cannot change while another stack imports it.
 Outputs:
   Region:
     Description: Region the stack is deployed in.
     Value: !Ref AWS::Region
+    Export:
+      Name: !Sub '${AWS::StackName}-Region'
   PortalUrl:
     Description: URL of the portal.
     Value: !If [UseCustomDomain, !Sub 'https://${CustomDomainName}', !Sub 'https://${PortalDistribution.DomainName}']
+    Export:
+      Name: !Sub '${AWS::StackName}-PortalUrl'
   PortalBucketName:
     Description: Bucket the published portal is uploaded to.
     Value: !Ref PortalBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-PortalBucketName'
   DistributionId:
     Description: CloudFront distribution id (for cache invalidation).
     Value: !Ref PortalDistribution
+    Export:
+      Name: !Sub '${AWS::StackName}-DistributionId'
   DistributionDomainName:
     Description: CloudFront domain name (point your custom domain's DNS here).
     Value: !GetAtt PortalDistribution.DomainName
+    Export:
+      Name: !Sub '${AWS::StackName}-DistributionDomainName'
   DataBucketName:
     Description: Per-user data bucket.
     Value: !Ref DataBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-DataBucketName'
   UserPoolId:
     Description: Cognito user pool id.
     Value: !Ref UserPool
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolId'
   UserPoolClientId:
     Description: Cognito user pool app client id.
     Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPoolClientId'
   IdentityPoolId:
     Description: Cognito identity pool id.
     Value: !Ref IdentityPool
+    Export:
+      Name: !Sub '${AWS::StackName}-IdentityPoolId'
   AuthenticatedRoleArn:
     Description: IAM role assumed by signed-in users.
     Value: !GetAtt AuthenticatedRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AuthenticatedRoleArn'

@@ -40,6 +40,7 @@ public class UiServiceCollectionExtensionsTests
         Assert.IsType<UserSettingsService>(scope.ServiceProvider.GetRequiredService<IUserSettingsService>());
         Assert.IsType<ThemeService>(scope.ServiceProvider.GetRequiredService<IThemeService>());
         Assert.IsType<AppBuildInfo>(scope.ServiceProvider.GetRequiredService<IAppBuildInfo>());
+        Assert.Matches(@"^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$", scope.ServiceProvider.GetRequiredService<IAppBuildInfo>().FrameworkVersion);
         Assert.IsType<NavigationMenuService>(scope.ServiceProvider.GetRequiredService<INavigationMenuService>());
         Assert.IsType<ShellRegistry>(scope.ServiceProvider.GetRequiredService<IShellRegistry>());
         Assert.IsType<SettingsSectionRegistry>(scope.ServiceProvider.GetRequiredService<ISettingsSectionRegistry>());

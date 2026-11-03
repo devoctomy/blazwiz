@@ -21,4 +21,10 @@
   <data name="Renamed.In.An.Upgrade" xml:space="preserve">
     <value>Never shown.</value>
   </data>
+  <data name="Login.PageTitle" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="ForgotPassword.PageTitle" xml:space="preserve">
+    <value>Reset your {0} password</value>
+  </data>
 </root>

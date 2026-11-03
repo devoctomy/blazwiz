@@ -1,0 +1,55 @@
+# Builds and tests the packages and the template on every pull request and on main: the repository's tests (unit,
+# integration, Playwright UI), then the packages and template packed and every template option built and tested
+# against them (templatepack/test-template.ps1).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      # Fresh MSBuild processes for every build (docs/techdebt/static-web-assets-compression.md).
+      MSBUILDDISABLENODEREUSE: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Check versions
+        shell: pwsh
+        run: ./eng/check-versions.ps1
+
+      - name: Install the Playwright browser
+        shell: pwsh
+        run: |
+          dotnet build template/MyApp.Portal.UITests --nologo -v q
+          ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
+
+      - name: Test the repository, packages and template
+        shell: pwsh
+        run: ./templatepack/test-template.ps1
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            **/TestResults/**
+          if-no-files-found: ignore

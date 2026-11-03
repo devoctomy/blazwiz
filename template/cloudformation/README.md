@@ -1,11 +1,23 @@
 # myapp AWS deployment
 
+The infrastructure is in two stacks:
+
+- **The blazwiz base stack**, `<AppName>-<Environment>`: CloudFront and S3 for the portal, Cognito, the per-user data
+  bucket. It is released with the framework (`Devoctomy.Blazwiz.Aws`, at the app's `BlazwizVersion`), not copied
+  here, so upgrading the framework upgrades it: deploy after upgrading. `base-stack.ps1` prints where it is.
+- **The app's own stack**, `<AppName>-<Environment>-app`, from `app.yaml`: add the app's own resources there. It can
+  import every output of the base stack (`!ImportValue !Sub '${BaseStackName}-DataBucketName'`).
+
 | Script | What it does |
 | --- | --- |
-| `deploy.ps1` | Creates or updates the CloudFormation stack `<AppName>-<Environment>`, publishes the portal to S3, invalidates CloudFront and sets up a test user in Cognito. |
+| `deploy.ps1` | Creates or updates the base stack, then the app's stack, publishes the portal to S3, invalidates CloudFront and sets up a test user in Cognito. |
 | `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials and per-user S3 access. |
-| `remove.ps1` | Empties both buckets and deletes the stack. |
-| `stack.yaml` | The CloudFormation template. |
+| `remove.ps1` | Deletes the app's stack, then empties both buckets and deletes the base stack. |
+| `app.yaml` | The app's own CloudFormation template. |
+| `base-stack.ps1` | Finds the base stack and its scripts. |
+
+The scripts here pass the app's name, folder and portal project to the base stack's scripts, and every other
+parameter through.
 
 All three scripts use the AWS CLI v2 with your normal credential chain. Pass `-AwsProfile` to use a named profile.
 

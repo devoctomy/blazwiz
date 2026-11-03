@@ -23,6 +23,8 @@
     <PackageReference Include="Blazing.Mvvm" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+    <!-- The AWS base stack and deploy scripts at the framework's version, run by cloudformation/deploy.ps1. -->
+    <PackageReference Include="Devoctomy.Blazwiz.Aws" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MyApp.Portal.Application\MyApp.Portal.Application.csproj" />

@@ -26,6 +26,7 @@ public class AppBuildInfo : IAppBuildInfo
         ArgumentNullException.ThrowIfNull(assembly);
 
         Version = assembly.GetName().Version?.ToString() ?? string.Empty;
+        FrameworkVersion = GetFrameworkVersion();
         IsDebugBuild = assembly.GetCustomAttribute<DebuggableAttribute>()?.IsJITOptimizerDisabled ?? false;
         BuildTime = assembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -36,8 +37,22 @@ public class AppBuildInfo : IAppBuildInfo
     public string Version { get; }
 
     /// <inheritdoc/>
+    public string FrameworkVersion { get; }
+
+    /// <inheritdoc/>
     public bool IsDebugBuild { get; }
 
     /// <inheritdoc/>
     public string? BuildTime { get; }
+
+    // The package version, without the source revision the SDK appends (1.2.0+abc123 shows as 1.2.0).
+    private static string GetFrameworkVersion()
+    {
+        var framework = typeof(AppBuildInfo).Assembly;
+        var version = framework.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? framework.GetName().Version?.ToString()
+            ?? string.Empty;
+        var plus = version.IndexOf('+', StringComparison.Ordinal);
+        return plus < 0 ? version : version[..plus];
+    }
 }

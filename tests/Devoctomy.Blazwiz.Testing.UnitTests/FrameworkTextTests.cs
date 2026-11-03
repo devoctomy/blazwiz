@@ -73,6 +73,26 @@ public class FrameworkTextTests
     }
 
     [Fact]
+    public void GivenOverridesWithDifferentPlaceholders_WhenMismatchedOverridePlaceholders_ThenThoseKeys()
+    {
+        // Arrange: Login.PageTitle drops the framework's {0}; ForgotPassword.PageTitle keeps it, worded differently.
+        var text = new FrameworkText(typeof(SyncUiText));
+
+        // Act
+        var result = text.MismatchedOverridePlaceholders(typeof(TestOverrides));
+
+        // Assert
+        Assert.Equal(["Login.PageTitle"], result);
+    }
+
+    [Fact]
+    public void GivenNullOverrides_WhenMismatchedOverridePlaceholders_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => new FrameworkText().MismatchedOverridePlaceholders(null!));
+    }
+
+    [Fact]
     public void GivenNullOverrides_WhenUnknownOverrideKeys_ThenThrowsArgumentNullException()
     {
         // Act & Assert

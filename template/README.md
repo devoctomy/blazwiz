@@ -185,8 +185,10 @@ tests.
 
 ## Deploying to AWS
 
-Everything lives in `cloudformation/`; see [`cloudformation/README.md`](cloudformation/README.md). You need the AWS
-CLI v2, the .NET 10 SDK and credentials for the target account.
+The scripts are in `cloudformation/`; see [`cloudformation/README.md`](cloudformation/README.md). The base stack
+(CloudFront, S3, Cognito) comes with the framework (`Devoctomy.Blazwiz.Aws`), so upgrading the framework upgrades it;
+add the app's own AWS resources to `cloudformation/app.yaml`. You need the AWS CLI v2, the .NET 10 SDK and credentials
+for the target account.
 
 ```powershell
 # Deploy (asks for confirmation, then for the test user's password)

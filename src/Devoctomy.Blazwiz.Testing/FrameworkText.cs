@@ -76,6 +76,43 @@ public sealed class FrameworkText
         return Keys(overrides).Where(k => !known.Contains(k)).Order(StringComparer.Ordinal).ToList();
     }
 
+    /// <summary>
+    /// Finds the app's overrides (in its neutral resources) whose placeholders, such as <c>{0}</c>, are not the same
+    /// as the framework text's they replace, e.g. after the framework added or removed one in an upgrade. Such an
+    /// override shows the wrong values, or fails to format.
+    /// </summary>
+    /// <param name="overrides">The class the app's override resources are named after.</param>
+    /// <returns>The keys whose placeholders differ; empty when they all match.</returns>
+    public IReadOnlyList<string> MismatchedOverridePlaceholders(Type overrides)
+    {
+        ArgumentNullException.ThrowIfNull(overrides);
+
+        var framework = resources
+            .SelectMany(Entries)
+            .GroupBy(e => e.Key, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Value, StringComparer.Ordinal);
+        return Entries(overrides)
+            .Where(e => framework.TryGetValue(e.Key, out var text) && !Placeholders(text).SetEquals(Placeholders(e.Value)))
+            .Select(e => e.Key)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    // The argument indexes a format string uses: {0}, {1:N0} and {2,5} give 0, 1 and 2. {{ and }} are not placeholders.
+    private static HashSet<int> Placeholders(string text) =>
+        System.Text.RegularExpressions.Regex.Matches(text.Replace("{{", string.Empty, StringComparison.Ordinal), @"\{(\d+)(?:[,:][^}]*)?\}")
+            .Select(m => int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture))
+            .ToHashSet();
+
+    private static IEnumerable<KeyValuePair<string, string>> Entries(Type resource)
+    {
+        var set = new ResourceManager(resource.FullName!, resource.Assembly)
+            .GetResourceSet(CultureInfo.InvariantCulture, createIfNotExists: true, tryParents: false);
+        return set?.Cast<DictionaryEntry>()
+            .Where(e => e.Value is string)
+            .Select(e => new KeyValuePair<string, string>((string)e.Key, (string)e.Value!)) ?? [];
+    }
+
     private static IEnumerable<string> Keys(Type resource)
     {
         var set = new ResourceManager(resource.FullName!, resource.Assembly)
