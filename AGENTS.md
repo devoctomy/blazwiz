@@ -156,8 +156,8 @@ package version is ordinary .NET and needs no test; the change does. Before 1.0 
   checks show on them): build, then unit, integration and UI tests as separate `dotnet test` steps, and in a parallel
   job `templatepack/test-template.ps1 -SkipRepositoryTests` (packages and template). Keep them passing locally first:
   CI cannot be run from here.
-- `.github/workflows/release.yml` publishes to nuget.org only a commit CI has passed: a `v*` tag on main publishes the
-  version, a manual run on another branch publishes `<version>-beta.<run>` (`docs/releasing.md`). Never push tags or
+- `.github/workflows/release.yml` publishes to nuget.org only a commit CI has passed: a manual run on main (or a `v*`
+  tag on main) publishes the version, on another branch `<version>-beta.<run>` (`docs/releasing.md`). Never push tags or
   run the release yourself (rule 3).
 - `eng/check-versions.ps1` checks the version in `Directory.Build.props` matches `BlazwizVersion` in
   `template/Directory.Packages.props`. Change both together.
