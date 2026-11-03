@@ -6,7 +6,6 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- One version for every Devoctomy.Blazwiz package and the template (docs/versioning.md). -->
     <VersionPrefix>0.1.0</VersionPrefix>
-    <VersionSuffix>preview.1</VersionSuffix>
     <Authors>Nick Pateman</Authors>
     <Company>Devoctomy</Company>
     <Copyright>Copyright (c) Nick Pateman</Copyright>

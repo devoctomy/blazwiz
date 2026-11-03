@@ -12,7 +12,7 @@ not "v" followed by that version.
 ./eng/check-versions.ps1
 
 .EXAMPLE
-./eng/check-versions.ps1 -Tag v0.1.0-preview.1
+./eng/check-versions.ps1 -Tag v0.1.0
 #>
 [CmdletBinding()]
 param(

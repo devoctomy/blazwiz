@@ -9,7 +9,7 @@ Run the Release workflow by hand (Run workflow). It works out what to publish fr
 - **Release**: on main, it publishes the version in `Directory.Build.props` as it is. Pushing a tag `v<version>` on a
   commit on main does the same.
 - **Beta of a branch**: on any other branch, it publishes
-  `<version>-beta.<run number>`, e.g. `0.1.0-preview.1-beta.12`, and new apps from that template use those packages.
+  `<version>-beta.<run number>`, e.g. `0.1.0-beta.12`, and new apps from that template use those packages.
   (NuGet versions cannot contain `_`, so it is `-beta`.)
 
 ## Before the tag
@@ -32,7 +32,7 @@ Run the Release workflow by hand (Run workflow). It works out what to publish fr
 
 ## The tag
 
-Push a tag `v<version>`, e.g. `v1.2.0` or `v0.2.0-preview.1`, on a commit on main. The release workflow:
+Push a tag `v<version>`, e.g. `v1.2.0`, on a commit on main. The release workflow:
 
 1. Checks CI passed for that commit (waiting for it if it is still running), and stops if not.
 2. Checks the commit is on main and the tag matches the version.
