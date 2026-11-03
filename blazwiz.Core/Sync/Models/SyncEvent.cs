@@ -41,9 +41,16 @@ public class SyncEvent
     public string? Key { get; set; }
 
     /// <summary>
-    /// Gets or sets the message shown in the log.
+    /// Gets or sets what happened, as a code (see <see cref="SyncEventCodes"/>). The UI shows it with the text resource
+    /// <c>Sync.Log.&lt;code&gt;</c>.
     /// </summary>
-    public string Message { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the values the code's text needs, e.g. counts or an error's code (see
+    /// <see cref="SyncEventCodes"/>).
+    /// </summary>
+    public List<string> Arguments { get; set; } = [];
 
     /// <summary>
     /// Gets or sets extra information, e.g. the error, or which side won a conflict.

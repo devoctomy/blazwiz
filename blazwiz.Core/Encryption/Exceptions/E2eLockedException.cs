@@ -1,35 +1,47 @@
+using blazwiz.Core.Exceptions;
+
 namespace blazwiz.Core.Encryption.Exceptions;
 
 /// <summary>
-/// Thrown when a file is encrypted with a key this device does not hold, or a file is written while encryption is on
-/// but this device cannot encrypt yet.
+/// Thrown when end to end encryption is on but this device's keys are not unlocked.
 /// </summary>
-public class E2eLockedException : Exception
+public class E2eLockedException : BlazwizException
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="E2eLockedException"/> class.
+    /// Initializes a new instance of the <see cref="E2eLockedException"/> class, with the code <see cref="E2eErrorCodes.Locked"/>.
     /// </summary>
     public E2eLockedException()
-        : base("End to end encryption is locked on this device.")
+        : base(E2eErrorCodes.Locked)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="E2eLockedException"/> class, with the code <see cref="E2eErrorCodes.Locked"/>.
+    /// </summary>
+    /// <param name="innerException">What caused it.</param>
+    public E2eLockedException(Exception innerException)
+        : base(E2eErrorCodes.Locked, innerException)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="E2eLockedException"/> class.
     /// </summary>
-    /// <param name="message">The message.</param>
-    public E2eLockedException(string message)
-        : base(message)
+    /// <param name="code">The error's code.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public E2eLockedException(string code, params object[] arguments)
+        : base(code, arguments)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="E2eLockedException"/> class.
     /// </summary>
-    /// <param name="message">The message.</param>
-    /// <param name="innerException">The cause.</param>
-    public E2eLockedException(string message, Exception innerException)
-        : base(message, innerException)
+    /// <param name="code">The error's code.</param>
+    /// <param name="innerException">What caused it.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public E2eLockedException(string code, Exception innerException, params object[] arguments)
+        : base(code, innerException, arguments)
     {
     }
 }

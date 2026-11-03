@@ -1,12 +1,5 @@
 using Amazon.CognitoIdentityProvider;
-//#if (IncludeNotes)
-using blazwiz.Core.Encryption;
-using blazwiz.Core.Encryption.Interfaces;
-using blazwiz.Core.Sync;
-using blazwiz.Core.Sync.Encryption;
-using blazwiz.Core.Sync.Encryption.Interfaces;
-using blazwiz.Core.Sync.Interfaces;
-//#endif
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Cryptography;
 using blazwiz.Core.Cryptography.Configuration;
 using blazwiz.Core.Cryptography.Interfaces;
@@ -14,6 +7,8 @@ using blazwiz.Core.Extensions;
 using blazwiz.Portal.Application.Extensions;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Shell;
+using blazwiz.Portal.Application.Shell.Interfaces;
 using blazwiz.Portal.Models.Aws;
 using blazwiz.Portal.Models.Settings;
 using Microsoft.Extensions.Configuration;
@@ -61,9 +56,6 @@ public class ServiceCollectionExtensionsTests
         Assert.Equal(AppIdentity.Name, prfOptions.ApplicationName);
         Assert.Equal(Guid.Parse(AppIdentity.Id), prfOptions.ApplicationId);
         Assert.Contains(PasswordCryptoService.RememberMeKeyName, prfOptions.Keys.Select(k => k.Name));
-//#if (IncludeNotes)
-        Assert.Contains(E2eKeyNames.KeyEncryptionKey, prfOptions.Keys.Select(k => k.Name));
-//#endif
         Assert.IsType<UserDisplayService>(scope.ServiceProvider.GetRequiredService<IUserDisplayService>());
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<NavigationMenuService>(scope.ServiceProvider.GetRequiredService<INavigationMenuService>());
@@ -71,28 +63,14 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<CognitoAwsCredentialsProvider>(scope.ServiceProvider.GetRequiredService<IAwsCredentialsProvider>());
         Assert.IsType<SecretsManagerClientFactory>(scope.ServiceProvider.GetRequiredService<ISecretsManagerClientFactory>());
         Assert.IsType<SecretsManagerUserKeysStore>(scope.ServiceProvider.GetRequiredService<IUserKeysStore>());
-//#if (IncludeNotes)
-        Assert.IsType<CognitoS3TargetProvider>(scope.ServiceProvider.GetRequiredService<IS3SyncTargetProvider>());
-        Assert.IsType<AuthSyncUserContext>(scope.ServiceProvider.GetRequiredService<ISyncUserContext>());
-        Assert.IsType<LocalStorageSyncEnabledStore>(scope.ServiceProvider.GetRequiredService<ISyncEnabledStore>());
         Assert.IsType<InMemoryOfflineSessionStore>(scope.ServiceProvider.GetRequiredService<IOfflineSessionStore>());
-        Assert.IsType<PersistentStorageService>(scope.ServiceProvider.GetRequiredService<IPersistentStorageService>());
-        Assert.IsType<SyncEventPresenter>(scope.ServiceProvider.GetRequiredService<ISyncEventPresenter>());
-        Assert.IsType<SyncStatusPresenter>(scope.ServiceProvider.GetRequiredService<ISyncStatusPresenter>());
-        Assert.IsType<EncryptingSyncFileStore>(scope.ServiceProvider.GetRequiredKeyedService<ISyncFileStore>(NoteService.ProfileName));
-        Assert.IsType<E2eKeyManager>(scope.ServiceProvider.GetRequiredService<IE2eKeyManager>());
-        Assert.IsType<LocalStorageE2eLocalKeyStore>(scope.ServiceProvider.GetRequiredService<IE2eLocalKeyStore>());
-        Assert.IsType<PasskeyUnlockService>(scope.ServiceProvider.GetRequiredService<IPasskeyUnlockService>());
-        Assert.IsType<SyncEncryptionService>(scope.ServiceProvider.GetRequiredService<ISyncEncryptionService>());
-        Assert.IsType<E2eSyncGate>(Assert.Single(scope.ServiceProvider.GetServices<ISyncGate>()));
-        Assert.Equal([NoteService.ProfileName], scope.ServiceProvider.GetRequiredService<ISyncService>().Profiles);
-        Assert.IsType<IndexedDbNotesStateStore>(scope.ServiceProvider.GetRequiredService<INotesStateStore>());
-        Assert.IsType<NoteService>(scope.ServiceProvider.GetRequiredService<INoteService>());
-        Assert.IsType<NoteNameService>(scope.ServiceProvider.GetRequiredService<INoteNameService>());
-        Assert.IsType<NoteTreeService>(scope.ServiceProvider.GetRequiredService<INoteTreeService>());
-        Assert.IsType<MarkdownRenderer>(scope.ServiceProvider.GetRequiredService<IMarkdownRenderer>());
-        Assert.IsType<MarkdownFormatService>(scope.ServiceProvider.GetRequiredService<IMarkdownFormatService>());
-//#endif
+        Assert.IsType<ShellRegistry>(scope.ServiceProvider.GetRequiredService<IShellRegistry>());
+        Assert.IsType<SettingsSectionRegistry>(scope.ServiceProvider.GetRequiredService<ISettingsSectionRegistry>());
+        Assert.IsType<PageRegistry>(scope.ServiceProvider.GetRequiredService<IPageRegistry>());
+        Assert.IsType<ShellContentService>(scope.ServiceProvider.GetRequiredService<IShellContentService>());
+        Assert.IsType<SessionLifecycle>(scope.ServiceProvider.GetRequiredService<ISessionLifecycle>());
+        Assert.IsType<AwsCredentialsSessionHandler>(Assert.Single(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>()));
+        Assert.Equal("blazwiz_session", scope.ServiceProvider.GetRequiredService<IAppStorageKeys>().For("session"));
     }
 
     [Fact]

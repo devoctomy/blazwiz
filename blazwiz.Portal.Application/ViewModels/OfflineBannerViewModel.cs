@@ -1,7 +1,9 @@
 using Blazing.Mvvm.ComponentModel;
 using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Offline.Models;
+using blazwiz.Portal.Application.Text;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
@@ -10,25 +12,18 @@ namespace blazwiz.Portal.Application.ViewModels;
 /// </summary>
 public partial class OfflineBannerViewModel : ViewModelBase
 {
-    /// <summary>
-    /// The banner text after choosing offline mode.
-    /// </summary>
-    public const string ChosenMessage = "You're in offline mode. Nothing is synced or sent to the cloud, and you'll be signed out 15 minutes after going offline.";
-
-    /// <summary>
-    /// The banner text after signing in offline because the sign-in service could not be reached.
-    /// </summary>
-    public const string UnreachableMessage = "Couldn't reach the sign-in service, so you're signed in offline. Sync and some features are disabled, and the session lasts 15 minutes.";
-
     private readonly IOfflineModeService offlineModeService;
+    private readonly IStringLocalizer<UiText> text;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OfflineBannerViewModel"/> class.
     /// </summary>
     /// <param name="offlineModeService">Offline mode.</param>
-    public OfflineBannerViewModel(IOfflineModeService offlineModeService)
+    /// <param name="text">The UI's text.</param>
+    public OfflineBannerViewModel(IOfflineModeService offlineModeService, IStringLocalizer<UiText> text)
     {
         this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
+        this.text = text ?? throw new ArgumentNullException(nameof(text));
         this.offlineModeService.Changed += OnChanged;
     }
 
@@ -40,7 +35,7 @@ public partial class OfflineBannerViewModel : ViewModelBase
     /// <summary>
     /// Gets the banner text.
     /// </summary>
-    public string Message => offlineModeService.Reason == OfflineEntryReason.SignInUnreachable ? UnreachableMessage : ChosenMessage;
+    public string Message => offlineModeService.Reason == OfflineEntryReason.SignInUnreachable ? text["Offline.Banner.Unreachable"] : text["Offline.Banner.Chosen"];
 
     /// <summary>
     /// Leaves offline mode, which ends the offline session so the user signs in online.

@@ -4,8 +4,9 @@ using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Services;
+using blazwiz.Portal.Application.Text.Interfaces;
 using blazwiz.Portal.Models.Notes;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.JSInterop;
@@ -45,6 +46,7 @@ public partial class NoteEditorViewModel : ViewModelBase
     private readonly INoteEditorInteropService editorInteropService;
     private readonly INavigationService navigationService;
     private readonly ISyncService syncService;
+    private readonly IErrorText errorText;
 
     private string? loadedNoteId;
     private NoteEntry? note;
@@ -73,13 +75,15 @@ public partial class NoteEditorViewModel : ViewModelBase
     /// <param name="editorInteropService">Access to the editor's text and selection in the browser.</param>
     /// <param name="navigationService">The navigation service.</param>
     /// <param name="syncService">The sync service, to notice when a sync changes the open note.</param>
+    /// <param name="errorText">Describes the framework's errors (storage, encryption) for the user.</param>
     public NoteEditorViewModel(
         INoteService noteService,
         IMarkdownRenderer markdownRenderer,
         IMarkdownFormatService markdownFormatService,
         INoteEditorInteropService editorInteropService,
         INavigationService navigationService,
-        ISyncService syncService)
+        ISyncService syncService,
+        IErrorText errorText)
     {
         this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
         this.markdownRenderer = markdownRenderer ?? throw new ArgumentNullException(nameof(markdownRenderer));
@@ -87,6 +91,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         this.editorInteropService = editorInteropService ?? throw new ArgumentNullException(nameof(editorInteropService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+        this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.syncService.FilesChanged += OnFilesChanged;
     }
 
@@ -267,7 +272,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Describe(ex);
         }
         catch (JSException)
         {
@@ -469,7 +474,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Describe(ex);
         }
         catch (JSException)
         {
@@ -524,7 +529,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Describe(ex);
             return false;
         }
         catch (JSException)
@@ -537,4 +542,6 @@ public partial class NoteEditorViewModel : ViewModelBase
             IsSaving = false;
         }
     }
+
+    private string Describe(Exception ex) => ex is NotesException ? ex.Message : errorText.Describe(ex);
 }

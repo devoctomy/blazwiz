@@ -10,6 +10,8 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 
 public class SessionTimerViewModelTests
 {
+    private readonly TestText testText = new();
+
     private static readonly DateTimeOffset Now = new(2026, 10, 4, 12, 0, 0, TimeSpan.Zero);
 
     private readonly Mock<IAuthenticationService> mockAuth = new();
@@ -26,9 +28,9 @@ public class SessionTimerViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(null!, offlineMode, time)).ParamName);
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(mockAuth.Object, null!, time)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(mockAuth.Object, offlineMode, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(null!, offlineMode, time, testText.Ui)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(mockAuth.Object, null!, time, testText.Ui)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(mockAuth.Object, offlineMode, null!, testText.Ui)).ParamName);
     }
 
     [Fact]
@@ -195,5 +197,5 @@ public class SessionTimerViewModelTests
         }
     }
 
-    private SessionTimerViewModel CreateSut() => new(mockAuth.Object, offlineMode, time);
+    private SessionTimerViewModel CreateSut() => new(mockAuth.Object, offlineMode, time, testText.Ui);
 }

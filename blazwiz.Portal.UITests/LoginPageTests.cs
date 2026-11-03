@@ -24,7 +24,7 @@ public class LoginPageTests : TestBase
 
         await Page.Locator("#login-button").ClickAsync();
 
-        await Expect(Page.Locator("#login-error")).ToContainTextAsync("Please enter your username and password.");
+        await Expect(Page.Locator("#login-error")).ToContainTextAsync("Please enter your email and password.");
         await ExpectLoginPageAsync();
     }
 

@@ -92,8 +92,14 @@ under its own `blazwiz-inttests/<guid>/` prefix, which is emptied afterwards<!--
 2. **Page**: `blazwiz.Portal/Pages/Things.razor` with `@page "/things"` and
    `@inherits MvvmComponentBase<ThingsViewModel>`. Use `<PageHeader Title="Things" Icon="bi-box" />`
    for a consistent heading and browser tab title.
-3. **Navigation**: add a `NavigationItem` to `NavigationMenuService`. It appears in the sidebar and as a
-   quick link on the dashboard.
+3. **Navigation**: add a `NavigationItem` with `services.AddNavigationItem(...)` in
+   `AppServiceCollectionExtensions.AddAppServices`. Its `Order` sets its place in the sidebar, and it also appears as
+   a quick link on the dashboard.
+
+The framework's own parts plug into the app the same way, so you can add to them or change them in `Program.cs`:
+`AddShellComponent` (banners, top bar buttons, floating items, overlays), `AddSettingsSection`, `AddSignInOption`,
+`AddSessionLifecycleHandler`, and `ReplacePage` or `DisablePage` for the framework's pages (`BlazwizPages`).
+Text comes from resources you can reword or translate with `AddBlazwizText(text => text.AddOverrides<YourText>())`.
 <!--#if (IncludeTests)-->
 4. **Tests**: `blazwiz.Portal.Application.UnitTests/ViewModels/ThingsViewModelTests.cs`.
 <!--#endif-->
@@ -160,8 +166,8 @@ services.AddBlazwizSync(sync => sync
 ### Add a service
 
 Put domain logic in `blazwiz.Core` (interface in an `Interfaces` sub folder) and register it in
-`AddBlazwizCoreServices`. Portal specific services go in `blazwiz.Portal.Application/Services` and
-`AddPortalApplicationServices`.
+`AddBlazwizCoreServices`. The app's own services go in `blazwiz.Portal.Application/Services` and
+`AppServiceCollectionExtensions.AddAppServices`.
 <!--#if (IncludeTests)-->
 Add a matching test file in `blazwiz.Core.UnitTests` or `blazwiz.Portal.Application.UnitTests`.
 <!--#endif-->

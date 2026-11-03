@@ -26,11 +26,6 @@ public class IndexedDbSyncEventLog(
     /// </summary>
     public const string OwnerProfileTimeIndex = "owner_profile_timestamp";
 
-    /// <summary>
-    /// The message of a collapsed run of passes that changed nothing.
-    /// </summary>
-    public const string NoChangeMessage = "Checking for changes · up to date";
-
     private readonly IIndexedDbClient client = client ?? throw new ArgumentNullException(nameof(client));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
@@ -97,7 +92,7 @@ public class IndexedDbSyncEventLog(
                 PassId = passId,
                 Timestamp = timestamp,
                 Kind = SyncEventKind.PassCompleted,
-                Message = NoChangeMessage,
+                Code = SyncEventCodes.NoChanges,
                 IsNoChangePass = true,
             };
         }
@@ -171,7 +166,7 @@ public class IndexedDbSyncEventLog(
         }
 
         var text = query.Text.Trim();
-        return Contains(entry.Message, text) || Contains(entry.Key, text) || Contains(entry.Detail, text) || Contains(entry.Profile, text);
+        return Contains(entry.Key, text) || Contains(entry.Detail, text) || Contains(entry.Profile, text);
     }
 
     private static bool Contains(string? value, string text) => value?.Contains(text, StringComparison.OrdinalIgnoreCase) == true;

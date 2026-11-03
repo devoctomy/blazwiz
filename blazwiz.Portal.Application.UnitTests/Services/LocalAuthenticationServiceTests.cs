@@ -1,7 +1,8 @@
-using blazwiz.Core.Offline;
 using blazwiz.Core.Offline.Models;
-using blazwiz.Portal.Application.Services;
+using blazwiz.Core.Offline;
+using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Models.Auth;
 using Moq;
 
@@ -182,7 +183,7 @@ public class LocalAuthenticationServiceTests
 
         // Assert
         Assert.False(result.Success);
-        Assert.Equal("Please sign in first.", result.Error);
+        Assert.Equal(AuthErrorCodes.NotSignedIn, result.ErrorCode);
     }
 
     [Theory]
@@ -200,7 +201,7 @@ public class LocalAuthenticationServiceTests
 
         // Assert
         Assert.False(result.Success);
-        Assert.Equal("Please enter your username and password.", result.Error);
+        Assert.Equal(AuthErrorCodes.CredentialsRequired, result.ErrorCode);
         Assert.Null(result.Session);
         mockLocalStorage.Verify(x => x.SetObjectAsync(It.IsAny<string>(), It.IsAny<UserSession>()), Times.Never);
     }
@@ -217,7 +218,7 @@ public class LocalAuthenticationServiceTests
 
         // Assert
         Assert.True(result.Success);
-        Assert.Null(result.Error);
+        Assert.Null(result.ErrorCode);
         var session = Assert.IsType<UserSession>(result.Session);
         Assert.Equal("bob.hoskins@example.com", session.Username);
         Assert.Equal("Bob Hoskins", session.DisplayName);

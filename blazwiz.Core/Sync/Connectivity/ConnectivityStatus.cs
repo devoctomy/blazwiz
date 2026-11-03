@@ -21,28 +21,6 @@ public class ConnectivityStatus
     public DateTimeOffset? LastCheckedAt { get; set; }
 
     /// <summary>
-    /// Describes the reason for the user, e.g. "Offline: S3 unreachable".
-    /// </summary>
-    /// <returns>The description.</returns>
-    public string Describe()
-    {
-        if (IsOnline)
-        {
-            return "Online";
-        }
-
-        return Reason switch
-        {
-            OfflineReason.OfflineMode => "Offline: offline mode",
-            OfflineReason.SyncDisabled => "Sync turned off",
-            OfflineReason.NoNetwork => "Offline: no network",
-            OfflineReason.NoCredentials => "Offline: no credentials",
-            OfflineReason.Unreachable => "Offline: S3 unreachable",
-            _ => "Checking connection",
-        };
-    }
-
-    /// <summary>
     /// Creates a copy of the status.
     /// </summary>
     /// <returns>The copy.</returns>

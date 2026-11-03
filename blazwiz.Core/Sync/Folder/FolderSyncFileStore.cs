@@ -141,9 +141,9 @@ public class FolderSyncFileStore(
         var owner = await userContext.GetUserIdAsync()
             ?? throw new InvalidOperationException("Sign in to use your files.");
         var status = await folderClient.GetStatusAsync(owner)
-            ?? throw new SyncStorageAccessException("No folder has been chosen for your files. Choose one in Settings.");
+            ?? throw new SyncStorageAccessException(SyncErrorCodes.FolderNotChosen);
         return status.IsGranted
             ? owner
-            : throw new SyncStorageAccessException($"Allow access to the folder '{status.Name}' to use your files.");
+            : throw new SyncStorageAccessException(SyncErrorCodes.FolderAccessNeeded, status.Name);
     }
 }

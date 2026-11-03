@@ -61,7 +61,7 @@ public class SyncServiceTests
         mockEngine.Verify(x => x.SyncAsync(photos, false, It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal([SyncState.Syncing, SyncState.Idle], states);
         Assert.Equal(Now, sut.Status.LastSyncedAt);
-        Assert.Null(sut.Status.LastError);
+        Assert.Null(sut.Status.LastErrorCode);
         mockLog.Verify(x => x.PruneAsync(), Times.Once);
     }
 
@@ -113,7 +113,8 @@ public class SyncServiceTests
 
         // Assert
         Assert.Equal(SyncState.Error, sut.Status.State);
-        Assert.Equal("2 files could not be synced.", sut.Status.LastError);
+        Assert.Equal(SyncErrorCodes.FilesFailed, sut.Status.LastErrorCode);
+        Assert.Equal([2], sut.Status.LastErrorArguments);
         Assert.Null(sut.Status.LastSyncedAt);
     }
 
@@ -131,7 +132,7 @@ public class SyncServiceTests
         // Assert
         mockConnectivity.Verify(x => x.ReportNetworkFailure(failure), Times.Once);
         Assert.Equal(SyncState.Error, sut.Status.State);
-        Assert.Equal("S3 could not be reached.", sut.Status.LastError);
+        Assert.Equal(SyncErrorCodes.RemoteUnreachable, sut.Status.LastErrorCode);
         Assert.Contains("down", result.Errors);
     }
 
@@ -163,7 +164,7 @@ public class SyncServiceTests
         await sut.SyncAsync("notes");
 
         // Assert
-        Assert.Equal("S3 refused the credentials.", sut.Status.LastError);
+        Assert.Equal(SyncErrorCodes.RemoteAccessDenied, sut.Status.LastErrorCode);
         mockEngine.Verify(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 

@@ -1,4 +1,5 @@
-<PageTitle>@Title - @AppSettings.ApplicationTitle</PageTitle>
+@inject IStringLocalizer<UiText> Text
+<PageTitle>@Text["Shell.PageTitle", Title, AppSettings.ApplicationTitle]</PageTitle>
 
 <div class="page-header">
     <div class="page-header-text">

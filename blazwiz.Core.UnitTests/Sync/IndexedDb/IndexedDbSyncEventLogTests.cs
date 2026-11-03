@@ -101,7 +101,7 @@ public class IndexedDbSyncEventLogTests
         Assert.Equal(1, saved!.Count);
         Assert.True(saved.IsNoChangePass);
         Assert.Equal(SyncEventKind.PassCompleted, saved.Kind);
-        Assert.Equal(IndexedDbSyncEventLog.NoChangeMessage, saved.Message);
+        Assert.Equal(SyncEventCodes.NoChanges, saved.Code);
         Assert.True(raised);
     }
 
@@ -133,13 +133,12 @@ public class IndexedDbSyncEventLogTests
         // Arrange
         stored.Add(Event(SyncEventKind.UploadNew, Now, "notes/Ideas.md"));
         stored.Add(Event(SyncEventKind.DownloadNew, Now, "notes/Plan.md"));
-        stored.Add(new SyncEvent { Owner = Owner, Profile = "photos", Timestamp = Now, Kind = SyncEventKind.UploadNew, Key = "photos/a.png", Message = "New local file" });
-        stored.Add(new SyncEvent { Owner = Owner, Timestamp = Now.AddDays(-2), Kind = SyncEventKind.WentOffline, Message = "Offline: no credentials" });
+        stored.Add(new SyncEvent { Owner = Owner, Profile = "photos", Timestamp = Now, Kind = SyncEventKind.UploadNew, Key = "photos/a.png", Code = SyncEventCodes.NewLocalFile });
+        stored.Add(new SyncEvent { Owner = Owner, Timestamp = Now.AddDays(-2), Kind = SyncEventKind.WentOffline, Code = SyncEventCodes.WentOffline, Arguments = ["NoCredentials"] });
         var sut = CreateSut();
 
         // Act & Assert
         Assert.Equal(["notes/Ideas.md"], (await sut.QueryAsync(new SyncEventQuery { Text = "ideas" })).Events.Select(e => e.Key));
-        Assert.Single((await sut.QueryAsync(new SyncEventQuery { Text = "CREDENTIALS" })).Events);
         Assert.Single((await sut.QueryAsync(new SyncEventQuery { Text = "photos" })).Events);
         Assert.Equal(2, (await sut.QueryAsync(new SyncEventQuery { Kinds = [SyncEventKind.UploadNew] })).Events.Count);
         Assert.Single((await sut.QueryAsync(new SyncEventQuery { Profile = "photos" })).Events);
@@ -212,7 +211,7 @@ public class IndexedDbSyncEventLogTests
     }
 
     private static SyncEvent Event(SyncEventKind kind, DateTimeOffset timestamp, string? key = null) =>
-        new() { Owner = Owner, Profile = "notes", Timestamp = timestamp, Kind = kind, Key = key, Message = kind.ToString() };
+        new() { Owner = Owner, Profile = "notes", Timestamp = timestamp, Kind = kind, Key = key, Code = kind.ToString() };
 
     private void SetupLast(SyncEvent last)
     {

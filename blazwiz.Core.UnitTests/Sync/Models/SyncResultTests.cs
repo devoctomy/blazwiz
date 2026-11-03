@@ -5,23 +5,11 @@ namespace blazwiz.Core.UnitTests.Sync.Models;
 public class SyncResultTests
 {
     [Fact]
-    public void GivenNoChanges_WhenDescribe_ThenUpToDate()
+    public void GivenCounts_WhenHasChanges_ThenTrueOnlyForChanges()
     {
-        var sut = new SyncResult();
-
-        Assert.False(sut.HasChanges);
-        Assert.Equal("Up to date", sut.Describe());
-    }
-
-    [Fact]
-    public void GivenCounts_WhenDescribe_ThenListsEachNonZeroCount()
-    {
-        var sut = new SyncResult { Uploaded = 3, Downloaded = 1, DeletedLocal = 1, DeletedRemote = 1, ConflictsResolved = 1, Failed = 2 };
-
-        Assert.True(sut.HasChanges);
-        Assert.Equal("3 uploaded, 1 downloaded, 2 deleted, 1 conflict resolved, 2 failed", sut.Describe());
-        sut.ConflictsResolved = 2;
-        Assert.Contains("2 conflicts resolved", sut.Describe(), StringComparison.Ordinal);
+        Assert.False(new SyncResult().HasChanges);
+        Assert.False(new SyncResult { Adopted = 2, Failed = 1 }.HasChanges);
+        Assert.True(new SyncResult { DeletedLocal = 1 }.HasChanges);
     }
 
     [Fact]

@@ -177,7 +177,8 @@ public class SyncStorageMigrationServiceTests
         var ex = await Assert.ThrowsAsync<SyncStorageMigrationException>(() => CreateSut().MigrateAsync(SyncStorageKind.LocalFolder));
 
         // Assert
-        Assert.Equal("The folder already has notes files in it. Choose an empty folder, or move them out first.", ex.Message);
+        Assert.Equal(SyncErrorCodes.StorageFolderNotEmpty, ex.Code);
+        Assert.Equal(["notes"], ex.Arguments);
         Assert.Equal(["notes/mine.md"], (await folder.ListAsync()).Select(f => f.Key));
         Assert.Single(await indexedDb.ListAsync());
         Assert.Empty(stateStore.Saved);
@@ -232,7 +233,8 @@ public class SyncStorageMigrationServiceTests
         var ex = await Assert.ThrowsAsync<SyncStorageMigrationException>(() => CreateSut().MigrateAsync(SyncStorageKind.Opfs));
 
         // Assert
-        Assert.Equal("'notes/a.md' did not copy correctly.", ex.Message);
+        Assert.Equal(SyncErrorCodes.StorageCopyMismatch, ex.Code);
+        Assert.Equal(["notes/a.md"], ex.Arguments);
         Assert.Empty(await opfs.ListAsync());
         Assert.Single(await indexedDb.ListAsync());
         var state = stateStore.Saved.Last();
@@ -253,7 +255,8 @@ public class SyncStorageMigrationServiceTests
         var ex = await Assert.ThrowsAsync<SyncStorageMigrationException>(() => CreateSut().MigrateAsync(SyncStorageKind.Opfs));
 
         // Assert
-        Assert.Equal("'notes/a.md' did not copy correctly.", ex.Message);
+        Assert.Equal(SyncErrorCodes.StorageCopyMismatch, ex.Code);
+        Assert.Equal(["notes/a.md"], ex.Arguments);
         Assert.Equal(SyncStorageKind.IndexedDb, stateStore.Saved.Last().Kind);
     }
 
@@ -267,7 +270,8 @@ public class SyncStorageMigrationServiceTests
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<SyncStorageMigrationException>(() => CreateSut().MigrateAsync(SyncStorageKind.Opfs));
-        Assert.Equal("'notes/a.md' could not be read.", ex.Message);
+        Assert.Equal(SyncErrorCodes.StorageReadFailed, ex.Code);
+        Assert.Equal(["notes/a.md"], ex.Arguments);
     }
 
     [Fact]

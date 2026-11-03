@@ -1,27 +1,3 @@
 @page "/profile"
-@inherits MvvmComponentBase<ProfileViewModel>
 
-<PageHeader Title="Profile" Icon="bi-person-circle" Subtitle="Details of the signed in user." />
-
-@if (ViewModel.User != null)
-{
-    <div class="panel profile-panel">
-        <span class="avatar avatar-lg">@ViewModel.Initials</span>
-        <div>
-            <h2 class="profile-name" id="profile-name">@ViewModel.User.DisplayName</h2>
-            <p class="profile-sub">@ViewModel.User.Username</p>
-        </div>
-    </div>
-
-    <div class="panel mt-4">
-        <h2 class="panel-title">Session</h2>
-        <dl class="detail-list">
-            <dt>Email</dt>
-            <dd>@(ViewModel.User.Email ?? "Not set")</dd>
-            <dt>Signed in</dt>
-            <dd>@ViewModel.User.SignedInAt.ToLocalTime().ToString("f")</dd>
-            <dt>Expires</dt>
-            <dd>@ViewModel.User.ExpiresAt.ToLocalTime().ToString("f")</dd>
-        </dl>
-    </div>
-}
+<PageHost Key="@BlazwizPages.Profile" />

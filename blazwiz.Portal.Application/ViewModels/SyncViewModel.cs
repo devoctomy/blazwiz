@@ -4,8 +4,10 @@ using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Text;
 using blazwiz.Portal.Models.Sync;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
@@ -25,8 +27,6 @@ public partial class SyncViewModel : ViewModelBase
     /// </summary>
     public static readonly TimeSpan SearchDebounce = TimeSpan.FromMilliseconds(300);
 
-    private const string PassHeaderPrefix = "Checking for changes";
-
     private readonly ISyncEventLog eventLog;
     private readonly ISyncEventPresenter eventPresenter;
     private readonly ISyncStatusPresenter statusPresenter;
@@ -34,6 +34,7 @@ public partial class SyncViewModel : ViewModelBase
     private readonly IConnectivityService connectivityService;
     private readonly ISyncScheduler syncScheduler;
     private readonly TimeProvider timeProvider;
+    private readonly IStringLocalizer<SyncUiText> text;
     private readonly HashSet<string> expandedRows = [];
     private readonly HashSet<string> collapsedRows = [];
 
@@ -57,6 +58,7 @@ public partial class SyncViewModel : ViewModelBase
     /// <param name="connectivityService">The connectivity service.</param>
     /// <param name="syncScheduler">The sync scheduler.</param>
     /// <param name="timeProvider">The clock, time zone and timers.</param>
+    /// <param name="text">The sync UI's text.</param>
     public SyncViewModel(
         ISyncEventLog eventLog,
         ISyncEventPresenter eventPresenter,
@@ -64,7 +66,8 @@ public partial class SyncViewModel : ViewModelBase
         ISyncService syncService,
         IConnectivityService connectivityService,
         ISyncScheduler syncScheduler,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IStringLocalizer<SyncUiText> text)
     {
         this.eventLog = eventLog ?? throw new ArgumentNullException(nameof(eventLog));
         this.eventPresenter = eventPresenter ?? throw new ArgumentNullException(nameof(eventPresenter));
@@ -73,6 +76,7 @@ public partial class SyncViewModel : ViewModelBase
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
         this.syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
         this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        this.text = text ?? throw new ArgumentNullException(nameof(text));
 
         this.eventLog.EventsWritten += OnEventsWritten;
         this.syncService.StatusChanged += OnSyncStatusChanged;
@@ -119,8 +123,8 @@ public partial class SyncViewModel : ViewModelBase
     /// </summary>
     public IReadOnlyList<SyncFilterChip> Chips =>
         [
-            new SyncFilterChip { Group = null, Label = "All", IsActive = activeGroup == null },
-            .. Enum.GetValues<SyncEventGroup>().Select(g => new SyncFilterChip { Group = g, Label = g.ToString(), IsActive = activeGroup == g }),
+            new SyncFilterChip { Group = null, Label = eventPresenter.DescribeGroup(null), IsActive = activeGroup == null },
+            .. Enum.GetValues<SyncEventGroup>().Select(g => new SyncFilterChip { Group = g, Label = eventPresenter.DescribeGroup(g), IsActive = activeGroup == g }),
         ];
 
     /// <summary>
@@ -373,8 +377,8 @@ public partial class SyncViewModel : ViewModelBase
             {
                 Date = g.Key,
                 Label = g.Key == today
-                    ? "Today"
-                    : g.Key == today.AddDays(-1) ? "Yesterday" : g.Key.ToString("dddd d MMMM yyyy", CultureInfo.CurrentCulture),
+                    ? text["Sync.Log.Today"]
+                    : g.Key == today.AddDays(-1) ? text["Sync.Log.Yesterday"] : g.Key.ToString(text["Sync.Log.DayFormat"], CultureInfo.CurrentCulture),
                 Rows = g.ToList(),
             })
             .ToList();
@@ -388,11 +392,11 @@ public partial class SyncViewModel : ViewModelBase
         var header = Present(headerEvent);
         if (completed != null && !completed.IsNoChangePass)
         {
-            header.Message = $"{PassHeaderPrefix} · {completed.Message}";
+            header.Message = eventPresenter.DescribePass(completed);
         }
         else if (completed == null && started != null)
         {
-            header.Message = PassHeaderPrefix;
+            header.Message = eventPresenter.DescribePass(null);
         }
 
         var children = events
@@ -425,7 +429,7 @@ public partial class SyncViewModel : ViewModelBase
         {
             Id = entry.Id,
             Presentation = eventPresenter.Present(entry.Kind),
-            Message = entry.Message,
+            Message = eventPresenter.Describe(entry),
             Key = entry.Key,
             Profile = entry.Profile,
             Detail = entry.Detail,
@@ -442,15 +446,15 @@ public partial class SyncViewModel : ViewModelBase
     {
         if (age < TimeSpan.FromMinutes(1))
         {
-            return "just now";
+            return text["Sync.Log.Age.JustNow"];
         }
 
         if (age < TimeSpan.FromHours(1))
         {
-            return $"{(int)age.TotalMinutes} min ago";
+            return text["Sync.Log.Age.Minutes", (int)age.TotalMinutes];
         }
 
-        return age < TimeSpan.FromDays(1) ? $"{(int)age.TotalHours} h ago" : $"{(int)age.TotalDays} d ago";
+        return age < TimeSpan.FromDays(1) ? text["Sync.Log.Age.Hours", (int)age.TotalHours] : text["Sync.Log.Age.Days", (int)age.TotalDays];
     }
 
     private void ScheduleSearch()

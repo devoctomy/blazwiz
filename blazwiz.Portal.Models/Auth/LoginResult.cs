@@ -11,9 +11,15 @@ public class LoginResult
     public bool Success { get; set; }
 
     /// <summary>
-    /// Gets or sets the error message when the login failed.
+    /// Gets or sets why the sign in failed, as an error code (see <c>AuthErrorCodes</c>), or null if it did not. The
+    /// UI shows it with the text resource <c>Error.&lt;code&gt;</c>.
     /// </summary>
-    public string? Error { get; set; }
+    public string? ErrorCode { get; set; }
+
+    /// <summary>
+    /// Gets or sets the values the error's text needs.
+    /// </summary>
+    public IReadOnlyList<object> ErrorArguments { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the session created by a successful login.

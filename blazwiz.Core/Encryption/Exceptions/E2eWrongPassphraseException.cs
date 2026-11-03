@@ -1,34 +1,47 @@
+using blazwiz.Core.Exceptions;
+
 namespace blazwiz.Core.Encryption.Exceptions;
 
 /// <summary>
-/// Thrown when the passphrase does not unwrap the master key.
+/// Thrown when the passphrase does not decrypt the keys.
 /// </summary>
-public class E2eWrongPassphraseException : Exception
+public class E2eWrongPassphraseException : BlazwizException
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="E2eWrongPassphraseException"/> class.
+    /// Initializes a new instance of the <see cref="E2eWrongPassphraseException"/> class, with the code <see cref="E2eErrorCodes.WrongPassphrase"/>.
     /// </summary>
     public E2eWrongPassphraseException()
-        : base("The passphrase is not correct.")
+        : base(E2eErrorCodes.WrongPassphrase)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="E2eWrongPassphraseException"/> class, with the code <see cref="E2eErrorCodes.WrongPassphrase"/>.
+    /// </summary>
+    /// <param name="innerException">What caused it.</param>
+    public E2eWrongPassphraseException(Exception innerException)
+        : base(E2eErrorCodes.WrongPassphrase, innerException)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="E2eWrongPassphraseException"/> class.
     /// </summary>
-    /// <param name="message">The message.</param>
-    public E2eWrongPassphraseException(string message)
-        : base(message)
+    /// <param name="code">The error's code.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public E2eWrongPassphraseException(string code, params object[] arguments)
+        : base(code, arguments)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="E2eWrongPassphraseException"/> class.
     /// </summary>
-    /// <param name="message">The message.</param>
-    /// <param name="innerException">The cause.</param>
-    public E2eWrongPassphraseException(string message, Exception innerException)
-        : base(message, innerException)
+    /// <param name="code">The error's code.</param>
+    /// <param name="innerException">What caused it.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public E2eWrongPassphraseException(string code, Exception innerException, params object[] arguments)
+        : base(code, innerException, arguments)
     {
     }
 }

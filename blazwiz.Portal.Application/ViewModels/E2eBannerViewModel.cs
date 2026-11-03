@@ -4,7 +4,10 @@ using blazwiz.Core.Encryption.Models;
 using blazwiz.Core.Sync.Encryption.Interfaces;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Text.Interfaces;
+using blazwiz.Portal.Application.Text;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
@@ -18,6 +21,8 @@ public partial class E2eBannerViewModel : ViewModelBase
     private readonly IPasskeyUnlockService passkeyUnlockService;
     private readonly ISyncScheduler syncScheduler;
     private readonly INavigationService navigationService;
+    private readonly IStringLocalizer<SyncUiText> text;
+    private readonly IErrorText errorText;
 
     private bool hasSavedPasskey;
     private bool isWorking;
@@ -33,16 +38,22 @@ public partial class E2eBannerViewModel : ViewModelBase
     /// <param name="passkeyUnlockService">Uses the saved passkey again to get its PRF keys back.</param>
     /// <param name="syncScheduler">Syncs once encryption allows it.</param>
     /// <param name="navigationService">Opens the settings.</param>
+    /// <param name="text">The sync UI's text.</param>
+    /// <param name="errorText">Describes errors.</param>
     public E2eBannerViewModel(
         ISyncEncryptionService encryptionService,
         IPasskeyUnlockService passkeyUnlockService,
         ISyncScheduler syncScheduler,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        IStringLocalizer<SyncUiText> text,
+        IErrorText errorText)
     {
         this.encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
         this.passkeyUnlockService = passkeyUnlockService ?? throw new ArgumentNullException(nameof(passkeyUnlockService));
         this.syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        this.text = text ?? throw new ArgumentNullException(nameof(text));
+        this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.encryptionService.StatusChanged += OnStatusChanged;
     }
 
@@ -61,10 +72,10 @@ public partial class E2eBannerViewModel : ViewModelBase
     /// </summary>
     public string Message => Status switch
     {
-        E2eStatus.Blocked => "Your notes are end to end encrypted and locked. Use your passkey to unlock them: the hardware PRF key your passkey provides is essential to keeping your data secure, so they cannot be read or synced without it.",
-        E2eStatus.NeedsSetup when !encryptionService.HasPasskeyKeys => "Your notes are end to end encrypted. Use your passkey, then set up this device with your passphrase to read and sync them.",
-        E2eStatus.NeedsSetup => "Your notes are end to end encrypted. Set up this device with your passphrase to read and sync them.",
-        E2eStatus.DisabledElsewhere => "End to end encryption was turned off on another device. Sync is paused until this device finishes turning it off.",
+        E2eStatus.Blocked => text["Sync.E2e.Banner.Blocked"],
+        E2eStatus.NeedsSetup when !encryptionService.HasPasskeyKeys => text["Sync.E2e.Banner.NeedsPasskeyAndSetup"],
+        E2eStatus.NeedsSetup => text["Sync.E2e.Banner.NeedsSetup"],
+        E2eStatus.DisabledElsewhere => text["Sync.E2e.Banner.DisabledElsewhere"],
         _ => string.Empty,
     };
 
@@ -156,7 +167,7 @@ public partial class E2eBannerViewModel : ViewModelBase
         {
             if (!await passkeyUnlockService.UnlockAsync())
             {
-                Error = "Your passkey was not used, or it does not support the PRF security feature.";
+                Error = text["Sync.E2e.Error.PasskeyNotUsed"];
                 return;
             }
 
@@ -220,7 +231,7 @@ public partial class E2eBannerViewModel : ViewModelBase
     {
         if (ResolveNeedsPassphrase && string.IsNullOrEmpty(ResolvePassphrase))
         {
-            Error = "Enter your passphrase.";
+            Error = text["Sync.E2e.Error.PassphraseRequired"];
             return;
         }
 
@@ -236,11 +247,11 @@ public partial class E2eBannerViewModel : ViewModelBase
             catch (E2ePassphraseRequiredException ex)
             {
                 ResolveNeedsPassphrase = true;
-                Error = ex.Message;
+                Error = errorText.Describe(ex);
             }
             catch (E2eWrongPassphraseException)
             {
-                Error = "That passphrase is not correct. Try again.";
+                Error = text["Sync.E2e.Error.WrongPassphrase"];
             }
         });
     }
@@ -271,7 +282,7 @@ public partial class E2eBannerViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Error = ex.Message;
+            Error = errorText.Describe(ex);
         }
         finally
         {

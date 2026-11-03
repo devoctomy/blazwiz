@@ -27,11 +27,6 @@ public class SyncStorageMigrationService(
     IConnectivityService connectivityService)
     : ISyncStorageMigrationService
 {
-    /// <summary>
-    /// The message when the picked folder already has files for the profile ({0}).
-    /// </summary>
-    public const string FolderNotEmptyMessage = "The folder already has {0} files in it. Choose an empty folder, or move them out first.";
-
     private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly ISyncStorageResolver resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
     private readonly ISyncStorageStateStore stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
@@ -134,13 +129,13 @@ public class SyncStorageMigrationService(
         {
             ct.ThrowIfCancellationRequested();
             var file = await source.ReadAsync(info.Key, ct)
-                ?? throw new SyncStorageMigrationException($"'{info.Key}' could not be read.");
+                ?? throw new SyncStorageMigrationException(SyncErrorCodes.StorageReadFailed, info.Key);
             await destination.WriteAsync(file.Key, file.Content, file.ModifiedAt, ct);
 
             var copy = await destination.ReadAsync(file.Key, ct);
             if (copy == null || !copy.Content.AsSpan().SequenceEqual(file.Content))
             {
-                throw new SyncStorageMigrationException($"'{info.Key}' did not copy correctly.");
+                throw new SyncStorageMigrationException(SyncErrorCodes.StorageCopyMismatch, info.Key);
             }
 
             progress?.Report(new SyncStorageMigrationProgress(profile, ++done, files.Count));
@@ -171,7 +166,7 @@ public class SyncStorageMigrationService(
             if (target == SyncStorageKind.LocalFolder && (await destination.ListAsync(ct)).Count > 0)
             {
                 // The user's own folder: never clear files the app did not put there.
-                throw new SyncStorageMigrationException(string.Format(CultureInfo.InvariantCulture, FolderNotEmptyMessage, profile));
+                throw new SyncStorageMigrationException(SyncErrorCodes.StorageFolderNotEmpty, profile);
             }
 
             await SaveAsync(state, from, from, target, SyncStorageMigrationPhase.Copying);

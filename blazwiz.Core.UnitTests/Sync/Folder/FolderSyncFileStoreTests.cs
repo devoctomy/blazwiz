@@ -161,7 +161,7 @@ public class FolderSyncFileStoreTests
         var ex = await Assert.ThrowsAsync<SyncStorageAccessException>(() => CreateSut().ListAsync());
 
         // Assert
-        Assert.Contains("No folder has been chosen", ex.Message);
+        Assert.Equal(SyncErrorCodes.FolderNotChosen, ex.Code);
         mockFolder.Verify(x => x.ListAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
@@ -175,7 +175,8 @@ public class FolderSyncFileStoreTests
         var ex = await Assert.ThrowsAsync<SyncStorageAccessException>(() => CreateSut().WriteAsync("notes/a.md", [1]));
 
         // Assert
-        Assert.Equal("Allow access to the folder 'Notes' to use your files.", ex.Message);
+        Assert.Equal(SyncErrorCodes.FolderAccessNeeded, ex.Code);
+        Assert.Equal(["Notes"], ex.Arguments);
         mockFolder.Verify(x => x.WriteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<byte[]>()), Times.Never);
     }
 
@@ -213,8 +214,7 @@ public class FolderSyncFileStoreTests
     public void GivenEachConstructor_WhenCreatingAccessException_ThenMessageAndCauseKept()
     {
         var cause = new InvalidOperationException("cause");
-        Assert.NotNull(new SyncStorageAccessException().Message);
-        Assert.Equal("denied", new SyncStorageAccessException("denied").Message);
+        Assert.Equal("denied", new SyncStorageAccessException("denied").Code);
         Assert.Same(cause, new SyncStorageAccessException("denied", cause).InnerException);
     }
 

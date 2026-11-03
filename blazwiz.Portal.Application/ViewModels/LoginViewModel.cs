@@ -2,13 +2,15 @@ using Blazing.Mvvm.ComponentModel;
 using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Offline.Models;
-//#if (IncludeNotes)
-using blazwiz.Core.Sync.Interfaces;
-//#endif
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Shell;
+using blazwiz.Portal.Application.Shell.Interfaces;
+using blazwiz.Portal.Application.Text;
+using blazwiz.Portal.Application.Text.Interfaces;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Settings;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
@@ -30,11 +32,12 @@ public partial class LoginViewModel : ViewModelBase
     private readonly IPasswordCryptoService passwordCryptoService;
     private readonly IDerivedKeyStore keyStore;
     private readonly IOfflineModeService offlineModeService;
-//#if (IncludeNotes)
-    private readonly IConnectivityService connectivityService;
-    private readonly IPersistentStorageService persistentStorageService;
-//#endif
+    private readonly IReadOnlyList<ISignInOption> signInOptions;
+    private readonly IReadOnlyList<Type> signInOptionComponents;
+    private readonly ISessionLifecycle sessionLifecycle;
     private readonly AppSettings appSettings;
+    private readonly IStringLocalizer<UiText> text;
+    private readonly IErrorText errorText;
 
     private string username = string.Empty;
     private string password = string.Empty;
@@ -54,10 +57,7 @@ public partial class LoginViewModel : ViewModelBase
     private bool isWebAuthnProcessing;
     private string? webAuthnErrorMessage;
     private bool signInOffline;
-//#if (IncludeNotes)
     private bool isAdvancedOptionsExpanded;
-    private bool startWithSyncOff;
-//#endif
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LoginViewModel"/> class.
@@ -70,11 +70,12 @@ public partial class LoginViewModel : ViewModelBase
     /// <param name="passwordCryptoService">The password crypto service, using the remember me key derived from WebAuthn.</param>
     /// <param name="keyStore">The keys derived from WebAuthn, forgotten when nobody is signed in.</param>
     /// <param name="offlineModeService">Offline mode, for signing in offline.</param>
-    ///#if (IncludeNotes)
-    /// <param name="connectivityService">The connectivity service, for turning sync off at sign in.</param>
-    /// <param name="persistentStorageService">Asks the browser for persistent storage after sign in.</param>
-    ///#endif
+    /// <param name="signInOptions">The options shown under advanced options, added by modules.</param>
+    /// <param name="signInOptionRegistrations">The components that show each option.</param>
+    /// <param name="sessionLifecycle">Lets modules act straight after a sign in.</param>
     /// <param name="appSettings">The application settings.</param>
+    /// <param name="text">The UI's text.</param>
+    /// <param name="errorText">Describes errors.</param>
     public LoginViewModel(
         IAuthenticationService authService,
         INavigationService navigationService,
@@ -84,11 +85,12 @@ public partial class LoginViewModel : ViewModelBase
         IPasswordCryptoService passwordCryptoService,
         IDerivedKeyStore keyStore,
         IOfflineModeService offlineModeService,
-//#if (IncludeNotes)
-        IConnectivityService connectivityService,
-        IPersistentStorageService persistentStorageService,
-//#endif
-        AppSettings appSettings)
+        IEnumerable<ISignInOption> signInOptions,
+        IEnumerable<SignInOptionRegistration> signInOptionRegistrations,
+        ISessionLifecycle sessionLifecycle,
+        AppSettings appSettings,
+        IStringLocalizer<UiText> text,
+        IErrorText errorText)
     {
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
@@ -98,11 +100,17 @@ public partial class LoginViewModel : ViewModelBase
         this.passwordCryptoService = passwordCryptoService ?? throw new ArgumentNullException(nameof(passwordCryptoService));
         this.keyStore = keyStore ?? throw new ArgumentNullException(nameof(keyStore));
         this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
-//#if (IncludeNotes)
-        this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
-        this.persistentStorageService = persistentStorageService ?? throw new ArgumentNullException(nameof(persistentStorageService));
-//#endif
+        this.signInOptions = (signInOptions ?? throw new ArgumentNullException(nameof(signInOptions))).OrderBy(o => o.Order).ToList();
+        var components = (signInOptionRegistrations ?? throw new ArgumentNullException(nameof(signInOptionRegistrations)))
+            .ToDictionary(r => r.OptionType, r => r.ComponentType);
+        signInOptionComponents = this.signInOptions
+            .Select(o => components.TryGetValue(o.GetType(), out var component) ? component : null)
+            .OfType<Type>()
+            .ToList();
+        this.sessionLifecycle = sessionLifecycle ?? throw new ArgumentNullException(nameof(sessionLifecycle));
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
+        this.text = text ?? throw new ArgumentNullException(nameof(text));
+        this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
     }
 
     /// <summary>
@@ -214,7 +222,16 @@ public partial class LoginViewModel : ViewModelBase
     /// Gets the Bootstrap icon for the theme toggle button.
     /// </summary>
     public string ThemeIcon => themeService.IsDark ? "bi-sun" : "bi-moon-stars";
-//#if (IncludeNotes)
+
+    /// <summary>
+    /// Gets the components showing the options under advanced options, in order. Empty when no module adds any.
+    /// </summary>
+    public IReadOnlyList<Type> SignInOptionComponents => signInOptionComponents;
+
+    /// <summary>
+    /// Gets a value indicating whether there are any advanced options to show.
+    /// </summary>
+    public bool HasSignInOptions => signInOptionComponents.Count > 0;
 
     /// <summary>
     /// Gets or sets a value indicating whether the advanced options section is expanded. It starts expanded whenever
@@ -225,16 +242,6 @@ public partial class LoginViewModel : ViewModelBase
         get => isAdvancedOptionsExpanded;
         set => SetProperty(ref isAdvancedOptionsExpanded, value);
     }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether to sign in with sync turned off, so the first sync makes no network calls.
-    /// </summary>
-    public bool StartWithSyncOff
-    {
-        get => startWithSyncOff;
-        set => SetProperty(ref startWithSyncOff, value);
-    }
-//#endif
 
     /// <summary>
     /// Gets the application settings.
@@ -259,9 +266,7 @@ public partial class LoginViewModel : ViewModelBase
         // Still in offline mode (e.g. its session expired): offer signing in offline again.
         SignInOffline = offlineModeService.IsOffline;
         await LoadSavedUsersAsync();
-//#if (IncludeNotes)
-        await LoadAdvancedOptionsAsync();
-//#endif
+        await LoadSignInOptionsAsync();
     }
 
     /// <summary>
@@ -285,9 +290,7 @@ public partial class LoginViewModel : ViewModelBase
             var result = await authService.LoginAsync(Username, Password);
             if (result.Success)
             {
-//#if (IncludeNotes)
                 await ApplySignInOptionsAsync();
-//#endif
                 var rememberMeEnabled = RememberMe && !string.IsNullOrEmpty(Username);
                 await DoLogin(rememberMeEnabled);
             }
@@ -299,12 +302,12 @@ public partial class LoginViewModel : ViewModelBase
             }
             else
             {
-                ErrorMessage = result.Error ?? "Login failed.";
+                ErrorMessage = DescribeFailure(result, "Login.Error.Failed");
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            ErrorMessage = $"Login failed: {ex.Message}";
+            ErrorMessage = text["Login.Error.Failed"];
         }
         finally
         {
@@ -326,7 +329,7 @@ public partial class LoginViewModel : ViewModelBase
 
         if (NewPassword != ConfirmNewPassword)
         {
-            ErrorMessage = "The passwords do not match.";
+            ErrorMessage = text["Login.Error.PasswordsDiffer"];
             return;
         }
 
@@ -340,20 +343,18 @@ public partial class LoginViewModel : ViewModelBase
                 // The new password is the one to remember, not the temporary one used to sign in.
                 Password = NewPassword;
                 ClearNewPassword();
-//#if (IncludeNotes)
                 await ApplySignInOptionsAsync();
-//#endif
                 var rememberMeEnabled = rememberMeWhenNewPasswordStarted && !string.IsNullOrEmpty(Username);
                 await DoLogin(rememberMeEnabled);
             }
             else
             {
-                ErrorMessage = result.Error ?? "Could not set the new password.";
+                ErrorMessage = DescribeFailure(result, "Login.Error.NewPasswordFailed");
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            ErrorMessage = $"Could not set the new password: {ex.Message}";
+            ErrorMessage = text["Login.Error.NewPasswordFailed"];
         }
         finally
         {
@@ -382,7 +383,6 @@ public partial class LoginViewModel : ViewModelBase
         OnPropertyChanged(nameof(ThemeIcon));
     }
 
-//#if (IncludeNotes)
     /// <summary>
     /// Expands or collapses the advanced options section.
     /// </summary>
@@ -392,7 +392,6 @@ public partial class LoginViewModel : ViewModelBase
         IsAdvancedOptionsExpanded = !IsAdvancedOptionsExpanded;
     }
 
-//#endif
     /// <summary>Selects a saved user for login.</summary>
     /// <param name="user">The saved user to select.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
@@ -489,11 +488,11 @@ public partial class LoginViewModel : ViewModelBase
                 return;
             }
 
-            WebAuthnErrorMessage = "Your authenticator doesn't support the required security features for biometric login. Please continue with regular login.";
+            WebAuthnErrorMessage = text["Login.Passkey.Error.Unsupported"];
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            WebAuthnErrorMessage = $"Error setting up biometric login: {ex.Message}";
+            WebAuthnErrorMessage = text["Login.Passkey.Error.SetupFailed"];
         }
         finally
         {
@@ -617,9 +616,7 @@ public partial class LoginViewModel : ViewModelBase
 
                 if (loginResult.Success)
                 {
-//#if (IncludeNotes)
                     await ApplySignInOptionsAsync();
-//#endif
                     navigationService.NavigateTo("/");
                 }
                 else if (loginResult.ServiceUnreachable)
@@ -629,19 +626,19 @@ public partial class LoginViewModel : ViewModelBase
                 }
                 else
                 {
-                    ErrorMessage = "Biometric login failed. Please enter your password manually.";
+                    ErrorMessage = text["Login.Passkey.Error.SignInFailed"];
                     FallbackToManualLogin(user);
                 }
             }
             else
             {
-                ErrorMessage = authResult.Error ?? "Biometric authentication failed. Please enter your password manually.";
+                ErrorMessage = text["Login.Passkey.Error.Failed"];
                 FallbackToManualLogin(user);
             }
         }
         catch
         {
-            ErrorMessage = "Biometric login error. Please enter your password manually.";
+            ErrorMessage = text["Login.Passkey.Error.Failed"];
             FallbackToManualLogin(user);
         }
         finally
@@ -654,9 +651,7 @@ public partial class LoginViewModel : ViewModelBase
     private async Task SignInOfflineAsync(string email, OfflineEntryReason reason)
     {
         await authService.SignInOfflineAsync(email, reason);
-//#if (IncludeNotes)
         await ApplySignInOptionsAsync();
-//#endif
         navigationService.NavigateTo("/");
     }
 
@@ -671,34 +666,48 @@ public partial class LoginViewModel : ViewModelBase
         ShowRememberMe = false;
     }
 
-//#if (IncludeNotes)
-    private async Task LoadAdvancedOptionsAsync()
+    private async Task LoadSignInOptionsAsync()
     {
-        await connectivityService.InitializeAsync();
-        StartWithSyncOff = !connectivityService.IsSyncEnabled;
-        IsAdvancedOptionsExpanded = StartWithSyncOff;
+        foreach (var option in signInOptions)
+        {
+            try
+            {
+                await option.LoadAsync();
+            }
+            catch (Exception)
+            {
+                // The option shows its default.
+            }
+        }
+
+        // An option set to something other than its default changes what happens, so it is never hidden.
+        IsAdvancedOptionsExpanded = signInOptions.Any(o => o.IsSet);
     }
 
+    // Straight after a successful sign in, before moving on: options first (e.g. sync turned off before anything syncs),
+    // then the modules' own sign-in work (e.g. asking for persistent storage while the click still counts).
     private async Task ApplySignInOptionsAsync()
     {
-        try
+        foreach (var option in signInOptions)
         {
-            // Before the first sync after sign in starts, so sync turned off makes no network calls at all.
-            if (StartWithSyncOff == connectivityService.IsSyncEnabled)
+            try
             {
-                await connectivityService.SetSyncEnabledAsync(!StartWithSyncOff);
+                await option.ApplyAsync();
             }
+            catch (Exception)
+            {
+                // Not worth failing the sign in over.
+            }
+        }
 
-            // Straight after the sign-in click, so Firefox's permission prompt appears at a sensible moment.
-            await persistentStorageService.RequestAfterSignInAsync();
-        }
-        catch (Exception)
-        {
-            // Neither is worth failing the sign in over.
-        }
+        await sessionLifecycle.SignedInAsync();
     }
 
-//#endif
+    private string DescribeFailure(LoginResult result, string fallbackKey)
+    {
+        return result.ErrorCode == null ? text[fallbackKey] : errorText.Describe(result.ErrorCode, result.ErrorArguments);
+    }
+
     private void ClearNewPassword()
     {
         NewPassword = string.Empty;

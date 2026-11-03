@@ -8,7 +8,13 @@ public class SyncStatusPresenterTests
 {
     private static readonly ConnectivityStatus Online = new() { IsOnline = true, LastCheckedAt = DateTimeOffset.UnixEpoch };
 
-    private readonly SyncStatusPresenter sut = new();
+    private readonly TestText testText = new();
+    private readonly SyncStatusPresenter sut;
+
+    public SyncStatusPresenterTests()
+    {
+        sut = new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors);
+    }
 
     [Fact]
     public void GivenSyncing_WhenPresent_ThenSyncing()
@@ -53,7 +59,7 @@ public class SyncStatusPresenterTests
     [Fact]
     public void GivenError_WhenPresent_ThenErrorWithLastError()
     {
-        var result = sut.Present(new SyncStatus { State = SyncState.Error, LastError = "S3 refused the credentials." }, Online);
+        var result = sut.Present(new SyncStatus { State = SyncState.Error, LastErrorCode = "Sync.Remote.AccessDenied" }, Online);
 
         Assert.Equal("Sync error", result.Text);
         Assert.Equal("S3 refused the credentials.", result.Tooltip);

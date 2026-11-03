@@ -1,9 +1,9 @@
 using System.Text.Json;
-using blazwiz.Core.Offline;
 using blazwiz.Core.Offline.Models;
+using blazwiz.Core.Offline;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Aws;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -83,7 +83,7 @@ public class CognitoAuthenticationServiceTests
 
         // Assert
         Assert.False(result.Success);
-        Assert.Equal("Please enter your email and password.", result.Error);
+        Assert.Equal(AuthErrorCodes.CredentialsRequired, result.ErrorCode);
         mockCognito.VerifyNoOtherCalls();
     }
 
@@ -99,7 +99,7 @@ public class CognitoAuthenticationServiceTests
         var result = await sut.LoginAsync(" bob.hoskins@example.com ", Password);
 
         // Assert
-        Assert.True(result.Success, result.Error);
+        Assert.True(result.Success, result.ErrorCode);
         var session = Assert.IsType<UserSession>(result.Session);
         Assert.Equal("bob.hoskins@example.com", session.Username);
         Assert.Equal("bob.hoskins@example.com", session.Email);
@@ -143,12 +143,14 @@ public class CognitoAuthenticationServiceTests
     }
 
     [Theory]
-    [InlineData("NotAuthorizedException", "Incorrect username or password.", "Incorrect username or password.")]
-    [InlineData("NotAuthorizedException", "Password attempts exceeded", "Password attempts exceeded")]
-    [InlineData("PasswordResetRequiredException", "x", "Your password must be reset before you can sign in. Please contact an administrator.")]
-    [InlineData("UserNotConfirmedException", "x", "Your account has not been confirmed yet.")]
-    [InlineData("TooManyRequestsException", "x", "Too many attempts. Please wait a moment and try again.")]
-    [InlineData("LimitExceededException", "x", "Too many attempts. Please wait a moment and try again.")]
+    [InlineData("NotAuthorizedException", "Incorrect username or password.", AuthErrorCodes.NotAuthorized)]
+    [InlineData("NotAuthorizedException", "Password attempts exceeded", AuthErrorCodes.NotAuthorized)]
+    [InlineData("UserNotFoundException", "x", AuthErrorCodes.NotAuthorized)]
+    [InlineData("PasswordResetRequiredException", "x", AuthErrorCodes.PasswordResetRequired)]
+    [InlineData("UserNotConfirmedException", "x", AuthErrorCodes.UserNotConfirmed)]
+    [InlineData("TooManyRequestsException", "x", AuthErrorCodes.TooManyAttempts)]
+    [InlineData("LimitExceededException", "x", AuthErrorCodes.TooManyAttempts)]
+    [InlineData("InternalErrorException", "x", AuthErrorCodes.SignInFailed)]
     public async Task GivenCognitoError_WhenLoginAsync_ThenReturnsFriendlyError(string errorType, string message, string expected)
     {
         // Arrange
@@ -159,7 +161,7 @@ public class CognitoAuthenticationServiceTests
 
         // Assert
         Assert.False(result.Success);
-        Assert.Equal(expected, result.Error);
+        Assert.Equal(expected, result.ErrorCode);
         mockLocalStorage.Verify(x => x.SetObjectAsync(It.IsAny<string>(), It.IsAny<UserSession>()), Times.Never);
     }
 
@@ -173,7 +175,7 @@ public class CognitoAuthenticationServiceTests
         var result = await CreateSut().LoginAsync("bob@example.com", Password);
 
         // Assert
-        Assert.Equal("Could not reach the sign-in service. Check your connection and try again.", result.Error);
+        Assert.Equal(AuthErrorCodes.Unreachable, result.ErrorCode);
         Assert.True(result.ServiceUnreachable);
     }
 
@@ -317,7 +319,8 @@ public class CognitoAuthenticationServiceTests
         // Assert
         Assert.False(result.Success);
         Assert.False(result.NewPasswordRequired);
-        Assert.Equal("Sign-in needs 'SOFTWARE_TOKEN_MFA', which this portal does not support yet.", result.Error);
+        Assert.Equal(AuthErrorCodes.ChallengeUnsupported, result.ErrorCode);
+        Assert.Equal(["SOFTWARE_TOKEN_MFA"], result.ErrorArguments);
     }
 
     [Fact]
@@ -336,7 +339,7 @@ public class CognitoAuthenticationServiceTests
         mockLocalStorage.Verify(x => x.SetObjectAsync(CognitoAuthenticationService.SessionStorageKey, It.IsAny<UserSession>()), Times.Once);
 
         // The challenge is used up.
-        Assert.Equal("Please sign in again.", (await sut.CompleteNewPasswordAsync("NewPassword123")).Error);
+        Assert.Equal(AuthErrorCodes.SignInAgain, (await sut.CompleteNewPasswordAsync("NewPassword123")).ErrorCode);
     }
 
     [Fact]
@@ -346,7 +349,7 @@ public class CognitoAuthenticationServiceTests
         var result = await CreateSut().CompleteNewPasswordAsync("NewPassword123");
 
         // Assert
-        Assert.Equal("Please sign in again.", result.Error);
+        Assert.Equal(AuthErrorCodes.SignInAgain, result.ErrorCode);
     }
 
     [Fact]
@@ -359,7 +362,7 @@ public class CognitoAuthenticationServiceTests
         var result = await sut.CompleteNewPasswordAsync(" ");
 
         // Assert
-        Assert.Equal("Please enter a new password.", result.Error);
+        Assert.Equal(AuthErrorCodes.NewPasswordRequired, result.ErrorCode);
         mockCognito.Setup(x => x.CompleteNewPasswordAsync("s2", "NewPassword123")).ReturnsAsync(Tokens(idToken));
         Assert.True((await sut.CompleteNewPasswordAsync("NewPassword123")).Success);
     }
@@ -379,13 +382,13 @@ public class CognitoAuthenticationServiceTests
         var second = await sut.CompleteNewPasswordAsync("NewPassword123");
 
         // Assert
-        Assert.Equal("Password not long enough", first.Error);
+        Assert.Equal(AuthErrorCodes.InvalidPassword, first.ErrorCode);
         Assert.True(second.Success);
     }
 
     [Theory]
-    [InlineData("NotAuthorizedException", "Your sign-in has expired. Please sign in again.")]
-    [InlineData("TooManyRequestsException", "Too many attempts. Please wait a moment and try again.")]
+    [InlineData("NotAuthorizedException", AuthErrorCodes.SignInExpired)]
+    [InlineData("TooManyRequestsException", AuthErrorCodes.TooManyAttempts)]
     public async Task GivenOtherCognitoError_WhenCompleteNewPasswordAsync_ThenFailsAndClearsChallenge(string errorType, string expected)
     {
         // Arrange
@@ -396,8 +399,8 @@ public class CognitoAuthenticationServiceTests
         var result = await sut.CompleteNewPasswordAsync("NewPassword123");
 
         // Assert
-        Assert.Equal(expected, result.Error);
-        Assert.Equal("Please sign in again.", (await sut.CompleteNewPasswordAsync("NewPassword123")).Error);
+        Assert.Equal(expected, result.ErrorCode);
+        Assert.Equal(AuthErrorCodes.SignInAgain, (await sut.CompleteNewPasswordAsync("NewPassword123")).ErrorCode);
     }
 
     [Fact]
@@ -415,7 +418,7 @@ public class CognitoAuthenticationServiceTests
         var second = await sut.CompleteNewPasswordAsync("NewPassword123");
 
         // Assert
-        Assert.Equal("Could not reach the sign-in service. Check your connection and try again.", first.Error);
+        Assert.Equal(AuthErrorCodes.Unreachable, first.ErrorCode);
         Assert.True(second.Success);
     }
 
@@ -431,7 +434,7 @@ public class CognitoAuthenticationServiceTests
         var result = await sut.CompleteNewPasswordAsync("NewPassword123");
 
         // Assert
-        Assert.Equal("Please sign in again.", result.Error);
+        Assert.Equal(AuthErrorCodes.SignInAgain, result.ErrorCode);
     }
 
     [Fact]
@@ -699,7 +702,7 @@ public class CognitoAuthenticationServiceTests
         var sut = CreateSut();
         var result = await sut.LoginAsync("bob@example.com", Password);
         Assert.True(result.NewPasswordRequired);
-        Assert.Null(result.Error);
+        Assert.Null(result.ErrorCode);
         return sut;
     }
 

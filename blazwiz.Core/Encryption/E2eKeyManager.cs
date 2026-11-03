@@ -466,7 +466,7 @@ public class E2eKeyManager(
         catch (CryptographicException ex)
         {
             // The GCM tag only checks out with the right passphrase key, so this is the passphrase check.
-            throw new E2eWrongPassphraseException("The passphrase is not correct.", ex);
+            throw new E2eWrongPassphraseException(ex);
         }
         finally
         {

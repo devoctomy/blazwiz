@@ -16,9 +16,15 @@ public class SyncStatus
     public DateTimeOffset? LastSyncedAt { get; set; }
 
     /// <summary>
-    /// Gets or sets the error from the last pass, or null if it succeeded.
+    /// Gets or sets why the last pass failed, as an error code (see <see cref="Exceptions.SyncErrorCodes"/>), or null
+    /// if it did not. The UI shows it with the text resource <c>Error.&lt;code&gt;</c>.
     /// </summary>
-    public string? LastError { get; set; }
+    public string? LastErrorCode { get; set; }
+
+    /// <summary>
+    /// Gets or sets the values the last error's text needs, e.g. how many files failed.
+    /// </summary>
+    public IReadOnlyList<object> LastErrorArguments { get; set; } = [];
 
     /// <summary>
     /// Gets or sets the number of local changes waiting to be synced.

@@ -16,7 +16,7 @@ public enum SyncState
     Syncing,
 
     /// <summary>
-    /// The last pass failed, see <see cref="SyncStatus.LastError"/>.
+    /// The last pass failed, see <see cref="SyncStatus.LastErrorCode"/>.
     /// </summary>
     Error,
 }

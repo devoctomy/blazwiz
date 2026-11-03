@@ -11,6 +11,8 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 
 public class E2eSettingsViewModelTests
 {
+    private readonly TestText testText = new();
+
     private const string Passphrase = "correct horse battery staple";
 
     private readonly Mock<ISyncEncryptionService> mockEncryption = new();
@@ -26,8 +28,8 @@ public class E2eSettingsViewModelTests
     [Fact]
     public void GivenNullService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eSettingsViewModel(null!, offlineMode)).ParamName);
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new E2eSettingsViewModel(mockEncryption.Object, null!)).ParamName);
+        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eSettingsViewModel(null!, offlineMode, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new E2eSettingsViewModel(mockEncryption.Object, null!, testText.Sync, testText.Errors)).ParamName);
     }
 
     [Theory]
@@ -309,11 +311,11 @@ public class E2eSettingsViewModelTests
     }
 
     [Theory]
-    [InlineData(E2eStep.EncryptFiles, "Encrypt your notes")]
+    [InlineData(E2eStep.EncryptFiles, "Encrypt your files")]
     [InlineData(E2eStep.DeriveKey, "Derive your passphrase key (Argon2id)")]
     public void GivenStep_WhenGetStepLabel_ThenDescribed(E2eStep step, string expected)
     {
-        Assert.Equal(expected, E2eSettingsViewModel.GetStepLabel(step));
+        Assert.Equal(expected, CreateSut().GetStepLabel(step));
     }
 
     [Theory]
@@ -324,7 +326,7 @@ public class E2eSettingsViewModelTests
         status = current;
         offlineMode.Enter(OfflineEntryReason.Chosen);
         using var sut = CreateSut();
-        Assert.Equal($"Off on this device. {E2eSettingsViewModel.OfflineNote}", sut.StatusText);
+        Assert.Equal("Off on this device. You're offline, so this is this device's own state, and encryption can't be changed until you sign in online.", sut.StatusText);
         Assert.False(sut.CanEnable);
     }
 
@@ -335,7 +337,7 @@ public class E2eSettingsViewModelTests
         offlineMode.Enter(OfflineEntryReason.SignInUnreachable);
         using var sut = CreateSut();
         Assert.StartsWith("On.", sut.StatusText);
-        Assert.EndsWith(E2eSettingsViewModel.OfflineNote, sut.StatusText);
+        Assert.EndsWith("You're offline, so this is this device's own state, and encryption can't be changed until you sign in online.", sut.StatusText);
         Assert.False(sut.CanManage);
     }
 
@@ -350,5 +352,5 @@ public class E2eSettingsViewModelTests
         Assert.Contains(nameof(E2eSettingsViewModel.CanEnable), changed);
     }
 
-    private E2eSettingsViewModel CreateSut() => new(mockEncryption.Object, offlineMode);
+    private E2eSettingsViewModel CreateSut() => new(mockEncryption.Object, offlineMode, testText.Sync, testText.Errors);
 }

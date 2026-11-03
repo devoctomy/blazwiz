@@ -1,17 +1,18 @@
 @inherits MvvmComponentBase<Argon2idSettingsViewModel>
+@inject IStringLocalizer<SyncUiText> SyncText
 
 <div class="panel mb-4" id="argon2id-card">
-    <h2 class="panel-title">Argon2id</h2>
-    <p class="panel-text">Your end to end encryption passphrase is turned into a key with Argon2id, which is slow and memory hungry on purpose so passphrases are hard to guess. New passphrases use these settings; existing ones keep the settings they were made with.</p>
+    <h2 class="panel-title">@SyncText["Sync.Argon2id.Title"]</h2>
+    <p class="panel-text">@SyncText["Sync.Argon2id.Text"]</p>
     <dl class="detail-list">
-        <dt>Memory</dt>
+        <dt>@SyncText["Sync.Argon2id.Memory"]</dt>
         <dd id="argon2id-memory">@ViewModel.MemoryText</dd>
-        <dt>Iterations</dt>
+        <dt>@SyncText["Sync.Argon2id.Iterations"]</dt>
         <dd id="argon2id-iterations">@ViewModel.Parameters.Iterations</dd>
-        <dt>Parallelism</dt>
+        <dt>@SyncText["Sync.Argon2id.Parallelism"]</dt>
         <dd id="argon2id-parallelism">@ViewModel.Parameters.Parallelism</dd>
-        <dt>Key length</dt>
-        <dd id="argon2id-key-length">@ViewModel.Parameters.KeyLength bytes</dd>
+        <dt>@SyncText["Sync.Argon2id.KeyLength"]</dt>
+        <dd id="argon2id-key-length">@SyncText["Sync.Argon2id.Bytes", ViewModel.Parameters.KeyLength]</dd>
     </dl>
     <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
         <button type="button" class="btn btn-outline-primary" id="argon2id-benchmark" disabled="@ViewModel.IsRunning"
@@ -24,7 +25,7 @@
             {
                 <i class="bi bi-stopwatch me-1"></i>
             }
-            Benchmark
+            @SyncText["Sync.Argon2id.Benchmark"]
         </button>
         @if (ViewModel.Result != null)
         {

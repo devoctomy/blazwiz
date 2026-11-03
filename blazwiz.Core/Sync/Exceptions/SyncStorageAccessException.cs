@@ -1,34 +1,30 @@
+using blazwiz.Core.Exceptions;
+
 namespace blazwiz.Core.Sync.Exceptions;
 
 /// <summary>
-/// Thrown when the storage in use cannot be reached, e.g. no folder has been picked or the browser needs permission to
-/// it again.
+/// Thrown when the storage the files are kept in on this device cannot be used, e.g. the folder is not allowed.
 /// </summary>
-public class SyncStorageAccessException : Exception
+public class SyncStorageAccessException : BlazwizException
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SyncStorageAccessException"/> class.
     /// </summary>
-    public SyncStorageAccessException()
+    /// <param name="code">The error's code.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public SyncStorageAccessException(string code, params object[] arguments)
+        : base(code, arguments)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SyncStorageAccessException"/> class.
     /// </summary>
-    /// <param name="message">The message.</param>
-    public SyncStorageAccessException(string message)
-        : base(message)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SyncStorageAccessException"/> class.
-    /// </summary>
-    /// <param name="message">The message.</param>
-    /// <param name="innerException">The cause.</param>
-    public SyncStorageAccessException(string message, Exception innerException)
-        : base(message, innerException)
+    /// <param name="code">The error's code.</param>
+    /// <param name="innerException">What caused it.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public SyncStorageAccessException(string code, Exception innerException, params object[] arguments)
+        : base(code, innerException, arguments)
     {
     }
 }

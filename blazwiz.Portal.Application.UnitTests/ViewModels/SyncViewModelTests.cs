@@ -11,13 +11,15 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 
 public class SyncViewModelTests
 {
+    private readonly TestText testText = new();
+
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
 
     private readonly Mock<ISyncEventLog> mockLog = new();
     private readonly Mock<ISyncService> mockSync = new();
     private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly Mock<ISyncScheduler> mockScheduler = new();
-    private readonly SyncEventPresenter eventPresenter = new();
+    private readonly SyncEventPresenter eventPresenter;
     private readonly FakeTimeProvider time = new(Now);
     private readonly List<SyncEvent> events = [];
     private readonly List<SyncEventQuery> queries = [];
@@ -25,6 +27,7 @@ public class SyncViewModelTests
 
     public SyncViewModelTests()
     {
+        eventPresenter = new SyncEventPresenter(testText.Sync, testText.Plurals, testText.Errors);
         time.SetLocalTimeZone(TimeZoneInfo.Utc);
         mockSync.SetupGet(x => x.Status).Returns(new SyncStatus { PendingCount = 2 });
         mockSync.SetupGet(x => x.Profiles).Returns(["notes"]);
@@ -34,7 +37,7 @@ public class SyncViewModelTests
             queries.Add(q);
             var matching = events
                 .Where(e => q.Kinds == null || q.Kinds.Contains(e.Kind))
-                .Where(e => q.Text == null || e.Message.Contains(q.Text, StringComparison.OrdinalIgnoreCase) || (e.Key?.Contains(q.Text, StringComparison.OrdinalIgnoreCase) ?? false))
+                .Where(e => q.Text == null || (e.Key?.Contains(q.Text, StringComparison.OrdinalIgnoreCase) ?? false))
                 .OrderByDescending(e => e.Timestamp)
                 .ToList();
             return new SyncEventPage { Events = matching.Take(q.Take).ToList(), HasMore = matching.Count > q.Take };
@@ -44,22 +47,22 @@ public class SyncViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        var presenter = new SyncStatusPresenter();
-        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(null!, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time)).ParamName);
-        Assert.Equal("eventPresenter", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, null!, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time)).ParamName);
-        Assert.Equal("statusPresenter", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, null!, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time)).ParamName);
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, null!, mockConnectivity.Object, mockScheduler.Object, time)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, null!, mockScheduler.Object, time)).ParamName);
-        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, null!, time)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!)).ParamName);
+        var presenter = new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors);
+        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(null!, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("eventPresenter", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, null!, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("statusPresenter", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, null!, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, null!, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, null!, mockScheduler.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, null!, time, testText.Sync)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, testText.Sync)).ParamName);
     }
 
     [Fact]
     public async Task GivenPasses_WhenInitialized_ThenEachPassIsOneRowWithItsFileEntries()
     {
         // Arrange
-        AddPass("p1", Now.AddMinutes(-5), "1 uploaded, 1 downloaded", (SyncEventKind.UploadNew, "notes/a.md"), (SyncEventKind.DownloadNew, "notes/b.md"));
-        Add(new SyncEvent { Kind = SyncEventKind.WentOffline, Message = "Offline: no credentials", Timestamp = Now.AddMinutes(-1) });
+        AddPass("p1", Now.AddMinutes(-5), (SyncEventKind.UploadNew, "notes/a.md"), (SyncEventKind.DownloadNew, "notes/b.md"));
+        Add(new SyncEvent { Kind = SyncEventKind.WentOffline, Code = SyncEventCodes.WentOffline, Arguments = ["NoCredentials"], Timestamp = Now.AddMinutes(-1) });
         var sut = CreateSut();
 
         // Act
@@ -86,7 +89,7 @@ public class SyncViewModelTests
     public async Task GivenPassWithFailure_WhenInitialized_ThenExpandedByDefaultUntilCollapsed()
     {
         // Arrange
-        AddPass("p1", Now, "1 failed", (SyncEventKind.Failed, "notes/a.md"));
+        AddPass("p1", Now, (SyncEventKind.Failed, "notes/a.md"));
         var sut = CreateSut();
         await sut.OnInitializedAsync();
         var row = sut.Days[0].Rows[0];
@@ -104,7 +107,7 @@ public class SyncViewModelTests
     public async Task GivenRow_WhenToggled_ThenStaysExpandedAcrossReloads()
     {
         // Arrange
-        AddPass("p1", Now, "1 uploaded", (SyncEventKind.UploadNew, "notes/a.md"));
+        AddPass("p1", Now, (SyncEventKind.UploadNew, "notes/a.md"));
         var sut = CreateSut();
         await sut.OnInitializedAsync();
 
@@ -122,7 +125,7 @@ public class SyncViewModelTests
     public async Task GivenCollapsedNoChangePasses_WhenInitialized_ThenOneRowWithCount()
     {
         // Arrange
-        Add(new SyncEvent { PassId = "p9", Kind = SyncEventKind.PassCompleted, IsNoChangePass = true, Count = 4, Message = "Checking for changes · up to date", Timestamp = Now });
+        Add(new SyncEvent { PassId = "p9", Kind = SyncEventKind.PassCompleted, IsNoChangePass = true, Count = 4, Code = SyncEventCodes.NoChanges, Timestamp = Now });
         var sut = CreateSut();
 
         // Act
@@ -139,7 +142,7 @@ public class SyncViewModelTests
     public async Task GivenPassInProgress_WhenInitialized_ThenHeaderSaysChecking()
     {
         // Arrange
-        Add(new SyncEvent { PassId = "p1", Kind = SyncEventKind.PassStarted, Message = "Checking for changes", Timestamp = Now });
+        Add(new SyncEvent { PassId = "p1", Kind = SyncEventKind.PassStarted, Code = SyncEventCodes.Checking, Timestamp = Now });
 
         // Act
         var sut = CreateSut();
@@ -153,9 +156,9 @@ public class SyncViewModelTests
     public async Task GivenEventsOnSeveralDays_WhenInitialized_ThenGroupedByDayNewestFirst()
     {
         // Arrange
-        Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Message = "Back online", Timestamp = Now });
-        Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Message = "Back online", Timestamp = Now.AddDays(-1) });
-        Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Message = "Back online", Timestamp = new DateTimeOffset(2026, 9, 28, 9, 0, 0, TimeSpan.Zero) });
+        Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Code = SyncEventCodes.BackOnline, Timestamp = Now });
+        Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Code = SyncEventCodes.BackOnline, Timestamp = Now.AddDays(-1) });
+        Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Code = SyncEventCodes.BackOnline, Timestamp = new DateTimeOffset(2026, 9, 28, 9, 0, 0, TimeSpan.Zero) });
 
         // Act
         var sut = CreateSut();
@@ -171,8 +174,8 @@ public class SyncViewModelTests
     public async Task GivenFilterChip_WhenSelected_ThenOnlyThatGroupQueriedAndShownFlat()
     {
         // Arrange
-        AddPass("p1", Now, "1 uploaded", (SyncEventKind.UploadNew, "notes/a.md"));
-        Add(new SyncEvent { Kind = SyncEventKind.WentOffline, Message = "Offline: no credentials", Timestamp = Now });
+        AddPass("p1", Now, (SyncEventKind.UploadNew, "notes/a.md"));
+        Add(new SyncEvent { Kind = SyncEventKind.WentOffline, Code = SyncEventCodes.WentOffline, Arguments = ["NoCredentials"], Timestamp = Now });
         var sut = CreateSut();
         await sut.OnInitializedAsync();
 
@@ -201,7 +204,7 @@ public class SyncViewModelTests
     public async Task GivenSearchText_WhenTypingStops_ThenSearchRunsOnceAfterDebounce()
     {
         // Arrange
-        AddPass("p1", Now, "2 uploaded", (SyncEventKind.UploadNew, "notes/Ideas.md"), (SyncEventKind.UploadNew, "notes/Plan.md"));
+        AddPass("p1", Now, (SyncEventKind.UploadNew, "notes/Ideas.md"), (SyncEventKind.UploadNew, "notes/Plan.md"));
         var sut = CreateSut();
         await sut.OnInitializedAsync();
 
@@ -227,7 +230,7 @@ public class SyncViewModelTests
         // Arrange
         for (var i = 0; i < SyncViewModel.PageSize + 1; i++)
         {
-            Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Message = $"Back online {i}", Timestamp = Now.AddSeconds(-i) });
+            Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Code = SyncEventCodes.BackOnline, Timestamp = Now.AddSeconds(-i) });
         }
 
         var sut = CreateSut();
@@ -250,7 +253,7 @@ public class SyncViewModelTests
         // Arrange
         var sut = CreateSut();
         await sut.OnInitializedAsync();
-        Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Message = "Back online", Timestamp = Now });
+        Add(new SyncEvent { Kind = SyncEventKind.WentOnline, Code = SyncEventCodes.BackOnline, Timestamp = Now });
 
         // Act
         mockLog.Raise(x => x.EventsWritten += null, mockLog.Object, EventArgs.Empty);
@@ -398,17 +401,26 @@ public class SyncViewModelTests
         events.Add(entry);
     }
 
-    private void AddPass(string passId, DateTimeOffset at, string summary, params (SyncEventKind Kind, string Key)[] files)
+    private void AddPass(string passId, DateTimeOffset at, params (SyncEventKind Kind, string Key)[] files)
     {
-        Add(new SyncEvent { PassId = passId, Kind = SyncEventKind.PassStarted, Message = "Checking for changes", Timestamp = at.AddSeconds(-2) });
+        Add(new SyncEvent { PassId = passId, Kind = SyncEventKind.PassStarted, Code = SyncEventCodes.Checking, Timestamp = at.AddSeconds(-2) });
         foreach (var (kind, key) in files)
         {
-            Add(new SyncEvent { PassId = passId, Kind = kind, Key = key, Message = kind.ToString(), Timestamp = at.AddSeconds(-1) });
+            Add(new SyncEvent { PassId = passId, Kind = kind, Key = key, Code = kind.ToString(), Timestamp = at.AddSeconds(-1) });
         }
 
-        Add(new SyncEvent { PassId = passId, Kind = SyncEventKind.PassCompleted, Message = summary, Timestamp = at });
+        string Count(params SyncEventKind[] kinds) => files.Count(f => kinds.Contains(f.Kind)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var summary = new List<string>
+        {
+            Count(SyncEventKind.UploadNew, SyncEventKind.UploadLocalNewer),
+            Count(SyncEventKind.DownloadNew, SyncEventKind.DownloadRemoteNewer),
+            Count(SyncEventKind.DeleteLocal, SyncEventKind.DeleteRemote),
+            Count(SyncEventKind.ConflictResolved),
+            Count(SyncEventKind.Failed),
+        };
+        Add(new SyncEvent { PassId = passId, Kind = SyncEventKind.PassCompleted, Code = SyncEventCodes.Summary, Arguments = summary, Timestamp = at });
     }
 
     private SyncViewModel CreateSut() =>
-        new(mockLog.Object, eventPresenter, new SyncStatusPresenter(), mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time);
+        new(mockLog.Object, eventPresenter, new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors), mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync);
 }

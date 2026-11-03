@@ -1,7 +1,10 @@
 using Blazing.Mvvm.ComponentModel;
 using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Text.Interfaces;
+using blazwiz.Portal.Application.Text;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
@@ -13,6 +16,8 @@ public partial class OfflineModeSwitchViewModel : ViewModelBase
 {
     private readonly IOfflineModeService offlineModeService;
     private readonly IAuthenticationService authService;
+    private readonly IStringLocalizer<UiText> text;
+    private readonly IErrorText errorText;
 
     private bool isWorking;
     private string? error;
@@ -22,10 +27,14 @@ public partial class OfflineModeSwitchViewModel : ViewModelBase
     /// </summary>
     /// <param name="offlineModeService">Offline mode.</param>
     /// <param name="authService">Turns the session into an offline one.</param>
-    public OfflineModeSwitchViewModel(IOfflineModeService offlineModeService, IAuthenticationService authService)
+    /// <param name="text">The UI's text.</param>
+    /// <param name="errorText">Describes errors.</param>
+    public OfflineModeSwitchViewModel(IOfflineModeService offlineModeService, IAuthenticationService authService, IStringLocalizer<UiText> text, IErrorText errorText)
     {
         this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        this.text = text ?? throw new ArgumentNullException(nameof(text));
+        this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.offlineModeService.Changed += OnChanged;
     }
 
@@ -79,7 +88,7 @@ public partial class OfflineModeSwitchViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Error = ex.Message;
+            Error = text["Offline.Switch.Error", errorText.Describe(ex)];
             OnPropertyChanged(nameof(IsOffline));
         }
         finally

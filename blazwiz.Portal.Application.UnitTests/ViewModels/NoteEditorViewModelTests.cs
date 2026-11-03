@@ -12,6 +12,8 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 
 public class NoteEditorViewModelTests
 {
+    private readonly TestText testText = new();
+
     private static readonly DateTimeOffset SavedAt = new(2026, 9, 30, 12, 0, 0, TimeSpan.Zero);
 
     private readonly Mock<INoteService> mockNotes = new();
@@ -36,11 +38,11 @@ public class NoteEditorViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object)).ParamName);
-        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object)).ParamName);
-        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object)).ParamName);
-        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object)).ParamName);
+        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
+        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
+        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
+        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -117,7 +119,7 @@ public class NoteEditorViewModelTests
     public async Task GivenFolderUnreachable_WhenLoadAsync_ThenShowsItsMessageWithoutCrashing()
     {
         // Arrange
-        mockNotes.Setup(x => x.GetNoteAsync("n1")).ThrowsAsync(new SyncStorageAccessException("Allow access to the folder 'Notes' to use your files."));
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ThrowsAsync(new SyncStorageAccessException(SyncErrorCodes.FolderAccessNeeded, "Notes"));
         var sut = CreateSut();
 
         // Act
@@ -132,7 +134,7 @@ public class NoteEditorViewModelTests
     public async Task GivenFilesBeingMoved_WhenSaved_ThenShowsItsMessageAndStillDirty()
     {
         // Arrange
-        mockNotes.Setup(x => x.SaveNoteAsync("n1", It.IsAny<string>())).ThrowsAsync(new SyncStorageMigrationException("Your files are being moved to another storage. Try again in a moment."));
+        mockNotes.Setup(x => x.SaveNoteAsync("n1", It.IsAny<string>())).ThrowsAsync(new SyncStorageMigrationException(SyncErrorCodes.StorageMigrating));
         var sut = await CreateLoadedSutAsync();
         sut.Content = "changed";
 
@@ -352,7 +354,7 @@ public class NoteEditorViewModelTests
     [Fact]
     public void GivenNullSyncService_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -482,7 +484,7 @@ public class NoteEditorViewModelTests
         mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", [key]));
     }
 
-    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object);
+    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors);
 
     private async Task<NoteEditorViewModel> CreateLoadedSutAsync()
     {
