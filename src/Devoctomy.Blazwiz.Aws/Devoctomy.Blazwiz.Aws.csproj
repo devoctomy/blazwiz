@@ -16,6 +16,6 @@
     <NoWarn>$(NoWarn);NU5128;NU5111</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="cloudformation\**\*" Pack="true" PackagePath="tools\cloudformation\" />
+    <None Include="cloudformation/**/*" Pack="true" PackagePath="tools/cloudformation/" />
   </ItemGroup>
 </Project>
