@@ -1,8 +1,10 @@
 # Publishes every Devoctomy.Blazwiz package and the template package to nuget.org, all at one version. It does not run
 # the tests: it only publishes a commit the CI workflow (ci.yml) has already passed. See docs/releasing.md.
 #
-# - A tag v<version> on a commit on main publishes that version, which must match Directory.Build.props.
-# - Running it by hand (Run workflow) on another branch publishes a beta: <version>-beta.<run number>.
+# Run workflow works out what to publish from the branch:
+# - main: the version in Directory.Build.props, as it is (a release).
+# - any other branch: a beta, <version>-beta.<run number>.
+# A tag v<version> on a commit on main also publishes that version, which must match Directory.Build.props.
 name: Release
 
 on:
@@ -90,7 +92,8 @@ jobs:
             $versionSuffix = $suffix
           }
           elseif ('${{ github.ref_name }}' -eq 'main') {
-            throw 'main is released with a tag (v<version>), not by Run workflow.'
+            # A release: Run workflow on main publishes the version in Directory.Build.props as it is.
+            $versionSuffix = $suffix
           }
           else {
             # A beta of a branch: unique per run, as nuget.org never takes the same version twice.

@@ -4,8 +4,11 @@ Releases are made by the maintainer. Every `Devoctomy.Blazwiz.*` package and the
 together, at one version (`docs/versioning.md`), by `.github/workflows/release.yml`. It runs no tests: it only
 publishes a commit the CI workflow has passed, and waits for CI if it is still running for that commit.
 
-- **Release**: push a tag `v<version>` on a commit on main.
-- **Beta of a branch**: run the Release workflow by hand (Run workflow) on the branch. It publishes
+Run the Release workflow by hand (Run workflow). It works out what to publish from the branch it is run on:
+
+- **Release**: on main, it publishes the version in `Directory.Build.props` as it is. Pushing a tag `v<version>` on a
+  commit on main does the same.
+- **Beta of a branch**: on any other branch, it publishes
   `<version>-beta.<run number>`, e.g. `0.1.0-preview.1-beta.12`, and new apps from that template use those packages.
   (NuGet versions cannot contain `_`, so it is `-beta`.)
 
