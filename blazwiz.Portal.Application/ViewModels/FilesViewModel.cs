@@ -6,8 +6,9 @@ using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Portal.Application.Exceptions;
-using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Services;
+using blazwiz.Portal.Application.Text.Interfaces;
 using blazwiz.Portal.Models.Notes;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.JSInterop;
@@ -42,6 +43,7 @@ public partial class FilesViewModel : ViewModelBase
     private readonly ISyncService syncService;
     private readonly ISyncEncryptionService encryptionService;
     private readonly HashSet<string> expandedFolderIds = [];
+    private readonly IErrorText errorText;
 
     private IReadOnlyList<NoteEntry> entries = [];
     private IReadOnlyList<FileTreeItem> visibleItems = [];
@@ -68,13 +70,15 @@ public partial class FilesViewModel : ViewModelBase
     /// <param name="noteTreeService">The note tree service.</param>
     /// <param name="syncService">The sync service, to refresh when a sync changes the notes.</param>
     /// <param name="encryptionService">Says whether encrypted notes can be decrypted on this device.</param>
+    /// <param name="errorText">Describes the framework's errors (storage, encryption) for the user.</param>
     public FilesViewModel(
         INoteService noteService,
         INavigationService navigationService,
         INoteNameService noteNameService,
         INoteTreeService noteTreeService,
         ISyncService syncService,
-        ISyncEncryptionService encryptionService)
+        ISyncEncryptionService encryptionService,
+        IErrorText errorText)
     {
         this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
@@ -82,6 +86,7 @@ public partial class FilesViewModel : ViewModelBase
         this.noteTreeService = noteTreeService ?? throw new ArgumentNullException(nameof(noteTreeService));
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         this.encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
+        this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         lastSyncedAt = syncService.Status.LastSyncedAt;
         this.syncService.FilesChanged += OnFilesChanged;
         this.syncService.StatusChanged += OnSyncStatusChanged;
@@ -437,7 +442,7 @@ public partial class FilesViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
-            DialogError = ex.Message;
+            DialogError = Describe(ex);
         }
         catch (JSException)
         {
@@ -652,11 +657,13 @@ public partial class FilesViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = Describe(ex);
         }
         catch (JSException)
         {
             ErrorMessage = StorageErrorMessage;
         }
     }
+
+    private string Describe(Exception ex) => ex is NotesException ? ex.Message : errorText.Describe(ex);
 }

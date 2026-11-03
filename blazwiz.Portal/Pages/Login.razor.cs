@@ -1,11 +1,11 @@
-using Blazing.Mvvm.Components;
-using blazwiz.Portal.Application.ViewModels;
+using Microsoft.AspNetCore.Components;
 
 namespace blazwiz.Portal.Pages;
 
 /// <summary>
-/// Code-behind for the login page. Logic lives in <see cref="LoginViewModel"/>.
+/// The route for the sign-in page. Shows the component registered for it (see
+/// <see cref="Application.Shell.BlazwizPages"/>), so the app can replace or turn it off.
 /// </summary>
-public partial class Login : MvvmComponentBase<LoginViewModel>
+public partial class Login : ComponentBase
 {
 }

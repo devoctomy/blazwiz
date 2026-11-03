@@ -1,0 +1,6 @@
+<Router AppAssembly="AppAssembly" AdditionalAssemblies="additionalAssemblies" NotFoundPage="typeof(NotFound)">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@DefaultLayout" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+</Router>

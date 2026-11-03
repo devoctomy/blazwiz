@@ -1,11 +1,14 @@
 using System.Globalization;
 using Blazing.Mvvm.ComponentModel;
-using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Encryption.Exceptions;
 using blazwiz.Core.Encryption.Models;
+using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Sync.Encryption.Interfaces;
+using blazwiz.Portal.Application.Text.Interfaces;
+using blazwiz.Portal.Application.Text;
 using blazwiz.Portal.Models.Sync;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
@@ -20,16 +23,6 @@ public partial class E2eSettingsViewModel : ViewModelBase
     /// </summary>
     public const int MinPassphraseLength = 8;
 
-    /// <summary>
-    /// Added to the status line in offline mode.
-    /// </summary>
-    public const string OfflineNote = "You're offline, so this is this device's own state, and encryption can't be changed until you sign in online.";
-
-    /// <summary>
-    /// The warning shown before a passphrase is set.
-    /// </summary>
-    public const string NoRecoveryWarning = "There is no passphrase recovery. If you forget your passphrase, nobody can decrypt your notes, including us.";
-
     private static readonly E2eStep[] EnableSteps =
     [
         E2eStep.Sync, E2eStep.GoOffline, E2eStep.CheckExistingKeys, E2eStep.CheckIndex, E2eStep.DeriveKey,
@@ -43,6 +36,8 @@ public partial class E2eSettingsViewModel : ViewModelBase
 
     private readonly ISyncEncryptionService encryptionService;
     private readonly IOfflineModeService offlineModeService;
+    private readonly IStringLocalizer<SyncUiText> text;
+    private readonly IErrorText errorText;
 
     private E2eDialogKind? activeDialog;
     private string passphrase = string.Empty;
@@ -59,10 +54,14 @@ public partial class E2eSettingsViewModel : ViewModelBase
     /// </summary>
     /// <param name="encryptionService">End to end encryption of the synced files.</param>
     /// <param name="offlineModeService">Offline mode: the keys in the cloud can't be reached, so nothing can be changed.</param>
-    public E2eSettingsViewModel(ISyncEncryptionService encryptionService, IOfflineModeService offlineModeService)
+    /// <param name="text">The sync UI's text.</param>
+    /// <param name="errorText">Describes errors.</param>
+    public E2eSettingsViewModel(ISyncEncryptionService encryptionService, IOfflineModeService offlineModeService, IStringLocalizer<SyncUiText> text, IErrorText errorText)
     {
         this.encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
         this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
+        this.text = text ?? throw new ArgumentNullException(nameof(text));
+        this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.encryptionService.StatusChanged += OnStatusChanged;
         this.offlineModeService.Changed += OnOfflineModeChanged;
     }
@@ -80,7 +79,12 @@ public partial class E2eSettingsViewModel : ViewModelBase
     /// <summary>
     /// Gets the status line. In offline mode it describes this device's own state, and says so.
     /// </summary>
-    public string StatusText => IsOffline ? $"{OfflineStatusText} {OfflineNote}" : OnlineStatusText;
+    public string StatusText => IsOffline ? text["Sync.E2e.Status.Offline", OfflineStatusText] : OnlineStatusText;
+
+    /// <summary>
+    /// Gets the warning shown before a passphrase is set.
+    /// </summary>
+    public string NoRecoveryWarning => text["Sync.E2e.NoRecoveryWarning"];
 
     /// <summary>
     /// Gets a value indicating whether encryption can be turned on.
@@ -187,20 +191,20 @@ public partial class E2eSettingsViewModel : ViewModelBase
     // here simply means encryption is off on this device.
     private string OfflineStatusText => Status switch
     {
-        E2eStatus.Unknown or E2eStatus.Disabled or E2eStatus.Unavailable => "Off on this device.",
+        E2eStatus.Unknown or E2eStatus.Disabled or E2eStatus.Unavailable => text["Sync.E2e.Status.OffOnThisDevice"],
         _ => OnlineStatusText,
     };
 
     private string OnlineStatusText => Status switch
     {
-        E2eStatus.Unlocked => "On. Your notes are encrypted on this device before they are synced.",
-        E2eStatus.Disabled => "Off.",
-        E2eStatus.NeedsSetup => "On, but this device has not been set up yet. Enter your passphrase to read and sync your notes here.",
-        E2eStatus.Blocked => "On, but locked: use your passkey to unlock it.",
-        E2eStatus.DisabledElsewhere => "Turned off on another device.",
-        E2eStatus.Unavailable => "Off. Sign in with your passkey to turn it on: it needs the hardware PRF key your passkey provides.",
-        E2eStatus.Unsupported => "Not available with this sign in.",
-        _ => "Checking…",
+        E2eStatus.Unlocked => text["Sync.E2e.Status.Unlocked"],
+        E2eStatus.Disabled => text["Sync.E2e.Status.Disabled"],
+        E2eStatus.NeedsSetup => text["Sync.E2e.Status.NeedsSetup"],
+        E2eStatus.Blocked => text["Sync.E2e.Status.Blocked"],
+        E2eStatus.DisabledElsewhere => text["Sync.E2e.Status.DisabledElsewhere"],
+        E2eStatus.Unavailable => text["Sync.E2e.Status.Unavailable"],
+        E2eStatus.Unsupported => text["Sync.E2e.Status.Unsupported"],
+        _ => text["Sync.E2e.Status.Checking"],
     };
 
     /// <summary>
@@ -208,21 +212,11 @@ public partial class E2eSettingsViewModel : ViewModelBase
     /// </summary>
     /// <param name="step">The step.</param>
     /// <returns>The description.</returns>
-    public static string GetStepLabel(E2eStep step) => step switch
+    public string GetStepLabel(E2eStep step) => step switch
     {
-        E2eStep.Sync => "Sync every note to this device",
-        E2eStep.GoOffline => "Pause syncing",
-        E2eStep.CheckExistingKeys => "Check encryption is not already on",
-        E2eStep.CheckIndex => "Check no notes are already encrypted",
-        E2eStep.VerifyPassphrase => "Check your passphrase",
-        E2eStep.DeriveKey => "Derive your passphrase key (Argon2id)",
-        E2eStep.CreateKeys => "Create your master key and file key",
-        E2eStep.SaveKeys => "Save your keys to your account",
-        E2eStep.StoreDeviceKey => "Secure this device with your passkey",
-        E2eStep.EncryptFiles => "Encrypt your notes",
-        E2eStep.DecryptFiles => "Decrypt your notes",
-        E2eStep.DeleteKeys => "Delete your keys",
-        E2eStep.GoOnline => "Resume syncing",
+        E2eStep.Sync or E2eStep.GoOffline or E2eStep.CheckExistingKeys or E2eStep.CheckIndex or E2eStep.VerifyPassphrase
+            or E2eStep.DeriveKey or E2eStep.CreateKeys or E2eStep.SaveKeys or E2eStep.StoreDeviceKey or E2eStep.EncryptFiles
+            or E2eStep.DecryptFiles or E2eStep.DeleteKeys or E2eStep.GoOnline => text["Sync.E2e.Step." + step],
         _ => step.ToString(),
     };
 
@@ -295,22 +289,22 @@ public partial class E2eSettingsViewModel : ViewModelBase
         base.Dispose(disposing);
     }
 
-    private static List<E2eStepItem> CreateSteps(IEnumerable<E2eStep> list) =>
+    private List<E2eStepItem> CreateSteps(IEnumerable<E2eStep> list) =>
         list.Select(s => new E2eStepItem { Step = s, Label = GetStepLabel(s), State = E2eStepState.Pending }).ToList();
 
     private string? ValidateNewPassphrase()
     {
         if (Passphrase.Length < MinPassphraseLength)
         {
-            return $"Use a passphrase of at least {MinPassphraseLength} characters.";
+            return text["Sync.E2e.Error.PassphraseTooShort", MinPassphraseLength];
         }
 
         if (!string.Equals(Passphrase, ConfirmPassphrase, StringComparison.Ordinal))
         {
-            return "The passphrases do not match.";
+            return text["Sync.E2e.Error.PassphrasesDiffer"];
         }
 
-        return AcknowledgedNoRecovery ? null : "Confirm you understand there is no passphrase recovery.";
+        return AcknowledgedNoRecovery ? null : text["Sync.E2e.Error.AcknowledgeNoRecovery"].Value;
     }
 
     private async Task EnableAsync()
@@ -330,7 +324,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
     {
         if (string.IsNullOrEmpty(Passphrase))
         {
-            DialogError = "Enter your passphrase.";
+            DialogError = text["Sync.E2e.Error.PassphraseRequired"];
             return;
         }
 
@@ -343,7 +337,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
     {
         if (string.IsNullOrEmpty(Passphrase))
         {
-            DialogError = "Enter your passphrase.";
+            DialogError = text["Sync.E2e.Error.PassphraseRequired"];
             return;
         }
 
@@ -356,7 +350,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
     {
         if (string.IsNullOrEmpty(CurrentPassphrase))
         {
-            DialogError = "Enter your current passphrase.";
+            DialogError = text["Sync.E2e.Error.CurrentPassphraseRequired"];
             return;
         }
 
@@ -384,11 +378,11 @@ public partial class E2eSettingsViewModel : ViewModelBase
         }
         catch (E2eWrongPassphraseException)
         {
-            DialogError = "That passphrase is not correct. Try again.";
+            DialogError = text["Sync.E2e.Error.WrongPassphrase"];
         }
         catch (Exception ex)
         {
-            DialogError = ex.Message;
+            DialogError = errorText.Describe(ex);
         }
         finally
         {
@@ -412,7 +406,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
         catch (Exception ex)
         {
             FailRunningStep();
-            DialogError = ex is E2eWrongPassphraseException ? "That passphrase is not correct." : ex.Message;
+            DialogError = errorText.Describe(ex);
         }
         finally
         {
@@ -433,7 +427,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
 
         item.State = progress.Completed ? E2eStepState.Done : E2eStepState.Running;
         item.Detail = progress.Total > 0
-            ? string.Create(CultureInfo.InvariantCulture, $"{progress.Done} of {progress.Total}")
+            ? text["Sync.E2e.Step.Progress", progress.Done, progress.Total].Value
             : null;
         Steps = items;
     }

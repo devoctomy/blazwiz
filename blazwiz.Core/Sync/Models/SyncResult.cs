@@ -100,27 +100,4 @@ public class SyncResult
             }
         }
     }
-
-    /// <summary>
-    /// Describes the counts for the log, e.g. "3 uploaded, 1 downloaded", or "Up to date".
-    /// </summary>
-    /// <returns>The summary.</returns>
-    public string Describe()
-    {
-        var parts = new List<string>();
-        AddPart(parts, Uploaded, "uploaded");
-        AddPart(parts, Downloaded, "downloaded");
-        AddPart(parts, DeletedRemote + DeletedLocal, "deleted");
-        AddPart(parts, ConflictsResolved, ConflictsResolved == 1 ? "conflict resolved" : "conflicts resolved");
-        AddPart(parts, Failed, "failed");
-        return parts.Count == 0 ? "Up to date" : string.Join(", ", parts);
-    }
-
-    private static void AddPart(List<string> parts, int count, string label)
-    {
-        if (count > 0)
-        {
-            parts.Add($"{count} {label}");
-        }
-    }
 }

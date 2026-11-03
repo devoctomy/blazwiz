@@ -9,6 +9,8 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 
 public class Argon2idSettingsViewModelTests
 {
+    private readonly TestText testText = new();
+
     private readonly Mock<IArgon2idKeyDerivationService> mockArgon2 = new();
     private readonly Argon2idOptions options = new() { Parameters = new Argon2idParameters { MemoryKib = 512 * 1024, Iterations = 2, Parallelism = 1, KeyLength = 32 } };
     private readonly FakeTimeProvider time = new();
@@ -16,9 +18,9 @@ public class Argon2idSettingsViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("argon2", Assert.Throws<ArgumentNullException>(() => new Argon2idSettingsViewModel(null!, options, time)).ParamName);
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new Argon2idSettingsViewModel(mockArgon2.Object, null!, time)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new Argon2idSettingsViewModel(mockArgon2.Object, options, null!)).ParamName);
+        Assert.Equal("argon2", Assert.Throws<ArgumentNullException>(() => new Argon2idSettingsViewModel(null!, options, time, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new Argon2idSettingsViewModel(mockArgon2.Object, null!, time, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new Argon2idSettingsViewModel(mockArgon2.Object, options, null!, testText.Sync, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -72,10 +74,10 @@ public class Argon2idSettingsViewModelTests
         await sut.BenchmarkAsync();
 
         // Assert
-        Assert.Equal("The benchmark failed: no memory", sut.Error);
+        Assert.Equal("The benchmark failed: Something went wrong.", sut.Error);
         Assert.Null(sut.Result);
         Assert.False(sut.IsRunning);
     }
 
-    private Argon2idSettingsViewModel CreateSut() => new(mockArgon2.Object, options, time);
+    private Argon2idSettingsViewModel CreateSut() => new(mockArgon2.Object, options, time, testText.Sync, testText.Errors);
 }

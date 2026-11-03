@@ -29,4 +29,15 @@ public class NavigationItem
     /// Gets or sets a short description of the page, used for quick links on the dashboard.
     /// </summary>
     public string Description { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the item's position in the sidebar: lower comes first.
+    /// </summary>
+    public int Order { get; set; }
+
+    /// <summary>
+    /// Gets or sets the framework page the item links to, if any (see <c>BlazwizPages</c>). The item is hidden when that
+    /// page is turned off.
+    /// </summary>
+    public string? PageKey { get; set; }
 }

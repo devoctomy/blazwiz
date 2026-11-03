@@ -6,7 +6,13 @@ namespace blazwiz.Portal.Application.UnitTests.Services;
 
 public class SyncEventPresenterTests
 {
-    private readonly SyncEventPresenter sut = new();
+    private readonly TestText testText = new();
+    private readonly SyncEventPresenter sut;
+
+    public SyncEventPresenterTests()
+    {
+        sut = new SyncEventPresenter(testText.Sync, testText.Plurals, testText.Errors);
+    }
 
     public static TheoryData<SyncEventKind> AllKinds()
     {

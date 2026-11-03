@@ -1,57 +1,26 @@
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Shell.Interfaces;
 using blazwiz.Portal.Models.Navigation;
 
 namespace blazwiz.Portal.Application.Services;
 
 /// <summary>
-/// Defines the sidebar navigation. To add a new page to the app, create the page and add an entry here.
+/// The sidebar navigation: every item added with
+/// <see cref="Extensions.ShellServiceCollectionExtensions.AddNavigationItem"/>, in order, without those linking to a
+/// page that is turned off.
 /// </summary>
-public class NavigationMenuService : INavigationMenuService
+public class NavigationMenuService(IEnumerable<NavigationItem> items, IPageRegistry pageRegistry)
+    : INavigationMenuService
 {
-    private static readonly IReadOnlyList<NavigationItem> MainItems =
-    [
-        new NavigationItem
-        {
-            Text = "Dashboard",
-            Href = string.Empty,
-            Icon = "bi-grid-1x2",
-            ExactMatch = true,
-            Description = "Your home page.",
-        },
-//#if (IncludeNotes)
-        new NavigationItem
-        {
-            Text = "Files",
-            Href = "files",
-            Icon = "bi-journal-text",
-            Description = "Your markdown notes, organised into folders.",
-        },
-        new NavigationItem
-        {
-            Text = "Sync",
-            Href = "sync",
-            Icon = "bi-arrow-repeat",
-            Description = "What sync has done, connectivity and offline mode.",
-        },
-//#endif
-//#if (IncludeShowcase)
-        new NavigationItem
-        {
-            Text = "Showcase",
-            Href = "showcase",
-            Icon = "bi-palette",
-            Description = "Themed building blocks to copy into new pages.",
-        },
-//#endif
-        new NavigationItem
-        {
-            Text = "Settings",
-            Href = "settings",
-            Icon = "bi-gear",
-            Description = "Appearance and application preferences.",
-        },
-    ];
+    private readonly IReadOnlyList<NavigationItem> items = (items ?? throw new ArgumentNullException(nameof(items))).ToList();
+    private readonly IPageRegistry pageRegistry = pageRegistry ?? throw new ArgumentNullException(nameof(pageRegistry));
 
     /// <inheritdoc/>
-    public IReadOnlyList<NavigationItem> GetMainItems() => MainItems;
+    public IReadOnlyList<NavigationItem> GetMainItems()
+    {
+        return items
+            .Where(i => i.PageKey == null || pageRegistry.IsEnabled(i.PageKey))
+            .OrderBy(i => i.Order)
+            .ToList();
+    }
 }

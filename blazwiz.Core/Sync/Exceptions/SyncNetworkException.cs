@@ -1,33 +1,30 @@
+using blazwiz.Core.Exceptions;
+
 namespace blazwiz.Core.Sync.Exceptions;
 
 /// <summary>
-/// The remote store could not be reached. The pass stops and the app is marked offline.
+/// Thrown when the remote store cannot be reached.
 /// </summary>
-public class SyncNetworkException : Exception
+public class SyncNetworkException : BlazwizException
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SyncNetworkException"/> class.
     /// </summary>
-    public SyncNetworkException()
+    /// <param name="code">The error's code.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public SyncNetworkException(string code, params object[] arguments)
+        : base(code, arguments)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SyncNetworkException"/> class.
     /// </summary>
-    /// <param name="message">The message.</param>
-    public SyncNetworkException(string message)
-        : base(message)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SyncNetworkException"/> class.
-    /// </summary>
-    /// <param name="message">The message.</param>
-    /// <param name="innerException">The cause.</param>
-    public SyncNetworkException(string message, Exception innerException)
-        : base(message, innerException)
+    /// <param name="code">The error's code.</param>
+    /// <param name="innerException">What caused it.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public SyncNetworkException(string code, Exception innerException, params object[] arguments)
+        : base(code, innerException, arguments)
     {
     }
 }

@@ -10,6 +10,8 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 
 public class E2eBannerViewModelTests
 {
+    private readonly TestText testText = new();
+
     private readonly Mock<ISyncEncryptionService> mockEncryption = new();
     private readonly Mock<IPasskeyUnlockService> mockPasskey = new();
     private readonly Mock<ISyncScheduler> mockScheduler = new();
@@ -27,10 +29,10 @@ public class E2eBannerViewModelTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(null!, mockPasskey.Object, mockScheduler.Object, mockNavigation.Object)).ParamName);
-        Assert.Equal("passkeyUnlockService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, null!, mockScheduler.Object, mockNavigation.Object)).ParamName);
-        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, mockPasskey.Object, null!, mockNavigation.Object)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, mockPasskey.Object, mockScheduler.Object, null!)).ParamName);
+        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(null!, mockPasskey.Object, mockScheduler.Object, mockNavigation.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("passkeyUnlockService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, null!, mockScheduler.Object, mockNavigation.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, mockPasskey.Object, null!, mockNavigation.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, mockPasskey.Object, mockScheduler.Object, null!, testText.Sync, testText.Errors)).ParamName);
     }
 
     [Theory]
@@ -233,7 +235,7 @@ public class E2eBannerViewModelTests
         await sut.ResolveAsync();
 
         // Assert
-        Assert.Equal("no keys", sut.Error);
+        Assert.Equal("Something went wrong.", sut.Error);
         Assert.True(sut.IsResolveDialogOpen);
         sut.CloseResolveDialog();
         Assert.False(sut.IsResolveDialogOpen);
@@ -256,5 +258,5 @@ public class E2eBannerViewModelTests
         Assert.Equal(1, changed);
     }
 
-    private E2eBannerViewModel CreateSut() => new(mockEncryption.Object, mockPasskey.Object, mockScheduler.Object, mockNavigation.Object);
+    private E2eBannerViewModel CreateSut() => new(mockEncryption.Object, mockPasskey.Object, mockScheduler.Object, mockNavigation.Object, testText.Sync, testText.Errors);
 }

@@ -1,4 +1,5 @@
 @inherits MvvmComponentBase<OfflineBannerViewModel>
+@inject IStringLocalizer<UiText> Text
 
 @if (ViewModel.IsVisible)
 {
@@ -7,7 +8,7 @@
         <span class="flex-grow-1" id="offline-banner-text">@ViewModel.Message</span>
         <button type="button" class="btn btn-outline-primary btn-sm" id="offline-banner-sign-in"
                 @onclick="() => ViewModel.SignInOnlineCommand.Execute(null)">
-            <i class="bi bi-box-arrow-in-right me-1"></i>Sign in online
+            <i class="bi bi-box-arrow-in-right me-1"></i>@Text["Offline.Banner.SignInOnline"]
         </button>
     </div>
 }

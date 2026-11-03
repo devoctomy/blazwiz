@@ -1,11 +1,11 @@
-using Blazing.Mvvm.Components;
-using blazwiz.Portal.Application.ViewModels;
+using Microsoft.AspNetCore.Components;
 
 namespace blazwiz.Portal.Pages;
 
 /// <summary>
-/// Code-behind for the settings page. Logic lives in <see cref="SettingsViewModel"/>.
+/// The route for the Settings page. Shows the component registered for it (see
+/// <see cref="Application.Shell.BlazwizPages"/>), so the app can replace or turn it off.
 /// </summary>
-public partial class Settings : MvvmComponentBase<SettingsViewModel>
+public partial class Settings : ComponentBase
 {
 }

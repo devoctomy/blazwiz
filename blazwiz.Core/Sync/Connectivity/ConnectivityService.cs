@@ -95,7 +95,7 @@ public sealed class ConnectivityService : IConnectivityService, IDisposable
         syncEnabled = enabled;
         if (changed)
         {
-            await LogAsync(SyncEventKind.OfflineModeChanged, enabled ? "Sync turned on" : "Sync turned off");
+            await LogAsync(SyncEventKind.OfflineModeChanged, enabled ? SyncEventCodes.SyncTurnedOn : SyncEventCodes.SyncTurnedOff);
         }
 
         StopRecheck();
@@ -219,11 +219,11 @@ public sealed class ConnectivityService : IConnectivityService, IDisposable
         {
             if (isOnline && previous is { LastCheckedAt: not null, IsOnline: false })
             {
-                await LogAsync(SyncEventKind.WentOnline, "Back online");
+                await LogAsync(SyncEventKind.WentOnline, SyncEventCodes.BackOnline);
             }
             else if (!isOnline && GetSwitchedOffReason(reason) == null)
             {
-                await LogAsync(SyncEventKind.WentOffline, status.Describe());
+                await LogAsync(SyncEventKind.WentOffline, SyncEventCodes.WentOffline, status.Reason?.ToString() ?? string.Empty);
             }
 
             StatusChanged?.Invoke(this, status.Clone());
@@ -281,7 +281,7 @@ public sealed class ConnectivityService : IConnectivityService, IDisposable
         }
     }
 
-    private async Task LogAsync(SyncEventKind kind, string message)
+    private async Task LogAsync(SyncEventKind kind, string code, params string[] arguments)
     {
         try
         {
@@ -298,7 +298,8 @@ public sealed class ConnectivityService : IConnectivityService, IDisposable
                     Owner = owner,
                     Timestamp = timeProvider.GetUtcNow(),
                     Kind = kind,
-                    Message = message,
+                    Code = code,
+                    Arguments = [.. arguments],
                 },
             ]);
         }
@@ -323,7 +324,7 @@ public sealed class ConnectivityService : IConnectivityService, IDisposable
     {
         try
         {
-            await LogAsync(SyncEventKind.OfflineModeChanged, isOffline ? "Offline mode turned on" : "Offline mode turned off");
+            await LogAsync(SyncEventKind.OfflineModeChanged, isOffline ? SyncEventCodes.OfflineModeOn : SyncEventCodes.OfflineModeOff);
             StopRecheck();
             await RecheckAsync();
         }

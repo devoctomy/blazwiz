@@ -1,17 +1,18 @@
 @inherits MvvmLayoutComponentBase<MainLayoutViewModel>
+@inject IStringLocalizer<UiText> Text
 
 @if (!ViewModel.IsReady)
 {
     <div class="app-splash">
         <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+            <span class="visually-hidden">@Text["Common.Loading"]</span>
         </div>
     </div>
 }
 else
 {
     <div class="app-shell @(ViewModel.IsSidebarCollapsed ? "sidebar-collapsed" : null) @(ViewModel.IsMobileMenuOpen ? "mobile-menu-open" : null)">
-        <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+        <aside class="sidebar" id="sidebar" aria-label="@Text["Shell.MainNavigation"]">
             <div class="sidebar-brand">
                 <img src="images/icon.svg" class="brand-icon" alt="@ViewModel.AppSettings.ApplicationTitle" />
                 <span class="brand-name sidebar-label">@ViewModel.AppSettings.ApplicationTitle</span>
@@ -48,10 +49,10 @@ else
                 <button type="button"
                         class="sidebar-link sidebar-logout"
                         id="logout-button"
-                        title="Log out"
+                        title="@Text["Shell.LogOut"]"
                         @onclick="() => ViewModel.LogoutCommand.ExecuteAsync(null)">
                     <i class="bi bi-box-arrow-left"></i>
-                    <span class="sidebar-label">Log out</span>
+                    <span class="sidebar-label">@Text["Shell.LogOut"]</span>
                 </button>
             </div>
         </aside>
@@ -63,7 +64,7 @@ else
                 <button type="button"
                         class="icon-btn d-none d-md-inline-flex"
                         id="sidebar-toggle"
-                        title="@(ViewModel.IsSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")"
+                        title="@(ViewModel.IsSidebarCollapsed ? Text["Shell.ExpandSidebar"] : Text["Shell.CollapseSidebar"])"
                         aria-controls="sidebar"
                         aria-expanded="@((!ViewModel.IsSidebarCollapsed).ToString().ToLowerInvariant())"
                         @onclick="() => ViewModel.ToggleSidebarCommand.ExecuteAsync(null)">
@@ -72,7 +73,7 @@ else
                 <button type="button"
                         class="icon-btn d-md-none"
                         id="mobile-menu-toggle"
-                        title="Menu"
+                        title="@Text["Shell.Menu"]"
                         aria-controls="sidebar"
                         aria-expanded="@ViewModel.IsMobileMenuOpen.ToString().ToLowerInvariant()"
                         @onclick="() => ViewModel.ToggleMobileMenuCommand.Execute(null)">
@@ -82,96 +83,37 @@ else
 
                 <div class="flex-grow-1"></div>
 
+                @foreach (var action in ViewModel.TopBarActions)
+                {
+                    <DynamicComponent Type="action" />
+                }
+
                 <button type="button"
                         class="icon-btn theme-toggle"
                         id="theme-toggle"
-                        title="Toggle theme"
+                        title="@Text["Shell.ToggleTheme"]"
                         @onclick="() => ViewModel.ToggleThemeCommand.ExecuteAsync(null)">
                     <i class="bi @ViewModel.ThemeIcon"></i>
                 </button>
             </header>
 
             <main class="app-content">
-                <OfflineBanner />
-@*#if (IncludeNotes)*@
-                <E2eBanner />
-                @if (ViewModel.NeedsFolderAccess)
+                @foreach (var banner in ViewModel.Banners)
                 {
-                    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-3" role="alert" id="folder-access-banner">
-                        <i class="bi bi-folder-x fs-5"></i>
-                        <span class="flex-grow-1">Your notes are kept in the folder <strong>@(ViewModel.FolderName ?? "you chose")</strong>. Allow access to it again to use them and sync.</span>
-                        <button type="button" class="btn btn-warning btn-sm" id="folder-reconnect-button"
-                                @onclick="() => ViewModel.ReconnectFolderCommand.ExecuteAsync(null)">
-                            <i class="bi bi-folder-check me-1"></i>Reconnect folder
-                        </button>
-                        @if (!string.IsNullOrEmpty(ViewModel.FolderAccessError))
-                        {
-                            <div class="w-100 small" id="folder-access-error">@ViewModel.FolderAccessError</div>
-                        }
-                    </div>
+                    <DynamicComponent Type="banner" />
                 }
-@*#endif*@
                 <div class="app-content-body" @key="ViewModel.ContentVersion">
                     @Body
                 </div>
             </main>
         </div>
-@*#if (IncludeNotes)*@
-
-        <div class="sync-pill-wrap">
-            @if (ViewModel.IsSyncPopoverOpen)
-            {
-                <div class="sync-popover-backdrop" @onclick="() => ViewModel.CloseSyncPopoverCommand.Execute(null)"></div>
-                <div class="sync-popover" id="sync-popover" role="dialog" aria-label="Sync">
-                    <div class="sync-popover-status">
-                        <i class="bi @ViewModel.SyncPill.Icon sync-tone-@ViewModel.SyncPill.Tone"></i>
-                        <span id="sync-popover-reason">@ViewModel.SyncPill.Tooltip</span>
-                    </div>
-                    <div class="form-check form-switch mb-2">
-                        <input class="form-check-input" type="checkbox" role="switch" id="sync-enabled-switch"
-                               checked="@ViewModel.IsSyncEnabled"
-                               @onchange="() => ViewModel.ToggleSyncCommand.ExecuteAsync(null)" />
-                        <label class="form-check-label" for="sync-enabled-switch">Sync</label>
-                    </div>
-                    <div class="sync-popover-meta">
-                        Last synced: <span id="sync-last-synced">@(ViewModel.SyncStatus.LastSyncedAt?.ToLocalTime().ToString("g") ?? "Not yet")</span>
-                    </div>
-                    <div class="sync-popover-actions">
-                        <button type="button" class="btn btn-primary btn-sm" id="sync-now-button"
-                                disabled="@(!ViewModel.CanSyncNow)"
-                                @onclick="() => ViewModel.SyncNowCommand.ExecuteAsync(null)">
-                            <i class="bi bi-arrow-repeat me-1"></i>Sync now
-                        </button>
-                        <a class="btn btn-link btn-sm" href="sync" id="view-sync-log" @onclick="() => ViewModel.CloseSyncPopoverCommand.Execute(null)">View sync log</a>
-                    </div>
-                </div>
-            }
-            <button type="button"
-                    class="sync-pill sync-tone-@ViewModel.SyncPill.Tone"
-                    id="sync-status-pill"
-                    title="@ViewModel.SyncPill.Tooltip"
-                    aria-expanded="@ViewModel.IsSyncPopoverOpen.ToString().ToLowerInvariant()"
-                    @onclick="() => ViewModel.ToggleSyncPopoverCommand.Execute(null)">
-                <i class="bi @ViewModel.SyncPill.Icon @(ViewModel.SyncPill.IsSyncing ? "sync-spin" : null)"></i>
-                <span class="sync-pill-text">@ViewModel.SyncPill.Text</span>
-            </button>
-        </div>
-@*#endif*@
+        @foreach (var floating in ViewModel.Floating)
+        {
+            <DynamicComponent Type="floating" />
+        }
     </div>
-@*#if (IncludeNotes)*@
-    @if (ViewModel.IsStorageMigrating)
+    @foreach (var overlay in ViewModel.Overlays)
     {
-        <div class="modal-backdrop show"></div>
-        <div class="modal d-block app-modal" role="alertdialog" aria-modal="true" aria-labelledby="storage-migrating-text" id="storage-migrating-overlay">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-body d-flex align-items-center gap-3">
-                        <span class="spinner-border text-primary flex-shrink-0" aria-hidden="true"></span>
-                        <span id="storage-migrating-text">Your notes are being moved to another storage in another tab. This tab reloads when it finishes.</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <DynamicComponent Type="overlay" />
     }
-@*#endif*@
 }

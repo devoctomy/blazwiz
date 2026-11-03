@@ -207,12 +207,12 @@ public class S3SyncRemoteStore(IS3SyncTargetProvider targetProvider, ISyncPathMa
         }
         catch (HttpRequestException ex)
         {
-            throw new SyncNetworkException("Could not get AWS credentials.", ex);
+            throw new SyncNetworkException(SyncErrorCodes.RemoteNoCredentials, ex);
         }
 
         if (target == null)
         {
-            throw new SyncAccessDeniedException("There are no AWS credentials for sync.");
+            throw new SyncAccessDeniedException(SyncErrorCodes.RemoteNoCredentials);
         }
 
         try
@@ -221,19 +221,19 @@ public class S3SyncRemoteStore(IS3SyncTargetProvider targetProvider, ISyncPathMa
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed || ex.ErrorCode == "ConditionalRequestConflict")
         {
-            throw new SyncPreconditionFailedException("The file changed in S3 since it was listed.", ex);
+            throw new SyncPreconditionFailedException(SyncErrorCodes.RemoteChanged, ex);
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
         {
-            throw new SyncAccessDeniedException("S3 refused the credentials.", ex);
+            throw new SyncAccessDeniedException(SyncErrorCodes.RemoteAccessDenied, ex);
         }
         catch (AmazonServiceException ex) when (ex.InnerException is HttpRequestException or TaskCanceledException or IOException)
         {
-            throw new SyncNetworkException("S3 could not be reached.", ex);
+            throw new SyncNetworkException(SyncErrorCodes.RemoteUnreachable, ex);
         }
         catch (HttpRequestException ex)
         {
-            throw new SyncNetworkException("S3 could not be reached.", ex);
+            throw new SyncNetworkException(SyncErrorCodes.RemoteUnreachable, ex);
         }
     }
 }

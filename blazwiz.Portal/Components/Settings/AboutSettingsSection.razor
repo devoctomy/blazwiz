@@ -1,0 +1,13 @@
+@inject IStringLocalizer<UiText> Text
+
+<div class="panel">
+    <h2 class="panel-title">@Text["Settings.About.Title"]</h2>
+    <dl class="detail-list">
+        <dt>@Text["Settings.About.Version"]</dt>
+        <dd id="app-version">@Globals.Version</dd>
+        <dt>@Text["Settings.About.Build"]</dt>
+        <dd>@(Globals.IsDebugBuild ? Text["Settings.About.Debug"] : Text["Settings.About.Release"])</dd>
+        <dt>@Text["Settings.About.Built"]</dt>
+        <dd id="app-build-time">@(Globals.BuildTime is { } built ? Text["Settings.About.BuiltAt", built] : Text["Settings.About.NotStamped"])</dd>
+    </dl>
+</div>

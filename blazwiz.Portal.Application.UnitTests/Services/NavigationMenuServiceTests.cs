@@ -1,54 +1,46 @@
 using blazwiz.Portal.Application.Services;
+using blazwiz.Portal.Application.Shell.Interfaces;
+using blazwiz.Portal.Models.Navigation;
+using Moq;
 
 namespace blazwiz.Portal.Application.UnitTests.Services;
 
 public class NavigationMenuServiceTests
 {
+    private readonly Mock<IPageRegistry> mockPages = new();
+
     [Fact]
-    public void GivenService_WhenGetMainItems_ThenDashboardIsFirstAndExactMatch()
+    public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        // Arrange
-        var sut = new NavigationMenuService();
-
-        // Act
-        var items = sut.GetMainItems();
-
-        // Assert
-        var dashboard = items[0];
-        Assert.Equal(string.Empty, dashboard.Href);
-        Assert.True(dashboard.ExactMatch);
+        Assert.Equal("items", Assert.Throws<ArgumentNullException>(() => new NavigationMenuService(null!, mockPages.Object)).ParamName);
+        Assert.Equal("pageRegistry", Assert.Throws<ArgumentNullException>(() => new NavigationMenuService([], null!)).ParamName);
     }
 
     [Fact]
-    public void GivenService_WhenGetMainItems_ThenEveryItemIsComplete()
+    public void GivenItemsAddedInAnyOrder_WhenGetMainItems_ThenSortedByOrder()
     {
         // Arrange
-        var sut = new NavigationMenuService();
+        var settings = new NavigationItem { Text = "Settings", Order = 100 };
+        var dashboard = new NavigationItem { Text = "Dashboard", Order = 0 };
+        var files = new NavigationItem { Text = "Files", Order = 10 };
+        var sut = new NavigationMenuService([settings, dashboard, files], mockPages.Object);
 
-        // Act
-        var items = sut.GetMainItems();
-
-        // Assert
-        Assert.NotEmpty(items);
-        Assert.All(items, item =>
-        {
-            Assert.False(string.IsNullOrWhiteSpace(item.Text));
-            Assert.StartsWith("bi-", item.Icon);
-            Assert.False(string.IsNullOrWhiteSpace(item.Description));
-        });
+        // Act & Assert
+        Assert.Equal([dashboard, files, settings], sut.GetMainItems());
     }
 
     [Fact]
-    public void GivenService_WhenGetMainItems_ThenHrefsAreUniqueAndRelative()
+    public void GivenItemForATurnedOffPage_WhenGetMainItems_ThenHidden()
     {
         // Arrange
-        var sut = new NavigationMenuService();
+        mockPages.Setup(x => x.IsEnabled("sync")).Returns(false);
+        mockPages.Setup(x => x.IsEnabled("settings")).Returns(true);
+        var sync = new NavigationItem { Text = "Sync", PageKey = "sync" };
+        var settings = new NavigationItem { Text = "Settings", PageKey = "settings" };
+        var appPage = new NavigationItem { Text = "Mine" };
+        var sut = new NavigationMenuService([sync, settings, appPage], mockPages.Object);
 
-        // Act
-        var items = sut.GetMainItems();
-
-        // Assert
-        Assert.Equal(items.Count, items.Select(i => i.Href).Distinct().Count());
-        Assert.All(items, item => Assert.False(item.Href.StartsWith('/')));
+        // Act & Assert
+        Assert.Equal([settings, appPage], sut.GetMainItems());
     }
 }

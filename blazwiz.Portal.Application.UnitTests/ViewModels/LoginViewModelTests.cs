@@ -1,10 +1,10 @@
 using blazwiz.Core.Cryptography.Interfaces;
-using blazwiz.Core.Offline;
 using blazwiz.Core.Offline.Models;
-//#if (IncludeNotes)
-using blazwiz.Core.Sync.Interfaces;
-//#endif
+using blazwiz.Core.Offline;
+using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Shell.Interfaces;
+using blazwiz.Portal.Application.Shell;
 using blazwiz.Portal.Application.ViewModels;
 using blazwiz.Portal.Models.Auth;
 using blazwiz.Portal.Models.Settings;
@@ -15,6 +15,8 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 
 public class LoginViewModelTests
 {
+    private readonly TestText testText = new();
+
     private readonly Mock<IAuthenticationService> mockAuth = new();
     private readonly Mock<INavigationService> mockNavigation = new();
     private readonly Mock<IThemeService> mockTheme = new();
@@ -23,17 +25,13 @@ public class LoginViewModelTests
     private readonly Mock<IPasswordCryptoService> mockPasswordCrypto = new();
     private readonly Mock<IDerivedKeyStore> mockKeyStore = new();
     private readonly OfflineModeService offlineMode = new();
-//#if (IncludeNotes)
-    private readonly Mock<IConnectivityService> mockConnectivity = new();
-    private readonly Mock<IPersistentStorageService> mockPersistentStorage = new();
-//#endif
+    private readonly List<ISignInOption> options = [];
+    private readonly List<SignInOptionRegistration> optionRegistrations = [];
+    private readonly Mock<ISessionLifecycle> mockLifecycle = new();
     private readonly AppSettings appSettings = new() { ApplicationTitle = "Test App", EnablePortalLoginAuthn = true };
 
     public LoginViewModelTests()
     {
-//#if (IncludeNotes)
-        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(true);
-//#endif
         mockAuth.Setup(x => x.SignInOfflineAsync(It.IsAny<string>(), It.IsAny<OfflineEntryReason>())).ReturnsAsync(new LoginResult { Success = true });
     }
 
@@ -41,11 +39,11 @@ public class LoginViewModelTests
     public void GivenNullAuthService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(null!, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors));
         Assert.Equal("authService", exception.ParamName);
     }
 
@@ -53,11 +51,11 @@ public class LoginViewModelTests
     public void GivenNullNavigationService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, null!, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors));
         Assert.Equal("navigationService", exception.ParamName);
     }
 
@@ -65,11 +63,11 @@ public class LoginViewModelTests
     public void GivenNullThemeService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, null!, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors));
         Assert.Equal("themeService", exception.ParamName);
     }
 
@@ -77,11 +75,11 @@ public class LoginViewModelTests
     public void GivenNullLocalStorageService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, null!, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors));
         Assert.Equal("localStorageService", exception.ParamName);
     }
 
@@ -89,11 +87,11 @@ public class LoginViewModelTests
     public void GivenNullWebAuthnService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, null!, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors));
         Assert.Equal("webAuthnService", exception.ParamName);
     }
 
@@ -101,11 +99,11 @@ public class LoginViewModelTests
     public void GivenNullPasswordCryptoService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, null!, mockKeyStore.Object, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors));
         Assert.Equal("passwordCryptoService", exception.ParamName);
     }
 
@@ -113,11 +111,11 @@ public class LoginViewModelTests
     public void GivenNullKeyStore_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, null!, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors));
         Assert.Equal("keyStore", exception.ParamName);
     }
 
@@ -125,11 +123,11 @@ public class LoginViewModelTests
     public void GivenNullAppSettings_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            null!));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            null!,
+        testText.Ui, testText.Errors));
         Assert.Equal("appSettings", exception.ParamName);
     }
 
@@ -227,14 +225,14 @@ public class LoginViewModelTests
     public async Task GivenFailedLogin_WhenLogin_ThenShowsErrorAndDoesNotNavigate()
     {
         // Arrange
-        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = false, Error = "Nope" });
+        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = false, ErrorCode = AuthErrorCodes.NotAuthorized });
         var sut = CreateSut();
 
         // Act
         await sut.LoginAsync();
 
         // Assert
-        Assert.Equal("Nope", sut.ErrorMessage);
+        Assert.Equal("Incorrect email or password.", sut.ErrorMessage);
         Assert.False(sut.IsBusy);
         mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
     }
@@ -250,7 +248,7 @@ public class LoginViewModelTests
         await sut.LoginAsync();
 
         // Assert
-        Assert.Equal("Login failed.", sut.ErrorMessage);
+        Assert.Equal("Sign in failed. Please try again.", sut.ErrorMessage);
     }
 
     [Fact]
@@ -264,7 +262,7 @@ public class LoginViewModelTests
         await sut.LoginAsync();
 
         // Assert
-        Assert.Equal("Login failed: Boom", sut.ErrorMessage);
+        Assert.Equal("Sign in failed. Please try again.", sut.ErrorMessage);
         Assert.False(sut.IsBusy);
     }
 
@@ -292,7 +290,7 @@ public class LoginViewModelTests
     {
         // Arrange
         mockAuth.SetupSequence(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()))
-            .ReturnsAsync(new LoginResult { Success = false, Error = "Nope" })
+            .ReturnsAsync(new LoginResult { Success = false, ErrorCode = AuthErrorCodes.NotAuthorized })
             .ReturnsAsync(new LoginResult { Success = true });
         var sut = CreateSut();
         await sut.LoginAsync();
@@ -388,13 +386,13 @@ public class LoginViewModelTests
     }
 
     [Theory]
-    [InlineData("Password not long enough", "Password not long enough")]
-    [InlineData(null, "Could not set the new password.")]
+    [InlineData(AuthErrorCodes.InvalidPassword, "That password does not meet the password rules. Choose another one.")]
+    [InlineData(null, "Could not set the new password. Please try again.")]
     public async Task GivenRejectedPassword_WhenCompleteNewPassword_ThenShowsErrorAndStaysOnForm(string? error, string expected)
     {
         // Arrange
         var sut = await CreateSutAwaitingNewPasswordAsync();
-        mockAuth.Setup(x => x.CompleteNewPasswordAsync(It.IsAny<string>())).ReturnsAsync(new LoginResult { Error = error });
+        mockAuth.Setup(x => x.CompleteNewPasswordAsync(It.IsAny<string>())).ReturnsAsync(new LoginResult { ErrorCode = error });
 
         // Act
         await sut.CompleteNewPasswordAsync();
@@ -417,7 +415,7 @@ public class LoginViewModelTests
         await sut.CompleteNewPasswordAsync();
 
         // Assert
-        Assert.Equal("Could not set the new password: Boom", sut.ErrorMessage);
+        Assert.Equal("Could not set the new password. Please try again.", sut.ErrorMessage);
         Assert.False(sut.IsBusy);
     }
 
@@ -535,7 +533,7 @@ public class LoginViewModelTests
         // Assert
         Assert.Equal("user@test.com", sut.Username);
         Assert.False(sut.ShowUsersList);
-        Assert.Equal("auth failed", sut.ErrorMessage);
+        Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
         Assert.Null(sut.LoadingUser);
         Assert.False(sut.IsBusy);
         mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -570,11 +568,11 @@ public class LoginViewModelTests
     public void GivenNullOfflineModeService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         var exception = Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, null!,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings));
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors));
         Assert.Equal("offlineModeService", exception.ParamName);
     }
 
@@ -642,7 +640,7 @@ public class LoginViewModelTests
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
         mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
-        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = false, Error = "User is disabled." });
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = false, ErrorCode = AuthErrorCodes.SignInFailed });
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
@@ -751,7 +749,7 @@ public class LoginViewModelTests
         await sut.SelectUserCommand.ExecuteAsync(user);
 
         // Assert
-        Assert.Equal("Biometric authentication failed. Please enter your password manually.", sut.ErrorMessage);
+        Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
         mockPasswordCrypto.Verify(x => x.DecryptAsync(It.IsAny<string>()), Times.Never);
         mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
@@ -961,7 +959,7 @@ public class LoginViewModelTests
         await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.Equal("Error setting up biometric login: webauthn error", sut.WebAuthnErrorMessage);
+        Assert.Equal("Biometric login could not be set up. Please continue with regular login.", sut.WebAuthnErrorMessage);
         Assert.False(sut.IsWebAuthnProcessing);
     }
 
@@ -1012,34 +1010,61 @@ public class LoginViewModelTests
             .ReturnsAsync(new SavedUsersData { Users = [.. users] });
     }
 
-//#if (IncludeNotes)
     [Fact]
-    public void GivenNullSyncDependencies_WhenConstructing_ThenThrowsArgumentNullException()
+    public void GivenNullExtensionPoints_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, null!, mockPersistentStorage.Object, appSettings)).ParamName);
-        Assert.Equal("persistentStorageService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, mockConnectivity.Object, null!, appSettings)).ParamName);
+        Assert.Equal("signInOptions", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, null!, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors)).ParamName);
+        Assert.Equal("signInOptionRegistrations", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, null!, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors)).ParamName);
+        Assert.Equal("sessionLifecycle", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, null!, appSettings, testText.Ui, testText.Errors)).ParamName);
     }
 
     [Fact]
-    public async Task GivenSyncTurnedOff_WhenInitialized_ThenAdvancedOptionsExpandedAndTicked()
+    public void GivenNoOptions_WhenConstructed_ThenNoAdvancedOptions()
+    {
+        // Act
+        var sut = CreateSut();
+
+        // Assert
+        Assert.False(sut.HasSignInOptions);
+        Assert.Empty(sut.SignInOptionComponents);
+    }
+
+    [Fact]
+    public void GivenOptions_WhenConstructed_ThenTheirComponentsInOptionOrder()
     {
         // Arrange
-        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(false);
+        AddOption(new SecondOption(), typeof(int));
+        AddOption(new FakeOption(), typeof(string));
+
+        // Act
+        var sut = CreateSut();
+
+        // Assert
+        Assert.True(sut.HasSignInOptions);
+        Assert.Equal([typeof(string), typeof(int)], sut.SignInOptionComponents);
+    }
+
+    [Fact]
+    public async Task GivenAnOptionIsSet_WhenInitialized_ThenOptionsLoadedAndAdvancedOptionsExpanded()
+    {
+        // Arrange
+        var option = new FakeOption { SetOnLoad = true };
+        AddOption(option, typeof(string));
         var sut = CreateSut();
 
         // Act
         await sut.OnInitializedAsync();
 
         // Assert
-        mockConnectivity.Verify(x => x.InitializeAsync(), Times.Once);
+        Assert.Equal(1, option.Loads);
         Assert.True(sut.IsAdvancedOptionsExpanded);
-        Assert.True(sut.StartWithSyncOff);
     }
 
     [Fact]
-    public async Task GivenNoAdvancedOptionSet_WhenInitialized_ThenAdvancedOptionsCollapsed()
+    public async Task GivenNoOptionSet_WhenInitialized_ThenAdvancedOptionsCollapsedUntilToggled()
     {
         // Arrange
+        AddOption(new FakeOption(), typeof(string));
         var sut = CreateSut();
 
         // Act
@@ -1047,53 +1072,69 @@ public class LoginViewModelTests
 
         // Assert
         Assert.False(sut.IsAdvancedOptionsExpanded);
-        Assert.False(sut.StartWithSyncOff);
         sut.ToggleAdvancedOptionsCommand.Execute(null);
         Assert.True(sut.IsAdvancedOptionsExpanded);
     }
 
     [Fact]
-    public async Task GivenStartWithSyncOffTicked_WhenSignedIn_ThenSyncTurnedOffBeforeNavigatingAndStorageRequested()
+    public async Task GivenOptionFailsToLoad_WhenInitialized_ThenPageStillLoads()
+    {
+        // Arrange
+        AddOption(new FakeOption { FailOnLoad = true }, typeof(string));
+        var sut = CreateSut();
+
+        // Act
+        var exception = await Record.ExceptionAsync(sut.OnInitializedAsync);
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task GivenOptions_WhenSignedIn_ThenOptionsAppliedThenModulesToldThenNavigates()
     {
         // Arrange
         var order = new List<string>();
-        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = true });
-        mockConnectivity.Setup(x => x.SetSyncEnabledAsync(false)).Callback(() => order.Add("sync-off")).Returns(Task.CompletedTask);
-        mockPersistentStorage.Setup(x => x.RequestAfterSignInAsync()).Callback(() => order.Add("storage")).Returns(Task.CompletedTask);
+        AddOption(new FakeOption { OnApply = () => order.Add("option") }, typeof(string));
+        mockLifecycle.Setup(x => x.SignedInAsync()).Callback(() => order.Add("signed in")).Returns(Task.CompletedTask);
         mockNavigation.Setup(x => x.NavigateTo("/")).Callback(() => order.Add("navigate"));
+        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = true });
         var sut = CreateSut();
         sut.Username = "bob";
         sut.Password = "pw";
-        sut.StartWithSyncOff = true;
 
         // Act
         await sut.LoginAsync();
 
         // Assert
-        Assert.Equal(["sync-off", "storage", "navigate"], order);
+        Assert.Equal(["option", "signed in", "navigate"], order);
     }
 
     [Fact]
-    public async Task GivenSyncOffButUnticked_WhenSignedIn_ThenSyncTurnedOn()
+    public async Task GivenSignedInOffline_WhenSelectUser_ThenOptionsAppliedAndModulesTold()
     {
         // Arrange
-        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(false);
-        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = true });
+        var option = new FakeOption();
+        AddOption(option, typeof(string));
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
         var sut = CreateSut();
-        await sut.OnInitializedAsync();
-        sut.StartWithSyncOff = false;
+        sut.SignInOffline = true;
 
         // Act
-        await sut.LoginAsync();
+        await sut.SelectUserCommand.ExecuteAsync(user);
 
         // Assert
-        mockConnectivity.Verify(x => x.SetSyncEnabledAsync(true), Times.Once);
+        Assert.Equal(1, option.Applies);
+        mockLifecycle.Verify(x => x.SignedInAsync(), Times.Once);
     }
 
     [Fact]
-    public async Task GivenOptionUnchanged_WhenSignedIn_ThenSyncLeftAlone()
+    public async Task GivenOptionFailsToApply_WhenSignedIn_ThenSignInStillCompletes()
     {
         // Arrange
+        AddOption(new FakeOption { FailOnApply = true }, typeof(string));
         mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = true });
         var sut = CreateSut();
 
@@ -1101,27 +1142,34 @@ public class LoginViewModelTests
         await sut.LoginAsync();
 
         // Assert
-        mockConnectivity.Verify(x => x.SetSyncEnabledAsync(It.IsAny<bool>()), Times.Never);
-        mockPersistentStorage.Verify(x => x.RequestAfterSignInAsync(), Times.Once);
-    }
-
-    [Fact]
-    public async Task GivenStorageRequestFails_WhenSignedIn_ThenSignInStillCompletes()
-    {
-        // Arrange
-        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { Success = true });
-        mockPersistentStorage.Setup(x => x.RequestAfterSignInAsync()).ThrowsAsync(new InvalidOperationException());
-        var sut = CreateSut();
-
-        // Act
-        await sut.LoginAsync();
-
-        // Assert
+        mockLifecycle.Verify(x => x.SignedInAsync(), Times.Once);
         mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
         Assert.Null(sut.ErrorMessage);
     }
 
-//#endif
+    [Fact]
+    public async Task GivenSignInFails_WhenLogin_ThenOptionsNotAppliedAndModulesNotTold()
+    {
+        // Arrange
+        var option = new FakeOption();
+        AddOption(option, typeof(string));
+        mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { ErrorCode = AuthErrorCodes.NotAuthorized });
+        var sut = CreateSut();
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        Assert.Equal(0, option.Applies);
+        mockLifecycle.Verify(x => x.SignedInAsync(), Times.Never);
+    }
+
+    private void AddOption(ISignInOption option, Type component)
+    {
+        options.Add(option);
+        optionRegistrations.Add(new SignInOptionRegistration(option.GetType(), component));
+    }
+
     private async Task<LoginViewModel> CreateSutAwaitingNewPasswordAsync()
     {
         mockAuth.Setup(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new LoginResult { NewPasswordRequired = true });
@@ -1132,9 +1180,50 @@ public class LoginViewModelTests
     }
 
     private LoginViewModel CreateSut() => new(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode,
-//#if (IncludeNotes)
-            mockConnectivity.Object,
-            mockPersistentStorage.Object,
-//#endif
-            appSettings);
+            options,
+            optionRegistrations,
+            mockLifecycle.Object,
+            appSettings,
+        testText.Ui, testText.Errors);
+
+    private class FakeOption : ISignInOption
+    {
+        public bool SetOnLoad { get; init; }
+
+        public bool FailOnLoad { get; init; }
+
+        public bool FailOnApply { get; init; }
+
+        public Action? OnApply { get; init; }
+
+        public int Loads { get; private set; }
+
+        public int Applies { get; private set; }
+
+        public bool IsSet { get; private set; }
+
+        public Task LoadAsync()
+        {
+            Loads++;
+            if (FailOnLoad)
+            {
+                throw new InvalidOperationException("load");
+            }
+
+            IsSet = SetOnLoad;
+            return Task.CompletedTask;
+        }
+
+        public Task ApplyAsync()
+        {
+            Applies++;
+            OnApply?.Invoke();
+            return FailOnApply ? Task.FromException(new InvalidOperationException("apply")) : Task.CompletedTask;
+        }
+    }
+
+    private sealed class SecondOption : FakeOption, ISignInOption
+    {
+        public int Order => 10;
+    }
 }

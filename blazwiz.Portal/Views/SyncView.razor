@@ -1,0 +1,172 @@
+@inherits MvvmComponentBase<SyncViewModel>
+@using blazwiz.Portal.Models.Sync
+@inject IStringLocalizer<UiText> Text
+@inject IStringLocalizer<SyncUiText> SyncText
+
+<PageHeader Title="@SyncText["Sync.Page.Title"]" Icon="bi-arrow-repeat" Subtitle="@SyncText["Sync.Page.Subtitle"]">
+    <div class="form-check form-switch mb-0 me-2">
+        <input class="form-check-input" type="checkbox" role="switch" id="sync-page-sync-switch"
+               checked="@ViewModel.IsSyncEnabled"
+               @onchange="() => ViewModel.ToggleSyncCommand.ExecuteAsync(null)" />
+        <label class="form-check-label" for="sync-page-sync-switch">@SyncText["Sync.Switch"]</label>
+    </div>
+    <button type="button" class="btn btn-outline-danger" id="clear-sync-log" @onclick="() => ViewModel.ShowClearDialogCommand.Execute(null)">
+        <i class="bi bi-trash3 me-1"></i>@SyncText["Sync.Page.ClearLog"]
+    </button>
+    <button type="button" class="btn btn-primary" id="sync-page-sync-now"
+            disabled="@(!ViewModel.CanSyncNow)"
+            @onclick="() => ViewModel.SyncNowCommand.ExecuteAsync(null)">
+        <i class="bi bi-arrow-repeat me-1"></i>@SyncText["Sync.SyncNow"]
+    </button>
+</PageHeader>
+
+<div class="panel mb-4 sync-summary" id="sync-summary">
+    <div class="sync-summary-item">
+        <span class="sync-summary-label">@SyncText["Sync.Page.Status"]</span>
+        <span class="sync-summary-value" id="sync-page-status" title="@ViewModel.Status.Tooltip">
+            <i class="bi @ViewModel.Status.Icon sync-tone-@ViewModel.Status.Tone me-1"></i>@ViewModel.Status.Text
+        </span>
+        <small class="text-body-secondary" id="sync-page-reason">@ViewModel.Status.Tooltip</small>
+    </div>
+    <div class="sync-summary-item">
+        <span class="sync-summary-label">@SyncText["Sync.LastSynced"]</span>
+        <span class="sync-summary-value">@(ViewModel.SyncStatus.LastSyncedAt?.ToLocalTime().ToString("g") ?? SyncText["Sync.LastSynced.NotYet"])</span>
+    </div>
+    <div class="sync-summary-item">
+        <span class="sync-summary-label">@SyncText["Sync.PendingChanges"]</span>
+        <span class="sync-summary-value" id="sync-page-pending">@ViewModel.SyncStatus.PendingCount</span>
+    </div>
+</div>
+
+<div class="sync-toolbar">
+    <div class="input-icon sync-search">
+        <i class="bi bi-search"></i>
+        <input type="search"
+               id="sync-search"
+               class="form-control"
+               placeholder="@SyncText["Sync.Page.Search.Placeholder"]"
+               aria-label="@SyncText["Sync.Page.Search.Label"]"
+               @bind="ViewModel.SearchText"
+               @bind:event="oninput" />
+    </div>
+    <div class="sync-filters" role="group" aria-label="@SyncText["Sync.Page.Filter.Label"]">
+        @foreach (var chip in ViewModel.Chips)
+        {
+            <button type="button"
+                    class="sync-filter @(chip.IsActive ? "active" : null)"
+                    data-group="@(chip.Group?.ToString() ?? "All")"
+                    aria-pressed="@chip.IsActive.ToString().ToLowerInvariant()"
+                    @onclick="() => ViewModel.SelectGroupCommand.ExecuteAsync(chip.Group)">
+                @chip.Label
+            </button>
+        }
+    </div>
+    @if (ViewModel.ShowProfileFilter)
+    {
+        <select class="form-select sync-profile-filter" id="sync-profile-filter" aria-label="@SyncText["Sync.Page.Profile.Label"]"
+                @onchange="e => ViewModel.SelectProfileCommand.ExecuteAsync(e.Value?.ToString())">
+            <option value="" selected="@(ViewModel.ActiveProfile == null)">@SyncText["Sync.Page.Profile.All"]</option>
+            @foreach (var profile in ViewModel.Profiles)
+            {
+                <option value="@profile" selected="@(ViewModel.ActiveProfile == profile)">@profile</option>
+            }
+        </select>
+    }
+</div>
+
+<div class="panel sync-log" id="sync-log">
+    @if (ViewModel.IsLoading)
+    {
+        <div class="sync-log-empty">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>@SyncText["Sync.Page.Loading"]
+        </div>
+    }
+    else if (ViewModel.Days.Count == 0)
+    {
+        <div class="sync-log-empty" id="sync-log-empty">
+            <i class="bi bi-journal-check"></i>
+            <p class="mb-0">@SyncText["Sync.Page.Empty"]</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var day in ViewModel.Days)
+        {
+            <h3 class="sync-day">@day.Label</h3>
+            <ul class="sync-rows">
+                @foreach (var row in day.Rows)
+                {
+                    <li @key="row.Id" class="sync-row @(row.HasErrors ? "has-errors" : null)" data-kind="@row.Header.Presentation.Group">
+                        <div class="sync-row-main">
+                            @if (row.Children.Count > 0)
+                            {
+                                <button type="button" class="sync-row-toggle" title="@(row.IsExpanded ? SyncText["Sync.Page.Collapse"] : SyncText["Sync.Page.Expand"])"
+                                        aria-expanded="@row.IsExpanded.ToString().ToLowerInvariant()"
+                                        @onclick="() => ViewModel.ToggleRowCommand.Execute(row.Id)">
+                                    <i class="bi @(row.IsExpanded ? "bi-chevron-down" : "bi-chevron-right")"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="sync-row-toggle-spacer"></span>
+                            }
+                            @Entry(row.Header)
+                        </div>
+                        @if (row.IsExpanded && row.Children.Count > 0)
+                        {
+                            <ul class="sync-row-children">
+                                @foreach (var child in row.Children)
+                                {
+                                    <li @key="child.Id" class="sync-entry-row">@Entry(child)</li>
+                                }
+                            </ul>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (ViewModel.HasMore)
+        {
+            <div class="text-center mt-3">
+                <button type="button" class="btn btn-outline-primary btn-sm" id="sync-load-more" @onclick="() => ViewModel.LoadMoreCommand.ExecuteAsync(null)">@SyncText["Sync.Page.LoadMore"]</button>
+            </div>
+        }
+    }
+</div>
+
+@if (ViewModel.IsClearDialogOpen)
+{
+    <ModalDialog Id="clear-log-dialog" Title="@SyncText["Sync.Page.ClearDialog.Title"]" Icon="bi-trash3" OnClose="() => ViewModel.CloseClearDialogCommand.Execute(null)">
+        <ChildContent>
+            <p class="mb-0">@SyncText["Sync.Page.ClearDialog.Text"]</p>
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" @onclick="() => ViewModel.CloseClearDialogCommand.Execute(null)">@Text["Common.Cancel"]</button>
+            <button type="button" class="btn btn-danger" id="clear-log-confirm" @onclick="() => ViewModel.ClearLogCommand.ExecuteAsync(null)">@SyncText["Sync.Page.ClearLog"]</button>
+        </Footer>
+    </ModalDialog>
+}
+
+@code {
+    private RenderFragment Entry(SyncLogEntry entry) =>
+        @<div class="sync-entry" data-kind="@entry.Presentation.Label">
+            <i class="bi @entry.Presentation.Icon @entry.Presentation.ColorClass sync-entry-icon" title="@entry.Presentation.Label"></i>
+            <span class="sync-entry-text">
+                <span class="sync-entry-message">@entry.Message</span>
+                @if (entry.Count > 1)
+                {
+                    <span class="badge text-bg-secondary ms-1 sync-entry-count">×@entry.Count</span>
+                }
+                @if (!string.IsNullOrEmpty(entry.Key))
+                {
+                    <span class="sync-entry-key">@entry.Key</span>
+                }
+                @if (entry.Presentation.Group == SyncEventGroup.Errors && !string.IsNullOrEmpty(entry.Detail))
+                {
+                    <span class="sync-entry-detail">@entry.Detail.Split('\n')[0]</span>
+                }
+            </span>
+            <time class="sync-entry-time" title="@entry.ExactTime" datetime="@entry.Timestamp.ToString("O")">@entry.RelativeTime</time>
+        </div>;
+}

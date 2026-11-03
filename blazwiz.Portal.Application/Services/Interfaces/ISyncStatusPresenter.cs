@@ -17,4 +17,11 @@ public interface ISyncStatusPresenter
     /// <param name="connectivity">The connectivity status.</param>
     /// <returns>The text, tooltip, icon and tone.</returns>
     SyncStatusPresentation Present(SyncStatus status, ConnectivityStatus connectivity);
+
+    /// <summary>
+    /// Describes the connection for the user, e.g. "Offline: S3 unreachable".
+    /// </summary>
+    /// <param name="connectivity">The connectivity status.</param>
+    /// <returns>The description.</returns>
+    string DescribeConnectivity(ConnectivityStatus connectivity);
 }

@@ -1,0 +1,27 @@
+@inherits MvvmComponentBase<AppearanceSettingsViewModel>
+@inject IStringLocalizer<UiText> Text
+
+<div class="panel mb-4">
+    <h2 class="panel-title">@Text["Settings.Appearance.Title"]</h2>
+    <p class="panel-text">@Text["Settings.Appearance.Text"]</p>
+    <div class="theme-options">
+        <button type="button"
+                class="theme-option @(ViewModel.CurrentTheme == ThemeNames.Light ? "active" : null)"
+                id="theme-option-light"
+                @onclick="() => ViewModel.SelectThemeCommand.ExecuteAsync(ThemeNames.Light)">
+            <span class="theme-preview theme-preview-light">
+                <span></span><span></span><span></span>
+            </span>
+            <span class="theme-option-label"><i class="bi bi-sun me-1"></i>@Text["Settings.Appearance.Light"]</span>
+        </button>
+        <button type="button"
+                class="theme-option @(ViewModel.CurrentTheme == ThemeNames.Dark ? "active" : null)"
+                id="theme-option-dark"
+                @onclick="() => ViewModel.SelectThemeCommand.ExecuteAsync(ThemeNames.Dark)">
+            <span class="theme-preview theme-preview-dark">
+                <span></span><span></span><span></span>
+            </span>
+            <span class="theme-option-label"><i class="bi bi-moon-stars me-1"></i>@Text["Settings.Appearance.Dark"]</span>
+        </button>
+    </div>
+</div>

@@ -1,3 +1,5 @@
+using System.Globalization;
+using blazwiz.Core.Exceptions;
 using blazwiz.Core.Encryption.Interfaces;
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
@@ -39,7 +41,7 @@ public class SyncEngine(
         var owner = await userContext.GetUserIdAsync()
             ?? throw new InvalidOperationException("Sign in before syncing.");
         var pass = new Pass(profile, owner, Guid.NewGuid().ToString("N"), new SyncResult { Profile = profile.Name });
-        AddEvent(pass, SyncEventKind.PassStarted, null, "Checking for changes");
+        AddEvent(pass, SyncEventKind.PassStarted, null, SyncEventCodes.Checking);
 
         var passFailed = false;
         try
@@ -55,7 +57,7 @@ public class SyncEngine(
         {
             passFailed = true;
             pass.Result.Errors.Add(ex.Message);
-            AddEvent(pass, SyncEventKind.Failed, null, $"Sync failed: {ex.Message}", ex.Message);
+            AddEvent(pass, SyncEventKind.Failed, null, SyncEventCodes.PassFailed, ex.ToString(), ErrorArguments(ex));
             throw;
         }
         finally
@@ -68,11 +70,19 @@ public class SyncEngine(
 
     private static string DescribeFailure(SyncActionKind kind) => kind switch
     {
-        SyncActionKind.Upload or SyncActionKind.UploadNew => "Upload failed",
-        SyncActionKind.Download or SyncActionKind.DownloadNew or SyncActionKind.CompareContent => "Download failed",
-        SyncActionKind.DeleteRemote or SyncActionKind.DeleteLocal or SyncActionKind.DropRecord => "Delete failed",
-        _ => "Sync failed",
+        SyncActionKind.Upload or SyncActionKind.UploadNew => SyncEventCodes.UploadFailed,
+        SyncActionKind.Download or SyncActionKind.DownloadNew or SyncActionKind.CompareContent => SyncEventCodes.DownloadFailed,
+        SyncActionKind.DeleteRemote or SyncActionKind.DeleteLocal or SyncActionKind.DropRecord => SyncEventCodes.DeleteFailed,
+        _ => SyncEventCodes.FileFailed,
     };
+
+    private static string Count(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    // The error's code and its arguments, so the log can say what went wrong in the user's language; nothing for
+    // errors without a code, whose details stay in the event's Detail.
+    private static string[] ErrorArguments(Exception ex) => ex is BlazwizException coded
+        ? [coded.Code, .. coded.Arguments.Select(a => Convert.ToString(a, CultureInfo.InvariantCulture) ?? string.Empty)]
+        : [];
 
     private static bool LocalChangedSince(SyncIndexRecord? snapshot, SyncIndexRecord? current)
     {
@@ -117,7 +127,7 @@ public class SyncEngine(
             catch (SyncPreconditionFailedException)
             {
                 // Changed remotely since the listing: look at the file again and plan it once more.
-                AddEvent(pass, SyncEventKind.Retried, action.Key, "Changed in S3 during sync, checking again");
+                AddEvent(pass, SyncEventKind.Retried, action.Key, SyncEventCodes.ChangedDuringSync);
                 var replanned = await ReplanAsync(pass, action.Key, ct);
                 await ExecuteAsync(pass, replanned, ct);
             }
@@ -126,7 +136,7 @@ public class SyncEngine(
         {
             pass.Result.Failed++;
             pass.Result.Errors.Add($"{action.Key}: {ex.Message}");
-            AddEvent(pass, SyncEventKind.Failed, action.Key, $"{DescribeFailure(action.Kind)}: {ex.Message}", ex.ToString());
+            AddEvent(pass, SyncEventKind.Failed, action.Key, DescribeFailure(action.Kind), ex.ToString(), ErrorArguments(ex));
         }
     }
 
@@ -226,7 +236,7 @@ public class SyncEngine(
             // Same on both sides (e.g. an interrupted pass, or a lost index): adopt it as the base.
             await SaveSyncedAsync(pass, action, file.Content, remote.ETag, ct);
             pass.Result.Adopted++;
-            AddEvent(pass, SyncEventKind.AlreadyInSync, action.Key, "Same on both sides, nothing to do");
+            AddEvent(pass, SyncEventKind.AlreadyInSync, action.Key, SyncEventCodes.AlreadyInSync);
             return;
         }
 
@@ -285,7 +295,7 @@ public class SyncEngine(
         await profile.IndexStore.DeleteAsync(profile.Name, pass.Owner, action.Key, ct);
         pass.Result.DeletedLocal++;
         pass.Result.AddChangedLocalKey(profile.Name, action.Key);
-        AddEvent(pass, SyncEventKind.DeleteLocal, action.Key, "Deleted remotely, removing local copy");
+        AddEvent(pass, SyncEventKind.DeleteLocal, action.Key, SyncEventCodes.DeletedRemotely);
     }
 
     private async Task ResolveConflictAsync(Pass pass, SyncAction action, CancellationToken ct)
@@ -366,23 +376,23 @@ public class SyncEngine(
     {
         if (conflictWinner != null)
         {
-            AddEvent(pass, SyncEventKind.ConflictResolved, key, $"Changed on both sides, kept the newer {conflictWinner} version", $"The {conflictWinner} version was newer.");
+            AddEvent(pass, SyncEventKind.ConflictResolved, key, conflictWinner == "local" ? SyncEventCodes.ConflictKeptLocal : SyncEventCodes.ConflictKeptRemote);
             return;
         }
 
-        var message = kind switch
+        var code = kind switch
         {
-            SyncEventKind.UploadNew => "New local file, uploading",
-            SyncEventKind.UploadLocalNewer => "Local newer than remote, uploading",
-            SyncEventKind.DownloadNew => "New remote file, downloading",
-            SyncEventKind.DownloadRemoteNewer => "Remote newer than local, downloading",
-            SyncEventKind.DeleteRemote => "Deleted locally, removing from S3",
+            SyncEventKind.UploadNew => SyncEventCodes.NewLocalFile,
+            SyncEventKind.UploadLocalNewer => SyncEventCodes.LocalNewer,
+            SyncEventKind.DownloadNew => SyncEventCodes.NewRemoteFile,
+            SyncEventKind.DownloadRemoteNewer => SyncEventCodes.RemoteNewer,
+            SyncEventKind.DeleteRemote => SyncEventCodes.DeletedLocally,
             _ => kind.ToString(),
         };
-        AddEvent(pass, kind, key, message);
+        AddEvent(pass, kind, key, code);
     }
 
-    private void AddEvent(Pass pass, SyncEventKind kind, string? key, string message, string? detail = null)
+    private void AddEvent(Pass pass, SyncEventKind kind, string? key, string code, string? detail = null, params string[] arguments)
     {
         pass.Events.Add(new SyncEvent
         {
@@ -392,7 +402,8 @@ public class SyncEngine(
             Timestamp = timeProvider.GetUtcNow(),
             Kind = kind,
             Key = key,
-            Message = message,
+            Code = code,
+            Arguments = [.. arguments],
             Detail = detail,
         });
     }
@@ -408,7 +419,26 @@ public class SyncEngine(
                 return;
             }
 
-            AddEvent(pass, SyncEventKind.PassCompleted, null, cancelled ? "Stopped" : pass.Result.Describe());
+            if (cancelled)
+            {
+                AddEvent(pass, SyncEventKind.PassCompleted, null, SyncEventCodes.Stopped);
+            }
+            else
+            {
+                var result = pass.Result;
+                AddEvent(
+                    pass,
+                    SyncEventKind.PassCompleted,
+                    null,
+                    SyncEventCodes.Summary,
+                    null,
+                    Count(result.Uploaded),
+                    Count(result.Downloaded),
+                    Count(result.DeletedRemote + result.DeletedLocal),
+                    Count(result.ConflictsResolved),
+                    Count(result.Failed));
+            }
+
             await eventLog.WriteAsync(pass.Events);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

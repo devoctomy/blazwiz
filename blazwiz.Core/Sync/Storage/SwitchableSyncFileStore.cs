@@ -11,11 +11,6 @@ namespace blazwiz.Core.Sync.Storage;
 public class SwitchableSyncFileStore(string profile, ISyncStorageResolver resolver)
     : ISyncFileStore
 {
-    /// <summary>
-    /// The message of the exception thrown for a change made while files are being copied.
-    /// </summary>
-    public const string MigratingMessage = "Your files are being moved to another storage. Try again in a moment.";
-
     private readonly string profile = string.IsNullOrWhiteSpace(profile) ? throw new ArgumentException("A profile is required.", nameof(profile)) : profile;
     private readonly ISyncStorageResolver resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
 
@@ -54,7 +49,7 @@ public class SwitchableSyncFileStore(string profile, ISyncStorageResolver resolv
         var state = await resolver.GetStateAsync(profile);
         if (change && state.IsCopying)
         {
-            throw new SyncStorageMigrationException(MigratingMessage);
+            throw new SyncStorageMigrationException(SyncErrorCodes.StorageMigrating);
         }
 
         return resolver.GetStore(profile, state.Kind);

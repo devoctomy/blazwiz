@@ -60,7 +60,8 @@ The project is in development and unreleased. Nobody uses it yet.
   (`IAppStorageKeys`, set up with `AddBlazwizApp`). Never write a literal like `"blazwiz_session"`.
 - **Use `TimeProvider`** for time, and `FakeTimeProvider` in tests.
 - Optional template content uses comment markers such as `//#if (IncludeNotes)`. Keep the repository building with
-  everything included. While restructuring, prefer extension points over new `#if` blocks in shared classes.
+  everything included. Modules plug into the shell's extension points (shell regions, Settings sections, sign-in
+  options, session lifecycle handlers, navigation items, page replacement) instead of `#if` blocks in shared classes.
 
 ## Keeping the repository a valid template
 
@@ -97,9 +98,12 @@ dotnet test blazwiz.Portal.UITests
   they run.
 - Integration scenarios tagged `@aws` are skipped unless the `BLAZWIZ_INTTEST_AWS_*` environment variables are set.
   Skipping them locally is expected. The maintainer tests real S3 sync in the deployed app.
-- Warnings are errors (`Directory.Build.props`), and StyleCop runs on every project. Disabled rules are listed in
-  `.editorconfig`, and SA1633 (file header) is also suppressed in `Directory.Build.props`. Fix warnings. Don't
-  suppress them without the maintainer's agreement.
+- Warnings are errors (`Directory.Build.props`), and StyleCop runs on the library projects. Rules turned off for the
+  whole solution (including SA1633, the file header) are in `analyzers.globalconfig`, not `.editorconfig`: sections
+  in `.editorconfig` stop applying when a build sees the folder with different casing (`E:\Source` against
+  `E:\source`). Fix warnings. Don't suppress them without the maintainer's agreement.
+- Keep `//#if` template markers out of projects that use StyleCop. Put conditional registrations in
+  `blazwiz.Portal/Program.cs`, Razor files or project files.
 - `./templatepack/test-template.ps1` packs the template, creates apps with awkward names and options, and checks that
   each one builds, passes its tests and has no `blazwiz` left in it. Run it after changing template content or
   `.template.config/`.

@@ -204,46 +204,9 @@ dotnet_naming_style.begins_with_i.capitalization = pascal_case
 
 #### StyleCop Analyzers Rules ####
 
-# SA1101: Prefix local calls with this - disabled because project style prefers no 'this.' qualifier
-dotnet_diagnostic.SA1101.severity = none
+# Rules turned off for the whole solution are in analyzers.globalconfig, which applies to every file whatever path it
+# is built from. Only rules that depend on the file stay here.
 
-# SA1200: Using directives should be placed correctly
-dotnet_diagnostic.SA1200.severity = none
-
-# SA1210: Using directives should be ordered alphabetically - disabled because apps made from the template get their
-# own namespace, which can sort anywhere among the other usings (e.g. after 'Microsoft')
-dotnet_diagnostic.SA1210.severity = none
-
-# SA1633: File should have header
-dotnet_diagnostic.SA1633.severity = none
-
-# SA1010: Opening square brackets should be spaced correctly
-dotnet_diagnostic.SA1010.severity = none
-
-# SA1011: Closing square brackets should be spaced correctly
-dotnet_diagnostic.SA1011.severity = none
-
-# Files containing dotnet new template conditional directives (see .template.config/template.json). The
-# template engine only recognises them without a space after the slashes, and removes them when it runs.
-[{blazwiz.Portal.Application/Extensions/ServiceCollectionExtensions.cs,blazwiz.Portal.Application/Services/NavigationMenuService.cs,blazwiz.Portal.Application/Services/CognitoAuthenticationService.cs,blazwiz.Portal.Application/ViewModels/MainLayoutViewModel.cs,blazwiz.Portal.Application/ViewModels/LoginViewModel.cs,blazwiz.Portal.Application/ViewModels/SettingsViewModel.cs}]
-
-# SA1004: Documentation line should begin with a space (conditional markers inside documentation)
-dotnet_diagnostic.SA1004.severity = none
-
-# SA1005: Single line comment should begin with a space
-dotnet_diagnostic.SA1005.severity = none
-
-# SA1114: Parameter list should follow declaration
-dotnet_diagnostic.SA1114.severity = none
-
-# SA1512: Single-line comments should not be followed by blank line
-dotnet_diagnostic.SA1512.severity = none
-
-# SA1513: Closing brace should be followed by blank line
-dotnet_diagnostic.SA1513.severity = none
-
-# SA1514: Element documentation header should be preceded by blank line
-dotnet_diagnostic.SA1514.severity = none
-
-# SA1515: Single-line comment should be preceded by blank line
-dotnet_diagnostic.SA1515.severity = none
+# dotnet new template markers (//#if) break StyleCop's comment rules, and per-file sections here are not reliable (they
+# only apply when the build sees the same path casing as the file system). So keep template markers out of projects
+# that use StyleCop: put conditional registrations in blazwiz.Portal/Program.cs, Razor files or project files.

@@ -41,7 +41,7 @@ public class EncryptingSyncFileStore(
 
         if (!keyRing.TryGetFileKey(keyId!, out var fileKey))
         {
-            throw new E2eLockedException($"'{key}' is end to end encrypted, and this device cannot decrypt it yet.");
+            throw new E2eLockedException(E2eErrorCodes.CannotDecrypt, key);
         }
 
         try
@@ -68,7 +68,7 @@ public class EncryptingSyncFileStore(
         return keyRing.WriteMode switch
         {
             E2eWriteMode.Encrypt => WriteEncryptedAsync(key, content, modifiedAt, ct),
-            E2eWriteMode.Refuse => throw new E2eLockedException("End to end encryption is on, and this device cannot encrypt yet, so nothing can be saved."),
+            E2eWriteMode.Refuse => throw new E2eLockedException(E2eErrorCodes.CannotEncrypt),
             _ => inner.WriteAsync(key, content, modifiedAt, ct),
         };
     }
@@ -84,7 +84,7 @@ public class EncryptingSyncFileStore(
         var keyId = keyRing.ActiveKeyId;
         if (keyId == null || !keyRing.TryGetFileKey(keyId, out var fileKey))
         {
-            throw new E2eLockedException("End to end encryption is on, and this device cannot encrypt yet, so nothing can be saved.");
+            throw new E2eLockedException(E2eErrorCodes.CannotEncrypt);
         }
 
         byte[] encrypted;

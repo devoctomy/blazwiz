@@ -1,33 +1,30 @@
+using blazwiz.Core.Exceptions;
+
 namespace blazwiz.Core.Sync.Exceptions;
 
 /// <summary>
-/// A conditional upload or delete was refused (412) because the remote object changed since it was listed.
+/// Thrown when a conditional write fails because the remote file changed since it was listed.
 /// </summary>
-public class SyncPreconditionFailedException : Exception
+public class SyncPreconditionFailedException : BlazwizException
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SyncPreconditionFailedException"/> class.
     /// </summary>
-    public SyncPreconditionFailedException()
+    /// <param name="code">The error's code.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public SyncPreconditionFailedException(string code, params object[] arguments)
+        : base(code, arguments)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SyncPreconditionFailedException"/> class.
     /// </summary>
-    /// <param name="message">The message.</param>
-    public SyncPreconditionFailedException(string message)
-        : base(message)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SyncPreconditionFailedException"/> class.
-    /// </summary>
-    /// <param name="message">The message.</param>
-    /// <param name="innerException">The cause.</param>
-    public SyncPreconditionFailedException(string message, Exception innerException)
-        : base(message, innerException)
+    /// <param name="code">The error's code.</param>
+    /// <param name="innerException">What caused it.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public SyncPreconditionFailedException(string code, Exception innerException, params object[] arguments)
+        : base(code, innerException, arguments)
     {
     }
 }

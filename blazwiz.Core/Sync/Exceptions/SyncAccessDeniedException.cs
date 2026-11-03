@@ -1,33 +1,30 @@
+using blazwiz.Core.Exceptions;
+
 namespace blazwiz.Core.Sync.Exceptions;
 
 /// <summary>
-/// The remote store refused the credentials (403). The credentials are refreshed once, then the pass fails.
+/// Thrown when the remote store refuses the credentials, or there are none.
 /// </summary>
-public class SyncAccessDeniedException : Exception
+public class SyncAccessDeniedException : BlazwizException
 {
     /// <summary>
     /// Initializes a new instance of the <see cref="SyncAccessDeniedException"/> class.
     /// </summary>
-    public SyncAccessDeniedException()
+    /// <param name="code">The error's code.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public SyncAccessDeniedException(string code, params object[] arguments)
+        : base(code, arguments)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="SyncAccessDeniedException"/> class.
     /// </summary>
-    /// <param name="message">The message.</param>
-    public SyncAccessDeniedException(string message)
-        : base(message)
-    {
-    }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SyncAccessDeniedException"/> class.
-    /// </summary>
-    /// <param name="message">The message.</param>
-    /// <param name="innerException">The cause.</param>
-    public SyncAccessDeniedException(string message, Exception innerException)
-        : base(message, innerException)
+    /// <param name="code">The error's code.</param>
+    /// <param name="innerException">What caused it.</param>
+    /// <param name="arguments">Values for the placeholders in the error's text.</param>
+    public SyncAccessDeniedException(string code, Exception innerException, params object[] arguments)
+        : base(code, innerException, arguments)
     {
     }
 }

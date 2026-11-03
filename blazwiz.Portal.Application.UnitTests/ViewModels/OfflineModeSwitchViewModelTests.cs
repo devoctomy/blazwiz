@@ -8,14 +8,16 @@ namespace blazwiz.Portal.Application.UnitTests.ViewModels;
 
 public class OfflineModeSwitchViewModelTests
 {
+    private readonly TestText testText = new();
+
     private readonly OfflineModeService offlineMode = new();
     private readonly Mock<IAuthenticationService> mockAuth = new();
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new OfflineModeSwitchViewModel(null!, mockAuth.Object)).ParamName);
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new OfflineModeSwitchViewModel(offlineMode, null!)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new OfflineModeSwitchViewModel(null!, mockAuth.Object, testText.Ui, testText.Errors)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new OfflineModeSwitchViewModel(offlineMode, null!, testText.Ui, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -60,7 +62,7 @@ public class OfflineModeSwitchViewModelTests
         await sut.ToggleCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.Equal("Sign in before turning offline mode on.", sut.Error);
+        Assert.Equal("Offline mode could not be turned on: Something went wrong.", sut.Error);
         Assert.False(sut.IsOffline);
     }
 
@@ -75,5 +77,5 @@ public class OfflineModeSwitchViewModelTests
         Assert.Equal(0, changed);
     }
 
-    private OfflineModeSwitchViewModel CreateSut() => new(offlineMode, mockAuth.Object);
+    private OfflineModeSwitchViewModel CreateSut() => new(offlineMode, mockAuth.Object, testText.Ui, testText.Errors);
 }

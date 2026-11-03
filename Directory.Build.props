@@ -1,7 +1,9 @@
 <Project>
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <!-- SA1633 (file header): not wanted. Also off in .editorconfig; set here too so it stays off for every build. -->
-    <NoWarn>$(NoWarn);SA1633</NoWarn>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Analyzer rules turned off for the whole solution (including SA1633, the file header). -->
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)analyzers.globalconfig" />
+  </ItemGroup>
 </Project>

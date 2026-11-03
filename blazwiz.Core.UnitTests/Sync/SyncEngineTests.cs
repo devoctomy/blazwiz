@@ -192,7 +192,7 @@ public class SyncEngineTests
         // Assert
         Assert.Equal(1, result.ConflictsResolved);
         Assert.Equal("local", Text(remote.Objects[KeyA].Content));
-        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.ConflictResolved && e.Message.Contains("local", StringComparison.Ordinal));
+        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.ConflictResolved && e.Code == SyncEventCodes.ConflictKeptLocal);
     }
 
     [Fact]
@@ -293,7 +293,7 @@ public class SyncEngineTests
         Assert.Null(await files.ReadAsync(KeyA));
         Assert.Null(await index.GetAsync(Profile, Owner, KeyA));
         Assert.Equal([KeyA], result.ChangedLocalKeys[Profile]);
-        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.DeleteLocal && e.Message == "Deleted remotely, removing local copy");
+        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.DeleteLocal && e.Code == SyncEventCodes.DeletedRemotely);
     }
 
     [Fact]
@@ -381,8 +381,11 @@ public class SyncEngineTests
         Assert.NotNull(await index.GetAsync(Profile, Owner, KeyA));
         var failed = Assert.Single(loggedEvents, e => e.Kind == SyncEventKind.Failed);
         Assert.Equal(KeyB, failed.Key);
-        Assert.Equal("Download failed: boom", failed.Message);
-        Assert.Equal("1 downloaded, 1 failed", loggedEvents[^1].Message);
+        Assert.Equal(SyncEventCodes.DownloadFailed, failed.Code);
+        Assert.Empty(failed.Arguments);
+        Assert.Contains("boom", failed.Detail, StringComparison.Ordinal);
+        Assert.Equal(SyncEventCodes.Summary, loggedEvents[^1].Code);
+        Assert.Equal(["0", "1", "0", "0", "1"], loggedEvents[^1].Arguments);
     }
 
     [Fact]
@@ -412,11 +415,11 @@ public class SyncEngineTests
     public async Task GivenRemoteUnreachable_WhenSyncAsync_ThenThrowsAndLogsFailure()
     {
         // Arrange
-        remote.FailList = new SyncNetworkException("S3 could not be reached.");
+        remote.FailList = new SyncNetworkException(SyncErrorCodes.RemoteUnreachable);
 
         // Act & Assert
         await Assert.ThrowsAsync<SyncNetworkException>(() => CreateSut().SyncAsync(profile, false));
-        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.Failed && e.Message == "Sync failed: S3 could not be reached.");
+        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.Failed && e.Code == SyncEventCodes.PassFailed && e.Arguments.SequenceEqual([SyncErrorCodes.RemoteUnreachable]));
     }
 
     [Fact]

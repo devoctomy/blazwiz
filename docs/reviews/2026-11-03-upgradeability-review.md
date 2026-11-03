@@ -425,17 +425,19 @@ unit, Playwright UI), before the next phase starts.
 ### Phase 1: extension points, still inside the current projects
 Build U3 to U6 and U11 in the existing projects, then move the current sync, E2E and offline UI onto them. This is
 the riskiest phase. Doing it before splitting projects keeps the diff readable.
-- [ ] Shell regions (U3). Move the banners, sync pill and migration overlay out of `MainLayout.razor`.
-- [ ] `ISessionLifecycleHandler` (U4). Move the sync and E2E startup out of `MainLayoutViewModel` and the
+- [x] Shell regions (U3). Move the banners, sync pill and migration overlay out of `MainLayout.razor`.
+- [x] `ISessionLifecycleHandler` (U4). Move the sync and E2E startup out of `MainLayoutViewModel` and the
   sync-off option out of `LoginViewModel`.
-- [ ] Navigation, settings and login-option registries (U5). Remove every `#if (IncludeNotes)` from shared classes.
-- [ ] `BlazwizRouter` with additional assemblies, and replacing or disabling pages through DI configuration (U6).
-- [ ] Text infrastructure (U16): the override-aware localiser factory, plural rules and `BlazwizException` codes.
-- [ ] Move every visible string into resources with neutral wording: Razor, view models, presenters and JS.
+- [x] Navigation, settings and login-option registries (U5). Remove every `#if (IncludeNotes)` from shared classes.
+- [x] `BlazwizRouter` with additional assemblies, and replacing or disabling pages through DI configuration (U6).
+- [x] Text infrastructure (U16): the override-aware localiser factory, plural rules and `BlazwizException` codes.
+- [x] Move every visible string into resources with neutral wording: Razor, view models, presenters and JS.
   Replace each `ex.Message`, `LoginResult.Error` and `SyncStatus.LastError` with a code. Add the notes overrides to
-  the template app.
-- [ ] Exit check: `grep "#if (Include"` matches only files that belong to the app (Program.cs, the notes feature,
-  csproj files, docs).
+  the template app. JS error text is no longer shown at all, because `ex.Message` never reaches the screen, so the JS
+  modules did not need codes. The sync log stores a code and arguments instead of English.
+- [x] Exit check: `grep "#if (Include"` matches only files that belong to the app (Program.cs, the notes feature,
+  csproj files, docs). Also left: the Core integration tests (they move out of the template in Phase 2) and the
+  app's own UI tests.
 
 ### Phase 2: split into packages
 - [ ] Restructure into `src/`, `tests/` and `template/` (section 4).

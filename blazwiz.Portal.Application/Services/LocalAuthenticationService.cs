@@ -1,5 +1,6 @@
 using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Offline.Models;
+using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 
@@ -49,7 +50,7 @@ public class LocalAuthenticationService(
         return Task.FromResult(new LoginResult
         {
             Success = false,
-            Error = "Please sign in first.",
+            ErrorCode = AuthErrorCodes.NotSignedIn,
         });
     }
 
@@ -61,7 +62,7 @@ public class LocalAuthenticationService(
             return new LoginResult
             {
                 Success = false,
-                Error = "Please enter your username and password.",
+                ErrorCode = AuthErrorCodes.CredentialsRequired,
             };
         }
 

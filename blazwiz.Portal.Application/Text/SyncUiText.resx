@@ -1,0 +1,780 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Error.E2e.AlreadyEnabled" xml:space="preserve">
+    <value>End to end encryption is already enabled on another device. Set up this device with your passphrase instead.</value>
+  </data>
+  <data name="Error.E2e.CannotDecrypt" xml:space="preserve">
+    <value>'{0}' is end to end encrypted, and this device cannot decrypt it yet.</value>
+  </data>
+  <data name="Error.E2e.CannotEncrypt" xml:space="preserve">
+    <value>End to end encryption is on, and this device cannot encrypt yet, so nothing can be saved.</value>
+  </data>
+  <data name="Error.E2e.Locked" xml:space="preserve">
+    <value>End to end encryption is locked on this device.</value>
+  </data>
+  <data name="Error.E2e.PassphraseRequired" xml:space="preserve">
+    <value>Your passkey cannot unlock this device's keys. Enter your passphrase instead.</value>
+  </data>
+  <data name="Error.E2e.WrongPassphrase" xml:space="preserve">
+    <value>That passphrase is not correct.</value>
+  </data>
+  <data name="Error.Sync.FilesFailed.One" xml:space="preserve">
+    <value>1 file could not be synced.</value>
+  </data>
+  <data name="Error.Sync.FilesFailed.Other" xml:space="preserve">
+    <value>{0} files could not be synced.</value>
+  </data>
+  <data name="Error.Sync.Folder.AccessNeeded" xml:space="preserve">
+    <value>Allow access to the folder '{0}' to use your files.</value>
+  </data>
+  <data name="Error.Sync.Folder.NotChosen" xml:space="preserve">
+    <value>No folder has been chosen for your files. Choose one in Settings.</value>
+  </data>
+  <data name="Error.Sync.Remote.AccessDenied" xml:space="preserve">
+    <value>S3 refused the credentials.</value>
+  </data>
+  <data name="Error.Sync.Remote.Changed" xml:space="preserve">
+    <value>The file changed in S3 since it was listed.</value>
+  </data>
+  <data name="Error.Sync.Remote.NoCredentials" xml:space="preserve">
+    <value>There are no AWS credentials for sync.</value>
+  </data>
+  <data name="Error.Sync.Remote.Unreachable" xml:space="preserve">
+    <value>S3 could not be reached.</value>
+  </data>
+  <data name="Error.Sync.Storage.CopyMismatch" xml:space="preserve">
+    <value>'{0}' did not copy correctly.</value>
+  </data>
+  <data name="Error.Sync.Storage.FolderNotEmpty" xml:space="preserve">
+    <value>The folder already has {0} files in it. Choose an empty folder, or move them out first.</value>
+  </data>
+  <data name="Error.Sync.Storage.Migrating" xml:space="preserve">
+    <value>Your files are being moved to another storage. Try again in a moment.</value>
+  </data>
+  <data name="Error.Sync.Storage.ReadFailed" xml:space="preserve">
+    <value>'{0}' could not be read.</value>
+  </data>
+  <data name="Sync.Argon2id.Benchmark" xml:space="preserve">
+    <value>Benchmark</value>
+  </data>
+  <data name="Sync.Argon2id.Bytes" xml:space="preserve">
+    <value>{0} bytes</value>
+  </data>
+  <data name="Sync.Argon2id.Failed" xml:space="preserve">
+    <value>The benchmark failed: {0}</value>
+  </data>
+  <data name="Sync.Argon2id.Iterations" xml:space="preserve">
+    <value>Iterations</value>
+  </data>
+  <data name="Sync.Argon2id.KeyLength" xml:space="preserve">
+    <value>Key length</value>
+  </data>
+  <data name="Sync.Argon2id.Memory" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="Sync.Argon2id.MemoryKib" xml:space="preserve">
+    <value>{0} KiB</value>
+  </data>
+  <data name="Sync.Argon2id.MemoryMib" xml:space="preserve">
+    <value>{0} MiB</value>
+  </data>
+  <data name="Sync.Argon2id.Parallelism" xml:space="preserve">
+    <value>Parallelism</value>
+  </data>
+  <data name="Sync.Argon2id.Text" xml:space="preserve">
+    <value>Your end to end encryption passphrase is turned into a key with Argon2id, which is slow and memory hungry on purpose so passphrases are hard to guess. New passphrases use these settings; existing ones keep the settings they were made with.</value>
+  </data>
+  <data name="Sync.Argon2id.Title" xml:space="preserve">
+    <value>Argon2id</value>
+  </data>
+  <data name="Sync.Argon2id.Took" xml:space="preserve">
+    <value>Took {0:0.0} s</value>
+  </data>
+  <data name="Sync.Connectivity.Checking" xml:space="preserve">
+    <value>Checking connection</value>
+  </data>
+  <data name="Sync.Connectivity.NoCredentials" xml:space="preserve">
+    <value>Offline: no credentials</value>
+  </data>
+  <data name="Sync.Connectivity.NoNetwork" xml:space="preserve">
+    <value>Offline: no network</value>
+  </data>
+  <data name="Sync.Connectivity.OfflineMode" xml:space="preserve">
+    <value>Offline: offline mode</value>
+  </data>
+  <data name="Sync.Connectivity.Online" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="Sync.Connectivity.SyncDisabled" xml:space="preserve">
+    <value>Sync turned off</value>
+  </data>
+  <data name="Sync.Connectivity.Unreachable" xml:space="preserve">
+    <value>Offline: S3 unreachable</value>
+  </data>
+  <data name="Sync.E2e.Acknowledge" xml:space="preserve">
+    <value>I understand that if I forget this passphrase, my encrypted files cannot be recovered.</value>
+  </data>
+  <data name="Sync.E2e.Banner.Blocked" xml:space="preserve">
+    <value>Your files are end to end encrypted and locked. Use your passkey to unlock them: the hardware PRF key your passkey provides is essential to keeping your data secure, so they cannot be read or synced without it.</value>
+  </data>
+  <data name="Sync.E2e.Banner.DisabledElsewhere" xml:space="preserve">
+    <value>End to end encryption was turned off on another device. Sync is paused until this device finishes turning it off.</value>
+  </data>
+  <data name="Sync.E2e.Banner.NeedsPasskeyAndSetup" xml:space="preserve">
+    <value>Your files are end to end encrypted. Use your passkey, then set up this device with your passphrase to read and sync them.</value>
+  </data>
+  <data name="Sync.E2e.Banner.NeedsSetup" xml:space="preserve">
+    <value>Your files are end to end encrypted. Set up this device with your passphrase to read and sync them.</value>
+  </data>
+  <data name="Sync.E2e.Banner.Unlock" xml:space="preserve">
+    <value>Unlock with passkey</value>
+  </data>
+  <data name="Sync.E2e.ChangePassphrase" xml:space="preserve">
+    <value>Change passphrase</value>
+  </data>
+  <data name="Sync.E2e.ConfirmPassphrase" xml:space="preserve">
+    <value>Enter the new passphrase again</value>
+  </data>
+  <data name="Sync.E2e.CurrentPassphrase" xml:space="preserve">
+    <value>Current passphrase</value>
+  </data>
+  <data name="Sync.E2e.Dialog.ChangePassphrase.Text" xml:space="preserve">
+    <value>Your files and other devices are not affected. Use the new passphrase when you next set up a device.</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Deriving" xml:space="preserve">
+    <value>Deriving your passphrase key… this can take a few seconds.</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Disable" xml:space="preserve">
+    <value>Disable end to end encryption</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Disable.Text" xml:space="preserve">
+    <value>Every file will be decrypted on this device, then synced unencrypted. Your keys are deleted, and other devices turn encryption off when they next start.</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Disabled" xml:space="preserve">
+    <value>E2E Encryption Disabled</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Enable" xml:space="preserve">
+    <value>Enable end to end encryption</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Enable.Text" xml:space="preserve">
+    <value>Your files will be encrypted on this device before they are synced. Other devices need this passphrase once to be set up.</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Enabled" xml:space="preserve">
+    <value>E2E Encryption Enabled</value>
+  </data>
+  <data name="Sync.E2e.Dialog.PassphraseChanged" xml:space="preserve">
+    <value>Passphrase changed</value>
+  </data>
+  <data name="Sync.E2e.Dialog.SetUp.Text" xml:space="preserve">
+    <value>Enter the passphrase you chose when you turned encryption on. It is only needed once on this device; after that your passkey unlocks it.</value>
+  </data>
+  <data name="Sync.E2e.Dialog.SetUpDone" xml:space="preserve">
+    <value>This device is set up</value>
+  </data>
+  <data name="Sync.E2e.Disable" xml:space="preserve">
+    <value>Disable encryption</value>
+  </data>
+  <data name="Sync.E2e.Enable" xml:space="preserve">
+    <value>Enable encryption</value>
+  </data>
+  <data name="Sync.E2e.Error.AcknowledgeNoRecovery" xml:space="preserve">
+    <value>Confirm you understand there is no passphrase recovery.</value>
+  </data>
+  <data name="Sync.E2e.Error.CurrentPassphraseRequired" xml:space="preserve">
+    <value>Enter your current passphrase.</value>
+  </data>
+  <data name="Sync.E2e.Error.PasskeyNotUsed" xml:space="preserve">
+    <value>Your passkey was not used, or it does not support the PRF security feature.</value>
+  </data>
+  <data name="Sync.E2e.Error.PassphraseRequired" xml:space="preserve">
+    <value>Enter your passphrase.</value>
+  </data>
+  <data name="Sync.E2e.Error.PassphrasesDiffer" xml:space="preserve">
+    <value>The passphrases do not match.</value>
+  </data>
+  <data name="Sync.E2e.Error.PassphraseTooShort" xml:space="preserve">
+    <value>Use a passphrase of at least {0} characters.</value>
+  </data>
+  <data name="Sync.E2e.Error.WrongPassphrase" xml:space="preserve">
+    <value>That passphrase is not correct. Try again.</value>
+  </data>
+  <data name="Sync.E2e.NewPassphrase" xml:space="preserve">
+    <value>New passphrase</value>
+  </data>
+  <data name="Sync.E2e.NoRecoveryWarning" xml:space="preserve">
+    <value>There is no passphrase recovery. If you forget your passphrase, nobody can decrypt your files, including us.</value>
+  </data>
+  <data name="Sync.E2e.Passphrase" xml:space="preserve">
+    <value>Passphrase</value>
+  </data>
+  <data name="Sync.E2e.Resolve.Confirm" xml:space="preserve">
+    <value>Turn off on this device</value>
+  </data>
+  <data name="Sync.E2e.Resolve.NeedsPassphrase" xml:space="preserve">
+    <value>Your passkey cannot unlock this device's keys, and it has changes that have not been synced yet. Enter your passphrase to decrypt them.</value>
+  </data>
+  <data name="Sync.E2e.Resolve.Text1" xml:space="preserve">
+    <value>End to end encryption was turned off on another device, so your files there were decrypted and synced unencrypted.</value>
+  </data>
+  <data name="Sync.E2e.Resolve.Text2" xml:space="preserve">
+    <value>This device will decrypt its own changes that have not been synced yet, forget its keys, then sync, which brings down the decrypted files.</value>
+  </data>
+  <data name="Sync.E2e.Resolve.Title" xml:space="preserve">
+    <value>Turn off encryption on this device?</value>
+  </data>
+  <data name="Sync.E2e.Resolve.Warning" xml:space="preserve">
+    <value>If you did not turn encryption off yourself, cancel and check your other devices first.</value>
+  </data>
+  <data name="Sync.E2e.SetUp" xml:space="preserve">
+    <value>Set up</value>
+  </data>
+  <data name="Sync.E2e.SetUpDevice" xml:space="preserve">
+    <value>Set up this device</value>
+  </data>
+  <data name="Sync.E2e.Status.Blocked" xml:space="preserve">
+    <value>On, but locked: use your passkey to unlock it.</value>
+  </data>
+  <data name="Sync.E2e.Status.Checking" xml:space="preserve">
+    <value>Checking…</value>
+  </data>
+  <data name="Sync.E2e.Status.Disabled" xml:space="preserve">
+    <value>Off.</value>
+  </data>
+  <data name="Sync.E2e.Status.DisabledElsewhere" xml:space="preserve">
+    <value>Turned off on another device.</value>
+  </data>
+  <data name="Sync.E2e.Status.NeedsSetup" xml:space="preserve">
+    <value>On, but this device has not been set up yet. Enter your passphrase to read and sync your files here.</value>
+  </data>
+  <data name="Sync.E2e.Status.Offline" xml:space="preserve">
+    <value>{0} You're offline, so this is this device's own state, and encryption can't be changed until you sign in online.</value>
+  </data>
+  <data name="Sync.E2e.Status.OffOnThisDevice" xml:space="preserve">
+    <value>Off on this device.</value>
+  </data>
+  <data name="Sync.E2e.Status.Unavailable" xml:space="preserve">
+    <value>Off. Sign in with your passkey to turn it on: it needs the hardware PRF key your passkey provides.</value>
+  </data>
+  <data name="Sync.E2e.Status.Unlocked" xml:space="preserve">
+    <value>On. Your files are encrypted on this device before they are synced.</value>
+  </data>
+  <data name="Sync.E2e.Status.Unsupported" xml:space="preserve">
+    <value>Not available with this sign in.</value>
+  </data>
+  <data name="Sync.E2e.Step.CheckExistingKeys" xml:space="preserve">
+    <value>Check encryption is not already on</value>
+  </data>
+  <data name="Sync.E2e.Step.CheckIndex" xml:space="preserve">
+    <value>Check no files are already encrypted</value>
+  </data>
+  <data name="Sync.E2e.Step.CreateKeys" xml:space="preserve">
+    <value>Create your master key and file key</value>
+  </data>
+  <data name="Sync.E2e.Step.DecryptFiles" xml:space="preserve">
+    <value>Decrypt your files</value>
+  </data>
+  <data name="Sync.E2e.Step.DeleteKeys" xml:space="preserve">
+    <value>Delete your keys</value>
+  </data>
+  <data name="Sync.E2e.Step.DeriveKey" xml:space="preserve">
+    <value>Derive your passphrase key (Argon2id)</value>
+  </data>
+  <data name="Sync.E2e.Step.Done" xml:space="preserve">
+    <value>Done</value>
+  </data>
+  <data name="Sync.E2e.Step.EncryptFiles" xml:space="preserve">
+    <value>Encrypt your files</value>
+  </data>
+  <data name="Sync.E2e.Step.Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Sync.E2e.Step.GoOffline" xml:space="preserve">
+    <value>Pause syncing</value>
+  </data>
+  <data name="Sync.E2e.Step.GoOnline" xml:space="preserve">
+    <value>Resume syncing</value>
+  </data>
+  <data name="Sync.E2e.Step.Progress" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="Sync.E2e.Step.Running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Sync.E2e.Step.SaveKeys" xml:space="preserve">
+    <value>Save your keys to your account</value>
+  </data>
+  <data name="Sync.E2e.Step.StoreDeviceKey" xml:space="preserve">
+    <value>Secure this device with your passkey</value>
+  </data>
+  <data name="Sync.E2e.Step.Sync" xml:space="preserve">
+    <value>Sync every file to this device</value>
+  </data>
+  <data name="Sync.E2e.Step.VerifyPassphrase" xml:space="preserve">
+    <value>Check your passphrase</value>
+  </data>
+  <data name="Sync.E2e.Step.Waiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="Sync.E2e.Text" xml:space="preserve">
+    <value>Encrypts your files on this device with a key only you hold, so they are synced and stored encrypted. It needs your passkey and a passphrase of your own.</value>
+  </data>
+  <data name="Sync.E2e.Title" xml:space="preserve">
+    <value>End to end encryption</value>
+  </data>
+  <data name="Sync.Folder.Banner" xml:space="preserve">
+    <value>Your files are kept in the folder {0}. Allow access to it again to use them and sync.</value>
+  </data>
+  <data name="Sync.Folder.Banner.Unnamed" xml:space="preserve">
+    <value>you chose</value>
+  </data>
+  <data name="Sync.Folder.NotAllowed" xml:space="preserve">
+    <value>Access to the folder was not allowed.</value>
+  </data>
+  <data name="Sync.Folder.NotKept" xml:space="preserve">
+    <value>The browser did not keep access to the folder. Try again, or move your files to browser storage in Settings.</value>
+  </data>
+  <data name="Sync.Folder.Reconnect" xml:space="preserve">
+    <value>Reconnect folder</value>
+  </data>
+  <data name="Sync.Folder.ReconnectFailed" xml:space="preserve">
+    <value>The folder could not be reconnected: {0}</value>
+  </data>
+  <data name="Sync.LastSynced" xml:space="preserve">
+    <value>Last synced</value>
+  </data>
+  <data name="Sync.LastSynced.NotYet" xml:space="preserve">
+    <value>Not yet</value>
+  </data>
+  <data name="Sync.Log.Age.Days" xml:space="preserve">
+    <value>{0} d ago</value>
+  </data>
+  <data name="Sync.Log.Age.Hours" xml:space="preserve">
+    <value>{0} h ago</value>
+  </data>
+  <data name="Sync.Log.Age.JustNow" xml:space="preserve">
+    <value>just now</value>
+  </data>
+  <data name="Sync.Log.Age.Minutes" xml:space="preserve">
+    <value>{0} min ago</value>
+  </data>
+  <data name="Sync.Log.AlreadyInSync" xml:space="preserve">
+    <value>Same on both sides, nothing to do</value>
+  </data>
+  <data name="Sync.Log.BackOnline" xml:space="preserve">
+    <value>Back online</value>
+  </data>
+  <data name="Sync.Log.ChangedDuringSync" xml:space="preserve">
+    <value>Changed in S3 during sync, checking again</value>
+  </data>
+  <data name="Sync.Log.Checking" xml:space="preserve">
+    <value>Checking for changes</value>
+  </data>
+  <data name="Sync.Log.ConflictKeptLocal" xml:space="preserve">
+    <value>Changed on both sides, kept the newer local version</value>
+  </data>
+  <data name="Sync.Log.ConflictKeptRemote" xml:space="preserve">
+    <value>Changed on both sides, kept the newer remote version</value>
+  </data>
+  <data name="Sync.Log.DayFormat" xml:space="preserve">
+    <value>dddd d MMMM yyyy</value>
+  </data>
+  <data name="Sync.Log.DeletedLocally" xml:space="preserve">
+    <value>Deleted locally, removing from S3</value>
+  </data>
+  <data name="Sync.Log.DeletedRemotely" xml:space="preserve">
+    <value>Deleted remotely, removing local copy</value>
+  </data>
+  <data name="Sync.Log.DeleteFailed" xml:space="preserve">
+    <value>Delete failed: {0}</value>
+  </data>
+  <data name="Sync.Log.DownloadFailed" xml:space="preserve">
+    <value>Download failed: {0}</value>
+  </data>
+  <data name="Sync.Log.FileFailed" xml:space="preserve">
+    <value>Sync failed: {0}</value>
+  </data>
+  <data name="Sync.Log.Group.Activity" xml:space="preserve">
+    <value>Activity</value>
+  </data>
+  <data name="Sync.Log.Group.All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Sync.Log.Group.Conflicts" xml:space="preserve">
+    <value>Conflicts</value>
+  </data>
+  <data name="Sync.Log.Group.Connectivity" xml:space="preserve">
+    <value>Connectivity</value>
+  </data>
+  <data name="Sync.Log.Group.Deletes" xml:space="preserve">
+    <value>Deletes</value>
+  </data>
+  <data name="Sync.Log.Group.Downloads" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="Sync.Log.Group.Errors" xml:space="preserve">
+    <value>Errors</value>
+  </data>
+  <data name="Sync.Log.Group.Uploads" xml:space="preserve">
+    <value>Uploads</value>
+  </data>
+  <data name="Sync.Log.Kind.AlreadyInSync" xml:space="preserve">
+    <value>Already in sync</value>
+  </data>
+  <data name="Sync.Log.Kind.ConflictResolved" xml:space="preserve">
+    <value>Conflict</value>
+  </data>
+  <data name="Sync.Log.Kind.DeleteLocal" xml:space="preserve">
+    <value>Deleted here</value>
+  </data>
+  <data name="Sync.Log.Kind.DeleteRemote" xml:space="preserve">
+    <value>Deleted from S3</value>
+  </data>
+  <data name="Sync.Log.Kind.DownloadNew" xml:space="preserve">
+    <value>Downloaded</value>
+  </data>
+  <data name="Sync.Log.Kind.DownloadRemoteNewer" xml:space="preserve">
+    <value>Downloaded</value>
+  </data>
+  <data name="Sync.Log.Kind.Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Sync.Log.Kind.OfflineModeChanged" xml:space="preserve">
+    <value>Offline mode or sync switched</value>
+  </data>
+  <data name="Sync.Log.Kind.PassCompleted" xml:space="preserve">
+    <value>Checked</value>
+  </data>
+  <data name="Sync.Log.Kind.PassStarted" xml:space="preserve">
+    <value>Checking</value>
+  </data>
+  <data name="Sync.Log.Kind.Retried" xml:space="preserve">
+    <value>Retried</value>
+  </data>
+  <data name="Sync.Log.Kind.UploadLocalNewer" xml:space="preserve">
+    <value>Uploaded</value>
+  </data>
+  <data name="Sync.Log.Kind.UploadNew" xml:space="preserve">
+    <value>Uploaded</value>
+  </data>
+  <data name="Sync.Log.Kind.WentOffline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Sync.Log.Kind.WentOnline" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="Sync.Log.LocalNewer" xml:space="preserve">
+    <value>Local newer than remote, uploading</value>
+  </data>
+  <data name="Sync.Log.NewLocalFile" xml:space="preserve">
+    <value>New local file, uploading</value>
+  </data>
+  <data name="Sync.Log.NewRemoteFile" xml:space="preserve">
+    <value>New remote file, downloading</value>
+  </data>
+  <data name="Sync.Log.NoChanges" xml:space="preserve">
+    <value>Checking for changes · up to date</value>
+  </data>
+  <data name="Sync.Log.OfflineModeOff" xml:space="preserve">
+    <value>Offline mode turned off</value>
+  </data>
+  <data name="Sync.Log.OfflineModeOn" xml:space="preserve">
+    <value>Offline mode turned on</value>
+  </data>
+  <data name="Sync.Log.PassDone" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="Sync.Log.PassFailed" xml:space="preserve">
+    <value>Sync failed: {0}</value>
+  </data>
+  <data name="Sync.Log.RemoteNewer" xml:space="preserve">
+    <value>Remote newer than local, downloading</value>
+  </data>
+  <data name="Sync.Log.Stopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="Sync.Log.Summary.Conflicts.One" xml:space="preserve">
+    <value>{0} conflict resolved</value>
+  </data>
+  <data name="Sync.Log.Summary.Conflicts.Other" xml:space="preserve">
+    <value>{0} conflicts resolved</value>
+  </data>
+  <data name="Sync.Log.Summary.Deleted.Other" xml:space="preserve">
+    <value>{0} deleted</value>
+  </data>
+  <data name="Sync.Log.Summary.Downloaded.Other" xml:space="preserve">
+    <value>{0} downloaded</value>
+  </data>
+  <data name="Sync.Log.Summary.Failed.Other" xml:space="preserve">
+    <value>{0} failed</value>
+  </data>
+  <data name="Sync.Log.Summary.Separator" xml:space="preserve">
+    <value>, </value>
+  </data>
+  <data name="Sync.Log.Summary.Uploaded.Other" xml:space="preserve">
+    <value>{0} uploaded</value>
+  </data>
+  <data name="Sync.Log.Summary.UpToDate" xml:space="preserve">
+    <value>Up to date</value>
+  </data>
+  <data name="Sync.Log.SyncTurnedOff" xml:space="preserve">
+    <value>Sync turned off</value>
+  </data>
+  <data name="Sync.Log.SyncTurnedOn" xml:space="preserve">
+    <value>Sync turned on</value>
+  </data>
+  <data name="Sync.Log.Today" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="Sync.Log.UploadFailed" xml:space="preserve">
+    <value>Upload failed: {0}</value>
+  </data>
+  <data name="Sync.Log.WentOffline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Sync.Log.Yesterday" xml:space="preserve">
+    <value>Yesterday</value>
+  </data>
+  <data name="Sync.Page.ClearDialog.Text" xml:space="preserve">
+    <value>Every entry in this device's sync log will be removed. Your files are not affected.</value>
+  </data>
+  <data name="Sync.Page.ClearDialog.Title" xml:space="preserve">
+    <value>Clear the sync log?</value>
+  </data>
+  <data name="Sync.Page.ClearLog" xml:space="preserve">
+    <value>Clear log</value>
+  </data>
+  <data name="Sync.Page.Collapse" xml:space="preserve">
+    <value>Collapse</value>
+  </data>
+  <data name="Sync.Page.Empty" xml:space="preserve">
+    <value>Nothing to show.</value>
+  </data>
+  <data name="Sync.Page.Expand" xml:space="preserve">
+    <value>Expand</value>
+  </data>
+  <data name="Sync.Page.Filter.Label" xml:space="preserve">
+    <value>Filter the sync log</value>
+  </data>
+  <data name="Sync.Page.Loading" xml:space="preserve">
+    <value>Loading the sync log...</value>
+  </data>
+  <data name="Sync.Page.LoadMore" xml:space="preserve">
+    <value>Load more</value>
+  </data>
+  <data name="Sync.Page.Profile.All" xml:space="preserve">
+    <value>All profiles</value>
+  </data>
+  <data name="Sync.Page.Profile.Label" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="Sync.Page.Search.Label" xml:space="preserve">
+    <value>Search the sync log</value>
+  </data>
+  <data name="Sync.Page.Search.Placeholder" xml:space="preserve">
+    <value>Search files and profiles</value>
+  </data>
+  <data name="Sync.Page.Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Sync.Page.Subtitle" xml:space="preserve">
+    <value>Everything sync has done on this device.</value>
+  </data>
+  <data name="Sync.Page.Title" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="Sync.PendingChanges" xml:space="preserve">
+    <value>Pending changes</value>
+  </data>
+  <data name="Sync.Settings.Connection" xml:space="preserve">
+    <value>Connection</value>
+  </data>
+  <data name="Sync.Settings.LastError" xml:space="preserve">
+    <value>Last error</value>
+  </data>
+  <data name="Sync.Settings.State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Sync.Settings.Storage" xml:space="preserve">
+    <value>Storage</value>
+  </data>
+  <data name="Sync.Settings.Text" xml:space="preserve">
+    <value>Your files are kept in this browser and synced with your cloud storage when you are online.</value>
+  </data>
+  <data name="Sync.Settings.Title" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="Sync.StartOff.Help" xml:space="preserve">
+    <value>Use your files on this device without syncing them with the cloud. Changes sync when you turn sync back on.</value>
+  </data>
+  <data name="Sync.StartOff.Label" xml:space="preserve">
+    <value>Start with sync turned off</value>
+  </data>
+  <data name="Sync.Status.Checking" xml:space="preserve">
+    <value>Checking</value>
+  </data>
+  <data name="Sync.Status.Checking.Tooltip" xml:space="preserve">
+    <value>Checking the connection</value>
+  </data>
+  <data name="Sync.Status.Error" xml:space="preserve">
+    <value>Sync error</value>
+  </data>
+  <data name="Sync.Status.Error.Tooltip" xml:space="preserve">
+    <value>The last sync failed.</value>
+  </data>
+  <data name="Sync.Status.Off" xml:space="preserve">
+    <value>Sync off</value>
+  </data>
+  <data name="Sync.Status.Off.Tooltip" xml:space="preserve">
+    <value>Sync is turned off.</value>
+  </data>
+  <data name="Sync.Status.Offline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Sync.Status.OfflinePending" xml:space="preserve">
+    <value>Offline · {0} pending</value>
+  </data>
+  <data name="Sync.Status.OfflinePending.Tooltip" xml:space="preserve">
+    <value>{0}. {1}.</value>
+  </data>
+  <data name="Sync.Status.OffPending" xml:space="preserve">
+    <value>Sync off · {0} pending</value>
+  </data>
+  <data name="Sync.Status.OffPending.Tooltip" xml:space="preserve">
+    <value>Sync is turned off. {0}.</value>
+  </data>
+  <data name="Sync.Status.Pending" xml:space="preserve">
+    <value>{0} pending</value>
+  </data>
+  <data name="Sync.Status.PendingChanges.One" xml:space="preserve">
+    <value>1 change waiting to sync</value>
+  </data>
+  <data name="Sync.Status.PendingChanges.Other" xml:space="preserve">
+    <value>{0} changes waiting to sync</value>
+  </data>
+  <data name="Sync.Status.Syncing" xml:space="preserve">
+    <value>Syncing</value>
+  </data>
+  <data name="Sync.Status.Syncing.Tooltip" xml:space="preserve">
+    <value>Syncing your changes</value>
+  </data>
+  <data name="Sync.Status.UpToDate" xml:space="preserve">
+    <value>Up to date</value>
+  </data>
+  <data name="Sync.Status.UpToDate.Conflicts.One" xml:space="preserve">
+    <value>All changes synced. 1 conflict resolved.</value>
+  </data>
+  <data name="Sync.Status.UpToDate.Conflicts.Other" xml:space="preserve">
+    <value>All changes synced. {0} conflicts resolved.</value>
+  </data>
+  <data name="Sync.Status.UpToDate.Tooltip" xml:space="preserve">
+    <value>All changes synced</value>
+  </data>
+  <data name="Sync.Storage.BestEffort" xml:space="preserve">
+    <value>Best effort</value>
+  </data>
+  <data name="Sync.Storage.Dialog.Confirm" xml:space="preserve">
+    <value>Move files</value>
+  </data>
+  <data name="Sync.Storage.Dialog.Pausing" xml:space="preserve">
+    <value>Pausing sync…</value>
+  </data>
+  <data name="Sync.Storage.Dialog.Summary.One" xml:space="preserve">
+    <value>1 file will be moved to {1} on this device.</value>
+  </data>
+  <data name="Sync.Storage.Dialog.Summary.Other" xml:space="preserve">
+    <value>{0} files will be moved to {1} on this device.</value>
+  </data>
+  <data name="Sync.Storage.Dialog.Text" xml:space="preserve">
+    <value>When online, anything not yet on this device is synced first. Sync then pauses while they move. Other tabs of the app reload when it finishes. Nothing is uploaded again.</value>
+  </data>
+  <data name="Sync.Storage.Dialog.Title" xml:space="preserve">
+    <value>Move your files?</value>
+  </data>
+  <data name="Sync.Storage.Folder" xml:space="preserve">
+    <value>Folder: {0}</value>
+  </data>
+  <data name="Sync.Storage.FolderOpenFailed" xml:space="preserve">
+    <value>The folder could not be opened: {0}</value>
+  </data>
+  <data name="Sync.Storage.InstallHint" xml:space="preserve">
+    <value>Install the app so your browser keeps your data</value>
+  </data>
+  <data name="Sync.Storage.Kind.IndexedDb" xml:space="preserve">
+    <value>IndexedDB</value>
+  </data>
+  <data name="Sync.Storage.Kind.IndexedDb.Tooltip" xml:space="preserve">
+    <value>Kept in the browser's database (IndexedDB)</value>
+  </data>
+  <data name="Sync.Storage.Kind.LocalFolder" xml:space="preserve">
+    <value>File System</value>
+  </data>
+  <data name="Sync.Storage.Kind.LocalFolder.Tooltip" xml:space="preserve">
+    <value>A folder you pick, which you can open outside the app (File System Access API)</value>
+  </data>
+  <data name="Sync.Storage.Kind.LocalFolder.Unsupported" xml:space="preserve">
+    <value>This browser cannot keep files in a folder you pick</value>
+  </data>
+  <data name="Sync.Storage.Kind.Opfs" xml:space="preserve">
+    <value>OPFS</value>
+  </data>
+  <data name="Sync.Storage.Kind.Opfs.Tooltip" xml:space="preserve">
+    <value>Files kept privately by the browser (origin private file system)</value>
+  </data>
+  <data name="Sync.Storage.Kind.Opfs.Unsupported" xml:space="preserve">
+    <value>This browser cannot keep files in OPFS</value>
+  </data>
+  <data name="Sync.Storage.KindWithFolder" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="Sync.Storage.Location" xml:space="preserve">
+    <value>Storage location</value>
+  </data>
+  <data name="Sync.Storage.Location.Text" xml:space="preserve">
+    <value>Where your files are kept on this device. Sync pauses while they are moved.</value>
+  </data>
+  <data name="Sync.Storage.MoveFailed" xml:space="preserve">
+    <value>Your files could not be moved: {0}</value>
+  </data>
+  <data name="Sync.Storage.Moving" xml:space="preserve">
+    <value>Moving files: {0} of {1}</value>
+  </data>
+  <data name="Sync.Storage.MovingInAnotherTab" xml:space="preserve">
+    <value>Your files are being moved to another storage in another tab. This tab reloads when it finishes.</value>
+  </data>
+  <data name="Sync.Storage.Persistent" xml:space="preserve">
+    <value>Persistent</value>
+  </data>
+  <data name="Sync.Storage.ReadFailed" xml:space="preserve">
+    <value>Your files could not be read: {0}</value>
+  </data>
+  <data name="Sync.Storage.SyncingBeforeMove" xml:space="preserve">
+    <value>Syncing before moving…</value>
+  </data>
+  <data name="Sync.Storage.Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="Sync.Storage.Usage" xml:space="preserve">
+    <value>{0} · {1} used</value>
+  </data>
+  <data name="Sync.Switch" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="Sync.SyncNow" xml:space="preserve">
+    <value>Sync now</value>
+  </data>
+  <data name="Sync.ViewLog" xml:space="preserve">
+    <value>View sync log</value>
+  </data>
+</root>

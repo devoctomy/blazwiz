@@ -100,7 +100,8 @@ public class ConnectivityServiceTests
         // Assert
         Assert.Equal(OfflineReason.NoNetwork, result.Reason);
         mockTargets.Verify(x => x.GetTargetAsync(It.IsAny<CancellationToken>()), Times.Never);
-        Assert.Equal("Offline: no network", Assert.Single(logged).Message);
+        Assert.Equal(SyncEventCodes.WentOffline, Assert.Single(logged).Code);
+        Assert.Equal([nameof(OfflineReason.NoNetwork)], logged[0].Arguments);
     }
 
     [Fact]
@@ -118,7 +119,8 @@ public class ConnectivityServiceTests
         mockProbe.VerifyNoOtherCalls();
         var entry = Assert.Single(logged);
         Assert.Equal(SyncEventKind.WentOffline, entry.Kind);
-        Assert.Equal("Offline: no credentials", entry.Message);
+        Assert.Equal(SyncEventCodes.WentOffline, entry.Code);
+        Assert.Equal([nameof(OfflineReason.NoCredentials)], entry.Arguments);
     }
 
     [Fact]
@@ -144,7 +146,6 @@ public class ConnectivityServiceTests
 
         // Assert
         Assert.Equal(OfflineReason.Unreachable, result.Reason);
-        Assert.Equal("Offline: S3 unreachable", result.Describe());
         Assert.True(sut.IsRecheckScheduled);
     }
 
@@ -222,7 +223,7 @@ public class ConnectivityServiceTests
         // Assert
         Assert.True(Assert.Single(raised).IsOnline);
         Assert.Equal(SyncEventKind.WentOnline, logged[^1].Kind);
-        Assert.Equal("Back online", logged[^1].Message);
+        Assert.Equal(SyncEventCodes.BackOnline, logged[^1].Code);
         Assert.False(sut.IsRecheckScheduled);
     }
 
@@ -258,7 +259,7 @@ public class ConnectivityServiceTests
         Assert.Equal(OfflineReason.SyncDisabled, sut.Status.Reason);
         var entry = Assert.Single(logged);
         Assert.Equal(SyncEventKind.OfflineModeChanged, entry.Kind);
-        Assert.Equal("Sync turned off", entry.Message);
+        Assert.Equal(SyncEventCodes.SyncTurnedOff, entry.Code);
     }
 
     [Fact]
@@ -274,7 +275,7 @@ public class ConnectivityServiceTests
 
         // Assert
         Assert.True(sut.Status.IsOnline);
-        Assert.Contains(logged, e => e.Message == "Sync turned on");
+        Assert.Contains(logged, e => e.Code == SyncEventCodes.SyncTurnedOn);
         Assert.Contains(logged, e => e.Kind == SyncEventKind.WentOnline);
     }
 
@@ -321,7 +322,7 @@ public class ConnectivityServiceTests
 
         // Assert
         Assert.Equal(OfflineReason.OfflineMode, result.Reason);
-        Assert.Contains(logged, e => e.Message == "Offline mode turned on");
+        Assert.Contains(logged, e => e.Code == SyncEventCodes.OfflineModeOn);
         mockBrowser.Verify(x => x.IsOnlineAsync(), Times.Never);
         mockTargets.Verify(x => x.GetTargetAsync(It.IsAny<CancellationToken>()), Times.Never);
         Assert.False(sut.IsRecheckScheduled);
@@ -349,7 +350,7 @@ public class ConnectivityServiceTests
 
         // Assert
         Assert.True(sut.Status.IsOnline);
-        Assert.Contains(logged, e => e.Message == "Offline mode turned off");
+        Assert.Contains(logged, e => e.Code == SyncEventCodes.OfflineModeOff);
     }
 
     [Fact]

@@ -10,10 +10,10 @@ public class SyncStorageModelTests
     public void GivenEachConstructor_WhenCreatingMigrationException_ThenMessageAndCauseKept()
     {
         var cause = new InvalidOperationException("cause");
-        Assert.NotNull(new SyncStorageMigrationException().Message);
-        Assert.Equal("failed", new SyncStorageMigrationException("failed").Message);
-        var ex = new SyncStorageMigrationException("failed", cause);
-        Assert.Equal("failed", ex.Message);
+        Assert.Equal("failed", new SyncStorageMigrationException("failed").Code);
+        var ex = new SyncStorageMigrationException("failed", cause, "a");
+        Assert.Equal("failed", ex.Code);
+        Assert.Equal(["a"], ex.Arguments);
         Assert.Same(cause, ex.InnerException);
     }
 

@@ -4,7 +4,10 @@ using Blazing.Mvvm.ComponentModel;
 using blazwiz.Core.Cryptography.Configuration;
 using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Cryptography.Models;
+using blazwiz.Portal.Application.Text.Interfaces;
+using blazwiz.Portal.Application.Text;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Localization;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
@@ -17,6 +20,8 @@ public partial class Argon2idSettingsViewModel : ViewModelBase
     private readonly IArgon2idKeyDerivationService argon2;
     private readonly Argon2idOptions options;
     private readonly TimeProvider timeProvider;
+    private readonly IStringLocalizer<SyncUiText> text;
+    private readonly IErrorText errorText;
 
     private bool isRunning;
     private string? result;
@@ -28,11 +33,15 @@ public partial class Argon2idSettingsViewModel : ViewModelBase
     /// <param name="argon2">Derives the keys.</param>
     /// <param name="options">The settings for new keys.</param>
     /// <param name="timeProvider">Times the benchmark.</param>
-    public Argon2idSettingsViewModel(IArgon2idKeyDerivationService argon2, Argon2idOptions options, TimeProvider timeProvider)
+    /// <param name="text">The sync UI's text.</param>
+    /// <param name="errorText">Describes errors.</param>
+    public Argon2idSettingsViewModel(IArgon2idKeyDerivationService argon2, Argon2idOptions options, TimeProvider timeProvider, IStringLocalizer<SyncUiText> text, IErrorText errorText)
     {
         this.argon2 = argon2 ?? throw new ArgumentNullException(nameof(argon2));
         this.options = options ?? throw new ArgumentNullException(nameof(options));
         this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        this.text = text ?? throw new ArgumentNullException(nameof(text));
+        this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
     }
 
     /// <summary>
@@ -44,8 +53,8 @@ public partial class Argon2idSettingsViewModel : ViewModelBase
     /// Gets the memory, e.g. "512 MiB".
     /// </summary>
     public string MemoryText => Parameters.MemoryKib % 1024 == 0
-        ? string.Create(CultureInfo.InvariantCulture, $"{Parameters.MemoryKib / 1024} MiB")
-        : string.Create(CultureInfo.InvariantCulture, $"{Parameters.MemoryKib} KiB");
+        ? text["Sync.Argon2id.MemoryMib", Parameters.MemoryKib / 1024]
+        : text["Sync.Argon2id.MemoryKib", Parameters.MemoryKib];
 
     /// <summary>
     /// Gets a value indicating whether the benchmark is running.
@@ -97,11 +106,11 @@ public partial class Argon2idSettingsViewModel : ViewModelBase
             var key = await argon2.DeriveKeyAsync(passphrase, salt, Parameters.Clone());
             var elapsed = timeProvider.GetElapsedTime(started);
             CryptographicOperations.ZeroMemory(key);
-            Result = string.Create(CultureInfo.InvariantCulture, $"Took {elapsed.TotalSeconds:0.0} s");
+            Result = text["Sync.Argon2id.Took", elapsed.TotalSeconds];
         }
         catch (Exception ex)
         {
-            Error = $"The benchmark failed: {ex.Message}";
+            Error = text["Sync.Argon2id.Failed", errorText.Describe(ex)];
         }
         finally
         {

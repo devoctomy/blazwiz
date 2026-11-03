@@ -80,7 +80,7 @@ public class SwitchableSyncFileStoreTests
         // Act & Assert
         await sut.ListAsync();
         await sut.ReadAsync("notes/a.md");
-        Assert.Equal(SwitchableSyncFileStore.MigratingMessage, (await Assert.ThrowsAsync<SyncStorageMigrationException>(() => sut.WriteAsync("notes/a.md", [1]))).Message);
+        Assert.Equal(SyncErrorCodes.StorageMigrating, (await Assert.ThrowsAsync<SyncStorageMigrationException>(() => sut.WriteAsync("notes/a.md", [1]))).Code);
         await Assert.ThrowsAsync<SyncStorageMigrationException>(() => sut.CreateFolderAsync("notes/Work/"));
         await Assert.ThrowsAsync<SyncStorageMigrationException>(() => sut.DeleteAsync("notes/a.md"));
         mockIndexedDb.Verify(x => x.WriteAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<DateTimeOffset?>(), It.IsAny<CancellationToken>()), Times.Never);

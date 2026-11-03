@@ -53,6 +53,7 @@ public class SyncService(
         var total = new SyncResult { Profile = profile };
         UpdateStatus(s => s.State = SyncState.Syncing);
         string? error = null;
+        IReadOnlyList<object> errorArguments = [];
         var ran = false;
         try
         {
@@ -74,18 +75,19 @@ public class SyncService(
 
             if (total.Failed > 0)
             {
-                error = total.Failed == 1 ? "1 file could not be synced." : $"{total.Failed} files could not be synced.";
+                error = SyncErrorCodes.FilesFailed;
+                errorArguments = [total.Failed];
             }
         }
         catch (SyncNetworkException ex)
         {
             connectivityService.ReportNetworkFailure(ex);
-            error = "S3 could not be reached.";
+            error = SyncErrorCodes.RemoteUnreachable;
             total.Errors.Add(ex.Message);
         }
         catch (SyncAccessDeniedException ex)
         {
-            error = "S3 refused the credentials.";
+            error = SyncErrorCodes.RemoteAccessDenied;
             total.Errors.Add(ex.Message);
         }
         catch (OperationCanceledException)
@@ -98,7 +100,8 @@ public class SyncService(
             UpdateStatus(s =>
             {
                 s.State = error == null ? SyncState.Idle : SyncState.Error;
-                s.LastError = error;
+                s.LastErrorCode = error;
+                s.LastErrorArguments = errorArguments;
                 s.PendingCount = pending;
                 s.ConflictsResolved = total.ConflictsResolved;
                 if (error == null && ran && !ct.IsCancellationRequested)

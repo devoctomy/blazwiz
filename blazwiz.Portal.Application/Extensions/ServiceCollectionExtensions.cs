@@ -4,12 +4,6 @@ using Amazon.CognitoIdentityProvider;
 using Amazon.Runtime;
 using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Extensions;
-//#if (IncludeNotes)
-using blazwiz.Core.Encryption;
-using blazwiz.Core.Encryption.Interfaces;
-using blazwiz.Core.Sync.Interfaces;
-using blazwiz.Core.Sync.Models;
-//#endif
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Aws;
@@ -21,12 +15,13 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace blazwiz.Portal.Application.Extensions;
 
 /// <summary>
-/// Extension methods for registering portal application services in an <see cref="IServiceCollection"/>.
+/// Extension methods for registering the framework's portal services: authentication, theme, settings and the app
+/// shell's extension points. Optional modules (sync and encryption) are added with their own methods.
 /// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds all portal application services to the dependency injection container.
+    /// Adds the framework's portal services to the dependency injection container.
     /// Browser specific services (<see cref="INavigationService"/>, <see cref="IBrowserInteropService"/>, <see cref="IWebAuthnService"/>) are registered by the portal itself.
     /// Call <see cref="AddPortalSettings"/> first so the Cognito settings decide which authentication service is used.
     /// </summary>
@@ -38,6 +33,12 @@ public static class ServiceCollectionExtensions
 
         // The app's name and ID: everything kept in the browser is named after the app (e.g. blazwiz_session).
         services.AddBlazwizApp(AppIdentity.Name, AppIdentity.Id);
+
+        // The extension points modules and the app add to: shell regions, Settings sections, sidebar, pages.
+        services.AddBlazwizShell();
+
+        // Text from resources the app can override and translate, and error descriptions.
+        services.AddBlazwizUiText();
 
         // The clock and timers (e.g. the session countdown). Also added by sync, hence TryAdd.
         services.TryAddSingleton(TimeProvider.System);
@@ -51,6 +52,7 @@ public static class ServiceCollectionExtensions
             .UseApplication(AppIdentity.Name, AppIdentity.Id)
             .AddKey(PasswordCryptoService.RememberMeKeyName));
         services.AddSingleton<IUserDisplayService, UserDisplayService>();
+
         // The Cognito sign-in APIs are public, so the API client uses no AWS credentials.
         services.AddSingleton(_ => new BufferingHttpHandler(new HttpClientHandler()));
         services.AddSingleton<BrowserHttpClientFactory>();
@@ -75,6 +77,7 @@ public static class ServiceCollectionExtensions
 
         // The session's AWS credentials, fetched once signed in, held in memory and shared by everything calling AWS.
         services.AddScoped<IAwsCredentialsProvider, CognitoAwsCredentialsProvider>();
+        services.AddSessionLifecycleHandler<AwsCredentialsSessionHandler>();
 
         // The user's keys, in their own Secrets Manager secret named <user pool sub>/keys.
         services.AddSingleton<ISecretsManagerClientFactory, SecretsManagerClientFactory>();
@@ -87,48 +90,7 @@ public static class ServiceCollectionExtensions
             CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
                 ? ActivatorUtilities.CreateInstance<CognitoAuthenticationService>(sp)
                 : ActivatorUtilities.CreateInstance<LocalAuthenticationService>(sp));
-        services.AddSingleton<INavigationMenuService, NavigationMenuService>();
-        services.AddScoped<IGreetingService, GreetingService>();
 
-//#if (IncludeNotes)
-        // Sync: notes are plain markdown files kept in IndexedDB, OPFS or a folder the user picks (chosen per device in
-        // Settings) and synced with the user's prefix in the data bucket (docs/wip/s3-sync.md, docs/wip/opfs-storage.md).
-        services.AddScoped<IS3SyncTargetProvider, CognitoS3TargetProvider>();
-        services.AddScoped<ISyncUserContext, AuthSyncUserContext>();
-        services.AddScoped<ISyncEnabledStore, LocalStorageSyncEnabledStore>();
-        services.AddScoped<IPersistentStorageService, PersistentStorageService>();
-        services.AddSingleton<ISyncEventPresenter, SyncEventPresenter>();
-        services.AddSingleton<ISyncStatusPresenter, SyncStatusPresenter>();
-
-        // End to end encryption of the notes (docs/wip/e2e-encryption.md): keys.json in Secrets Manager, this device's
-        // copy of the master key wrapped by a key derived from the passkey PRF.
-        services.AddBlazwizPrfKeyDerivation(prf => prf.AddKey(E2eKeyNames.KeyEncryptionKey));
-        services.AddBlazwizE2eEncryption();
-        services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
-        services.AddScoped<IPasskeyUnlockService, PasskeyUnlockService>();
-        services.AddBlazwizSync(sync => sync
-            .UseIndexedDbEventLog(database: "sync", store: "events")
-            .UseEventLogRetention(maxAge: TimeSpan.FromDays(30), maxEventsPerUser: 5000)
-            .UseChangeDebounce(TimeSpan.FromSeconds(2))
-            .AddProfile(NoteService.ProfileName, profile => profile
-                .UseIndexedDbIndexStore(database: "sync", store: "notes_index")
-                .UseFileStores(stores => stores
-                    .AddIndexedDb(database: IndexedDbNotesStateStore.Database, store: "files")
-                    .AddOpfs(root: "notes")
-                    .AddLocalFolder()
-                    .UseDefault(SyncStorageKind.IndexedDb))
-                .UseRemote("notes/**/*.md", includeEmptyFolders: true)
-                .UseEncryption()));
-
-        // Notes
-        services.AddScoped<INotesStateStore, IndexedDbNotesStateStore>();
-        services.AddScoped<INoteService, NoteService>();
-        services.AddSingleton<INoteNameService, NoteNameService>();
-        services.AddSingleton<INoteTreeService, NoteTreeService>();
-        services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();
-        services.AddSingleton<IMarkdownFormatService, MarkdownFormatService>();
-
-//#endif
         return services;
     }
 

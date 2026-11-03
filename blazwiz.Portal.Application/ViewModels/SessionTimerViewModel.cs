@@ -1,8 +1,10 @@
 using System.Globalization;
 using Blazing.Mvvm.ComponentModel;
 using blazwiz.Core.Offline.Interfaces;
-using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
+using blazwiz.Portal.Application.Services;
+using blazwiz.Portal.Application.Text;
+using Microsoft.Extensions.Localization;
 
 namespace blazwiz.Portal.Application.ViewModels;
 
@@ -31,6 +33,7 @@ public partial class SessionTimerViewModel : ViewModelBase
     private readonly IAuthenticationService authService;
     private readonly IOfflineModeService offlineModeService;
     private readonly TimeProvider timeProvider;
+    private readonly IStringLocalizer<UiText> uiText;
 
     private ITimer? timer;
     private DateTimeOffset? expiresAt;
@@ -46,11 +49,13 @@ public partial class SessionTimerViewModel : ViewModelBase
     /// <param name="authService">The authentication service.</param>
     /// <param name="offlineModeService">Offline mode: turning it on or off changes the session, so it is read again.</param>
     /// <param name="timeProvider">The clock and timers.</param>
-    public SessionTimerViewModel(IAuthenticationService authService, IOfflineModeService offlineModeService, TimeProvider timeProvider)
+    /// <param name="uiText">The UI's text.</param>
+    public SessionTimerViewModel(IAuthenticationService authService, IOfflineModeService offlineModeService, TimeProvider timeProvider, IStringLocalizer<UiText> uiText)
     {
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
         this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
         this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        this.uiText = uiText ?? throw new ArgumentNullException(nameof(uiText));
         this.offlineModeService.Changed += OnOfflineModeChanged;
     }
 
@@ -165,13 +170,13 @@ public partial class SessionTimerViewModel : ViewModelBase
     {
         if (expiresAt == null)
         {
-            Text = "Session expired";
+            Text = uiText["Session.Expired"];
             return;
         }
 
         var remaining = expiresAt.Value - timeProvider.GetUtcNow();
         Text = remaining > TimeSpan.Zero
-            ? $"{(isOffline ? "Offline" : "Session")} {Format(TimeSpan.FromSeconds(Math.Ceiling(remaining.TotalSeconds)))}"
-            : "Session expired";
+            ? uiText[isOffline ? "Session.OfflineRemaining" : "Session.Remaining", Format(TimeSpan.FromSeconds(Math.Ceiling(remaining.TotalSeconds)))]
+            : uiText["Session.Expired"];
     }
 }

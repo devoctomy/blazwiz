@@ -45,7 +45,6 @@ public class CognitoAuthenticationService(
     public static readonly TimeSpan RefreshMargin = TimeSpan.FromMinutes(5);
 
     private const string NewPasswordRequiredChallenge = "NEW_PASSWORD_REQUIRED";
-    private const string ConnectionError = "Could not reach the sign-in service. Check your connection and try again.";
 
     private readonly ICognitoUserPoolClient cognitoClient = cognitoClient ?? throw new ArgumentNullException(nameof(cognitoClient));
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
@@ -83,7 +82,7 @@ public class CognitoAuthenticationService(
         pendingNewPassword = null;
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            return Failed("Please enter your email and password.");
+            return Failed(AuthErrorCodes.CredentialsRequired);
         }
 
         var trimmedUsername = username.Trim();
@@ -94,7 +93,7 @@ public class CognitoAuthenticationService(
         }
         catch (CognitoException ex)
         {
-            return Failed(GetFriendlyError(ex));
+            return Failed(GetErrorCode(ex));
         }
         catch (HttpRequestException)
         {
@@ -151,12 +150,12 @@ public class CognitoAuthenticationService(
         var pending = pendingNewPassword;
         if (pending == null)
         {
-            return Failed("Please sign in again.");
+            return Failed(AuthErrorCodes.SignInAgain);
         }
 
         if (string.IsNullOrWhiteSpace(newPassword))
         {
-            return Failed("Please enter a new password.");
+            return Failed(AuthErrorCodes.NewPasswordRequired);
         }
 
         try
@@ -168,18 +167,18 @@ public class CognitoAuthenticationService(
         catch (CognitoException ex) when (ex.ErrorType == "InvalidPasswordException")
         {
             // Let the user try a different password.
-            return Failed(ex.Message);
+            return Failed(AuthErrorCodes.InvalidPassword);
         }
         catch (CognitoException ex)
         {
             pendingNewPassword = null;
             return Failed(ex.ErrorType == "NotAuthorizedException"
-                ? "Your sign-in has expired. Please sign in again."
-                : GetFriendlyError(ex));
+                ? AuthErrorCodes.SignInExpired
+                : GetErrorCode(ex));
         }
         catch (HttpRequestException)
         {
-            return Failed(ConnectionError);
+            return Failed(AuthErrorCodes.Unreachable);
         }
     }
 
@@ -285,12 +284,13 @@ public class CognitoAuthenticationService(
         GC.SuppressFinalize(this);
     }
 
-    private static LoginResult Failed(string error)
+    private static LoginResult Failed(string errorCode, params object[] arguments)
     {
         return new LoginResult
         {
             Success = false,
-            Error = error,
+            ErrorCode = errorCode,
+            ErrorArguments = arguments,
         };
     }
 
@@ -299,21 +299,22 @@ public class CognitoAuthenticationService(
         return new LoginResult
         {
             Success = false,
-            Error = ConnectionError,
+            ErrorCode = AuthErrorCodes.Unreachable,
             ServiceUnreachable = true,
         };
     }
 
-    private static string GetFriendlyError(CognitoException ex)
+    private static string GetErrorCode(CognitoException ex)
     {
         return ex.ErrorType switch
         {
-            "PasswordResetRequiredException" => "Your password must be reset before you can sign in. Please contact an administrator.",
-            "UserNotConfirmedException" => "Your account has not been confirmed yet.",
-            "TooManyRequestsException" or "LimitExceededException" => "Too many attempts. Please wait a moment and try again.",
+            "PasswordResetRequiredException" => AuthErrorCodes.PasswordResetRequired,
+            "UserNotConfirmedException" => AuthErrorCodes.UserNotConfirmed,
+            "TooManyRequestsException" or "LimitExceededException" => AuthErrorCodes.TooManyAttempts,
 
-            // E.g. NotAuthorizedException: "Incorrect username or password." or "Password attempts exceeded".
-            _ => ex.Message,
+            // Wrong email or password, or too many failed attempts.
+            "NotAuthorizedException" or "UserNotFoundException" => AuthErrorCodes.NotAuthorized,
+            _ => AuthErrorCodes.SignInFailed,
         };
     }
 
@@ -410,7 +411,7 @@ public class CognitoAuthenticationService(
             };
         }
 
-        return Failed($"Sign-in needs '{result.ChallengeName}', which this portal does not support yet.");
+        return Failed(AuthErrorCodes.ChallengeUnsupported, result.ChallengeName ?? string.Empty);
     }
 
     private UserSession CreateSession(CognitoSignInResult tokens, string fallbackUsername, DateTimeOffset signedInAt)
