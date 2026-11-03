@@ -1,18 +1,17 @@
-using blazwiz.Core.Greetings.Interfaces;
-using blazwiz.Core.Time.Interfaces;
+using blazwiz.Portal.Application.Services.Interfaces;
 
-namespace blazwiz.Core.Greetings;
+namespace blazwiz.Portal.Application.Services;
 
 /// <inheritdoc/>
-public class GreetingService(ISystemClock systemClock)
+public class GreetingService(TimeProvider timeProvider)
     : IGreetingService
 {
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     /// <inheritdoc/>
     public string GetGreeting(string? name)
     {
-        var prefix = GetGreetingPrefix(systemClock.Now.Hour);
+        var prefix = GetGreetingPrefix(timeProvider.GetLocalNow().Hour);
         return string.IsNullOrWhiteSpace(name)
             ? prefix
             : $"{prefix}, {name.Trim()}";

@@ -1,6 +1,5 @@
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Sync.InMemory;
 
@@ -8,11 +7,11 @@ namespace blazwiz.Core.Sync.InMemory;
 /// Keeps files in memory, partitioned by user. Nothing survives a reload, so this is for tests and tools (e.g. to
 /// simulate a device), not for the app's own files.
 /// </summary>
-public class InMemorySyncFileStore(ISyncUserContext userContext, ISystemClock systemClock)
+public class InMemorySyncFileStore(ISyncUserContext userContext, TimeProvider timeProvider)
     : ISyncFileStore
 {
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly Dictionary<(string Owner, string Key), SyncFile> files = [];
 
     /// <inheritdoc/>
@@ -38,7 +37,7 @@ public class InMemorySyncFileStore(ISyncUserContext userContext, ISystemClock sy
         ArgumentNullException.ThrowIfNull(content);
 
         var owner = await GetOwnerAsync();
-        files[(owner, key)] = new SyncFile { Key = key, Content = [.. content], ModifiedAt = modifiedAt ?? systemClock.UtcNow };
+        files[(owner, key)] = new SyncFile { Key = key, Content = [.. content], ModifiedAt = modifiedAt ?? timeProvider.GetUtcNow() };
     }
 
     /// <inheritdoc/>

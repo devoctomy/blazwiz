@@ -1,5 +1,4 @@
 using blazwiz.Core.Offline.Interfaces;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Aws;
 
@@ -14,7 +13,7 @@ public sealed class CognitoAwsCredentialsProvider(
     ICognitoIdentityClient identityClient,
     AwsCognitoConfig cognitoConfig,
     IOfflineModeService offlineModeService,
-    ISystemClock systemClock)
+    TimeProvider timeProvider)
     : IAwsCredentialsProvider, IDisposable
 {
     /// <summary>
@@ -26,7 +25,7 @@ public sealed class CognitoAwsCredentialsProvider(
     private readonly ICognitoIdentityClient identityClient = identityClient ?? throw new ArgumentNullException(nameof(identityClient));
     private readonly AwsCognitoConfig cognitoConfig = cognitoConfig ?? throw new ArgumentNullException(nameof(cognitoConfig));
     private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly SemaphoreSlim gate = new SemaphoreSlim(1, 1);
 
     private CachedCredentials? cached;
@@ -65,7 +64,7 @@ public sealed class CognitoAwsCredentialsProvider(
         await gate.WaitAsync(ct);
         try
         {
-            if (cached != null && cached.Username == session.Username && cached.Credentials.Expiration - RefreshMargin > systemClock.UtcNow)
+            if (cached != null && cached.Username == session.Username && cached.Credentials.Expiration - RefreshMargin > timeProvider.GetUtcNow())
             {
                 return cached.Credentials;
             }

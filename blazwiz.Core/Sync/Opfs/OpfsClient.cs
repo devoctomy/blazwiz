@@ -1,3 +1,4 @@
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.FileTree;
 using blazwiz.Core.Sync.Interfaces;
 using Microsoft.JSInterop;
@@ -8,7 +9,7 @@ namespace blazwiz.Core.Sync.Opfs;
 /// <see cref="IOpfsClient"/> over the <c>wwwroot/js/opfs.js</c> module shipped with this library, imported the first
 /// time it is needed.
 /// </summary>
-public sealed class OpfsClient(IJSRuntime jsRuntime)
+public sealed class OpfsClient(IJSRuntime jsRuntime, IAppStorageKeys storageKeys)
     : IOpfsClient, IAsyncDisposable
 {
     /// <summary>
@@ -17,6 +18,7 @@ public sealed class OpfsClient(IJSRuntime jsRuntime)
     public const string ModulePath = "./_content/blazwiz.Core/js/opfs.js";
 
     private readonly IJSRuntime jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
+    private readonly IAppStorageKeys storageKeys = storageKeys ?? throw new ArgumentNullException(nameof(storageKeys));
     private Task<IJSObjectReference>? module;
 
     /// <inheritdoc/>
@@ -33,7 +35,7 @@ public sealed class OpfsClient(IJSRuntime jsRuntime)
         ArgumentException.ThrowIfNullOrWhiteSpace(owner);
 
         var js = await GetModuleAsync();
-        return await js.InvokeAsync<List<FileTreeEntry>>("list", root, owner);
+        return await js.InvokeAsync<List<FileTreeEntry>>("list", storageKeys.For(root), owner);
     }
 
     /// <inheritdoc/>
@@ -44,7 +46,7 @@ public sealed class OpfsClient(IJSRuntime jsRuntime)
         ArgumentException.ThrowIfNullOrEmpty(key);
 
         var js = await GetModuleAsync();
-        return await js.InvokeAsync<FileTreeFile?>("read", root, owner, key);
+        return await js.InvokeAsync<FileTreeFile?>("read", storageKeys.For(root), owner, key);
     }
 
     /// <inheritdoc/>
@@ -56,7 +58,7 @@ public sealed class OpfsClient(IJSRuntime jsRuntime)
         ArgumentNullException.ThrowIfNull(content);
 
         var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("write", root, owner, key, content);
+        await js.InvokeVoidAsync("write", storageKeys.For(root), owner, key, content);
     }
 
     /// <inheritdoc/>
@@ -67,7 +69,7 @@ public sealed class OpfsClient(IJSRuntime jsRuntime)
         ArgumentException.ThrowIfNullOrEmpty(key);
 
         var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("remove", root, owner, key);
+        await js.InvokeVoidAsync("remove", storageKeys.For(root), owner, key);
     }
 
     /// <inheritdoc/>

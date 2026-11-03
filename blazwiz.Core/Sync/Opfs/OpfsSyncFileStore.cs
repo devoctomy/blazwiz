@@ -1,7 +1,6 @@
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Sync.Opfs;
 
@@ -18,7 +17,7 @@ public class OpfsSyncFileStore(
     IOpfsClient opfsClient,
     IIndexedDbClient indexedDbClient,
     ISyncUserContext userContext,
-    ISystemClock systemClock,
+    TimeProvider timeProvider,
     string root,
     IndexedDbStore metadataStore)
     : ISyncFileStore
@@ -31,7 +30,7 @@ public class OpfsSyncFileStore(
     private readonly IOpfsClient opfsClient = opfsClient ?? throw new ArgumentNullException(nameof(opfsClient));
     private readonly IIndexedDbClient indexedDbClient = indexedDbClient ?? throw new ArgumentNullException(nameof(indexedDbClient));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     /// <summary>
     /// Gets the OPFS directory the files are kept under.
@@ -102,7 +101,7 @@ public class OpfsSyncFileStore(
         {
             Owner = owner,
             Key = key,
-            ModifiedAt = modifiedAt ?? systemClock.UtcNow,
+            ModifiedAt = modifiedAt ?? timeProvider.GetUtcNow(),
         });
     }
 

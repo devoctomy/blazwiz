@@ -1,3 +1,4 @@
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.Interfaces;
 using Microsoft.JSInterop;
 
@@ -7,7 +8,7 @@ namespace blazwiz.Core.Sync.IndexedDb;
 /// <see cref="IIndexedDbClient"/> over the <c>wwwroot/js/indexeddb.js</c> module shipped with this library, imported
 /// the first time it is needed.
 /// </summary>
-public sealed class IndexedDbClient(IJSRuntime jsRuntime)
+public sealed class IndexedDbClient(IJSRuntime jsRuntime, IAppStorageKeys storageKeys)
     : IIndexedDbClient, IAsyncDisposable
 {
     /// <summary>
@@ -16,6 +17,7 @@ public sealed class IndexedDbClient(IJSRuntime jsRuntime)
     public const string ModulePath = "./_content/blazwiz.Core/js/indexeddb.js";
 
     private readonly IJSRuntime jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
+    private readonly IAppStorageKeys storageKeys = storageKeys ?? throw new ArgumentNullException(nameof(storageKeys));
     private Task<IJSObjectReference>? module;
 
     /// <inheritdoc/>
@@ -25,7 +27,7 @@ public sealed class IndexedDbClient(IJSRuntime jsRuntime)
         ArgumentNullException.ThrowIfNull(key);
 
         var js = await GetModuleAsync();
-        return await js.InvokeAsync<T?>("get", store, key);
+        return await js.InvokeAsync<T?>("get", Scope(store), key);
     }
 
     /// <inheritdoc/>
@@ -36,7 +38,7 @@ public sealed class IndexedDbClient(IJSRuntime jsRuntime)
         ArgumentNullException.ThrowIfNull(key);
 
         var js = await GetModuleAsync();
-        return await js.InvokeAsync<List<T>>("getAllByIndex", store, indexName, key, omitFields ?? []);
+        return await js.InvokeAsync<List<T>>("getAllByIndex", Scope(store), indexName, key, omitFields ?? []);
     }
 
     /// <inheritdoc/>
@@ -46,7 +48,7 @@ public sealed class IndexedDbClient(IJSRuntime jsRuntime)
         ArgumentNullException.ThrowIfNull(value);
 
         var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("put", store, value);
+        await js.InvokeVoidAsync("put", Scope(store), value);
     }
 
     /// <inheritdoc/>
@@ -56,7 +58,7 @@ public sealed class IndexedDbClient(IJSRuntime jsRuntime)
         ArgumentNullException.ThrowIfNull(values);
 
         var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("putMany", store, values.ToArray());
+        await js.InvokeVoidAsync("putMany", Scope(store), values.ToArray());
     }
 
     /// <inheritdoc/>
@@ -68,7 +70,7 @@ public sealed class IndexedDbClient(IJSRuntime jsRuntime)
         ArgumentNullException.ThrowIfNull(upper);
 
         var js = await GetModuleAsync();
-        return await js.InvokeAsync<T?>("getLastByIndex", store, indexName, lower, upper);
+        return await js.InvokeAsync<T?>("getLastByIndex", Scope(store), indexName, lower, upper);
     }
 
     /// <inheritdoc/>
@@ -78,48 +80,7 @@ public sealed class IndexedDbClient(IJSRuntime jsRuntime)
         ArgumentNullException.ThrowIfNull(keys);
 
         var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("deleteMany", store, keys.ToArray());
-    }
-
-    /// <inheritdoc/>
-    public async Task<bool> StoreExistsAsync(string database, string storeName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(database);
-        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
-
-        var js = await GetModuleAsync();
-        return await js.InvokeAsync<bool>("storeExists", database, storeName);
-    }
-
-    /// <inheritdoc/>
-    public async Task<IReadOnlyList<T>> GetAllFromExistingAsync<T>(string database, string storeName)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(database);
-        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
-
-        var js = await GetModuleAsync();
-        return await js.InvokeAsync<List<T>>("getAllFromExisting", database, storeName);
-    }
-
-    /// <inheritdoc/>
-    public async Task DeleteManyFromExistingAsync(string database, string storeName, IEnumerable<object> keys)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(database);
-        ArgumentException.ThrowIfNullOrWhiteSpace(storeName);
-        ArgumentNullException.ThrowIfNull(keys);
-
-        var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("deleteManyFromExisting", database, storeName, keys.ToArray());
-    }
-
-    /// <inheritdoc/>
-    public async Task DeleteStoresAsync(string database, IEnumerable<string> storeNames)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(database);
-        ArgumentNullException.ThrowIfNull(storeNames);
-
-        var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("deleteStores", database, storeNames.ToArray());
+        await js.InvokeVoidAsync("deleteMany", Scope(store), keys.ToArray());
     }
 
     /// <inheritdoc/>
@@ -137,6 +98,10 @@ public sealed class IndexedDbClient(IJSRuntime jsRuntime)
             }
         }
     }
+
+    // The database is named after the app, so apps on the same origin keep their data apart.
+    private IndexedDbStore Scope(IndexedDbStore store) =>
+        new IndexedDbStore(storageKeys.For(store.Database), store.Name, store.KeyPath, store.Indexes);
 
     private Task<IJSObjectReference> GetModuleAsync()
     {

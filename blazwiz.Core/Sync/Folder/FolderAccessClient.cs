@@ -1,3 +1,4 @@
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.FileTree;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
@@ -9,7 +10,7 @@ namespace blazwiz.Core.Sync.Folder;
 /// <see cref="IFolderAccessClient"/> over the <c>wwwroot/js/folder.js</c> module shipped with this library, imported
 /// the first time it is needed.
 /// </summary>
-public sealed class FolderAccessClient(IJSRuntime jsRuntime)
+public sealed class FolderAccessClient(IJSRuntime jsRuntime, IAppStorageKeys storageKeys)
     : IFolderAccessClient, IAsyncDisposable
 {
     /// <summary>
@@ -18,6 +19,7 @@ public sealed class FolderAccessClient(IJSRuntime jsRuntime)
     public const string ModulePath = "./_content/blazwiz.Core/js/folder.js";
 
     private readonly IJSRuntime jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
+    private readonly IAppStorageKeys storageKeys = storageKeys ?? throw new ArgumentNullException(nameof(storageKeys));
     private Task<IJSObjectReference>? module;
 
     /// <inheritdoc/>
@@ -119,6 +121,14 @@ public sealed class FolderAccessClient(IJSRuntime jsRuntime)
             module = null;
         }
 
-        return module ??= jsRuntime.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();
+        return module ??= ImportAsync();
+    }
+
+    // The module keeps the folder handles in a database named after the app.
+    private async Task<IJSObjectReference> ImportAsync()
+    {
+        var js = await jsRuntime.InvokeAsync<IJSObjectReference>("import", ModulePath);
+        await js.InvokeVoidAsync("configure", storageKeys.Prefix);
+        return js;
     }
 }

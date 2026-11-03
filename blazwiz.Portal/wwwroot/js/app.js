@@ -25,11 +25,13 @@ window.portalInterop = {
     }
 };
 
-// Apply the saved theme (or the OS preference) immediately, before Blazor has loaded.
+// Apply the saved theme (or the OS preference) immediately, before Blazor has loaded. The settings key is named after
+// the app (data-app-name on <html>, the same name as AppIdentity.Name), as everything the app keeps in the browser is.
 (function () {
     var theme = null;
     try {
-        var settings = JSON.parse(localStorage.getItem('blazwiz_user_settings') || '{}');
+        var prefix = document.documentElement.getAttribute('data-app-name') + '_';
+        var settings = JSON.parse(localStorage.getItem(prefix + 'user_settings') || '{}');
         theme = settings.Theme;
     } catch (e) {
         // Ignore unreadable settings and fall back to the OS preference.

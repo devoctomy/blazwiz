@@ -1,6 +1,5 @@
 using System.Text;
 using blazwiz.Core.Sync.Interfaces;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Notes;
@@ -17,12 +16,11 @@ public class NoteService(
     IAuthenticationService authService,
     [FromKeyedServices(NoteService.ProfileName)] ISyncFileStore fileStore,
     INotesStateStore stateStore,
-    INoteMigrationService migrationService,
     ISyncService syncService,
     IConnectivityService connectivityService,
     INoteNameService noteNameService,
     INoteTreeService noteTreeService,
-    ISystemClock systemClock)
+    TimeProvider timeProvider)
     : INoteService
 {
     /// <summary>
@@ -43,12 +41,11 @@ public class NoteService(
     private readonly IAuthenticationService authService = authService ?? throw new ArgumentNullException(nameof(authService));
     private readonly ISyncFileStore fileStore = fileStore ?? throw new ArgumentNullException(nameof(fileStore));
     private readonly INotesStateStore stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
-    private readonly INoteMigrationService migrationService = migrationService ?? throw new ArgumentNullException(nameof(migrationService));
     private readonly ISyncService syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
     private readonly IConnectivityService connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
     private readonly INoteNameService noteNameService = noteNameService ?? throw new ArgumentNullException(nameof(noteNameService));
     private readonly INoteTreeService noteTreeService = noteTreeService ?? throw new ArgumentNullException(nameof(noteTreeService));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     /// <summary>
     /// Reads the welcome note's markdown from the embedded resource.
@@ -66,7 +63,6 @@ public class NoteService(
     public async Task<IReadOnlyList<NoteEntry>> GetEntriesAsync()
     {
         var owner = await GetOwnerAsync();
-        await migrationService.MigrateAsync(owner);
         var entries = await LoadEntriesAsync(owner);
 
         var state = await stateStore.GetAsync(owner);
@@ -281,7 +277,7 @@ public class NoteService(
 
     private NoteEntry CreateEntry(string owner, string key, NoteEntryKind kind)
     {
-        var now = systemClock.UtcNow;
+        var now = timeProvider.GetUtcNow();
         return new NoteEntry
         {
             Id = key,

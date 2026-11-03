@@ -1,3 +1,5 @@
+using blazwiz.Core.Configuration;
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.FileTree;
 using blazwiz.Core.Sync.Folder;
 using blazwiz.Core.Sync.Models;
@@ -9,6 +11,8 @@ namespace blazwiz.Core.UnitTests.Sync.Folder;
 
 public class FolderAccessClientTests
 {
+    private readonly Mock<IAppStorageKeys> mockKeys = CreateKeys();
+
     private readonly Mock<IJSRuntime> mockJs = new();
     private readonly Mock<IJSObjectReference> mockModule = new();
 
@@ -21,7 +25,7 @@ public class FolderAccessClientTests
     [Fact]
     public void GivenNullJsRuntime_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("jsRuntime", Assert.Throws<ArgumentNullException>(() => new FolderAccessClient(null!)).ParamName);
+        Assert.Equal("jsRuntime", Assert.Throws<ArgumentNullException>(() => new FolderAccessClient(null!, mockKeys.Object)).ParamName);
     }
 
     [Fact]
@@ -157,5 +161,36 @@ public class FolderAccessClientTests
         mockModule.Verify(x => x.DisposeAsync(), Times.Once);
     }
 
-    private FolderAccessClient CreateSut() => new(mockJs.Object);
+    private FolderAccessClient CreateSut() => new(mockJs.Object, mockKeys.Object);
+
+
+    [Fact]
+    public async Task GivenAppName_WhenModuleImported_ThenConfiguredWithTheAppPrefix()
+    {
+        // Arrange
+        mockModule.Setup(x => x.InvokeAsync<bool>("isSupported", It.IsAny<object?[]>())).ReturnsAsync(true);
+        var sut = new FolderAccessClient(mockJs.Object, new AppStorageKeys(new BlazwizAppOptions { Name = "app" }));
+
+        // Act
+        await sut.IsSupportedAsync();
+        await sut.IsSupportedAsync();
+
+        // Assert
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("configure", It.Is<object?[]>(a => (string?)a[0] == "app_")), Times.Once);
+    }
+
+    [Fact]
+    public void GivenNullStorageKeys_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("storageKeys", Assert.Throws<ArgumentNullException>(() => new FolderAccessClient(mockJs.Object, null!)).ParamName);
+    }
+
+    // Keeps names as they are, so the tests can check them; the prefix itself is checked separately.
+    private static Mock<IAppStorageKeys> CreateKeys()
+    {
+        var keys = new Mock<IAppStorageKeys>();
+        keys.Setup(x => x.For(It.IsAny<string>())).Returns<string>(name => name);
+        keys.SetupGet(x => x.Prefix).Returns(string.Empty);
+        return keys;
+    }
 }

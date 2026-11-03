@@ -2,7 +2,6 @@ using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Sync.Folder;
 
@@ -22,7 +21,7 @@ public class FolderSyncFileStore(
     IFolderAccessClient folderClient,
     IIndexedDbClient indexedDbClient,
     ISyncUserContext userContext,
-    ISystemClock systemClock,
+    TimeProvider timeProvider,
     ISyncPathMatcher matcher,
     IndexedDbStore metadataStore)
     : ISyncFileStore
@@ -35,7 +34,7 @@ public class FolderSyncFileStore(
     private readonly IFolderAccessClient folderClient = folderClient ?? throw new ArgumentNullException(nameof(folderClient));
     private readonly IIndexedDbClient indexedDbClient = indexedDbClient ?? throw new ArgumentNullException(nameof(indexedDbClient));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly ISyncPathMatcher matcher = matcher ?? throw new ArgumentNullException(nameof(matcher));
 
     /// <summary>
@@ -103,7 +102,7 @@ public class FolderSyncFileStore(
         {
             Owner = owner,
             Key = key,
-            ModifiedAt = modifiedAt ?? systemClock.UtcNow,
+            ModifiedAt = modifiedAt ?? timeProvider.GetUtcNow(),
             FileLastModified = written,
         });
     }

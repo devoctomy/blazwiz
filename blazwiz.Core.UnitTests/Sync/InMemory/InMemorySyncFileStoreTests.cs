@@ -1,6 +1,5 @@
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync.InMemory;
@@ -9,19 +8,19 @@ public class InMemorySyncFileStoreTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
     private readonly Mock<ISyncUserContext> mockUser = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
 
     public InMemorySyncFileStoreTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync("bob");
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new InMemorySyncFileStore(null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new InMemorySyncFileStore(mockUser.Object, null!)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new InMemorySyncFileStore(mockUser.Object, null!)).ParamName);
     }
 
     [Fact]

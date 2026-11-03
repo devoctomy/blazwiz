@@ -1,4 +1,4 @@
-namespace blazwiz.Core.Greetings.Interfaces;
+namespace blazwiz.Portal.Application.Services.Interfaces;
 
 /// <summary>
 /// Produces friendly, time of day aware greetings for users.

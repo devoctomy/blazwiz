@@ -64,38 +64,4 @@ public interface IIndexedDbClient
     /// <param name="keys">The keys.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task DeleteManyAsync(IndexedDbStore store, IEnumerable<object> keys);
-
-    /// <summary>
-    /// Checks whether an object store exists, without creating it.
-    /// </summary>
-    /// <param name="database">The database name.</param>
-    /// <param name="storeName">The store name.</param>
-    /// <returns>True if it exists.</returns>
-    Task<bool> StoreExistsAsync(string database, string storeName);
-
-    /// <summary>
-    /// Gets every record in a store that already exists, without creating it.
-    /// </summary>
-    /// <typeparam name="T">The record type.</typeparam>
-    /// <param name="database">The database name.</param>
-    /// <param name="storeName">The store name.</param>
-    /// <returns>The records, or empty if the store does not exist.</returns>
-    Task<IReadOnlyList<T>> GetAllFromExistingAsync<T>(string database, string storeName);
-
-    /// <summary>
-    /// Deletes records from a store that already exists, without creating it.
-    /// </summary>
-    /// <param name="database">The database name.</param>
-    /// <param name="storeName">The store name.</param>
-    /// <param name="keys">The keys.</param>
-    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task DeleteManyFromExistingAsync(string database, string storeName, IEnumerable<object> keys);
-
-    /// <summary>
-    /// Removes object stores from a database (a database upgrade). Missing stores are ignored.
-    /// </summary>
-    /// <param name="database">The database name.</param>
-    /// <param name="storeNames">The store names.</param>
-    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task DeleteStoresAsync(string database, IEnumerable<string> storeNames);
 }

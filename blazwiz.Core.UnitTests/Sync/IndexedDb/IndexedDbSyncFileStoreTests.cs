@@ -1,6 +1,5 @@
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync.IndexedDb;
@@ -9,17 +8,17 @@ public class IndexedDbSyncFileStoreTests
 {
     private const string Owner = "bob";
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
-    private const string Database = "blazwiz_notes";
+    private const string Database = "notes";
     private static readonly IndexedDbStore Store = IndexedDbSyncFileStore.DescribeStore(Database, "files");
 
     private readonly Mock<IIndexedDbClient> mockClient = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
 
     public IndexedDbSyncFileStoreTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
     }
 
     [Fact]
@@ -27,7 +26,7 @@ public class IndexedDbSyncFileStoreTests
     {
         Assert.Equal("client", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncFileStore(null!, mockUser.Object, mockClock.Object, Store)).ParamName);
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncFileStore(mockClient.Object, null!, mockClock.Object, Store)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncFileStore(mockClient.Object, mockUser.Object, null!, Store)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncFileStore(mockClient.Object, mockUser.Object, null!, Store)).ParamName);
         Assert.Equal("store", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncFileStore(mockClient.Object, mockUser.Object, mockClock.Object, null!)).ParamName);
     }
 

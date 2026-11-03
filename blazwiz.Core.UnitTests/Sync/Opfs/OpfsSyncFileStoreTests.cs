@@ -2,7 +2,6 @@ using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.FileTree;
 using blazwiz.Core.Sync.Opfs;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync.Opfs;
@@ -13,17 +12,17 @@ public class OpfsSyncFileStoreTests
     private const string Root = "notes_root";
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Earlier = new(2026, 9, 1, 12, 0, 0, TimeSpan.Zero);
-    private static readonly IndexedDbStore Metadata = OpfsSyncFileStore.DescribeMetadataStore("blazwiz_sync", "notes_opfs");
+    private static readonly IndexedDbStore Metadata = OpfsSyncFileStore.DescribeMetadataStore("sync", "notes_opfs");
 
     private readonly Mock<IOpfsClient> mockOpfs = new();
     private readonly Mock<IIndexedDbClient> mockIndexedDb = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
 
     public OpfsSyncFileStoreTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
     }
 
     [Fact]
@@ -32,7 +31,7 @@ public class OpfsSyncFileStoreTests
         Assert.Equal("opfsClient", Assert.Throws<ArgumentNullException>(() => new OpfsSyncFileStore(null!, mockIndexedDb.Object, mockUser.Object, mockClock.Object, Root, Metadata)).ParamName);
         Assert.Equal("indexedDbClient", Assert.Throws<ArgumentNullException>(() => new OpfsSyncFileStore(mockOpfs.Object, null!, mockUser.Object, mockClock.Object, Root, Metadata)).ParamName);
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new OpfsSyncFileStore(mockOpfs.Object, mockIndexedDb.Object, null!, mockClock.Object, Root, Metadata)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new OpfsSyncFileStore(mockOpfs.Object, mockIndexedDb.Object, mockUser.Object, null!, Root, Metadata)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new OpfsSyncFileStore(mockOpfs.Object, mockIndexedDb.Object, mockUser.Object, null!, Root, Metadata)).ParamName);
         Assert.Equal("root", Assert.Throws<ArgumentException>(() => new OpfsSyncFileStore(mockOpfs.Object, mockIndexedDb.Object, mockUser.Object, mockClock.Object, " ", Metadata)).ParamName);
         Assert.Equal("metadataStore", Assert.Throws<ArgumentNullException>(() => new OpfsSyncFileStore(mockOpfs.Object, mockIndexedDb.Object, mockUser.Object, mockClock.Object, Root, null!)).ParamName);
     }
@@ -40,7 +39,7 @@ public class OpfsSyncFileStoreTests
     [Fact]
     public void GivenDatabaseAndName_WhenDescribeMetadataStore_ThenKeyedByOwnerAndKeyAndIndexedByOwner()
     {
-        Assert.Equal(("blazwiz_sync", "notes_opfs"), (Metadata.Database, Metadata.Name));
+        Assert.Equal(("sync", "notes_opfs"), (Metadata.Database, Metadata.Name));
         Assert.Equal(["owner", "key"], Metadata.KeyPath);
         var index = Assert.Single(Metadata.Indexes);
         Assert.Equal(OpfsSyncFileStore.OwnerIndex, index.Name);

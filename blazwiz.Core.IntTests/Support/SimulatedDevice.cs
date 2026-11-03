@@ -5,7 +5,6 @@ using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Core.Sync.S3;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.IntTests.Support;
@@ -19,13 +18,13 @@ public sealed class SimulatedDevice
     public const string Profile = "notes";
     public const string Owner = "inttest-user";
 
-    private readonly Mock<ISystemClock> clock = new();
+    private readonly Mock<TimeProvider> clock = new();
 
     public SimulatedDevice(S3SyncTarget target)
     {
         var user = new Mock<ISyncUserContext>();
         user.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        clock.SetupGet(x => x.UtcNow).Returns(() => DateTimeOffset.UtcNow);
+        clock.Setup(x => x.GetUtcNow()).Returns(() => DateTimeOffset.UtcNow);
 
         var targets = new Mock<IS3SyncTargetProvider>();
         targets.Setup(x => x.GetTargetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(target);

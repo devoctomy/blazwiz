@@ -3,7 +3,6 @@ using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
@@ -20,11 +19,10 @@ public class NoteServiceTests
 
     private readonly Mock<IAuthenticationService> mockAuth = new();
     private readonly Mock<INotesStateStore> mockState = new();
-    private readonly Mock<INoteMigrationService> mockMigration = new();
     private readonly Mock<ISyncService> mockSync = new();
     private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly Mock<INoteNameService> mockNames = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
     private readonly NoteTreeService tree = new();
     private readonly InMemorySyncFileStore files;
@@ -36,7 +34,7 @@ public class NoteServiceTests
     {
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = Owner });
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
         mockNames.Setup(x => x.Validate(It.IsAny<string?>())).Returns((string?)null);
         mockNames.Setup(x => x.ToNoteFileName(It.IsAny<string>())).Returns<string>(n => n.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ? n : n + ".md");
         mockState.Setup(x => x.GetAsync(It.IsAny<string>())).ReturnsAsync((string o) => states.GetValueOrDefault(o));
@@ -49,15 +47,14 @@ public class NoteServiceTests
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new NoteService(null!, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("fileStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, null!, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, null!, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("migrationService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, null!, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, null!, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, null!, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, null!, tree, mockClock.Object)).ParamName);
-        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new NoteService(null!, files, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("fileStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, null!, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, null!, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, null!, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockSync.Object, null!, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockSync.Object, mockConnectivity.Object, null!, tree, mockClock.Object)).ParamName);
+        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, null!, mockClock.Object)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, null!)).ParamName);
     }
 
     [Fact]
@@ -90,7 +87,6 @@ public class NoteServiceTests
         Assert.Equal(NoteService.ReadWelcomeNote(), await ReadAsync("notes/Welcome.md"));
         Assert.Single(second);
         Assert.True(states[Owner].WelcomeNoteCreated);
-        mockMigration.Verify(x => x.MigrateAsync(Owner), Times.Exactly(2));
     }
 
     [Fact]
@@ -487,5 +483,5 @@ public class NoteServiceTests
     }
 
     private NoteService CreateSut() =>
-        new(mockAuth.Object, files, mockState.Object, mockMigration.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object);
+        new(mockAuth.Object, files, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object);
 }

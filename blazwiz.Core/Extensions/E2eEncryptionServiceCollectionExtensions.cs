@@ -3,8 +3,6 @@ using blazwiz.Core.Cryptography.Configuration;
 using blazwiz.Core.Cryptography.Interfaces;
 using blazwiz.Core.Encryption;
 using blazwiz.Core.Encryption.Interfaces;
-using blazwiz.Core.Time;
-using blazwiz.Core.Time.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -36,7 +34,7 @@ public static class E2eEncryptionServiceCollectionExtensions
         services.RemoveAll<Argon2idOptions>();
         services.AddSingleton(argon2Options);
 
-        services.TryAddSingleton<ISystemClock, SystemClock>();
+        services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IAeadCipher, BouncyCastleAesGcmAeadCipher>();
         services.TryAddSingleton<IKeyWrapService, AeadKeyWrapService>();
         services.TryAddSingleton<IArgon2idKeyDerivationService, BouncyCastleArgon2idKeyDerivationService>();

@@ -3,7 +3,6 @@ using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync;
@@ -18,7 +17,7 @@ public class SyncServiceTests
     private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
     private readonly Mock<ISyncEventLog> mockLog = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
     private readonly InMemorySyncIndexStore notesIndex = new();
     private readonly SyncProfile notes;
     private readonly SyncProfile photos;
@@ -26,7 +25,7 @@ public class SyncServiceTests
     public SyncServiceTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
         mockEngine.Setup(x => x.SyncAsync(It.IsAny<SyncProfile>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((SyncProfile p, bool _, CancellationToken _) => new SyncResult { Profile = p.Name });
         notes = Profile("notes", notesIndex, "notes/**/*.md");
@@ -42,7 +41,7 @@ public class SyncServiceTests
         Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, null!, mockUser.Object, mockLog.Object, mockClock.Object, [])).ParamName);
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, null!, mockLog.Object, mockClock.Object, [])).ParamName);
         Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, null!, mockClock.Object, [])).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, null!, [])).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncService([], mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, null!, [])).ParamName);
     }
 
     [Fact]

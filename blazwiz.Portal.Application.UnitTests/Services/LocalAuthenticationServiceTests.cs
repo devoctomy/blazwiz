@@ -1,6 +1,5 @@
 using blazwiz.Core.Offline;
 using blazwiz.Core.Offline.Models;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
@@ -14,47 +13,47 @@ public class LocalAuthenticationServiceTests
 
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<IUserDisplayService> mockUserDisplay = new();
-    private readonly Mock<ISystemClock> mockSystemClock = new();
+    private readonly Mock<TimeProvider> mockTimeProvider = new();
     private readonly OfflineModeService offlineMode = new();
     private readonly InMemoryOfflineSessionStore offlineSessions;
     private DateTimeOffset now = Now;
 
     public LocalAuthenticationServiceTests()
     {
-        mockSystemClock.SetupGet(x => x.UtcNow).Returns(() => now);
+        mockTimeProvider.Setup(x => x.GetUtcNow()).Returns(() => now);
         mockUserDisplay.Setup(x => x.GetDisplayNameFromUsername(It.IsAny<string>())).Returns("Bob Hoskins");
-        offlineSessions = new InMemoryOfflineSessionStore(mockSystemClock.Object);
+        offlineSessions = new InMemoryOfflineSessionStore(mockTimeProvider.Object);
     }
 
     [Fact]
     public void GivenNullLocalStorage_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(null!, mockUserDisplay.Object, offlineMode, offlineSessions, mockSystemClock.Object));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(null!, mockUserDisplay.Object, offlineMode, offlineSessions, mockTimeProvider.Object));
         Assert.Equal("localStorageService", exception.ParamName);
     }
 
     [Fact]
-    public void GivenNullSystemClock_WhenConstructing_ThenThrowsArgumentNullException()
+    public void GivenNullTimeProvider_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, null!));
-        Assert.Equal("systemClock", exception.ParamName);
+        Assert.Equal("timeProvider", exception.ParamName);
     }
 
     [Fact]
     public void GivenNullUserDisplayService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, null!, offlineMode, offlineSessions, mockSystemClock.Object));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, null!, offlineMode, offlineSessions, mockTimeProvider.Object));
         Assert.Equal("userDisplayService", exception.ParamName);
     }
 
     [Fact]
     public void GivenNullOfflineDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockSystemClock.Object)).ParamName);
-        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockSystemClock.Object)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockTimeProvider.Object)).ParamName);
+        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockTimeProvider.Object)).ParamName);
     }
 
     [Fact]
@@ -313,5 +312,5 @@ public class LocalAuthenticationServiceTests
             .ReturnsAsync(session);
     }
 
-    private LocalAuthenticationService CreateSut() => new(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, mockSystemClock.Object);
+    private LocalAuthenticationService CreateSut() => new(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, mockTimeProvider.Object);
 }

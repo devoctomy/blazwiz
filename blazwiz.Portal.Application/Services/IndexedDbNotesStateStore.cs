@@ -14,7 +14,7 @@ public class IndexedDbNotesStateStore(IIndexedDbClient client)
     /// <summary>
     /// The IndexedDB database holding the notes files and state.
     /// </summary>
-    public const string Database = "blazwiz_notes";
+    public const string Database = "notes";
 
     /// <summary>
     /// The object store holding the state.

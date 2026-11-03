@@ -1,19 +1,18 @@
-using blazwiz.Core.Greetings;
-using blazwiz.Core.Time.Interfaces;
-using Moq;
+using blazwiz.Portal.Application.Services;
+using Microsoft.Extensions.Time.Testing;
 
-namespace blazwiz.Core.UnitTests.Greetings;
+namespace blazwiz.Portal.Application.UnitTests.Services;
 
 public class GreetingServiceTests
 {
-    private readonly Mock<ISystemClock> mockSystemClock = new();
+    private readonly FakeTimeProvider timeProvider = new();
 
     [Fact]
-    public void GivenNullSystemClock_WhenConstructing_ThenThrowsArgumentNullException()
+    public void GivenNullTimeProvider_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
         var exception = Assert.Throws<ArgumentNullException>(() => new GreetingService(null!));
-        Assert.Equal("systemClock", exception.ParamName);
+        Assert.Equal("timeProvider", exception.ParamName);
     }
 
     [Theory]
@@ -28,7 +27,7 @@ public class GreetingServiceTests
     public void GivenHour_WhenGetGreetingPrefix_ThenReturnsExpectedPrefix(int hour, string expected)
     {
         // Arrange
-        var sut = new GreetingService(mockSystemClock.Object);
+        var sut = new GreetingService(timeProvider);
 
         // Act
         var result = sut.GetGreetingPrefix(hour);
@@ -43,7 +42,7 @@ public class GreetingServiceTests
     public void GivenInvalidHour_WhenGetGreetingPrefix_ThenThrowsArgumentOutOfRangeException(int hour)
     {
         // Arrange
-        var sut = new GreetingService(mockSystemClock.Object);
+        var sut = new GreetingService(timeProvider);
 
         // Act & Assert
         Assert.Throws<ArgumentOutOfRangeException>(() => sut.GetGreetingPrefix(hour));
@@ -58,10 +57,9 @@ public class GreetingServiceTests
     public void GivenName_WhenGetGreeting_ThenReturnsGreetingForCurrentTime(string? name, string expected)
     {
         // Arrange
-        mockSystemClock
-            .SetupGet(x => x.Now)
-            .Returns(new DateTimeOffset(2026, 1, 1, 9, 30, 0, TimeSpan.Zero));
-        var sut = new GreetingService(mockSystemClock.Object);
+        timeProvider.SetLocalTimeZone(TimeZoneInfo.Utc);
+        timeProvider.SetUtcNow(new DateTimeOffset(2026, 1, 1, 9, 30, 0, TimeSpan.Zero));
+        var sut = new GreetingService(timeProvider);
 
         // Act
         var result = sut.GetGreeting(name);

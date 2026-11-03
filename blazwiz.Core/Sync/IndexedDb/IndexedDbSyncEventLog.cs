@@ -1,7 +1,6 @@
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Sync.IndexedDb;
 
@@ -12,7 +11,7 @@ namespace blazwiz.Core.Sync.IndexedDb;
 public class IndexedDbSyncEventLog(
     IIndexedDbClient client,
     ISyncUserContext userContext,
-    ISystemClock systemClock,
+    TimeProvider timeProvider,
     SyncOptions options,
     IndexedDbStore store)
     : ISyncEventLog
@@ -34,7 +33,7 @@ public class IndexedDbSyncEventLog(
 
     private readonly IIndexedDbClient client = client ?? throw new ArgumentNullException(nameof(client));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
 
     /// <inheritdoc/>
@@ -137,7 +136,7 @@ public class IndexedDbSyncEventLog(
     public async Task PruneAsync()
     {
         var events = await GetOwnEventsAsync();
-        var cutoff = systemClock.UtcNow - options.EventLogMaxAge;
+        var cutoff = timeProvider.GetUtcNow() - options.EventLogMaxAge;
         var expired = events
             .Where((e, position) => e.Timestamp < cutoff || position >= options.EventLogMaxEventsPerUser)
             .Select(e => (object)e.Id)

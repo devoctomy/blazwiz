@@ -142,7 +142,7 @@ public class SyncEncryptionServiceTests
             [E2eStep.Sync, E2eStep.GoOffline, E2eStep.CheckExistingKeys, E2eStep.CheckIndex, E2eStep.GoOnline],
             reported.Select(p => p.Step).Distinct());
         Assert.All(reported.GroupBy(p => p.Step), g => Assert.True(g.Last().Completed));
-        mockLock.Verify(x => x.AcquireAsync("blazwiz-sync-" + Profile, It.IsAny<CancellationToken>()), Times.Once);
+        mockLock.Verify(x => x.AcquireAsync("sync-" + Profile, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

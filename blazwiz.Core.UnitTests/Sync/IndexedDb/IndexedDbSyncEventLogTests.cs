@@ -2,7 +2,6 @@ using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync.IndexedDb;
@@ -11,18 +10,18 @@ public class IndexedDbSyncEventLogTests
 {
     private const string Owner = "bob";
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
-    private static readonly IndexedDbStore Store = IndexedDbSyncEventLog.DescribeStore("blazwiz_sync", "events");
+    private static readonly IndexedDbStore Store = IndexedDbSyncEventLog.DescribeStore("sync", "events");
 
     private readonly Mock<IIndexedDbClient> mockClient = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
     private readonly SyncOptions options = new();
     private readonly List<SyncEvent> stored = [];
 
     public IndexedDbSyncEventLogTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
         mockClient.Setup(x => x.GetAllByIndexAsync<SyncEvent>(Store, IndexedDbSyncEventLog.OwnerIndex, Owner, null))
             .ReturnsAsync(() => stored.Where(e => e.Owner == Owner).ToList());
     }
@@ -32,7 +31,7 @@ public class IndexedDbSyncEventLogTests
     {
         Assert.Equal("client", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncEventLog(null!, mockUser.Object, mockClock.Object, options, Store)).ParamName);
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncEventLog(mockClient.Object, null!, mockClock.Object, options, Store)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncEventLog(mockClient.Object, mockUser.Object, null!, options, Store)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncEventLog(mockClient.Object, mockUser.Object, null!, options, Store)).ParamName);
         Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncEventLog(mockClient.Object, mockUser.Object, mockClock.Object, null!, Store)).ParamName);
         Assert.Equal("store", Assert.Throws<ArgumentNullException>(() => new IndexedDbSyncEventLog(mockClient.Object, mockUser.Object, mockClock.Object, options, null!)).ParamName);
     }

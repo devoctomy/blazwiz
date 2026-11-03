@@ -15,7 +15,7 @@ public class LocalStorageE2eLocalKeyStore(ILocalStorageService localStorageServi
     /// <summary>
     /// The local storage key prefix, followed by the user id.
     /// </summary>
-    public const string StorageKeyPrefix = "blazwiz_e2e_keys_";
+    public const string StorageKeyPrefix = "e2e_keys_";
 
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));

@@ -1,3 +1,4 @@
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.Connectivity;
 using blazwiz.Core.Sync.Interfaces;
 using Microsoft.JSInterop;
@@ -9,10 +10,11 @@ namespace blazwiz.Core.Sync;
 /// The browser releases a lock if its tab closes mid-sync. A cancelled wait is cancelled in the browser too, so a lock
 /// granted after giving up is released straight away rather than held until the tab closes.
 /// </summary>
-public sealed class WebLockSyncLockService(IJSRuntime jsRuntime)
+public sealed class WebLockSyncLockService(IJSRuntime jsRuntime, IAppStorageKeys storageKeys)
     : ISyncLockService
 {
     private readonly IJSRuntime jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
+    private readonly IAppStorageKeys storageKeys = storageKeys ?? throw new ArgumentNullException(nameof(storageKeys));
     private IJSObjectReference? module;
 
     /// <inheritdoc/>
@@ -27,7 +29,7 @@ public sealed class WebLockSyncLockService(IJSRuntime jsRuntime)
         string id;
         try
         {
-            id = await js.InvokeAsync<string>("acquireLock", ct, name, requestId);
+            id = await js.InvokeAsync<string>("acquireLock", ct, storageKeys.For(name), requestId);
         }
         catch (OperationCanceledException)
         {

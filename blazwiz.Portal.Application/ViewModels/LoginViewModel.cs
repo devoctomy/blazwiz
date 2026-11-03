@@ -20,7 +20,7 @@ public partial class LoginViewModel : ViewModelBase
     /// <summary>
     /// The local storage key holding the remembered users.
     /// </summary>
-    public const string SavedUsersStorageKey = "blazwiz_saved_users";
+    public const string SavedUsersStorageKey = "saved_users";
 
     private readonly IAuthenticationService authService;
     private readonly INavigationService navigationService;

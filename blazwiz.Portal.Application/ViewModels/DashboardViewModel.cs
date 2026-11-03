@@ -1,5 +1,4 @@
 using Blazing.Mvvm.ComponentModel;
-using blazwiz.Core.Greetings.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Navigation;
 using blazwiz.Portal.Models.Settings;

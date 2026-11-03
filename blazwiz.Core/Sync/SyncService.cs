@@ -1,7 +1,6 @@
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Sync;
 
@@ -17,7 +16,7 @@ public class SyncService(
     IConnectivityService connectivityService,
     ISyncUserContext userContext,
     ISyncEventLog eventLog,
-    ISystemClock systemClock,
+    TimeProvider timeProvider,
     IEnumerable<ISyncGate> gates)
     : ISyncService
 {
@@ -27,7 +26,7 @@ public class SyncService(
     private readonly IConnectivityService connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly ISyncEventLog eventLog = eventLog ?? throw new ArgumentNullException(nameof(eventLog));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly IReadOnlyList<ISyncGate> gates = (gates ?? throw new ArgumentNullException(nameof(gates))).ToList();
 
     private SyncStatus status = new SyncStatus();
@@ -104,7 +103,7 @@ public class SyncService(
                 s.ConflictsResolved = total.ConflictsResolved;
                 if (error == null && ran && !ct.IsCancellationRequested)
                 {
-                    s.LastSyncedAt = systemClock.UtcNow;
+                    s.LastSyncedAt = timeProvider.GetUtcNow();
                 }
             });
             await PruneLogAsync();

@@ -36,6 +36,9 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        // The app's name and ID: everything kept in the browser is named after the app (e.g. blazwiz_session).
+        services.AddBlazwizApp(AppIdentity.Name, AppIdentity.Id);
+
         // The clock and timers (e.g. the session countdown). Also added by sync, hence TryAdd.
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<ILocalStorageService, LocalStorageService>();
@@ -85,6 +88,7 @@ public static class ServiceCollectionExtensions
                 ? ActivatorUtilities.CreateInstance<CognitoAuthenticationService>(sp)
                 : ActivatorUtilities.CreateInstance<LocalAuthenticationService>(sp));
         services.AddSingleton<INavigationMenuService, NavigationMenuService>();
+        services.AddScoped<IGreetingService, GreetingService>();
 
 //#if (IncludeNotes)
         // Sync: notes are plain markdown files kept in IndexedDB, OPFS or a folder the user picks (chosen per device in
@@ -103,14 +107,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
         services.AddScoped<IPasskeyUnlockService, PasskeyUnlockService>();
         services.AddBlazwizSync(sync => sync
-            .UseIndexedDbEventLog(database: "blazwiz_sync", store: "events")
+            .UseIndexedDbEventLog(database: "sync", store: "events")
             .UseEventLogRetention(maxAge: TimeSpan.FromDays(30), maxEventsPerUser: 5000)
             .UseChangeDebounce(TimeSpan.FromSeconds(2))
             .AddProfile(NoteService.ProfileName, profile => profile
-                .UseIndexedDbIndexStore(database: "blazwiz_sync", store: "notes_index")
+                .UseIndexedDbIndexStore(database: "sync", store: "notes_index")
                 .UseFileStores(stores => stores
                     .AddIndexedDb(database: IndexedDbNotesStateStore.Database, store: "files")
-                    .AddOpfs(root: "blazwiz_notes")
+                    .AddOpfs(root: "notes")
                     .AddLocalFolder()
                     .UseDefault(SyncStorageKind.IndexedDb))
                 .UseRemote("notes/**/*.md", includeEmptyFolders: true)
@@ -118,7 +122,6 @@ public static class ServiceCollectionExtensions
 
         // Notes
         services.AddScoped<INotesStateStore, IndexedDbNotesStateStore>();
-        services.AddScoped<INoteMigrationService, NoteMigrationService>();
         services.AddScoped<INoteService, NoteService>();
         services.AddSingleton<INoteNameService, NoteNameService>();
         services.AddSingleton<INoteTreeService, NoteTreeService>();

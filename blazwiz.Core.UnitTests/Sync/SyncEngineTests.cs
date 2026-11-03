@@ -6,7 +6,6 @@ using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Core.UnitTests.Sync.Fakes;
 using Moq;
 
@@ -23,7 +22,7 @@ public class SyncEngineTests
     private static readonly DateTimeOffset Later = Now.AddHours(-1);
 
     private readonly Mock<ISyncUserContext> mockUser = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
     private readonly Mock<ISyncEventLog> mockLog = new();
     private readonly List<SyncEvent> loggedEvents = [];
     private readonly Sha256ContentHasher hasher = new();
@@ -36,7 +35,7 @@ public class SyncEngineTests
     public SyncEngineTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
         mockLog.Setup(x => x.WriteAsync(It.IsAny<IEnumerable<SyncEvent>>()))
             .Callback<IEnumerable<SyncEvent>>(e => loggedEvents.AddRange(e))
             .Returns(Task.CompletedTask);
@@ -82,7 +81,7 @@ public class SyncEngineTests
         Assert.Equal("contentHasher", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, null!, mockUser.Object, mockLog.Object, mockClock.Object, format)).ParamName);
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, null!, mockLog.Object, mockClock.Object, format)).ParamName);
         Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, null!, mockClock.Object, format)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, null!, format)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, null!, format)).ParamName);
         Assert.Equal("encryptedFileFormat", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object, null!)).ParamName);
     }
 
