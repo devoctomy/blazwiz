@@ -8,6 +8,9 @@
 # - test: build, then each group of tests with dotnet test (unit, integration, UI).
 # - template: packs the packages and the template, then creates apps with every template option and builds and tests
 #   them against the packed packages (templatepack/test-template.ps1, which is not plain dotnet test).
+#
+# Both run on Linux: nothing is Windows-specific, and Linux runners are faster and cheaper. PowerShell is installed on
+# them, for the scripts.
 name: CI
 
 on:
@@ -29,7 +32,7 @@ env:
 
 jobs:
   test:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -54,9 +57,10 @@ jobs:
       - name: Integration tests
         run: dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~IntTests" --logger trx --results-directory TestResults/integration
 
+      # --with-deps also installs the libraries Chromium needs on Linux.
       - name: Install the Playwright browser
         shell: pwsh
-        run: ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
+        run: ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
 
       # The UI tests build and start the portal themselves (Release); its output is in TestResults/portal.log.
       - name: UI tests
@@ -73,7 +77,7 @@ jobs:
           if-no-files-found: ignore
 
   template:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
@@ -86,7 +90,7 @@ jobs:
         shell: pwsh
         run: |
           dotnet build template/MyApp.Portal.UITests --nologo -v q
-          ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
+          ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
 
       # The repository's own tests run in the test job.
       - name: Pack, then create, build and test apps from the template

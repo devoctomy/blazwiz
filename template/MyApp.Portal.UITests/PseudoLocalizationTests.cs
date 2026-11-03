@@ -18,6 +18,8 @@ public class PseudoLocalizationTests : TestBase
     // The app's own sidebar items: app text, not the framework's.
     private const string AppContent = "#nav-dashboard, #nav-showcase, #nav-files";
 
+    // Filled in as the settings files are served. They are fetched at the same time, so the handlers run on different
+    // threads: lock while adding or reading.
     private readonly List<string> appSettingsText = [];
 
     [TestInitialize]
@@ -32,7 +34,10 @@ public class PseudoLocalizationTests : TestBase
             settings["Text"] = new JsonObject { ["PseudoLocalization"] = true };
             if (settings["AppSettings"] is JsonObject app)
             {
-                appSettingsText.AddRange(app.Select(p => p.Value?.ToString() ?? string.Empty).Where(v => v.Length > 0));
+                lock (appSettingsText)
+                {
+                    appSettingsText.AddRange(app.Select(p => p.Value?.ToString() ?? string.Empty).Where(v => v.Length > 0));
+                }
             }
 
             await route.FulfillAsync(new() { Response = response, Body = settings.ToJsonString() });
@@ -125,7 +130,12 @@ public class PseudoLocalizationTests : TestBase
             }",
             AppContent);
 
-        var allowed = new HashSet<string>(appSettingsText.Concat(UserText), StringComparer.Ordinal);
+        HashSet<string> allowed;
+        lock (appSettingsText)
+        {
+            allowed = new HashSet<string>(appSettingsText.Concat(UserText), StringComparer.Ordinal);
+        }
+
         var hardCoded = texts
             .Where(t => t.Any(char.IsLetter))
             .Where(t => !t.Contains("[!!", StringComparison.Ordinal) && !t.Contains("!!]", StringComparison.Ordinal))
