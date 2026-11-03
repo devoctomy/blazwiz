@@ -1,5 +1,9 @@
-# Builds and tests the packages and the template on every push and pull request. The release workflow only publishes a
+# Builds and tests the packages and the template on every push, to any branch. The release workflow only publishes a
 # commit this has passed.
+#
+# Pushes only, not pull requests as well: a pull request from a branch of this repository would run everything a
+# second time, and the push run's checks already show on the pull request (they are on the same commit). Pull requests
+# from forks are not built.
 #
 # - test: build, then each group of tests with dotnet test (unit, integration, UI).
 # - template: packs the packages and the template, then creates apps with every template option and builds and tests
@@ -7,7 +11,6 @@
 name: CI
 
 on:
-  pull_request:
   push:
     branches: ['**']
 
