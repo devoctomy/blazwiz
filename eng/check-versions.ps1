@@ -52,3 +52,6 @@ if ($failed) {
 }
 
 Write-Host 'Versions match.' -ForegroundColor Green
+
+# Set the exit code either way: callers check $LASTEXITCODE, which stays empty if the script just ends.
+exit 0
