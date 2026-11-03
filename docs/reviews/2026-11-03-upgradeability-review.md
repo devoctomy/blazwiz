@@ -511,7 +511,8 @@ the riskiest phase. Doing it before splitting projects keeps the diff readable.
   nuget.org on tags, with the same version (D9). `.github/workflows/ci.yml` (runs `test-template.ps1`) and
   `release.yml` (on `v*` tags: version check, every check including the upgrade from the previous tag, pack, push),
   with `eng/check-versions.ps1` and `docs/releasing.md`. The SDK is pinned in `global.json`. Not run yet: workflows
-  only run once pushed to GitHub, and publishing needs the `NUGET_API_KEY` secret in a `nuget` environment.
+  only run once pushed to GitHub. Publishing uses nuget.org Trusted Publishing (no stored API key): a policy on
+  nuget.org and a `NUGET_USER` secret in a `nuget` environment, see `docs/releasing.md`.
 - [x] `CHANGELOG.md` and `UPGRADING.md`. Show the framework version in About (T8): `IAppBuildInfo.FrameworkVersion`.
   `docs/versioning.md` now describes the checks that exist (`FrameworkText.UnknownOverrideKeys` and
   `MismatchedOverridePlaceholders`, the upgrade check, data migrations).

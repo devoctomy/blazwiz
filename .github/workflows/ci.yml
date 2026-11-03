@@ -1,12 +1,12 @@
-# Builds and tests the packages and the template on every pull request and on main: the repository's tests (unit,
+# Builds and tests the packages and the template on every push and pull request: the repository's tests (unit,
 # integration, Playwright UI), then the packages and template packed and every template option built and tested
-# against them (templatepack/test-template.ps1).
+# against them (templatepack/test-template.ps1). The release workflow only publishes a commit this has passed.
 name: CI
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: ['**']
 
 permissions:
   contents: read

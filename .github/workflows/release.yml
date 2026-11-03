@@ -1,61 +1,139 @@
-# Publishes a release when the maintainer pushes a tag such as v1.2.0: checks the tag matches the version, runs every
-# check, then pushes every Devoctomy.Blazwiz package and the template package to nuget.org, all at that version. See
-# docs/releasing.md.
+# Publishes every Devoctomy.Blazwiz package and the template package to nuget.org, all at one version. It does not run
+# the tests: it only publishes a commit the CI workflow (ci.yml) has already passed. See docs/releasing.md.
+#
+# - A tag v<version> on a commit on main publishes that version, which must match Directory.Build.props.
+# - Running it by hand (Run workflow) on another branch publishes a beta: <version>-beta.<run number>.
 name: Release
 
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
-  release:
-    runs-on: windows-latest
+  # CI must have passed for this exact commit; waits for a run still in progress.
+  ci-passed:
+    runs-on: ubuntu-latest
     timeout-minutes: 120
-    # Holds the NUGET_API_KEY secret; add required reviewers to it for a manual approval before publishing.
+    steps:
+      - name: Check CI passed for ${{ github.sha }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $sha = '${{ github.sha }}'
+          $deadline = (Get-Date).AddMinutes(110)
+          while ($true) {
+            $runs = (gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=50" | ConvertFrom-Json).workflow_runs
+            if ($runs | Where-Object { $_.status -eq 'completed' -and $_.conclusion -eq 'success' }) {
+              Write-Host "CI passed for $sha."
+              break
+            }
+
+            if (-not ($runs | Where-Object { $_.status -ne 'completed' })) {
+              throw "CI has not passed for $sha (runs: $(@($runs).Count)). Push the commit and let CI pass, then publish again."
+            }
+
+            if ((Get-Date) -gt $deadline) {
+              throw "CI for $sha did not finish in time."
+            }
+
+            Write-Host 'CI is still running for this commit; waiting.'
+            Start-Sleep -Seconds 60
+          }
+
+  publish:
+    needs: ci-passed
+    runs-on: windows-latest
+    timeout-minutes: 30
+    # nuget.org's Trusted Publishing policy can be limited to this environment. Holds the NUGET_USER secret; add
+    # required reviewers to it for a manual approval before publishing.
     environment: nuget
+    permissions:
+      contents: read
+      # An OIDC token from GitHub, exchanged for a short-lived nuget.org API key (Trusted Publishing).
+      id-token: write
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
       MSBUILDDISABLENODEREUSE: 1
     steps:
       - uses: actions/checkout@v4
+        with:
+          # main's history, to check a tagged commit is on it.
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
 
-      - name: Check the tag matches the version
-        shell: pwsh
-        run: ./eng/check-versions.ps1 -Tag "${{ github.ref_name }}"
-
-      - name: Install the Playwright browser
+      - name: Work out the version
+        id: version
         shell: pwsh
         run: |
-          dotnet build template/MyApp.Portal.UITests --nologo -v q
-          ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install chromium
+          ./eng/check-versions.ps1
+          if ($LASTEXITCODE -ne 0) { exit 1 }
 
-      - name: Test the repository, packages and template
-        shell: pwsh
-        run: ./templatepack/test-template.ps1
+          $props = [xml](Get-Content Directory.Build.props)
+          $suffix = $props.Project.PropertyGroup.VersionSuffix | Where-Object { $_ } | Select-Object -First 1
+
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            # A release: from main only, and the tag must be the version.
+            git merge-base --is-ancestor '${{ github.sha }}' origin/main
+            if ($LASTEXITCODE -ne 0) { throw 'Release tags must be on a commit on main. Publish a branch as a beta with Run workflow.' }
+            ./eng/check-versions.ps1 -Tag '${{ github.ref_name }}'
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            $versionSuffix = $suffix
+          }
+          elseif ('${{ github.ref_name }}' -eq 'main') {
+            throw 'main is released with a tag (v<version>), not by Run workflow.'
+          }
+          else {
+            # A beta of a branch: unique per run, as nuget.org never takes the same version twice.
+            $beta = "beta.${{ github.run_number }}"
+            $versionSuffix = if ($suffix) { "$suffix-$beta" } else { $beta }
+          }
+
+          $prefix = $props.Project.PropertyGroup.VersionPrefix | Where-Object { $_ } | Select-Object -First 1
+          $version = if ($versionSuffix) { "$prefix-$versionSuffix" } else { $prefix }
+          Write-Host "Publishing $version"
+          "suffix=$versionSuffix" >> $env:GITHUB_OUTPUT
+          "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Pack
         shell: pwsh
         run: |
-          dotnet pack blazwiz.slnx -c Release -o artifacts/packages --nologo
-          dotnet pack templatepack/Devoctomy.Blazwiz.Templates.csproj -c Release -o artifacts/packages --nologo
+          $version = '${{ steps.version.outputs.version }}'
+          $suffix = '${{ steps.version.outputs.suffix }}'
+          # New apps from this template use the packages published with it (matters for betas).
+          $props = 'template/Directory.Packages.props'
+          (Get-Content $props -Raw) -replace '<BlazwizVersion>[^<]*</BlazwizVersion>', "<BlazwizVersion>$version</BlazwizVersion>" | Set-Content $props -NoNewline
+          dotnet pack blazwiz.slnx -c Release -o artifacts/packages --nologo "-p:VersionSuffix=$suffix"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          dotnet pack templatepack/Devoctomy.Blazwiz.Templates.csproj -c Release -o artifacts/packages --nologo "-p:VersionSuffix=$suffix"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      # Trusted Publishing: no stored API key. The key is valid for an hour, so it is asked for just before pushing.
+      - name: NuGet login (OIDC to a temporary API key)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          # The nuget.org profile name (not the email address).
+          user: ${{ secrets.NUGET_USER }}
 
       - name: Push to nuget.org
         shell: pwsh
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: |
           dotnet nuget push "artifacts/packages/*.nupkg" --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: Keep the packages
         uses: actions/upload-artifact@v4
         with:
-          name: packages
+          name: packages-${{ steps.version.outputs.version }}
           path: artifacts/packages
