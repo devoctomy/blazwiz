@@ -1,11 +1,10 @@
-# Shared helpers for the myapp deployment scripts. Dot-source this file; do not run it directly.
+# Shared helpers for the blazwiz deployment scripts. Dot-source this file; do not run it directly.
 
 Set-StrictMode -Version Latest
 
 $script:AwsRegion = $null
 $script:AwsProfile = $null
 $script:LastAwsError = $null
-$script:RepoRoot = Split-Path -Parent $PSScriptRoot
 
 function Write-Step([string]$Message) {
     Write-Host ''
@@ -232,7 +231,7 @@ function New-TempJsonFile($Value) {
     Writes a value as JSON to a temporary file and returns its path, for use with file:// arguments.
     Avoids quoting problems when passing JSON on the command line. Delete the file when done.
     #>
-    $path = Join-Path ([IO.Path]::GetTempPath()) "myapp-$([Guid]::NewGuid().ToString('N')).json"
+    $path = Join-Path ([IO.Path]::GetTempPath()) "blazwiz-$([Guid]::NewGuid().ToString('N')).json"
     $json = $Value | ConvertTo-Json -Depth 10 -Compress
     [IO.File]::WriteAllText($path, $json, (New-Object Text.UTF8Encoding($false)))
     return $path

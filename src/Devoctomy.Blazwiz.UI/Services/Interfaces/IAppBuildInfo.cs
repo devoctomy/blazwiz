@@ -11,6 +11,12 @@ public interface IAppBuildInfo
     string Version { get; }
 
     /// <summary>
+    /// Gets the version of the blazwiz framework the app is built on, e.g. <c>1.2.0</c> (every
+    /// <c>Devoctomy.Blazwiz</c> package has the same version).
+    /// </summary>
+    string FrameworkVersion { get; }
+
+    /// <summary>
     /// Gets a value indicating whether the app is a debug build.
     /// </summary>
     bool IsDebugBuild { get; }

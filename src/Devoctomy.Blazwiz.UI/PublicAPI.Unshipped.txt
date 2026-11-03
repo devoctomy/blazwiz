@@ -170,6 +170,7 @@ Devoctomy.Blazwiz.UI.Services.AppBuildInfo
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.AppBuildInfo() -> void
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.AppBuildInfo(System.Reflection.Assembly! assembly) -> void
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.BuildTime.get -> string?
+Devoctomy.Blazwiz.UI.Services.AppBuildInfo.FrameworkVersion.get -> string!
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.IsDebugBuild.get -> bool
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.Version.get -> string!
 Devoctomy.Blazwiz.UI.Services.CultureService
@@ -181,6 +182,7 @@ const Devoctomy.Blazwiz.UI.Services.CultureService.StorageKey = "culture" -> str
 Devoctomy.Blazwiz.UI.Services.CultureService.SupportedCultures.get -> System.Collections.Generic.IReadOnlyList<System.Globalization.CultureInfo!>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.BuildTime.get -> string?
+Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.FrameworkVersion.get -> string!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.IsDebugBuild.get -> bool
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.Version.get -> string!
 Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService

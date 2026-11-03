@@ -25,7 +25,24 @@ const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.Unreachable = "Auth.Unrea
 const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.UserNotConfirmed = "Auth.UserNotConfirmed" -> string!
 Devoctomy.Blazwiz.Auth.Extensions.AuthServiceCollectionExtensions
 static Devoctomy.Blazwiz.Auth.Extensions.AuthServiceCollectionExtensions.AddBlazwizAuth(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Devoctomy.Blazwiz.Auth.Extensions.AuthServiceCollectionExtensions.AddDataMigration<TMigration>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.Auth.Extensions.AuthServiceCollectionExtensions.AddSessionLifecycleHandler<THandler>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationContext
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationContext.DataMigrationContext(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> void
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationContext.Session.get -> Devoctomy.Blazwiz.Auth.Models.UserSession!
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationRunner
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationRunner.DataMigrationRunner(System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.Auth.Migrations.Interfaces.IDataMigration!>! migrations, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Microsoft.Extensions.Logging.ILogger<Devoctomy.Blazwiz.Auth.Migrations.DataMigrationRunner!>! logger) -> void
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationRunner.OnShellLoadingAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationRunner.Order.get -> int
+const Devoctomy.Blazwiz.Auth.Migrations.DataMigrationRunner.StorageKey = "data_versions" -> string!
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationScope
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationScope.App = 0 -> Devoctomy.Blazwiz.Auth.Migrations.DataMigrationScope
+Devoctomy.Blazwiz.Auth.Migrations.DataMigrationScope.User = 1 -> Devoctomy.Blazwiz.Auth.Migrations.DataMigrationScope
+Devoctomy.Blazwiz.Auth.Migrations.Interfaces.IDataMigration
+Devoctomy.Blazwiz.Auth.Migrations.Interfaces.IDataMigration.Area.get -> string!
+Devoctomy.Blazwiz.Auth.Migrations.Interfaces.IDataMigration.MigrateAsync(Devoctomy.Blazwiz.Auth.Migrations.DataMigrationContext! context) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Migrations.Interfaces.IDataMigration.Scope.get -> Devoctomy.Blazwiz.Auth.Migrations.DataMigrationScope
+Devoctomy.Blazwiz.Auth.Migrations.Interfaces.IDataMigration.Version.get -> int
 Devoctomy.Blazwiz.Auth.Models.LoginResult
 Devoctomy.Blazwiz.Auth.Models.LoginResult.ErrorArguments.get -> System.Collections.Generic.IReadOnlyList<object!>!
 Devoctomy.Blazwiz.Auth.Models.LoginResult.ErrorArguments.set -> void

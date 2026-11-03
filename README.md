@@ -13,7 +13,7 @@ that creates an app built on them, so apps take framework upgrades by changing o
 |---|---|
 | `src/` | The packages, one project each (below). |
 | `tests/` | One unit test project per package, plus the sync integration tests. |
-| `template/` | The template app (`MyApp`), with its own tests and the AWS stack (`template/cloudformation`). In this repository it builds against the packages' source; generated apps use the packages. |
+| `template/` | The template app (`MyApp`), with its own tests, and its AWS scripts and own stack (`template/cloudformation`). In this repository it builds against the packages' source; generated apps use the packages. |
 | `templatepack/` | Packs the template, and `test-template.ps1`, which checks packages and template together. |
 | `docs/` | The plan, versioning policy and diagrams. |
 
@@ -29,6 +29,7 @@ that creates an app built on them, so apps take framework upgrades by changing o
 | `Devoctomy.Blazwiz.UI` | Auth | The app shell, its pages, theme and extension points. |
 | `Devoctomy.Blazwiz.UI.Sync` | UI, Auth.Cognito, Sync | The sync module's UI and wiring. |
 | `Devoctomy.Blazwiz.Testing` | UI | Test helpers for apps. |
+| `Devoctomy.Blazwiz.Aws` | | The AWS base stack and its deploy scripts (content only), released with the framework. |
 
 Versions are in lockstep (one version for every package and the template), see [docs/versioning.md](docs/versioning.md).
 

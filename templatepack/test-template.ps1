@@ -10,6 +10,10 @@ Checks the framework packages and the dotnet new template work together, as a us
   4. Creates apps with awkward names and different options, and checks each one: no template placeholder (MyApp) left
      in it, a new app ID, a valid CloudFormation AppName, it builds against the packages from the local feed (not the
      framework's source), and its tests pass.
+  5. With -UpgradeFrom, simulates an upgrade, for testing a change that affects apps: packs the framework from that
+     folder (e.g. a copy of the repository before the change), creates and customises an app from it, checks it, then
+     upgrades it to this run's packages and checks it again. Bumping the package version itself is ordinary .NET and
+     needs no test; what matters is the change.
 Exits with code 1 if anything fails. Output goes to a temporary folder, deleted afterwards unless -KeepOutput.
 
 .EXAMPLE
@@ -17,6 +21,9 @@ Exits with code 1 if anything fails. Output goes to a temporary folder, deleted 
 
 .EXAMPLE
 ./templatepack/test-template.ps1 -SkipUiTests -SkipRepositoryTests -KeepOutput
+
+.EXAMPLE
+./templatepack/test-template.ps1 -UpgradeFrom ../blazwiz-before-change -Only AcmePortal
 #>
 [CmdletBinding()]
 param(
@@ -30,7 +37,11 @@ param(
     [switch]$KeepOutput,
 
     # Only create these apps (by name, e.g. -Only NoNotes), not all of them.
-    [string[]]$Only
+    [string[]]$Only,
+
+    # What to upgrade an app from, to simulate an upgrade: a folder holding a copy of the repository (e.g. before a
+    # change), or a git tag or commit (read with git archive).
+    [string]$UpgradeFrom
 )
 
 $ErrorActionPreference = 'Stop'
@@ -70,6 +81,22 @@ function Invoke-Checked([string]$Description, [scriptblock]$Command) {
 
     Write-Host "    [PASS] $Description" -ForegroundColor Green
     return $true
+}
+
+# Points an app at the packages in the local feed, at a version, as an app upgrading to them would: the version in
+# Directory.Packages.props, and the feed in nuget.config (as well as nuget.org).
+function Use-Packages([string]$App, [string]$Version, [string]$Feed) {
+    $packagesProps = Join-Path $App 'Directory.Packages.props'
+    (Get-Content $packagesProps -Raw) -replace '<BlazwizVersion>[^<]*</BlazwizVersion>', "<BlazwizVersion>$Version</BlazwizVersion>" |
+        Set-Content -Path $packagesProps -NoNewline
+    @"
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="blazwiz-test" value="$Feed" />
+  </packageSources>
+</configuration>
+"@ | Set-Content -Path (Join-Path $App 'nuget.config')
 }
 
 function Test-Project([string]$Root, [string]$Solution, [bool]$UiTests, [string]$Label, [string[]]$BuildArguments) {
@@ -127,19 +154,7 @@ try {
             continue
         }
 
-        # Use the packages from the local feed, at this run's version, as an app upgrading to them would: the version in
-        # Directory.Packages.props, and the feed in nuget.config (as well as nuget.org).
-        $packagesProps = Join-Path $output 'Directory.Packages.props'
-        (Get-Content $packagesProps -Raw) -replace '<BlazwizVersion>[^<]*</BlazwizVersion>', "<BlazwizVersion>$version</BlazwizVersion>" |
-            Set-Content -Path $packagesProps -NoNewline
-        @"
-<?xml version="1.0" encoding="utf-8"?>
-<configuration>
-  <packageSources>
-    <add key="blazwiz-test" value="$feed" />
-  </packageSources>
-</configuration>
-"@ | Set-Content -Path (Join-Path $output 'nuget.config')
+        Use-Packages -App $output -Version $version -Feed $feed
 
         # Nothing should still have the template's placeholder name (ignoring build output).
         $leftovers = Get-ChildItem -Path $output -Recurse -File |
@@ -184,6 +199,17 @@ try {
             Write-Host "    [FAIL] invalid CloudFormation AppName '$appName'" -ForegroundColor Red
         }
 
+        # The AWS base stack comes from the Devoctomy.Blazwiz.Aws package at the app's version, not copied into the app.
+        $baseStack = & (Join-Path $output 'cloudformation/base-stack.ps1') 2>&1 | Select-Object -Last 1
+        if ("$baseStack" -match "devoctomy\.blazwiz\.aws[\\/]$([regex]::Escape($version.ToLowerInvariant()))[\\/]tools[\\/]cloudformation$" -and
+            (Test-Path (Join-Path $baseStack 'stack.yaml')) -and (Test-Path (Join-Path $baseStack 'deploy.ps1'))) {
+            Write-Host "    [PASS] AWS base stack found in the package ($version)" -ForegroundColor Green
+        }
+        else {
+            $script:Failures.Add("'$name' AWS base stack not found in the package: $baseStack")
+            Write-Host "    [FAIL] AWS base stack not found in the package: $baseStack" -ForegroundColor Red
+        }
+
         $solution = (Get-ChildItem -Path $output -Filter '*.slnx' | Select-Object -First 1).Name
         $hasTestProjects = [bool](Get-ChildItem -Path $output -Filter '*Tests.csproj' -Recurse)
         if ($hasTestProjects -ne $case.Tests) {
@@ -192,6 +218,56 @@ try {
         }
 
         Test-Project -Root $output -Solution $solution -UiTests ($case.UiTests -and -not $SkipUiTests) -Label "'$name'" -BuildArguments @()
+    }
+
+    if ($UpgradeFrom) {
+        Write-Step "Upgrade path: an app from $UpgradeFrom, upgraded to $version"
+        $baseRoot = Join-Path $workRoot 'upgrade-base'
+        if (Test-Path $UpgradeFrom -PathType Container) {
+            Copy-Item -Path $UpgradeFrom -Destination $baseRoot -Recurse
+        }
+        else {
+            New-Item -ItemType Directory -Path $baseRoot | Out-Null
+            $archive = Join-Path $workRoot 'upgrade-base.tar'
+            if (-not (Invoke-Checked "$UpgradeFrom is read" { git -C $repositoryRoot archive --format=tar -o $archive $UpgradeFrom })) {
+                throw "Could not read $UpgradeFrom."
+            }
+
+            tar -xf $archive -C $baseRoot
+        }
+
+        $basePrefix = ([xml](Get-Content (Join-Path $baseRoot 'Directory.Build.props'))).Project.PropertyGroup.VersionPrefix | Where-Object { $_ } | Select-Object -First 1
+        $baseSuffix = "upgradebase.$runId"
+        $baseVersion = "$basePrefix-$baseSuffix"
+        $baseHive = Join-Path $workRoot 'upgrade-hive'
+        if (-not (Invoke-Checked "$UpgradeFrom packs ($baseVersion)" { dotnet pack (Join-Path $baseRoot 'blazwiz.slnx') -c Release -o $feed --nologo -v q -m:1 -p:VersionSuffix=$baseSuffix })) {
+            throw "Could not pack $UpgradeFrom."
+        }
+
+        if (-not (Invoke-Checked "$UpgradeFrom template packs" { dotnet pack (Join-Path $baseRoot 'templatepack/Devoctomy.Blazwiz.Templates.csproj') -c Release -o (Join-Path $workRoot 'upgrade-template') --nologo -v q -p:VersionSuffix=$baseSuffix })) {
+            throw "Could not pack the template of $UpgradeFrom."
+        }
+
+        $basePackage = Get-ChildItem -Path (Join-Path $workRoot 'upgrade-template') -Filter 'Devoctomy.Blazwiz.Templates.*.nupkg' | Select-Object -First 1
+        $upgraded = Join-Path $workRoot 'apps/Upgraded'
+        if ((Invoke-Checked "$UpgradeFrom template installs" { dotnet new install $basePackage.FullName --debug:custom-hive $baseHive }) -and
+            (Invoke-Checked "'Upgraded' is created from $UpgradeFrom" { dotnet new blazwiz -n Upgraded -o $upgraded --debug:custom-hive $baseHive })) {
+            Use-Packages -App $upgraded -Version $baseVersion -Feed $feed
+
+            # Customise it as an app would: a page of its own, and the theme re-branded through the framework's tokens.
+            @'
+@page "/custom"
+
+<PageHeader Title="Custom" Icon="bi-star" />
+<p id="custom-page">Added by the app.</p>
+'@ | Set-Content -Path (Join-Path $upgraded 'Upgraded.Portal/Pages/Custom.razor')
+            Add-Content -Path (Join-Path $upgraded 'Upgraded.Portal/wwwroot/css/app.css') -Value "`n:root { --bw-accent: #0d9488; }"
+
+            Test-Project -Root $upgraded -Solution 'Upgraded.slnx' -UiTests $false -Label "'Upgraded' at $UpgradeFrom"
+
+            Use-Packages -App $upgraded -Version $version -Feed $feed
+            Test-Project -Root $upgraded -Solution 'Upgraded.slnx' -UiTests (-not $SkipUiTests) -Label "'Upgraded' upgraded to $version"
+        }
     }
 }
 catch {

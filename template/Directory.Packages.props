@@ -9,6 +9,7 @@
     <!-- blazwiz -->
     <PackageVersion Include="Devoctomy.Blazwiz.Core" Version="$(BlazwizVersion)" />
     <PackageVersion Include="Devoctomy.Blazwiz.Auth.Cognito" Version="$(BlazwizVersion)" />
+    <PackageVersion Include="Devoctomy.Blazwiz.Aws" Version="$(BlazwizVersion)" />
     <PackageVersion Include="Devoctomy.Blazwiz.UI" Version="$(BlazwizVersion)" />
     <PackageVersion Include="Devoctomy.Blazwiz.UI.Sync" Version="$(BlazwizVersion)" />
     <PackageVersion Include="Devoctomy.Blazwiz.Testing" Version="$(BlazwizVersion)" />

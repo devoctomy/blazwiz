@@ -129,7 +129,36 @@ dotnet test template/MyApp.Portal.UITests        # or run it on its own
   apps with awkward names and every option, and checks each one has no `MyApp` left, builds against the packages and
   passes its tests. Run it after changing packages' public surface, template content or `.template.config/`.
 
+## Upgrade tests
+
+Every change that affects apps comes with a test of upgrading across it, as part of its acceptance. Bumping the
+package version is ordinary .NET and needs no test; the change does. Before 1.0 there is nothing to upgrade from
+(stored data and earlier builds are not kept), so this is about the change, not about earlier development snapshots.
+
+- **Stored data** (browser storage, IndexedDB, files the framework keeps): an `IDataMigration`, with a unit test that
+  runs it on data in the old format (from 1.0).
+- **Text**: a renamed or removed key, or changed placeholders, is caught by `FrameworkText.UnknownOverrideKeys` and
+  `MismatchedOverridePlaceholders`; add an override test for the change and say what to do in `UPGRADING.md`.
+- **Public API**: PublicApiAnalyzers and package validation catch breaks; a deliberate one needs a major version and
+  an `UPGRADING.md` entry.
+- **Anything else apps see** (configuration keys, routes, extension points, theme tokens, the AWS base stack):
+  simulate it with `./templatepack/test-template.ps1 -UpgradeFrom <copy of the repository before the change>`, and
+  test what changed.
+
+## CI and releases
+
+- `.github/workflows/ci.yml` runs `templatepack/test-template.ps1` on pull requests and main. Keep it passing locally
+  first: CI cannot be run from here.
+- `.github/workflows/release.yml` publishes to nuget.org when the maintainer pushes a `v*` tag (`docs/releasing.md`).
+  Never push tags or run the release yourself (rule 3).
+- `eng/check-versions.ps1` checks the version in `Directory.Build.props` matches `BlazwizVersion` in
+  `template/Directory.Packages.props`. Change both together.
+- Every user-visible change goes in the `Unreleased` section of `CHANGELOG.md`; breaking ones (from 1.0) also in
+  `UPGRADING.md`. A change to stored data (from 1.0) ships an `IDataMigration`.
+
 ## Deploying
 
-`template/cloudformation/deploy.ps1` creates or updates real AWS resources. Never run `deploy.ps1`, `remove.ps1` or
-`test-auth.ps1` unless the maintainer asks for that exact action.
+The AWS base stack and its scripts are in `src/Devoctomy.Blazwiz.Aws/cloudformation`; apps run them through
+`template/cloudformation/deploy.ps1`, `remove.ps1` and `test-auth.ps1`. They create, change or delete real AWS
+resources. Never run any of them, or any AWS command, unless the maintainer asks for that exact action: no
+credentials are kept here, and the maintainer tests deployments by hand.

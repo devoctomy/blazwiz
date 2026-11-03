@@ -102,14 +102,17 @@ public class ShellTests : TestBase
     }
 
     [TestMethod]
-    public async Task GivenReleaseBuild_WhenOpeningSettings_ThenAboutShowsWhenItWasBuilt()
+    public async Task GivenReleaseBuild_WhenOpeningSettings_ThenAboutShowsWhenItWasBuiltAndTheFrameworkVersion()
     {
-        // The UI tests run the portal in Release, as deployments are.
+        // Arrange: the UI tests run the portal in Release, as deployments are.
         await LoginAsync();
 
+        // Act
         await Page.Locator("#nav-settings").ClickAsync();
 
+        // Assert
         await Expect(Page.Locator("#app-build-time")).ToHaveTextAsync(new Regex(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$"));
+        await Expect(Page.Locator("#framework-version")).ToHaveTextAsync(new Regex(@"^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$"));
     }
 
     [TestMethod]

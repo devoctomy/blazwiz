@@ -55,7 +55,18 @@ These can change in any release:
   `PublicAPI.Unshipped.txt`, so they show up in review. They move to `PublicAPI.Shipped.txt` at release.
 - `EnablePackageValidation` with `PackageValidationBaselineVersion` set to the last release: `dotnet pack` fails on a
   binary-breaking change unless the major version changed.
-- `TextOverrides.AssertValid()` (in `Devoctomy.Blazwiz.Testing`): an app's tests fail when one of its text overrides
-  names a key that no longer exists, or uses placeholders that do not match.
-- `templatepack/test-template.ps1`: creates an app from the previous release, upgrades it to the new one, and checks
-  it still builds and its tests pass.
+- `FrameworkText.UnknownOverrideKeys()` and `MismatchedOverridePlaceholders()` (in `Devoctomy.Blazwiz.Testing`): an
+  app's tests fail when one of its text overrides names a key that no longer exists, or uses placeholders that do not
+  match (the template's `NotesTextTests` show how).
+- `templatepack/test-template.ps1`: creates apps from the template with the packages built from the repository, and
+  checks they build and pass their tests. With `-UpgradeFrom <folder>` it simulates upgrading an app from another
+  copy of the framework, for testing a change.
+- Upgrade tests: every change that affects apps comes with a test of upgrading across it, as part of its acceptance
+  (AGENTS.md, "Upgrade tests").
+
+## Stored data
+
+From 1.0, a release that changes stored data (browser storage, IndexedDB, files the framework keeps) ships an
+`IDataMigration` for it, added with `AddDataMigration`. Migrations run at sign in, before modules start, in version
+order per area; the version reached is recorded on the device, per app or per user. An app never migrates
+framework data by hand.

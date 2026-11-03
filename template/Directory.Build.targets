@@ -20,6 +20,8 @@
     <_BlazwizUnusedPackage Include="@(_BlazwizKnownPackage)" Exclude="@(PackageReference)" />
     <_BlazwizPackage Include="@(_BlazwizKnownPackage)" Exclude="@(_BlazwizUnusedPackage)" />
     <PackageReference Remove="@(_BlazwizPackage)" />
+    <!-- The AWS base stack is content, not code: cloudformation/base-stack.ps1 uses its source here. -->
+    <PackageReference Remove="Devoctomy.Blazwiz.Aws" />
     <ProjectReference Include="@(_BlazwizPackage->'$(MSBuildThisFileDirectory)../src/%(Identity)/%(Identity).csproj')" />
   </ItemGroup>
 </Project>

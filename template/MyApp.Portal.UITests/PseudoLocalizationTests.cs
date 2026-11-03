@@ -89,6 +89,10 @@ public class PseudoLocalizationTests : TestBase
 //#endif
     }
 
+    // Version numbers, such as the framework's 0.1.0-preview.1: data, not text.
+    private static bool IsVersion(string text) =>
+        System.Text.RegularExpressions.Regex.IsMatch(text, @"^\d+\.\d+\.\d+(\.\d+)?(-[0-9A-Za-z.]+)?$");
+
     // Dates and times are formatted by the culture, so they are already translated: data, not text.
     private static bool IsDateOrTime(string text) =>
         DateTime.TryParse(text, System.Globalization.CultureInfo.GetCultureInfo("en-GB"), System.Globalization.DateTimeStyles.AllowWhiteSpaces, out _) ||
@@ -126,7 +130,7 @@ public class PseudoLocalizationTests : TestBase
             .Where(t => t.Any(char.IsLetter))
             .Where(t => !t.Contains("[!!", StringComparison.Ordinal) && !t.Contains("!!]", StringComparison.Ordinal))
             .Where(t => !allowed.Contains(t) && !allowed.Any(a => t.Contains(a, StringComparison.Ordinal)))
-            .Where(t => !IsDateOrTime(t))
+            .Where(t => !IsDateOrTime(t) && !IsVersion(t))
             .Distinct()
             .ToList();
 

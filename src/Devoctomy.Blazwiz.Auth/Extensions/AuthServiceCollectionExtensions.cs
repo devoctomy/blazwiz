@@ -1,3 +1,5 @@
+using Devoctomy.Blazwiz.Auth.Migrations;
+using Devoctomy.Blazwiz.Auth.Migrations.Interfaces;
 using Devoctomy.Blazwiz.Auth.Services;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
 using Devoctomy.Blazwiz.Auth.Sessions;
@@ -43,10 +45,27 @@ public static class AuthServiceCollectionExtensions
         services.TryAddScoped<IPasswordService, LocalPasswordService>();
         services.TryAddScoped<ISessionLifecycle, SessionLifecycle>();
 
+        // Packages' stored data migrations, run at sign in before modules start.
+        services.AddSessionLifecycleHandler<DataMigrationRunner>();
+
         // Keys derived from the WebAuthn PRF output, kept in memory; features get them from IDerivedKeyStore by name.
         services.AddBlazwizPrfKeyDerivation(prf => prf
             .UseApplication(app.Name, app.Id)
             .AddKey(PasswordCryptoService.RememberMeKeyName));
+        return services;
+    }
+
+    /// <summary>
+    /// Adds a migration of stored data, run at sign in (see <see cref="IDataMigration"/>).
+    /// </summary>
+    /// <typeparam name="TMigration">The migration.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for method chaining.</returns>
+    public static IServiceCollection AddDataMigration<TMigration>(this IServiceCollection services)
+        where TMigration : class, IDataMigration
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<IDataMigration, TMigration>());
         return services;
     }
 

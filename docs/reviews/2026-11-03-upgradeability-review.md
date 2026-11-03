@@ -507,15 +507,30 @@ the riskiest phase. Doing it before splitting projects keeps the diff readable.
   settings file (the template itself stays single-language) and checks the reload applies it.
 
 ### Phase 4: release process and infrastructure
-- [ ] CI: build, test, pack and validate on pull requests. Publish every package and the template package to
-  nuget.org on tags, with the same version (D9).
-- [ ] `CHANGELOG.md` and `UPGRADING.md`. Show the framework version in About (T8).
-- [ ] Data migration contract (U13), in place before 1.0 so every released version can migrate data from the one
-  before.
-- [ ] U15: release the AWS base stack with each framework version, plus an app-owned extension stack (D4). This is
-  last on purpose.
-- [ ] Prove the upgrade path: create an app from version N, customise it, bump to N+1, and check it builds, its
-  tests pass and its data survives. Add this as an automated check in `test-template.ps1`.
+- [x] CI: build, test, pack and validate on pull requests. Publish every package and the template package to
+  nuget.org on tags, with the same version (D9). `.github/workflows/ci.yml` (runs `test-template.ps1`) and
+  `release.yml` (on `v*` tags: version check, every check including the upgrade from the previous tag, pack, push),
+  with `eng/check-versions.ps1` and `docs/releasing.md`. The SDK is pinned in `global.json`. Not run yet: workflows
+  only run once pushed to GitHub, and publishing needs the `NUGET_API_KEY` secret in a `nuget` environment.
+- [x] `CHANGELOG.md` and `UPGRADING.md`. Show the framework version in About (T8): `IAppBuildInfo.FrameworkVersion`.
+  `docs/versioning.md` now describes the checks that exist (`FrameworkText.UnknownOverrideKeys` and
+  `MismatchedOverridePlaceholders`, the upgrade check, data migrations).
+- [x] Data migration contract (U13), in place before 1.0 so every released version can migrate data from the one
+  before. `IDataMigration` (area, version, app or user scope) added with `AddDataMigration`, run by
+  `DataMigrationRunner`, the first session lifecycle handler, at shell loading (before modules start). A version never
+  recorded counts as 0, so migrations must be no-ops on missing data. No package ships a migration yet (D8).
+- [x] U15: release the AWS base stack with each framework version, plus an app-owned extension stack (D4). This is
+  last on purpose. `Devoctomy.Blazwiz.Aws` (content only) carries `stack.yaml` (every output exported), the stack
+  policy and the deploy, test and remove scripts, at the framework's version. The app keeps thin
+  `cloudformation/deploy.ps1`, `test-auth.ps1` and `remove.ps1` wrappers (found through `base-stack.ps1`) and its own
+  `app.yaml`, deployed as `<app>-<environment>-app` after the base stack and removed before it. Checked without AWS:
+  the scripts parse, the templates parse, the package holds them, generated apps find the stack in the package.
+  Not deployed: the maintainer tests deployment by hand.
+- [x] Prove the upgrade path. Decided 2026-11-03: bumping the package version is ordinary .NET upgrading and needs no
+  test of its own. Instead, every change that affects apps comes with an upgrade test for that change, as part of its
+  acceptance (AGENTS.md, "Upgrade tests"): a migration test for a data change, an override test for a text change,
+  package validation for an API change, or a simulated upgrade. `test-template.ps1 -UpgradeFrom <folder>` simulates
+  one: an app from a copy of the framework before the change, upgraded to the changed packages.
 
 ---
 
