@@ -1,7 +1,6 @@
 using System.Text.Json;
 using blazwiz.Core.Offline;
 using blazwiz.Core.Offline.Models;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
@@ -21,7 +20,7 @@ public class CognitoAuthenticationServiceTests
     private readonly Mock<ICognitoUserPoolClient> mockCognito = new(MockBehavior.Strict);
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<IUserDisplayService> mockUserDisplay = new();
-    private readonly Mock<ISystemClock> mockSystemClock = new();
+    private readonly Mock<TimeProvider> mockTimeProvider = new();
     private readonly OfflineModeService offlineMode = new();
     private readonly InMemoryOfflineSessionStore offlineSessions;
     private readonly string idToken = CreateJwt("""{"email":"bob.hoskins@example.com","cognito:username":"5f2c1a7e"}""");
@@ -30,9 +29,9 @@ public class CognitoAuthenticationServiceTests
 
     public CognitoAuthenticationServiceTests()
     {
-        mockSystemClock.SetupGet(x => x.UtcNow).Returns(() => now);
+        mockTimeProvider.Setup(x => x.GetUtcNow()).Returns(() => now);
         mockUserDisplay.Setup(x => x.GetDisplayNameFromUsername(It.IsAny<string>())).Returns("Bob Hoskins");
-        offlineSessions = new InMemoryOfflineSessionStore(mockSystemClock.Object);
+        offlineSessions = new InMemoryOfflineSessionStore(mockTimeProvider.Object);
     }
 
     [Fact]
@@ -40,14 +39,14 @@ public class CognitoAuthenticationServiceTests
     {
         Assert.Equal("cognitoClient", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(null!, mockLocalStorage.Object, mockUserDisplay.Object,
             offlineMode, offlineSessions,
-            mockSystemClock.Object)).ParamName);
+            mockTimeProvider.Object)).ParamName);
         Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, null!, mockUserDisplay.Object,
             offlineMode, offlineSessions,
-            mockSystemClock.Object)).ParamName);
+            mockTimeProvider.Object)).ParamName);
         Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, null!,
             offlineMode, offlineSessions,
-            mockSystemClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
+            mockTimeProvider.Object)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
             offlineMode, offlineSessions,
             null!)).ParamName);
     }
@@ -199,8 +198,8 @@ public class CognitoAuthenticationServiceTests
     [Fact]
     public void GivenNullOfflineDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockSystemClock.Object)).ParamName);
-        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockSystemClock.Object)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockTimeProvider.Object)).ParamName);
+        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockTimeProvider.Object)).ParamName);
     }
 
     [Fact]
@@ -722,5 +721,5 @@ public class CognitoAuthenticationServiceTests
 
     private CognitoAuthenticationService CreateSut() => new(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
         offlineMode, offlineSessions,
-        mockSystemClock.Object);
+        mockTimeProvider.Object);
 }

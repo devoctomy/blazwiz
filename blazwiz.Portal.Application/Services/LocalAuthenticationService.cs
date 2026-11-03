@@ -1,6 +1,5 @@
 using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Offline.Models;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 
@@ -16,13 +15,13 @@ public class LocalAuthenticationService(
     IUserDisplayService userDisplayService,
     IOfflineModeService offlineModeService,
     IOfflineSessionStore offlineSessionStore,
-    ISystemClock systemClock)
+    TimeProvider timeProvider)
     : IAuthenticationService, IDisposable
 {
     /// <summary>
     /// The local storage key the session is stored under.
     /// </summary>
-    public const string SessionStorageKey = "blazwiz_session";
+    public const string SessionStorageKey = "session";
 
     /// <summary>
     /// How long a session lasts before the user must sign in again.
@@ -33,7 +32,7 @@ public class LocalAuthenticationService(
     private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
     private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
     private readonly IOfflineSessionStore offlineSessionStore = offlineSessionStore ?? throw new ArgumentNullException(nameof(offlineSessionStore));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     private bool isListening;
 
@@ -66,7 +65,7 @@ public class LocalAuthenticationService(
             };
         }
 
-        var now = systemClock.UtcNow;
+        var now = timeProvider.GetUtcNow();
         var trimmedUsername = username.Trim();
         var session = new UserSession
         {
@@ -132,7 +131,7 @@ public class LocalAuthenticationService(
         var offline = offlineSessionStore.Session;
         if (offline != null)
         {
-            if (offline.ExpiresAt <= systemClock.UtcNow)
+            if (offline.ExpiresAt <= timeProvider.GetUtcNow())
             {
                 await EndSessionAsync();
                 return null;
@@ -152,7 +151,7 @@ public class LocalAuthenticationService(
             return null;
         }
 
-        if (session.ExpiresAt <= systemClock.UtcNow)
+        if (session.ExpiresAt <= timeProvider.GetUtcNow())
         {
             await EndSessionAsync();
             return null;

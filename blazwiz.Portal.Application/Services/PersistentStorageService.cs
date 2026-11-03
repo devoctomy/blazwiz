@@ -11,7 +11,7 @@ public class PersistentStorageService(IStorageDurabilityService durabilityServic
     /// <summary>
     /// The local storage key the request state is kept under.
     /// </summary>
-    public const string StorageKey = "blazwiz_storage_persistence";
+    public const string StorageKey = "storage_persistence";
 
     private readonly IStorageDurabilityService durabilityService = durabilityService ?? throw new ArgumentNullException(nameof(durabilityService));
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));

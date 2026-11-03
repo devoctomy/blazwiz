@@ -21,14 +21,6 @@ public class TestContext
 //#if (IncludeNotes)
 
     public string? AwsBucketName { get; set; }
-//#endif
-
-    public DateTimeOffset? CurrentTime { get; set; }
-
-    public string? UserName { get; set; }
-
-    public string? Greeting { get; set; }
-//#if (IncludeNotes)
 
     /// <summary>
     /// Gets or sets the S3 client for the scenario, created from the configured credentials.

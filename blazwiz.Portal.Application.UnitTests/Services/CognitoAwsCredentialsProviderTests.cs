@@ -1,6 +1,5 @@
 using blazwiz.Core.Offline;
 using blazwiz.Core.Offline.Models;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services;
 using blazwiz.Portal.Application.Services.Interfaces;
@@ -16,7 +15,7 @@ public sealed class CognitoAwsCredentialsProviderTests : IDisposable
 
     private readonly Mock<IAuthenticationService> mockAuth = new();
     private readonly Mock<ICognitoIdentityClient> mockIdentity = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
     private readonly OfflineModeService offlineMode = new();
     private readonly AwsCognitoConfig cognitoConfig = new() { Region = "eu-west-2", UserPoolId = "eu-west-2_Pool", UserPoolClientId = "client", IdentityPoolId = "eu-west-2:pool" };
     private readonly List<CognitoAwsCredentialsProvider> created = [];
@@ -24,7 +23,7 @@ public sealed class CognitoAwsCredentialsProviderTests : IDisposable
 
     public CognitoAwsCredentialsProviderTests()
     {
-        mockClock.SetupGet(x => x.UtcNow).Returns(() => now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(() => now);
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = "bob", IdToken = "token" });
         mockIdentity.Setup(x => x.GetCredentialsAsync("token", It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => NewCredentials());
@@ -37,7 +36,7 @@ public sealed class CognitoAwsCredentialsProviderTests : IDisposable
         Assert.Equal("identityClient", Assert.Throws<ArgumentNullException>(() => new CognitoAwsCredentialsProvider(mockAuth.Object, null!, cognitoConfig, offlineMode, mockClock.Object)).ParamName);
         Assert.Equal("cognitoConfig", Assert.Throws<ArgumentNullException>(() => new CognitoAwsCredentialsProvider(mockAuth.Object, mockIdentity.Object, null!, offlineMode, mockClock.Object)).ParamName);
         Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new CognitoAwsCredentialsProvider(mockAuth.Object, mockIdentity.Object, cognitoConfig, null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new CognitoAwsCredentialsProvider(mockAuth.Object, mockIdentity.Object, cognitoConfig, offlineMode, null!)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new CognitoAwsCredentialsProvider(mockAuth.Object, mockIdentity.Object, cognitoConfig, offlineMode, null!)).ParamName);
     }
 
     [Fact]

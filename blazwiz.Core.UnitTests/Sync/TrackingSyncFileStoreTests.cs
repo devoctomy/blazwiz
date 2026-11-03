@@ -4,7 +4,6 @@ using blazwiz.Core.Sync;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync;
@@ -20,14 +19,14 @@ public class TrackingSyncFileStoreTests
     private readonly InMemorySyncIndexStore index = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
     private readonly Mock<ISyncScheduler> mockScheduler = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
 
     private readonly EncryptedFileFormat format = new(new BouncyCastleAesGcmAeadCipher());
 
     public TrackingSyncFileStoreTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
     }
 
     [Fact]
@@ -38,7 +37,7 @@ public class TrackingSyncFileStoreTests
         Assert.Equal("indexStore", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, null!, mockUser.Object, mockScheduler.Object, mockClock.Object, format)).ParamName);
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, null!, mockScheduler.Object, mockClock.Object, format)).ParamName);
         Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, null!, mockClock.Object, format)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, null!, format)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, null!, format)).ParamName);
         Assert.Equal("encryptedFileFormat", Assert.Throws<ArgumentNullException>(() => new TrackingSyncFileStore(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, mockClock.Object, null!)).ParamName);
     }
 

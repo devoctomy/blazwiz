@@ -8,7 +8,6 @@ using blazwiz.Core.Cryptography.Models;
 using blazwiz.Core.Encryption;
 using blazwiz.Core.Encryption.Exceptions;
 using blazwiz.Core.Encryption.Models;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Core.UnitTests.Encryption.Fakes;
 using Moq;
 
@@ -24,12 +23,12 @@ public class E2eKeyManagerTests
     private readonly Argon2idOptions options = new() { Parameters = new Argon2idParameters { MemoryKib = 64, Iterations = 1, Parallelism = 1, KeyLength = 32 } };
     private readonly CountingArgon2 argon2 = new();
     private readonly AeadKeyWrapService keyWrap = new(new BouncyCastleAesGcmAeadCipher());
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
     private readonly Device device;
 
     public E2eKeyManagerTests()
     {
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
         device = NewDevice();
     }
 
@@ -44,7 +43,7 @@ public class E2eKeyManagerTests
         Assert.Equal("argon2", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, null!, keyWrap, options, mockClock.Object)).ParamName);
         Assert.Equal("keyWrapService", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, argon2, null!, options, mockClock.Object)).ParamName);
         Assert.Equal("argon2Options", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, argon2, keyWrap, null!, mockClock.Object)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, argon2, keyWrap, options, null!)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, argon2, keyWrap, options, null!)).ParamName);
     }
 
     [Fact]

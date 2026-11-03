@@ -1,10 +1,12 @@
 // A folder the user picks on their own computer (File System Access API, Chromium desktop only), imported by
 // FolderAccessClient (blazwiz.Core). The picked directory handle is kept in IndexedDB under a key (one per user) so it
 // can be used again after a reload; the browser may then ask for permission again. Files are laid out as in filetree.js.
+// FolderAccessClient calls configure first, so the database and picker are named after the app.
 
 import { listTree, readFile, removeFile, writeFile } from './filetree.js';
 
-const database = 'blazwiz_folders';
+let database = 'folders';
+let pickerId = 'sync';
 const storeName = 'handles';
 const mode = { mode: 'readwrite' };
 
@@ -61,6 +63,12 @@ async function requireHandle(key) {
     return handle;
 }
 
+// Names the database and the picker after the app, e.g. 'acmeportal_folders'.
+export function configure(prefix) {
+    database = prefix + 'folders';
+    pickerId = prefix + 'sync';
+}
+
 export function isSupported() {
     return typeof window.showDirectoryPicker === 'function';
 }
@@ -69,7 +77,7 @@ export function isSupported() {
 export async function pick(key) {
     let handle;
     try {
-        handle = await window.showDirectoryPicker({ id: 'blazwiz-sync', mode: 'readwrite' });
+        handle = await window.showDirectoryPicker({ id: pickerId, mode: 'readwrite' });
     } catch (error) {
         if (error && error.name === 'AbortError') {
             return null;

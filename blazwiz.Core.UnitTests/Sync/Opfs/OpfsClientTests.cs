@@ -1,3 +1,5 @@
+using blazwiz.Core.Configuration;
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.FileTree;
 using blazwiz.Core.Sync.Opfs;
 using Microsoft.JSInterop;
@@ -8,6 +10,8 @@ namespace blazwiz.Core.UnitTests.Sync.Opfs;
 
 public class OpfsClientTests
 {
+    private readonly Mock<IAppStorageKeys> mockKeys = CreateKeys();
+
     private readonly Mock<IJSRuntime> mockJs = new();
     private readonly Mock<IJSObjectReference> mockModule = new();
 
@@ -20,7 +24,7 @@ public class OpfsClientTests
     [Fact]
     public void GivenNullJsRuntime_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("jsRuntime", Assert.Throws<ArgumentNullException>(() => new OpfsClient(null!)).ParamName);
+        Assert.Equal("jsRuntime", Assert.Throws<ArgumentNullException>(() => new OpfsClient(null!, mockKeys.Object)).ParamName);
     }
 
     [Fact]
@@ -28,7 +32,7 @@ public class OpfsClientTests
     {
         // Arrange
         mockModule.Setup(x => x.InvokeAsync<bool>("isSupported", It.IsAny<object?[]>())).ReturnsAsync(true);
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
 
         // Act & Assert
         Assert.True(await sut.IsSupportedAsync());
@@ -41,7 +45,7 @@ public class OpfsClientTests
         var entries = new List<FileTreeEntry> { new() { Key = "notes/a.md", Size = 3, LastModified = 1 } };
         mockModule.Setup(x => x.InvokeAsync<List<FileTreeEntry>>("list", It.Is<object?[]>(a => (string?)a[0] == "root" && (string?)a[1] == "bob")))
             .ReturnsAsync(entries);
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
 
         // Act & Assert
         Assert.Same(entries, await sut.ListAsync("root", "bob"));
@@ -54,7 +58,7 @@ public class OpfsClientTests
         var file = new FileTreeFile { Content = [1], LastModified = 1 };
         mockModule.Setup(x => x.InvokeAsync<FileTreeFile?>("read", It.Is<object?[]>(a => (string?)a[0] == "root" && (string?)a[1] == "bob" && (string?)a[2] == "notes/a.md")))
             .ReturnsAsync(file);
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
 
         // Act & Assert
         Assert.Same(file, await sut.ReadAsync("root", "bob", "notes/a.md"));
@@ -65,7 +69,7 @@ public class OpfsClientTests
     {
         // Arrange
         var content = new byte[] { 1, 2 };
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.WriteAsync("root", "bob", "notes/a.md", content);
@@ -78,7 +82,7 @@ public class OpfsClientTests
     public async Task GivenKey_WhenDeleteAsync_ThenCallsModuleRemove()
     {
         // Arrange
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.DeleteAsync("root", "bob", "notes/a.md");
@@ -90,7 +94,7 @@ public class OpfsClientTests
     [Fact]
     public async Task GivenInvalidArguments_WhenCalled_ThenThrows()
     {
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
         await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.ListAsync(" ", "bob"));
         await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.ListAsync("root", " "));
         await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.ReadAsync("root", "bob", string.Empty));
@@ -103,7 +107,7 @@ public class OpfsClientTests
     public async Task GivenSeveralCalls_WhenUsingClient_ThenModuleImportedOnce()
     {
         // Arrange
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.IsSupportedAsync();
@@ -120,7 +124,7 @@ public class OpfsClientTests
         mockJs.SetupSequence(x => x.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]>()))
             .ThrowsAsync(new JSException("offline"))
             .ReturnsAsync(mockModule.Object);
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
 
         // Act
         await Assert.ThrowsAsync<JSException>(() => sut.IsSupportedAsync());
@@ -135,7 +139,7 @@ public class OpfsClientTests
     {
         // Arrange
         mockModule.Setup(x => x.DisposeAsync()).ThrowsAsync(new JSDisconnectedException("gone"));
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
         await sut.IsSupportedAsync();
 
         // Act
@@ -149,12 +153,42 @@ public class OpfsClientTests
     public async Task GivenNothingImported_WhenDisposeAsync_ThenNothingHappens()
     {
         // Arrange
-        var sut = new OpfsClient(mockJs.Object);
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.DisposeAsync();
 
         // Assert
         mockModule.Verify(x => x.DisposeAsync(), Times.Never);
+    }
+
+
+    [Fact]
+    public async Task GivenAppName_WhenListAsync_ThenRootIsNamedAfterTheApp()
+    {
+        // Arrange
+        mockModule.Setup(x => x.InvokeAsync<List<FileTreeEntry>>("list", It.IsAny<object?[]>())).ReturnsAsync([]);
+        var sut = new OpfsClient(mockJs.Object, new AppStorageKeys(new BlazwizAppOptions { Name = "app" }));
+
+        // Act
+        await sut.ListAsync("notes", "bob");
+
+        // Assert
+        mockModule.Verify(x => x.InvokeAsync<List<FileTreeEntry>>("list", It.Is<object?[]>(a => (string?)a[0] == "app_notes" && (string?)a[1] == "bob")), Times.Once);
+    }
+
+    [Fact]
+    public void GivenNullStorageKeys_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("storageKeys", Assert.Throws<ArgumentNullException>(() => new OpfsClient(mockJs.Object, null!)).ParamName);
+    }
+
+    // Keeps names as they are, so the tests can check them; the prefix itself is checked separately.
+    private static Mock<IAppStorageKeys> CreateKeys()
+    {
+        var keys = new Mock<IAppStorageKeys>();
+        keys.Setup(x => x.For(It.IsAny<string>())).Returns<string>(name => name);
+        keys.SetupGet(x => x.Prefix).Returns(string.Empty);
+        return keys;
     }
 }

@@ -15,8 +15,6 @@ using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Opfs;
 using blazwiz.Core.Sync.S3;
 using blazwiz.Core.Sync.Storage;
-using blazwiz.Core.Time;
-using blazwiz.Core.Time.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -50,7 +48,7 @@ public static class SyncServiceCollectionExtensions
         services.AddSingleton(options);
 
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<ISystemClock, SystemClock>();
+        services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IOfflineModeService, OfflineModeService>();
         services.TryAddSingleton<ISyncPlanner, SyncPlanner>();
         services.TryAddSingleton<IContentHasher, Sha256ContentHasher>();
@@ -78,7 +76,7 @@ public static class SyncServiceCollectionExtensions
         services.TryAddScoped<ISyncEventLog>(sp => options.EventLogFactory?.Invoke(sp) ?? new IndexedDbSyncEventLog(
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
-            sp.GetRequiredService<ISystemClock>(),
+            sp.GetRequiredService<TimeProvider>(),
             options,
             IndexedDbSyncEventLog.DescribeStore(options.EventLogDatabase, options.EventLogStore)));
 
@@ -114,7 +112,7 @@ public static class SyncServiceCollectionExtensions
             : profile.FileStoreFactory?.Invoke(sp) ?? new IndexedDbSyncFileStore(
                 sp.GetRequiredService<IIndexedDbClient>(),
                 sp.GetRequiredService<ISyncUserContext>(),
-                sp.GetRequiredService<ISystemClock>(),
+                sp.GetRequiredService<TimeProvider>(),
                 IndexedDbSyncFileStore.DescribeStore(profile.FileDatabase, profile.ResolvedFileStoreName)));
 
         services.AddKeyedScoped<ISyncFileStore>(name, (sp, _) =>
@@ -125,7 +123,7 @@ public static class SyncServiceCollectionExtensions
                 sp.GetRequiredKeyedService<ISyncIndexStore>(name),
                 sp.GetRequiredService<ISyncUserContext>(),
                 sp.GetRequiredService<ISyncScheduler>(),
-                sp.GetRequiredService<ISystemClock>(),
+                sp.GetRequiredService<TimeProvider>(),
                 sp.GetRequiredService<IEncryptedFileFormat>());
 
             // App code reads and writes plaintext; the store holds (and syncs) ciphertext once encryption is on.

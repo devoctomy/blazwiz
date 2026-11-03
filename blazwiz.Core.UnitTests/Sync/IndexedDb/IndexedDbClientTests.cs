@@ -1,3 +1,5 @@
+using blazwiz.Core.Configuration;
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.IndexedDb;
 using Microsoft.JSInterop;
 using Microsoft.JSInterop.Infrastructure;
@@ -7,6 +9,8 @@ namespace blazwiz.Core.UnitTests.Sync.IndexedDb;
 
 public class IndexedDbClientTests
 {
+    private readonly Mock<IAppStorageKeys> mockKeys = CreateKeys();
+
     private static readonly IndexedDbStore Store = new("db", "store", ["id"]);
 
     private readonly Mock<IJSRuntime> mockJs = new();
@@ -21,15 +25,15 @@ public class IndexedDbClientTests
     [Fact]
     public void GivenNullJsRuntime_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("jsRuntime", Assert.Throws<ArgumentNullException>(() => new IndexedDbClient(null!)).ParamName);
+        Assert.Equal("jsRuntime", Assert.Throws<ArgumentNullException>(() => new IndexedDbClient(null!, mockKeys.Object)).ParamName);
     }
 
     [Fact]
     public async Task GivenKey_WhenGetAsync_ThenCallsModuleGet()
     {
         // Arrange
-        mockModule.Setup(x => x.InvokeAsync<string?>("get", It.Is<object?[]>(a => a[0] == Store && (string?)a[1] == "k"))).ReturnsAsync("value");
-        var sut = new IndexedDbClient(mockJs.Object);
+        mockModule.Setup(x => x.InvokeAsync<string?>("get", It.Is<object?[]>(a => ((IndexedDbStore)a[0]!).Database == Store.Database && ((IndexedDbStore)a[0]!).Name == Store.Name && (string?)a[1] == "k"))).ReturnsAsync("value");
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
 
         // Act & Assert
         Assert.Equal("value", await sut.GetAsync<string>(Store, "k"));
@@ -39,7 +43,7 @@ public class IndexedDbClientTests
     public async Task GivenSeveralCalls_WhenUsingClient_ThenModuleImportedOnce()
     {
         // Arrange
-        var sut = new IndexedDbClient(mockJs.Object);
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.PutAsync(Store, "a");
@@ -56,7 +60,7 @@ public class IndexedDbClientTests
         mockJs.SetupSequence(x => x.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]>()))
             .ThrowsAsync(new JSException("offline"))
             .ReturnsAsync(mockModule.Object);
-        var sut = new IndexedDbClient(mockJs.Object);
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
 
         // Act
         await Assert.ThrowsAsync<JSException>(() => sut.PutAsync(Store, "a"));
@@ -70,9 +74,9 @@ public class IndexedDbClientTests
     public async Task GivenIndexQuery_WhenGetAllByIndexAsync_ThenPassesOmitFields()
     {
         // Arrange
-        mockModule.Setup(x => x.InvokeAsync<List<string>>("getAllByIndex", It.Is<object?[]>(a => a[0] == Store && (string?)a[1] == "owner" && (string?)a[2] == "bob" && ((IReadOnlyList<string>)a[3]!).Single() == "content")))
+        mockModule.Setup(x => x.InvokeAsync<List<string>>("getAllByIndex", It.Is<object?[]>(a => ((IndexedDbStore)a[0]!).Database == Store.Database && ((IndexedDbStore)a[0]!).Name == Store.Name && (string?)a[1] == "owner" && (string?)a[2] == "bob" && ((IReadOnlyList<string>)a[3]!).Single() == "content")))
             .ReturnsAsync(["x"]);
-        var sut = new IndexedDbClient(mockJs.Object);
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
 
         // Act & Assert
         Assert.Equal(["x"], await sut.GetAllByIndexAsync<string>(Store, "owner", "bob", ["content"]));
@@ -83,7 +87,7 @@ public class IndexedDbClientTests
     {
         // Arrange
         mockModule.Setup(x => x.InvokeAsync<string?>("getLastByIndex", It.Is<object?[]>(a => (string?)a[1] == "i" && (string?)a[2] == "a" && (string?)a[3] == "z"))).ReturnsAsync("last");
-        var sut = new IndexedDbClient(mockJs.Object);
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
 
         // Act & Assert
         Assert.Equal("last", await sut.GetLastByIndexAsync<string>(Store, "i", "a", "z"));
@@ -93,39 +97,22 @@ public class IndexedDbClientTests
     public async Task GivenWrites_WhenCalled_ThenModuleFunctionsInvoked()
     {
         // Arrange
-        var sut = new IndexedDbClient(mockJs.Object);
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.PutManyAsync(Store, ["a", "b"]);
         await sut.DeleteManyAsync(Store, ["a"]);
-        await sut.DeleteManyFromExistingAsync("db", "old", ["a"]);
-        await sut.DeleteStoresAsync("db", ["old"]);
 
         // Assert
         VerifyVoid("putMany", a => ((string[])a[1]!).SequenceEqual(new[] { "a", "b" }));
         VerifyVoid("deleteMany", a => ((object[])a[1]!).Single() is "a");
-        VerifyVoid("deleteManyFromExisting", a => (string?)a[0] == "db" && (string?)a[1] == "old");
-        VerifyVoid("deleteStores", a => ((string[])a[1]!).Single() == "old");
-    }
-
-    [Fact]
-    public async Task GivenExistingStoreQueries_WhenCalled_ThenModuleFunctionsInvoked()
-    {
-        // Arrange
-        mockModule.Setup(x => x.InvokeAsync<bool>("storeExists", It.Is<object?[]>(a => (string?)a[0] == "db" && (string?)a[1] == "old"))).ReturnsAsync(true);
-        mockModule.Setup(x => x.InvokeAsync<List<string>>("getAllFromExisting", It.IsAny<object?[]>())).ReturnsAsync(["r"]);
-        var sut = new IndexedDbClient(mockJs.Object);
-
-        // Act & Assert
-        Assert.True(await sut.StoreExistsAsync("db", "old"));
-        Assert.Equal(["r"], await sut.GetAllFromExistingAsync<string>("db", "old"));
     }
 
     [Fact]
     public async Task GivenImportedModule_WhenDisposeAsync_ThenModuleDisposed()
     {
         // Arrange
-        var sut = new IndexedDbClient(mockJs.Object);
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
         await sut.PutAsync(Store, "a");
 
         // Act
@@ -138,5 +125,34 @@ public class IndexedDbClientTests
     private void VerifyVoid(string identifier, Func<object?[], bool> args)
     {
         mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>(identifier, It.Is<object?[]>(a => args(a))), Times.Once);
+    }
+
+
+    [Fact]
+    public async Task GivenAppName_WhenCalled_ThenDatabaseIsNamedAfterTheApp()
+    {
+        // Arrange
+        var sut = new IndexedDbClient(mockJs.Object, new AppStorageKeys(new BlazwizAppOptions { Name = "app" }));
+
+        // Act
+        await sut.PutAsync(Store, "a");
+
+        // Assert
+        VerifyVoid("put", a => a[0] is IndexedDbStore s && s.Database == "app_db" && s.Name == Store.Name && s.KeyPath.SequenceEqual(Store.KeyPath));
+    }
+
+    [Fact]
+    public void GivenNullStorageKeys_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("storageKeys", Assert.Throws<ArgumentNullException>(() => new IndexedDbClient(mockJs.Object, null!)).ParamName);
+    }
+
+    // Keeps names as they are, so the tests can check them; the prefix itself is checked separately.
+    private static Mock<IAppStorageKeys> CreateKeys()
+    {
+        var keys = new Mock<IAppStorageKeys>();
+        keys.Setup(x => x.For(It.IsAny<string>())).Returns<string>(name => name);
+        keys.SetupGet(x => x.Prefix).Returns(string.Empty);
+        return keys;
     }
 }

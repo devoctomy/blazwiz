@@ -415,12 +415,12 @@ Each phase leaves the app fully working, with all four test suites passing (unit
 unit, Playwright UI), before the next phase starts.
 
 ### Phase 0: groundwork (small)
-- [ ] T1, T2, T3, T4: remove stale template entries and the old `.sln`, fix the dashboard text, move `GreetingService`.
-- [ ] T10: remove the compatibility code for earlier development builds.
-- [ ] T5: standardise on `TimeProvider`.
-- [ ] U7: introduce `BlazwizAppOptions` and a storage key builder. Replace every literal key, including the one in
+- [x] T1, T2, T3, T4: remove stale template entries and the old `.sln`, fix the dashboard text, move `GreetingService`.
+- [x] T10: remove the compatibility code for earlier development builds.
+- [x] T5: standardise on `TimeProvider`.
+- [x] U7: introduce `BlazwizAppOptions` and a storage key builder. Replace every literal key, including the one in
   `app.js`.
-- [ ] Write the SemVer policy and the list of what counts as public API (U12, D5).
+- [x] Write the SemVer policy and the list of what counts as public API (U12, D5).
 
 ### Phase 1: extension points, still inside the current projects
 Build U3 to U6 and U11 in the existing projects, then move the current sync, E2E and offline UI onto them. This is

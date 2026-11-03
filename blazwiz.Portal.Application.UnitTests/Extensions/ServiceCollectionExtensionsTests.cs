@@ -87,7 +87,6 @@ public class ServiceCollectionExtensionsTests
         Assert.IsType<E2eSyncGate>(Assert.Single(scope.ServiceProvider.GetServices<ISyncGate>()));
         Assert.Equal([NoteService.ProfileName], scope.ServiceProvider.GetRequiredService<ISyncService>().Profiles);
         Assert.IsType<IndexedDbNotesStateStore>(scope.ServiceProvider.GetRequiredService<INotesStateStore>());
-        Assert.IsType<NoteMigrationService>(scope.ServiceProvider.GetRequiredService<INoteMigrationService>());
         Assert.IsType<NoteService>(scope.ServiceProvider.GetRequiredService<INoteService>());
         Assert.IsType<NoteNameService>(scope.ServiceProvider.GetRequiredService<INoteNameService>());
         Assert.IsType<NoteTreeService>(scope.ServiceProvider.GetRequiredService<INoteTreeService>());

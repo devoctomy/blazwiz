@@ -1,5 +1,4 @@
 using blazwiz.Core.Offline;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
 
@@ -8,10 +7,10 @@ namespace blazwiz.Portal.Application.Services;
 /// <summary>
 /// Implementation of <see cref="IOfflineSessionStore"/> holding the session in a field.
 /// </summary>
-public class InMemoryOfflineSessionStore(ISystemClock systemClock)
+public class InMemoryOfflineSessionStore(TimeProvider timeProvider)
     : IOfflineSessionStore
 {
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     /// <inheritdoc/>
     public UserSession? Session { get; private set; }
@@ -21,7 +20,7 @@ public class InMemoryOfflineSessionStore(ISystemClock systemClock)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(username);
 
-        var now = systemClock.UtcNow;
+        var now = timeProvider.GetUtcNow();
         Session = new UserSession
         {
             Username = username,

@@ -1,5 +1,4 @@
 using blazwiz.Core.Offline;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Services;
 using Moq;
 
@@ -9,17 +8,17 @@ public class InMemoryOfflineSessionStoreTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 4, 12, 0, 0, TimeSpan.Zero);
 
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
 
     public InMemoryOfflineSessionStoreTests()
     {
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
     }
 
     [Fact]
     public void GivenNullClock_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new InMemoryOfflineSessionStore(null!)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new InMemoryOfflineSessionStore(null!)).ParamName);
     }
 
     [Fact]

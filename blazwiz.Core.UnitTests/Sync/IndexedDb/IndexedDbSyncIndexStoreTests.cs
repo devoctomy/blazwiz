@@ -7,7 +7,7 @@ namespace blazwiz.Core.UnitTests.Sync.IndexedDb;
 
 public class IndexedDbSyncIndexStoreTests
 {
-    private static readonly IndexedDbStore Store = IndexedDbSyncIndexStore.DescribeStore("blazwiz_sync", "notes_index");
+    private static readonly IndexedDbStore Store = IndexedDbSyncIndexStore.DescribeStore("sync", "notes_index");
 
     private readonly Mock<IIndexedDbClient> mockClient = new();
 

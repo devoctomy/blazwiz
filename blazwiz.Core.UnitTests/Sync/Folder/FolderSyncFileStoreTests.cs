@@ -5,7 +5,6 @@ using blazwiz.Core.Sync.Folder;
 using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync.Folder;
@@ -15,18 +14,18 @@ public class FolderSyncFileStoreTests
     private const string Owner = "bob";
     private static readonly DateTimeOffset Now = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset Earlier = new(2026, 9, 1, 12, 0, 0, TimeSpan.Zero);
-    private static readonly IndexedDbStore Metadata = FolderSyncFileStore.DescribeMetadataStore("blazwiz_sync", "notes_folder");
+    private static readonly IndexedDbStore Metadata = FolderSyncFileStore.DescribeMetadataStore("sync", "notes_folder");
 
     private readonly Mock<IFolderAccessClient> mockFolder = new();
     private readonly Mock<IIndexedDbClient> mockIndexedDb = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
     private readonly GlobSyncPathMatcher matcher = new("notes/**/*.md", includeEmptyFolders: true);
 
     public FolderSyncFileStoreTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(Now);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
         mockFolder.Setup(x => x.GetStatusAsync(Owner)).ReturnsAsync(new SyncFolderStatus { Name = "Notes", Permission = SyncFolderStatus.Granted });
     }
 
@@ -36,7 +35,7 @@ public class FolderSyncFileStoreTests
         Assert.Equal("folderClient", Assert.Throws<ArgumentNullException>(() => new FolderSyncFileStore(null!, mockIndexedDb.Object, mockUser.Object, mockClock.Object, matcher, Metadata)).ParamName);
         Assert.Equal("indexedDbClient", Assert.Throws<ArgumentNullException>(() => new FolderSyncFileStore(mockFolder.Object, null!, mockUser.Object, mockClock.Object, matcher, Metadata)).ParamName);
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new FolderSyncFileStore(mockFolder.Object, mockIndexedDb.Object, null!, mockClock.Object, matcher, Metadata)).ParamName);
-        Assert.Equal("systemClock", Assert.Throws<ArgumentNullException>(() => new FolderSyncFileStore(mockFolder.Object, mockIndexedDb.Object, mockUser.Object, null!, matcher, Metadata)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new FolderSyncFileStore(mockFolder.Object, mockIndexedDb.Object, mockUser.Object, null!, matcher, Metadata)).ParamName);
         Assert.Equal("matcher", Assert.Throws<ArgumentNullException>(() => new FolderSyncFileStore(mockFolder.Object, mockIndexedDb.Object, mockUser.Object, mockClock.Object, null!, Metadata)).ParamName);
         Assert.Equal("metadataStore", Assert.Throws<ArgumentNullException>(() => new FolderSyncFileStore(mockFolder.Object, mockIndexedDb.Object, mockUser.Object, mockClock.Object, matcher, null!)).ParamName);
     }
@@ -44,7 +43,7 @@ public class FolderSyncFileStoreTests
     [Fact]
     public void GivenDatabaseAndName_WhenDescribeMetadataStore_ThenKeyedByOwnerAndKeyAndIndexedByOwner()
     {
-        Assert.Equal(("blazwiz_sync", "notes_folder"), (Metadata.Database, Metadata.Name));
+        Assert.Equal(("sync", "notes_folder"), (Metadata.Database, Metadata.Name));
         Assert.Equal(["owner", "key"], Metadata.KeyPath);
         Assert.Equal(["owner"], Assert.Single(Metadata.Indexes).KeyPath);
     }

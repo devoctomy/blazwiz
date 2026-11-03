@@ -1,7 +1,6 @@
 using blazwiz.Core.Encryption.Interfaces;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Sync;
 
@@ -21,7 +20,7 @@ public class TrackingSyncFileStore(
     ISyncIndexStore indexStore,
     ISyncUserContext userContext,
     ISyncScheduler scheduler,
-    ISystemClock systemClock,
+    TimeProvider timeProvider,
     IEncryptedFileFormat encryptedFileFormat)
     : ISyncFileStore
 {
@@ -30,7 +29,7 @@ public class TrackingSyncFileStore(
     private readonly ISyncIndexStore indexStore = indexStore ?? throw new ArgumentNullException(nameof(indexStore));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly ISyncScheduler scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly IEncryptedFileFormat encryptedFileFormat = encryptedFileFormat ?? throw new ArgumentNullException(nameof(encryptedFileFormat));
 
     /// <summary>
@@ -92,7 +91,7 @@ public class TrackingSyncFileStore(
         record.Revision++;
         record.Dirty = !deleted;
         record.Deleted = deleted;
-        record.DeletedAt = deleted ? systemClock.UtcNow : null;
+        record.DeletedAt = deleted ? timeProvider.GetUtcNow() : null;
         record.KeyId = content != null && encryptedFileFormat.TryGetKeyId(content, out var keyId) ? keyId : null;
         record.Encrypted = record.KeyId != null;
         await indexStore.SaveAsync(record, ct);

@@ -1,19 +1,20 @@
 namespace blazwiz.Core.Sync.Configuration;
 
 /// <summary>
-/// Default names and service key parts used by the sync configuration.
+/// Default names and service key parts used by the sync configuration. Names kept in the browser are short names: the
+/// storage clients put the app's prefix in front of them (<see cref="Core.Configuration.Interfaces.IAppStorageKeys"/>).
 /// </summary>
 public static class SyncDefaults
 {
     /// <summary>
     /// The IndexedDB database holding the sync index and the log, unless configured otherwise.
     /// </summary>
-    public const string IndexDatabase = "blazwiz_sync";
+    public const string IndexDatabase = "sync";
 
     /// <summary>
     /// The IndexedDB database holding the files, unless configured otherwise.
     /// </summary>
-    public const string FileDatabase = "blazwiz_files";
+    public const string FileDatabase = "files";
 
     /// <summary>
     /// The IndexedDB object store holding the log, unless configured otherwise.
@@ -28,7 +29,7 @@ public static class SyncDefaults
     /// <summary>
     /// Put before a profile name for the cross tab lock taken while it syncs.
     /// </summary>
-    public const string LockNamePrefix = "blazwiz-sync-";
+    public const string LockNamePrefix = "sync-";
 
     /// <summary>
     /// The IndexedDB object store (in <see cref="IndexDatabase"/>) recording which storage each profile uses.
@@ -50,5 +51,5 @@ public static class SyncDefaults
     /// <summary>
     /// The BroadcastChannel the app's tabs use to tell each other about storage moves.
     /// </summary>
-    public const string StorageChannelName = "blazwiz-sync-storage";
+    public const string StorageChannelName = "sync-storage";
 }

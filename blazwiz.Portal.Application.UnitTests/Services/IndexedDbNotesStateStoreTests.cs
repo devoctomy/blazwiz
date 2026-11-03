@@ -19,7 +19,7 @@ public class IndexedDbNotesStateStoreTests
     public void GivenStore_WhenDescribed_ThenStateStoreOfNotesDatabaseKeyedByOwner()
     {
         Assert.Equal(IndexedDbNotesStateStore.Database, IndexedDbNotesStateStore.Store.Database);
-        Assert.EndsWith("_notes", IndexedDbNotesStateStore.Database, StringComparison.Ordinal);
+        Assert.Equal("notes", IndexedDbNotesStateStore.Database);
         Assert.Equal("state", IndexedDbNotesStateStore.Store.Name);
         Assert.Equal(["owner"], IndexedDbNotesStateStore.Store.KeyPath);
     }

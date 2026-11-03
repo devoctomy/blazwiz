@@ -7,7 +7,7 @@ namespace blazwiz.Core.UnitTests.Sync.IndexedDb;
 
 public class IndexedDbSyncStorageStateStoreTests
 {
-    private static readonly IndexedDbStore Store = IndexedDbSyncStorageStateStore.DescribeStore("blazwiz_sync", "storage");
+    private static readonly IndexedDbStore Store = IndexedDbSyncStorageStateStore.DescribeStore("sync", "storage");
 
     private readonly Mock<IIndexedDbClient> mockClient = new();
 
@@ -21,7 +21,7 @@ public class IndexedDbSyncStorageStateStoreTests
     [Fact]
     public void GivenDatabaseAndName_WhenDescribeStore_ThenKeyedByProfileAndOwner()
     {
-        Assert.Equal(("blazwiz_sync", "storage"), (Store.Database, Store.Name));
+        Assert.Equal(("sync", "storage"), (Store.Database, Store.Name));
         Assert.Equal(["profile", "owner"], Store.KeyPath);
         Assert.Empty(Store.Indexes);
     }

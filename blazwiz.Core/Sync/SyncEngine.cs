@@ -2,7 +2,6 @@ using blazwiz.Core.Encryption.Interfaces;
 using blazwiz.Core.Sync.Exceptions;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Sync;
 
@@ -20,7 +19,7 @@ public class SyncEngine(
     IContentHasher contentHasher,
     ISyncUserContext userContext,
     ISyncEventLog eventLog,
-    ISystemClock systemClock,
+    TimeProvider timeProvider,
     IEncryptedFileFormat encryptedFileFormat)
     : ISyncEngine
 {
@@ -29,7 +28,7 @@ public class SyncEngine(
     private readonly IContentHasher contentHasher = contentHasher ?? throw new ArgumentNullException(nameof(contentHasher));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly ISyncEventLog eventLog = eventLog ?? throw new ArgumentNullException(nameof(eventLog));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly IEncryptedFileFormat encryptedFileFormat = encryptedFileFormat ?? throw new ArgumentNullException(nameof(encryptedFileFormat));
 
     /// <inheritdoc/>
@@ -347,7 +346,7 @@ public class SyncEngine(
         var record = current ?? new SyncIndexRecord { Profile = profile.Name, Owner = pass.Owner, Key = action.Key };
         record.BaseHash = contentHasher.ComputeHash(content);
         record.BaseETag = etag;
-        record.LastSyncedAt = systemClock.UtcNow;
+        record.LastSyncedAt = timeProvider.GetUtcNow();
         if (!LocalChangedSince(action.Record, current))
         {
             // Only clear the local change flags if nothing changed locally while this file was syncing.
@@ -390,7 +389,7 @@ public class SyncEngine(
             Owner = pass.Owner,
             Profile = pass.Profile.Name,
             PassId = pass.PassId,
-            Timestamp = systemClock.UtcNow,
+            Timestamp = timeProvider.GetUtcNow(),
             Kind = kind,
             Key = key,
             Message = message,
@@ -405,7 +404,7 @@ public class SyncEngine(
             var fileEvents = pass.Events.Count(e => e.Kind != SyncEventKind.PassStarted);
             if (fileEvents == 0 && !passFailed && !cancelled)
             {
-                await eventLog.RecordNoChangePassAsync(pass.Owner, pass.Profile.Name, pass.PassId, systemClock.UtcNow);
+                await eventLog.RecordNoChangePassAsync(pass.Owner, pass.Profile.Name, pass.PassId, timeProvider.GetUtcNow());
                 return;
             }
 

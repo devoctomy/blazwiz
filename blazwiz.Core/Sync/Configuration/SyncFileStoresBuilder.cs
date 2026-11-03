@@ -3,7 +3,6 @@ using blazwiz.Core.Sync.IndexedDb;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Core.Sync.Opfs;
-using blazwiz.Core.Time.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace blazwiz.Core.Sync.Configuration;
@@ -35,7 +34,7 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
         return Add(SyncStorageKind.IndexedDb, sp => new IndexedDbSyncFileStore(
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
-            sp.GetRequiredService<ISystemClock>(),
+            sp.GetRequiredService<TimeProvider>(),
             description));
     }
 
@@ -56,7 +55,7 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
             sp.GetRequiredService<IOpfsClient>(),
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
-            sp.GetRequiredService<ISystemClock>(),
+            sp.GetRequiredService<TimeProvider>(),
             root,
             description));
     }
@@ -78,7 +77,7 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
             sp.GetRequiredService<IFolderAccessClient>(),
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
-            sp.GetRequiredService<ISystemClock>(),
+            sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredKeyedService<ISyncPathMatcher>(name),
             description));
     }

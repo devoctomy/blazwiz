@@ -15,7 +15,6 @@ using blazwiz.Core.Sync.Models;
 using blazwiz.Core.Sync.Opfs;
 using blazwiz.Core.Sync.S3;
 using blazwiz.Core.Sync.Storage;
-using blazwiz.Core.Time.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.JSInterop;
 using Moq;
@@ -61,18 +60,18 @@ public class SyncServiceCollectionExtensionsTests
         Assert.IsType<SyncStorageResolver>(sp.GetRequiredService<ISyncStorageResolver>());
         Assert.IsType<SyncStorageMigrationService>(sp.GetRequiredService<ISyncStorageMigrationService>());
         var storageState = Assert.IsType<IndexedDbSyncStorageStateStore>(sp.GetRequiredService<ISyncStorageStateStore>());
-        Assert.Equal(("blazwiz_sync", "storage"), (storageState.Store.Database, storageState.Store.Name));
+        Assert.Equal(("sync", "storage"), (storageState.Store.Database, storageState.Store.Name));
         Assert.Same(TimeProvider.System, sp.GetRequiredService<TimeProvider>());
-        Assert.NotNull(sp.GetRequiredService<ISystemClock>());
+        Assert.NotNull(sp.GetRequiredService<TimeProvider>());
 
         var log = Assert.IsType<IndexedDbSyncEventLog>(sp.GetRequiredService<ISyncEventLog>());
-        Assert.Equal(("blazwiz_sync", "events"), (log.Store.Database, log.Store.Name));
+        Assert.Equal(("sync", "events"), (log.Store.Database, log.Store.Name));
 
         var index = Assert.IsType<IndexedDbSyncIndexStore>(sp.GetRequiredKeyedService<ISyncIndexStore>("notes"));
-        Assert.Equal(("blazwiz_sync", "notes_index"), (index.Store.Database, index.Store.Name));
+        Assert.Equal(("sync", "notes_index"), (index.Store.Database, index.Store.Name));
 
         var untracked = Assert.IsType<IndexedDbSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
-        Assert.Equal(("blazwiz_files", "notes"), (untracked.Store.Database, untracked.Store.Name));
+        Assert.Equal(("files", "notes"), (untracked.Store.Database, untracked.Store.Name));
 
         Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
         Assert.IsType<S3SyncRemoteStore>(sp.GetRequiredKeyedService<ISyncRemoteStore>("notes"));
@@ -95,10 +94,10 @@ public class SyncServiceCollectionExtensionsTests
         // Arrange
         var services = CreateServices();
         services.AddBlazwizSync(sync => sync
-            .UseIndexedDbEventLog("blazwiz_sync", "log")
+            .UseIndexedDbEventLog("sync", "log")
             .AddProfile("notes", p => p
-                .UseIndexedDbIndexStore("blazwiz_sync", "notes_index")
-                .UseIndexedDbFileStore("blazwiz_notes", "files")
+                .UseIndexedDbIndexStore("sync", "notes_index")
+                .UseIndexedDbFileStore("notes", "files")
                 .UseRemote("notes/**/*.md", includeEmptyFolders: true)));
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
@@ -108,8 +107,8 @@ public class SyncServiceCollectionExtensionsTests
         var index = Assert.IsType<IndexedDbSyncIndexStore>(sp.GetRequiredKeyedService<ISyncIndexStore>("notes"));
         var files = Assert.IsType<IndexedDbSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
         var log = Assert.IsType<IndexedDbSyncEventLog>(sp.GetRequiredService<ISyncEventLog>());
-        Assert.Equal(("blazwiz_sync", "notes_index"), (index.Store.Database, index.Store.Name));
-        Assert.Equal(("blazwiz_notes", "files"), (files.Store.Database, files.Store.Name));
+        Assert.Equal(("sync", "notes_index"), (index.Store.Database, index.Store.Name));
+        Assert.Equal(("notes", "files"), (files.Store.Database, files.Store.Name));
         Assert.Equal("log", log.Store.Name);
     }
 
@@ -119,7 +118,7 @@ public class SyncServiceCollectionExtensionsTests
         // Arrange
         var services = CreateServices();
         services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p
-            .UseFileStores(s => s.AddIndexedDb("blazwiz_notes", "files").AddOpfs("notes_root").AddLocalFolder())
+            .UseFileStores(s => s.AddIndexedDb("notes", "files").AddOpfs("notes_root").AddLocalFolder())
             .UseRemote("notes/**/*.md")));
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         await using var scope = provider.CreateAsyncScope();
@@ -134,12 +133,12 @@ public class SyncServiceCollectionExtensionsTests
         Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
 
         var indexedDb = Assert.IsType<IndexedDbSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.IndexedDb));
-        Assert.Equal(("blazwiz_notes", "files"), (indexedDb.Store.Database, indexedDb.Store.Name));
+        Assert.Equal(("notes", "files"), (indexedDb.Store.Database, indexedDb.Store.Name));
         var opfs = Assert.IsType<OpfsSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.Opfs));
         Assert.Equal("notes_root", opfs.Root);
-        Assert.Equal(("blazwiz_sync", "notes_opfs"), (opfs.MetadataStore.Database, opfs.MetadataStore.Name));
+        Assert.Equal(("sync", "notes_opfs"), (opfs.MetadataStore.Database, opfs.MetadataStore.Name));
         var folder = Assert.IsType<FolderSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.LocalFolder));
-        Assert.Equal(("blazwiz_sync", "notes_folder"), (folder.MetadataStore.Database, folder.MetadataStore.Name));
+        Assert.Equal(("sync", "notes_folder"), (folder.MetadataStore.Database, folder.MetadataStore.Name));
     }
 
     [Fact]
@@ -239,6 +238,7 @@ public class SyncServiceCollectionExtensionsTests
     private static ServiceCollection CreateServices()
     {
         var services = new ServiceCollection();
+        services.AddBlazwizApp("app", "a78e68c7-90e0-4f90-aa3d-73f7b2c9f2c8");
         services.AddSingleton(Mock.Of<IJSRuntime>());
         services.AddScoped(_ => Mock.Of<IS3SyncTargetProvider>());
         services.AddScoped(_ => Mock.Of<ISyncUserContext>());

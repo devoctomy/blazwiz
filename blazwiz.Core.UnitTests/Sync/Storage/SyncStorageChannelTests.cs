@@ -1,3 +1,5 @@
+using blazwiz.Core.Configuration;
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Core.Sync.Storage;
@@ -9,6 +11,8 @@ namespace blazwiz.Core.UnitTests.Sync.Storage;
 
 public class SyncStorageChannelTests
 {
+    private readonly Mock<IAppStorageKeys> mockKeys = CreateKeys();
+
     private readonly Mock<IJSRuntime> mockJs = new();
     private readonly Mock<IJSObjectReference> mockModule = new();
 
@@ -21,14 +25,14 @@ public class SyncStorageChannelTests
     [Fact]
     public void GivenNullJsRuntime_WhenConstructing_ThenThrowsArgumentNullException()
     {
-        Assert.Equal("jsRuntime", Assert.Throws<ArgumentNullException>(() => new SyncStorageChannel(null!)).ParamName);
+        Assert.Equal("jsRuntime", Assert.Throws<ArgumentNullException>(() => new SyncStorageChannel(null!, mockKeys.Object)).ParamName);
     }
 
     [Fact]
     public async Task GivenStartedTwice_WhenStartAsync_ThenSubscribesOnceToTheStorageChannel()
     {
         // Arrange
-        var sut = new SyncStorageChannel(mockJs.Object);
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.StartAsync();
@@ -42,7 +46,7 @@ public class SyncStorageChannelTests
     public async Task GivenStarted_WhenStopAsync_ThenUnsubscribesOnce()
     {
         // Arrange
-        var sut = new SyncStorageChannel(mockJs.Object);
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
         await sut.StartAsync();
 
         // Act
@@ -57,7 +61,7 @@ public class SyncStorageChannelTests
     public async Task GivenMessage_WhenPostAsync_ThenPostedByName()
     {
         // Arrange
-        var sut = new SyncStorageChannel(mockJs.Object);
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.PostAsync(SyncStorageChannelMessage.Changed);
@@ -72,7 +76,7 @@ public class SyncStorageChannelTests
     public void GivenKnownMessage_WhenOnMessage_ThenRaised(string message, SyncStorageChannelMessage expected)
     {
         // Arrange
-        var sut = new SyncStorageChannel(mockJs.Object);
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
         var received = new List<SyncStorageChannelMessage>();
         sut.MessageReceived += (_, m) => received.Add(m);
 
@@ -89,7 +93,7 @@ public class SyncStorageChannelTests
     public void GivenUnknownMessage_WhenOnMessage_ThenIgnored(string message)
     {
         // Arrange
-        var sut = new SyncStorageChannel(mockJs.Object);
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
         var received = 0;
         sut.MessageReceived += (_, _) => received++;
 
@@ -104,7 +108,7 @@ public class SyncStorageChannelTests
     public async Task GivenStarted_WhenDisposeAsync_ThenUnsubscribedAndModuleDisposed()
     {
         // Arrange
-        var sut = new SyncStorageChannel(mockJs.Object);
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
         await sut.StartAsync();
 
         // Act
@@ -120,7 +124,7 @@ public class SyncStorageChannelTests
     {
         // Arrange
         mockModule.Setup(x => x.InvokeAsync<IJSVoidResult>("unsubscribe", It.IsAny<object?[]>())).ThrowsAsync(new JSDisconnectedException("gone"));
-        var sut = new SyncStorageChannel(mockJs.Object);
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
         await sut.StartAsync();
 
         // Act & Assert
@@ -131,12 +135,43 @@ public class SyncStorageChannelTests
     public async Task GivenNothingStarted_WhenDisposeAsync_ThenNothingImported()
     {
         // Arrange
-        var sut = new SyncStorageChannel(mockJs.Object);
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
 
         // Act
         await sut.DisposeAsync();
 
         // Assert
         mockJs.Verify(x => x.InvokeAsync<IJSObjectReference>("import", It.IsAny<object?[]>()), Times.Never);
+    }
+
+
+    [Fact]
+    public async Task GivenAppName_WhenStartAndPost_ThenChannelIsNamedAfterTheApp()
+    {
+        // Arrange
+        var sut = new SyncStorageChannel(mockJs.Object, new AppStorageKeys(new BlazwizAppOptions { Name = "app" }));
+
+        // Act
+        await sut.StartAsync();
+        await sut.PostAsync(SyncStorageChannelMessage.Migrating);
+
+        // Assert
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("subscribe", It.Is<object?[]>(a => (string?)a[0] == "app_sync-storage")), Times.Once);
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("post", It.Is<object?[]>(a => (string?)a[0] == "app_sync-storage")), Times.Once);
+    }
+
+    [Fact]
+    public void GivenNullStorageKeys_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        Assert.Equal("storageKeys", Assert.Throws<ArgumentNullException>(() => new SyncStorageChannel(mockJs.Object, null!)).ParamName);
+    }
+
+    // Keeps names as they are, so the tests can check them; the prefix itself is checked separately.
+    private static Mock<IAppStorageKeys> CreateKeys()
+    {
+        var keys = new Mock<IAppStorageKeys>();
+        keys.Setup(x => x.For(It.IsAny<string>())).Returns<string>(name => name);
+        keys.SetupGet(x => x.Prefix).Returns(string.Empty);
+        return keys;
     }
 }

@@ -34,8 +34,8 @@ public class NoteEntry
     public string? ParentId { get; set; }
 
     /// <summary>
-    /// Gets or sets when the entry was created. Only known for entries migrated from earlier versions; otherwise the
-    /// same as <see cref="ModifiedAt"/>.
+    /// Gets or sets when the entry was created. The file store only keeps when files were last changed, so for a file
+    /// that was not created in this session it is the same as <see cref="ModifiedAt"/>.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
 

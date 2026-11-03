@@ -10,7 +10,7 @@ public class UserSettingsService(ILocalStorageService localStorageService)
     /// <summary>
     /// The local storage key user settings are stored under.
     /// </summary>
-    public const string StorageKey = "blazwiz_user_settings";
+    public const string StorageKey = "user_settings";
 
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
     private UserSettings? cachedSettings;

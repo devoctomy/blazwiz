@@ -1,6 +1,5 @@
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Sync.IndexedDb;
 
@@ -8,7 +7,7 @@ namespace blazwiz.Core.Sync.IndexedDb;
 /// Keeps a profile's files in an IndexedDB object store, as <see cref="IndexedDbFileRecord"/>s keyed by owner and key.
 /// Content is stored exactly as it is (bytes, any file type).
 /// </summary>
-public class IndexedDbSyncFileStore(IIndexedDbClient client, ISyncUserContext userContext, ISystemClock systemClock, IndexedDbStore store)
+public class IndexedDbSyncFileStore(IIndexedDbClient client, ISyncUserContext userContext, TimeProvider timeProvider, IndexedDbStore store)
     : ISyncFileStore
 {
     /// <summary>
@@ -20,7 +19,7 @@ public class IndexedDbSyncFileStore(IIndexedDbClient client, ISyncUserContext us
 
     private readonly IIndexedDbClient client = client ?? throw new ArgumentNullException(nameof(client));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     /// <summary>
     /// Gets the object store the files are kept in.
@@ -70,7 +69,7 @@ public class IndexedDbSyncFileStore(IIndexedDbClient client, ISyncUserContext us
             Owner = owner,
             Key = key,
             Content = content,
-            ModifiedAt = modifiedAt ?? systemClock.UtcNow,
+            ModifiedAt = modifiedAt ?? timeProvider.GetUtcNow(),
             Size = content.Length,
         });
     }

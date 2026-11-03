@@ -1,31 +1,33 @@
 using System.Text.Json;
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using Microsoft.JSInterop;
 
 namespace blazwiz.Portal.Application.Services;
 
 /// <inheritdoc/>
-public class LocalStorageService(IJSRuntime jsRuntime)
+public class LocalStorageService(IJSRuntime jsRuntime, IAppStorageKeys storageKeys)
     : ILocalStorageService
 {
     private readonly IJSRuntime jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
+    private readonly IAppStorageKeys storageKeys = storageKeys ?? throw new ArgumentNullException(nameof(storageKeys));
 
     /// <inheritdoc/>
     public async Task<string?> GetItemAsync(string key)
     {
-        return await jsRuntime.InvokeAsync<string?>("localStorage.getItem", key);
+        return await jsRuntime.InvokeAsync<string?>("localStorage.getItem", storageKeys.For(key));
     }
 
     /// <inheritdoc/>
     public async Task SetItemAsync(string key, string value)
     {
-        await jsRuntime.InvokeVoidAsync("localStorage.setItem", key, value);
+        await jsRuntime.InvokeVoidAsync("localStorage.setItem", storageKeys.For(key), value);
     }
 
     /// <inheritdoc/>
     public async Task RemoveItemAsync(string key)
     {
-        await jsRuntime.InvokeVoidAsync("localStorage.removeItem", key);
+        await jsRuntime.InvokeVoidAsync("localStorage.removeItem", storageKeys.For(key));
     }
 
     /// <inheritdoc/>

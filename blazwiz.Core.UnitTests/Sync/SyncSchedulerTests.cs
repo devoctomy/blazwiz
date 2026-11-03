@@ -54,7 +54,7 @@ public class SyncSchedulerTests
         // Assert
         Assert.True(sut.IsStarted);
         Assert.Equal(
-            ["lock blazwiz-sync-notes", "sync notes verify=True", "release", "lock blazwiz-sync-photos", "sync photos verify=True", "release"],
+            ["lock sync-notes", "sync notes verify=True", "release", "lock sync-photos", "sync photos verify=True", "release"],
             calls);
         mockConnectivity.Verify(x => x.InitializeAsync(), Times.Once);
         mockBrowser.Verify(x => x.StartAsync(), Times.Once);
@@ -94,7 +94,7 @@ public class SyncSchedulerTests
 
         // Assert
         Assert.Equal(0, beforeDebounce);
-        Assert.Equal(["lock blazwiz-sync-notes", "sync notes verify=False", "release"], calls);
+        Assert.Equal(["lock sync-notes", "sync notes verify=False", "release"], calls);
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public class SyncSchedulerTests
         await sut.StartAsync();
 
         // Assert
-        Assert.Equal(["lock blazwiz-sync-notes", "release", "lock blazwiz-sync-photos", "sync photos verify=True", "release"], calls);
+        Assert.Equal(["lock sync-notes", "release", "lock sync-photos", "sync photos verify=True", "release"], calls);
     }
 
     [Fact]

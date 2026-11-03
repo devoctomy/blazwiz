@@ -7,7 +7,6 @@ using blazwiz.Core.Encryption.Models;
 using blazwiz.Core.Sync.Encryption;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync.Encryption;
@@ -26,8 +25,8 @@ public class EncryptingSyncFileStoreTests
     {
         var user = new Mock<ISyncUserContext>();
         user.Setup(x => x.GetUserIdAsync()).ReturnsAsync("bob");
-        var clock = new Mock<ISystemClock>();
-        clock.SetupGet(x => x.UtcNow).Returns(DateTimeOffset.UnixEpoch);
+        var clock = new Mock<TimeProvider>();
+        clock.Setup(x => x.GetUtcNow()).Returns(DateTimeOffset.UnixEpoch);
         inner = new InMemorySyncFileStore(user.Object, clock.Object);
         sut = new EncryptingSyncFileStore(inner, ring, format);
     }

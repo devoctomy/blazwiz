@@ -7,7 +7,6 @@ using blazwiz.Core.Cryptography.Models;
 using blazwiz.Core.Encryption.Exceptions;
 using blazwiz.Core.Encryption.Interfaces;
 using blazwiz.Core.Encryption.Models;
-using blazwiz.Core.Time.Interfaces;
 
 namespace blazwiz.Core.Encryption;
 
@@ -23,7 +22,7 @@ public class E2eKeyManager(
     IArgon2idKeyDerivationService argon2,
     IKeyWrapService keyWrapService,
     Argon2idOptions argon2Options,
-    ISystemClock systemClock)
+    TimeProvider timeProvider)
     : IE2eKeyManager
 {
     /// <summary>
@@ -47,7 +46,7 @@ public class E2eKeyManager(
     private readonly IArgon2idKeyDerivationService argon2 = argon2 ?? throw new ArgumentNullException(nameof(argon2));
     private readonly IKeyWrapService keyWrapService = keyWrapService ?? throw new ArgumentNullException(nameof(keyWrapService));
     private readonly Argon2idOptions argon2Options = argon2Options ?? throw new ArgumentNullException(nameof(argon2Options));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     private E2eStatus status = E2eStatus.Unknown;
 
@@ -436,7 +435,7 @@ public class E2eKeyManager(
         Algorithm = wrapped.Algorithm,
         Nonce = wrapped.Nonce,
         Wrapped = wrapped.Wrapped,
-        Created = systemClock.UtcNow.UtcDateTime,
+        Created = timeProvider.GetUtcNow().UtcDateTime,
         Status = FileKeyEntry.ActiveStatus,
     };
 

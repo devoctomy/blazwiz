@@ -5,7 +5,6 @@ using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
 using blazwiz.Core.Sync.Storage;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync.Storage;
@@ -16,7 +15,7 @@ public class SyncStorageMigrationServiceTests
     private static readonly DateTimeOffset Earlier = new(2026, 9, 1, 12, 0, 0, TimeSpan.Zero);
 
     private readonly Mock<ISyncUserContext> mockUser = new();
-    private readonly Mock<ISystemClock> mockClock = new();
+    private readonly Mock<TimeProvider> mockClock = new();
     private readonly Mock<IOpfsClient> mockOpfs = new();
     private readonly Mock<IFolderAccessClient> mockFolderClient = new();
     private readonly Mock<ISyncScheduler> mockScheduler = new();
@@ -34,7 +33,7 @@ public class SyncStorageMigrationServiceTests
     public SyncStorageMigrationServiceTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        mockClock.SetupGet(x => x.UtcNow).Returns(DateTimeOffset.UnixEpoch);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(DateTimeOffset.UnixEpoch);
         mockScheduler.SetupGet(x => x.IsStarted).Returns(true);
         mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ConnectivityStatus { IsOnline = false });
         mockScheduler.Setup(x => x.StopAsync()).Callback(() => calls.Add("stop")).Returns(Task.CompletedTask);
@@ -87,7 +86,7 @@ public class SyncStorageMigrationServiceTests
         Assert.Equal(Earlier, a.ModifiedAt);
         Assert.NotNull(await opfs.ReadAsync("notes/Work/"));
         Assert.Equal([(0, 0), (0, 2), (1, 2), (2, 2)], progress);
-        Assert.Equal(["stop", "Migrating", "lock blazwiz-sync-notes", "Changed", "start"], calls);
+        Assert.Equal(["stop", "Migrating", "lock sync-notes", "Changed", "start"], calls);
 
         var state = stateStore.Saved.Last();
         Assert.Equal(("notes", Owner, SyncStorageKind.Opfs), (state.Profile, state.Owner, state.Kind));
@@ -119,7 +118,7 @@ public class SyncStorageMigrationServiceTests
 
         // Assert
         Assert.Equal(["notes/downloaded.md"], (await opfs.ListAsync()).Select(f => f.Key));
-        Assert.Equal(["stop", "Migrating", "lock blazwiz-sync-notes", "sync", "Changed", "start"], calls);
+        Assert.Equal(["stop", "Migrating", "lock sync-notes", "sync", "Changed", "start"], calls);
         Assert.True(syncing[0]);
         Assert.All(syncing.Skip(1), s => Assert.False(s));
     }
@@ -182,7 +181,7 @@ public class SyncStorageMigrationServiceTests
         Assert.Equal(["notes/mine.md"], (await folder.ListAsync()).Select(f => f.Key));
         Assert.Single(await indexedDb.ListAsync());
         Assert.Empty(stateStore.Saved);
-        Assert.Equal(["stop", "Migrating", "lock blazwiz-sync-notes", "Changed", "start"], calls);
+        Assert.Equal(["stop", "Migrating", "lock sync-notes", "Changed", "start"], calls);
     }
 
     [Fact]
@@ -239,7 +238,7 @@ public class SyncStorageMigrationServiceTests
         var state = stateStore.Saved.Last();
         Assert.Equal(SyncStorageKind.IndexedDb, state.Kind);
         Assert.Null(state.MigrationPhase);
-        Assert.Equal(["stop", "Migrating", "lock blazwiz-sync-notes", "Changed", "start"], calls);
+        Assert.Equal(["stop", "Migrating", "lock sync-notes", "Changed", "start"], calls);
     }
 
     [Fact]
@@ -306,7 +305,7 @@ public class SyncStorageMigrationServiceTests
         var state = stateStore.Saved.Last();
         Assert.Equal(SyncStorageKind.IndexedDb, state.Kind);
         Assert.Null(state.MigrationPhase);
-        Assert.Equal(["lock blazwiz-sync-notes"], calls);
+        Assert.Equal(["lock sync-notes"], calls);
     }
 
     [Fact]

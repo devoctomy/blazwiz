@@ -1,4 +1,3 @@
-using blazwiz.Core.Greetings.Interfaces;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Application.ViewModels;
 using blazwiz.Portal.Models.Auth;

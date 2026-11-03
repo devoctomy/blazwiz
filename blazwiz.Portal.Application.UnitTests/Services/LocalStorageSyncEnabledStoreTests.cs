@@ -26,21 +26,6 @@ public class LocalStorageSyncEnabledStoreTests
     }
 
     [Fact]
-    public async Task GivenEarlierOfflineModeOn_WhenGetAsync_ThenSyncOffCarriedOverOnce()
-    {
-        // Arrange
-        mockStorage.Setup(x => x.GetItemAsync(LocalStorageSyncEnabledStore.LegacyStorageKey)).ReturnsAsync("True");
-
-        // Act
-        var enabled = await new LocalStorageSyncEnabledStore(mockStorage.Object).GetAsync();
-
-        // Assert
-        Assert.False(enabled);
-        mockStorage.Verify(x => x.SetItemAsync(LocalStorageSyncEnabledStore.StorageKey, "True"), Times.Once);
-        mockStorage.Verify(x => x.RemoveItemAsync(LocalStorageSyncEnabledStore.LegacyStorageKey), Times.Once);
-    }
-
-    [Fact]
     public async Task GivenOff_WhenSetAsync_ThenSaved()
     {
         await new LocalStorageSyncEnabledStore(mockStorage.Object).SetAsync(false);

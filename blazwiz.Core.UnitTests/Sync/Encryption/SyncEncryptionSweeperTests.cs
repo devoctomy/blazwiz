@@ -9,7 +9,6 @@ using blazwiz.Core.Sync.Encryption;
 using blazwiz.Core.Sync.InMemory;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
-using blazwiz.Core.Time.Interfaces;
 using Moq;
 
 namespace blazwiz.Core.UnitTests.Sync.Encryption;
@@ -30,8 +29,8 @@ public class SyncEncryptionSweeperTests
     public SyncEncryptionSweeperTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
-        var clock = new Mock<ISystemClock>();
-        clock.SetupGet(x => x.UtcNow).Returns(DateTimeOffset.UnixEpoch);
+        var clock = new Mock<TimeProvider>();
+        clock.Setup(x => x.GetUtcNow()).Returns(DateTimeOffset.UnixEpoch);
         files = new InMemorySyncFileStore(mockUser.Object, clock.Object);
         var tracking = new TrackingSyncFileStore(Profile, files, index, mockUser.Object, Mock.Of<ISyncScheduler>(), clock.Object, format);
         appStore = new EncryptingSyncFileStore(tracking, ring, format);

@@ -1,6 +1,5 @@
 using blazwiz.Core.Offline.Interfaces;
 using blazwiz.Core.Offline.Models;
-using blazwiz.Core.Time.Interfaces;
 using blazwiz.Portal.Application.Exceptions;
 using blazwiz.Portal.Application.Services.Interfaces;
 using blazwiz.Portal.Models.Auth;
@@ -32,13 +31,13 @@ public class CognitoAuthenticationService(
     IUserDisplayService userDisplayService,
     IOfflineModeService offlineModeService,
     IOfflineSessionStore offlineSessionStore,
-    ISystemClock systemClock)
+    TimeProvider timeProvider)
     : IAuthenticationService, IDisposable
 {
     /// <summary>
     /// The local storage key the session is stored under.
     /// </summary>
-    public const string SessionStorageKey = "blazwiz_cognito_session";
+    public const string SessionStorageKey = "cognito_session";
 
     /// <summary>
     /// How long before the tokens expire they are refreshed.
@@ -53,7 +52,7 @@ public class CognitoAuthenticationService(
     private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
     private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
     private readonly IOfflineSessionStore offlineSessionStore = offlineSessionStore ?? throw new ArgumentNullException(nameof(offlineSessionStore));
-    private readonly ISystemClock systemClock = systemClock ?? throw new ArgumentNullException(nameof(systemClock));
+    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     private PendingNewPassword? pendingNewPassword;
     private string? refreshToken;
@@ -201,7 +200,7 @@ public class CognitoAuthenticationService(
         var offline = offlineSessionStore.Session;
         if (offline != null)
         {
-            if (offline.ExpiresAt <= systemClock.UtcNow)
+            if (offline.ExpiresAt <= timeProvider.GetUtcNow())
             {
                 await EndSessionAsync();
                 return null;
@@ -228,12 +227,12 @@ public class CognitoAuthenticationService(
             return null;
         }
 
-        if (session.ExpiresAt - RefreshMargin > systemClock.UtcNow)
+        if (session.ExpiresAt - RefreshMargin > timeProvider.GetUtcNow())
         {
             return session;
         }
 
-        if (session.ExpiresAt <= systemClock.UtcNow)
+        if (session.ExpiresAt <= timeProvider.GetUtcNow())
         {
             // Not used while it was valid, so it is not brought back to life: renewing only happens before expiry.
             await EndSessionAsync();
@@ -392,7 +391,7 @@ public class CognitoAuthenticationService(
         if (!string.IsNullOrEmpty(result.IdToken))
         {
             refreshToken = result.RefreshToken;
-            var session = CreateSession(result, username, systemClock.UtcNow);
+            var session = CreateSession(result, username, timeProvider.GetUtcNow());
             await localStorageService.SetObjectAsync(SessionStorageKey, session);
             return new LoginResult
             {
@@ -426,7 +425,7 @@ public class CognitoAuthenticationService(
             DisplayName = string.IsNullOrWhiteSpace(name) ? userDisplayService.GetDisplayNameFromUsername(username) : name,
             Email = email,
             SignedInAt = signedInAt,
-            ExpiresAt = systemClock.UtcNow.AddSeconds(tokens.ExpiresIn),
+            ExpiresAt = timeProvider.GetUtcNow().AddSeconds(tokens.ExpiresIn),
             IdToken = tokens.IdToken,
             AccessToken = tokens.AccessToken,
         };

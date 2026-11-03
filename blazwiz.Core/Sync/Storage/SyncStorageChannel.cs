@@ -1,3 +1,4 @@
+using blazwiz.Core.Configuration.Interfaces;
 using blazwiz.Core.Sync.Configuration;
 using blazwiz.Core.Sync.Interfaces;
 using blazwiz.Core.Sync.Models;
@@ -9,7 +10,7 @@ namespace blazwiz.Core.Sync.Storage;
 /// <see cref="ISyncStorageChannel"/> over the <c>wwwroot/js/channel.js</c> module shipped with this library
 /// (a BroadcastChannel named <see cref="SyncDefaults.StorageChannelName"/>).
 /// </summary>
-public sealed class SyncStorageChannel(IJSRuntime jsRuntime)
+public sealed class SyncStorageChannel(IJSRuntime jsRuntime, IAppStorageKeys storageKeys)
     : ISyncStorageChannel, IAsyncDisposable
 {
     /// <summary>
@@ -18,6 +19,7 @@ public sealed class SyncStorageChannel(IJSRuntime jsRuntime)
     public const string ModulePath = "./_content/blazwiz.Core/js/channel.js";
 
     private readonly IJSRuntime jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
+    private readonly IAppStorageKeys storageKeys = storageKeys ?? throw new ArgumentNullException(nameof(storageKeys));
     private IJSObjectReference? module;
     private DotNetObjectReference<SyncStorageChannel>? selfReference;
 
@@ -34,7 +36,7 @@ public sealed class SyncStorageChannel(IJSRuntime jsRuntime)
 
         var js = await GetModuleAsync();
         selfReference = DotNetObjectReference.Create(this);
-        await js.InvokeVoidAsync("subscribe", SyncDefaults.StorageChannelName, selfReference);
+        await js.InvokeVoidAsync("subscribe", storageKeys.For(SyncDefaults.StorageChannelName), selfReference);
     }
 
     /// <inheritdoc/>
@@ -55,7 +57,7 @@ public sealed class SyncStorageChannel(IJSRuntime jsRuntime)
     public async Task PostAsync(SyncStorageChannelMessage message)
     {
         var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("post", SyncDefaults.StorageChannelName, message.ToString());
+        await js.InvokeVoidAsync("post", storageKeys.For(SyncDefaults.StorageChannelName), message.ToString());
     }
 
     /// <summary>
