@@ -46,7 +46,7 @@ jobs:
         run: ./templatepack/test-template.ps1
 
       - name: Upload test results
-        if: failure()
+        if: ${{ !success() }}
         uses: actions/upload-artifact@v4
         with:
           name: test-results

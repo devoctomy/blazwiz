@@ -5,7 +5,7 @@ using Microsoft.Playwright.MSTest;
 namespace MyApp.Portal.UITests;
 
 /// <summary>
-/// Base class for UI tests. Starts the portal once per test run (dotnet run, Release) and
+/// Base class for UI tests. Builds and starts the portal once per test run (Release) and
 /// gives each test a fresh browser context, so local storage (session, settings) starts empty.
 /// </summary>
 /// <remarks>
@@ -23,6 +23,7 @@ public class TestBase : PageTest
 
     private static readonly string ResultsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
     private static readonly string ScreenshotDirectory = Path.Combine(ResultsDirectory, "Screenshots");
+    private static readonly TimeSpan PortalBuildTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan ServerStartTimeout = TimeSpan.FromSeconds(90);
     private static readonly object ServerLogLock = new();
     private static readonly System.Text.RegularExpressions.Regex LoginUrlPattern = new("/login$");
@@ -48,57 +49,33 @@ public class TestBase : PageTest
         }
 
         var projectPath = GetPortalProjectPath();
-        serverProcess = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = $"run --project \"{projectPath}\" --configuration Release --no-launch-profile --urls=\"{ServerUrl}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-            },
-        };
 
         // Portal output goes to TestResults/portal.log rather than the test console. Writing it to the
         // console from background threads interferes with the test runner's output capture.
         Directory.CreateDirectory(ResultsDirectory);
         serverLog = new StreamWriter(Path.Combine(ResultsDirectory, "portal.log"), append: false) { AutoFlush = true };
-        serverProcess.StartInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
 
-        // Build the portal in fresh MSBuild processes. Reusing the ones left by building the tests intermittently fails
-        // the static web assets compression step ("An item with the same key has already been added").
-        serverProcess.StartInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
-        serverProcess.OutputDataReceived += (_, e) => WriteServerLog(e.Data);
-        serverProcess.ErrorDataReceived += (_, e) => WriteServerLog(e.Data);
-        serverProcess.Start();
-        serverProcess.BeginOutputReadLine();
-        serverProcess.BeginErrorReadLine();
+        // Build first, with its own (generous) time limit: a cold Release build, as on a CI runner, takes minutes, and
+        // only the portal starting should count against ServerStartTimeout.
+        await BuildPortalAsync(projectPath);
 
-        await WaitForServerAsync();
+        serverProcess = StartDotnet($"run --project \"{projectPath}\" --configuration Release --no-build --no-launch-profile --urls=\"{ServerUrl}\"");
+        try
+        {
+            await WaitForServerAsync();
+        }
+        catch
+        {
+            // Stop the portal, or its output keeps the test run open and it never finishes.
+            StopServer();
+            throw;
+        }
     }
 
     [AssemblyCleanup]
     public static void AssemblyCleanup()
     {
-        try
-        {
-            serverProcess?.Kill(true);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error stopping server: {ex.Message}");
-        }
-        finally
-        {
-            serverProcess?.Dispose();
-            lock (ServerLogLock)
-            {
-                serverLog?.Dispose();
-                serverLog = null;
-            }
-        }
+        StopServer();
     }
 
     public override BrowserNewContextOptions ContextOptions()
@@ -180,6 +157,78 @@ public class TestBase : PageTest
         screenshotCounter++;
         var fileName = $"{TestContext.TestName}_{screenshotCounter:D2}_{name}.png";
         await Page.ScreenshotAsync(new() { Path = Path.Combine(ScreenshotDirectory, fileName) });
+    }
+
+    private static Process StartDotnet(string arguments)
+    {
+        var process = new Process
+        {
+            StartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+            },
+        };
+        process.StartInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
+
+        // Build in fresh MSBuild processes. Reusing the ones left by building the tests intermittently fails the static
+        // web assets compression step ("An item with the same key has already been added").
+        process.StartInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+        process.OutputDataReceived += (_, e) => WriteServerLog(e.Data);
+        process.ErrorDataReceived += (_, e) => WriteServerLog(e.Data);
+        process.Start();
+        process.BeginOutputReadLine();
+        process.BeginErrorReadLine();
+        return process;
+    }
+
+    private static async Task BuildPortalAsync(string projectPath)
+    {
+        using var build = StartDotnet($"build \"{projectPath}\" --configuration Release --nologo");
+        using var timeout = new CancellationTokenSource(PortalBuildTimeout);
+        try
+        {
+            await build.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            build.Kill(true);
+            throw new TimeoutException($"The portal did not build within {PortalBuildTimeout.TotalMinutes} minutes (see TestResults/portal.log).");
+        }
+
+        if (build.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"The portal did not build (exit code {build.ExitCode}, see TestResults/portal.log).");
+        }
+    }
+
+    private static void StopServer()
+    {
+        try
+        {
+            if (serverProcess is { HasExited: false })
+            {
+                serverProcess.Kill(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error stopping server: {ex.Message}");
+        }
+        finally
+        {
+            serverProcess?.Dispose();
+            serverProcess = null;
+            lock (ServerLogLock)
+            {
+                serverLog?.Dispose();
+                serverLog = null;
+            }
+        }
     }
 
     private static void WriteServerLog(string? line)
