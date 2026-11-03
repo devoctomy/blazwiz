@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <!-- Abort the whole run if it takes longer than 15 minutes: a cold Release build of the portal (as on a CI runner)
+         takes minutes, then the tests about two. -->
+    <TestSessionTimeout>900000</TestSessionTimeout>
+  </RunConfiguration>
+  <MSTest>
+    <!-- Fail any single test that takes longer than 90 seconds rather than hanging. The longest tests (a picked folder
+         losing and regaining access) take about 15 seconds here and over 30 on a CI runner. -->
+    <TestTimeout>90000</TestTimeout>
+  </MSTest>
+</RunSettings>

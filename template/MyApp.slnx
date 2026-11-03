@@ -1,0 +1,30 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="analyzers.globalconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/cloudformation/">
+    <File Path="cloudformation/_common.ps1" />
+    <File Path="cloudformation/deploy.ps1" />
+    <File Path="cloudformation/README.md" />
+    <File Path="cloudformation/remove.ps1" />
+    <File Path="cloudformation/stack-policy.json" />
+    <File Path="cloudformation/stack.yaml" />
+    <File Path="cloudformation/test-auth.ps1" />
+  </Folder>
+  <!--#if (IncludeTests)-->
+  <Folder Name="/Tests/">
+    <Project Path="MyApp.Portal.Application.UnitTests/MyApp.Portal.Application.UnitTests.csproj" />
+    <Project Path="MyApp.Portal.UITests/MyApp.Portal.UITests.csproj" />
+  </Folder>
+  <!--#endif-->
+  <Project Path="MyApp.Portal.Application/MyApp.Portal.Application.csproj" />
+  <Project Path="MyApp.Portal.Models/MyApp.Portal.Models.csproj" />
+  <Project Path="MyApp.Portal/MyApp.Portal.csproj" />
+</Solution>

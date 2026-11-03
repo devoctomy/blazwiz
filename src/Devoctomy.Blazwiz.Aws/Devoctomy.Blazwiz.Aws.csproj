@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The AWS base stack (CloudFormation) and its deploy, test and remove scripts, released with the framework at the
+    same version. Content only: apps reference it so it is restored, and their cloudformation scripts run it from
+    the NuGet packages folder (tools/cloudformation).
+  -->
+  <PropertyGroup>
+    <Description>The AWS base stack for blazwiz apps (CloudFront and S3, Cognito, the per-user data bucket) and the scripts that deploy, test and remove it, released with the framework.</Description>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <!-- No code, so no symbols package. -->
+    <IncludeSymbols>false</IncludeSymbols>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <!-- No assembly, so nothing for lib/ (NU5128). The .ps1 scripts are run by the app's cloudformation scripts, not by
+         NuGet at install, which is what NU5111 warns about (as in templatepack/Devoctomy.Blazwiz.Templates.csproj). -->
+    <NoWarn>$(NoWarn);NU5128;NU5111</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="cloudformation/**/*" Pack="true" PackagePath="tools/cloudformation/" />
+  </ItemGroup>
+</Project>

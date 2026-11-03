@@ -1,0 +1,168 @@
+@page "/files/edit"
+@inherits MvvmComponentBase<NoteEditorViewModel>
+@using MyApp.Portal.Models.Notes
+
+<NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" ConfirmExternalNavigation="@ViewModel.IsDirty" />
+
+@if (ViewModel.IsLoading)
+{
+    <PageHeader Title="Loading note" Icon="bi-file-earmark-text" />
+    <div class="d-flex align-items-center text-body-secondary">
+        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Loading...
+    </div>
+}
+else if (ViewModel.Note == null)
+{
+    <PageHeader Title="Note not found" Icon="bi-file-earmark-x" />
+    <div class="panel" id="note-not-found">
+        <p class="panel-text">
+            @(ViewModel.ErrorMessage ?? "This note does not exist. It may have been deleted.")
+        </p>
+        <a class="btn btn-primary" href="@NoteEditorViewModel.FilesUrl"><i class="bi bi-arrow-left me-1"></i>Back to files</a>
+    </div>
+}
+else
+{
+    <PageHeader Title="@ViewModel.Note.Name" Icon="bi-file-earmark-text" Subtitle="@string.Join(" / ", ViewModel.FolderPath.Prepend(FilesViewModel.TopLevelName))">
+        <span class="editor-status" id="editor-status">
+            @if (ViewModel.IsDirty)
+            {
+                <span class="text-warning-emphasis"><i class="bi bi-circle-fill me-1"></i>Unsaved changes</span>
+            }
+            else if (ViewModel.LastSavedAt != null)
+            {
+                <span class="text-success"><i class="bi bi-check2 me-1"></i>Saved at @ViewModel.LastSavedAt.Value.ToLocalTime().ToString("t")</span>
+            }
+        </span>
+        <button type="button" class="btn btn-outline-primary" id="close-note-button" @onclick="() => ViewModel.CloseCommand.Execute(null)">
+            <i class="bi bi-x-lg me-1"></i>Close
+        </button>
+        <button type="button" class="btn btn-primary" id="save-note-button" title="Save (Ctrl+S)"
+                disabled="@(!ViewModel.IsDirty || ViewModel.IsSaving)"
+                @onclick="() => ViewModel.SaveCommand.ExecuteAsync(null)">
+            @if (ViewModel.IsSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            else
+            {
+                <i class="bi bi-floppy me-1"></i>
+            }
+            Save
+        </button>
+    </PageHeader>
+
+    @if (ViewModel.ErrorMessage != null)
+    {
+        <div class="alert alert-danger alert-dismissible" role="alert" id="editor-error">
+            <i class="bi bi-exclamation-triangle me-2"></i>@ViewModel.ErrorMessage
+            <button type="button" class="btn-close" aria-label="Close" @onclick="() => ViewModel.DismissErrorCommand.Execute(null)"></button>
+        </div>
+    }
+
+    <div class="note-editor @(ViewModel.IsPreviewCollapsed ? "preview-collapsed" : null)">
+        <div class="editor-toolbar" role="toolbar" aria-label="Formatting">
+            <div class="toolbar-group">
+                @ToolbarButton(MarkdownFormat.Bold, "bi-type-bold", "Bold (Ctrl+B)")
+                @ToolbarButton(MarkdownFormat.Italic, "bi-type-italic", "Italic (Ctrl+I)")
+                @ToolbarButton(MarkdownFormat.Strikethrough, "bi-type-strikethrough", "Strikethrough")
+                @ToolbarButton(MarkdownFormat.InlineCode, "bi-code", "Inline code")
+            </div>
+            <div class="toolbar-group">
+                @ToolbarButton(MarkdownFormat.Heading1, "bi-type-h1", "Heading 1")
+                @ToolbarButton(MarkdownFormat.Heading2, "bi-type-h2", "Heading 2")
+                @ToolbarButton(MarkdownFormat.Heading3, "bi-type-h3", "Heading 3")
+            </div>
+            <div class="toolbar-group">
+                @ToolbarButton(MarkdownFormat.BulletList, "bi-list-ul", "Bulleted list")
+                @ToolbarButton(MarkdownFormat.NumberedList, "bi-list-ol", "Numbered list")
+                @ToolbarButton(MarkdownFormat.TaskList, "bi-list-check", "Task list")
+            </div>
+            <div class="toolbar-group">
+                @ToolbarButton(MarkdownFormat.Quote, "bi-quote", "Quote")
+                @ToolbarButton(MarkdownFormat.CodeBlock, "bi-code-square", "Code block")
+                @ToolbarButton(MarkdownFormat.Link, "bi-link-45deg", "Link")
+                @ToolbarButton(MarkdownFormat.HorizontalRule, "bi-hr", "Horizontal rule")
+            </div>
+            <div class="flex-grow-1"></div>
+            <button type="button"
+                    class="toolbar-btn toolbar-btn-wide @(ViewModel.IsPreviewCollapsed ? null : "active")"
+                    id="toggle-preview-button"
+                    title="@(ViewModel.IsPreviewCollapsed ? "Show preview" : "Hide preview")"
+                    aria-pressed="@((!ViewModel.IsPreviewCollapsed).ToString().ToLowerInvariant())"
+                    @onclick="() => ViewModel.TogglePreviewCommand.Execute(null)">
+                <i class="bi @(ViewModel.IsPreviewCollapsed ? "bi-layout-sidebar-inset-reverse" : "bi-layout-split")"></i>
+                <span class="d-none d-sm-inline ms-1">Preview</span>
+            </button>
+        </div>
+
+        <div class="editor-panes">
+            <div class="editor-pane">
+                <textarea id="@NoteEditorViewModel.EditorElementId"
+                          class="editor-textarea"
+                          aria-label="Note content"
+                          spellcheck="true"
+                          placeholder="Start writing..."
+                          @bind="ViewModel.Content"
+                          @bind:event="oninput"></textarea>
+            </div>
+            @if (!ViewModel.IsPreviewCollapsed)
+            {
+                <div class="preview-pane">
+                    <div class="preview-label">Preview</div>
+                    <div class="markdown-body" id="note-preview">@((MarkupString)ViewModel.PreviewHtml)</div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (ViewModel.IsLeaveDialogOpen)
+{
+    <ModalDialog Id="leave-dialog" Title="Unsaved changes" Icon="bi-exclamation-circle" OnClose="() => ViewModel.StayOnPageCommand.Execute(null)">
+        <ChildContent>
+            <p class="mb-0">You have unsaved changes to <strong>@ViewModel.Note?.Name</strong>. What would you like to do with them?</p>
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" id="leave-stay" @onclick="() => ViewModel.StayOnPageCommand.Execute(null)">Keep editing</button>
+            <button type="button" class="btn btn-outline-danger" id="leave-discard" @onclick="() => ViewModel.DiscardAndLeaveCommand.Execute(null)">Discard</button>
+            <button type="button" class="btn btn-primary" id="leave-save" @onclick="() => ViewModel.SaveAndLeaveCommand.ExecuteAsync(null)">Save</button>
+        </Footer>
+    </ModalDialog>
+}
+
+@if (ViewModel.IsRemoteChangeDialogOpen)
+{
+    <ModalDialog Id="remote-change-dialog" Title="Changed on another device" Icon="bi-cloud-arrow-down" OnClose="() => ViewModel.KeepMineCommand.Execute(null)">
+        <ChildContent>
+            @if (ViewModel.IsRemoteDeleted)
+            {
+                <p class="mb-0"><strong>@ViewModel.Note?.Name</strong> was deleted on another device while you were editing it. Keep your version, or let it go?</p>
+            }
+            else
+            {
+                <p class="mb-0"><strong>@ViewModel.Note?.Name</strong> was changed on another device while you were editing it. Which version would you like to keep?</p>
+            }
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-outline-secondary" id="remote-take-theirs" @onclick="() => ViewModel.TakeTheirsCommand.ExecuteAsync(null)">
+                @(ViewModel.IsRemoteDeleted ? "Let it go" : "Take theirs")
+            </button>
+            <button type="button" class="btn btn-primary" id="remote-keep-mine" @onclick="() => ViewModel.KeepMineCommand.Execute(null)">Keep mine</button>
+        </Footer>
+    </ModalDialog>
+}
+
+@code {
+    // Toolbar buttons keep the focus (and selection) in the editor by cancelling mousedown.
+    private RenderFragment ToolbarButton(MarkdownFormat format, string icon, string title) =>
+        @<button type="button"
+                 class="toolbar-btn"
+                 id="format-@format.ToString().ToLowerInvariant()"
+                 title="@title"
+                 aria-label="@title"
+                 @onmousedown:preventDefault
+                 @onclick="() => ViewModel.FormatCommand.ExecuteAsync(format)">
+            <i class="bi @icon"></i>
+        </button>;
+}

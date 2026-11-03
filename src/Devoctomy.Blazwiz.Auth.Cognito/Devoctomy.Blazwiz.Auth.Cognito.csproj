@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>AWS Cognito sign in for blazwiz apps (SRP through Amazon.Extensions.CognitoAuthentication) and the session's AWS credentials.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Amazon.Extensions.CognitoAuthentication" />
+    <PackageReference Include="AWSSDK.CognitoIdentity" />
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Core\Devoctomy.Blazwiz.Core.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Cryptography\Devoctomy.Blazwiz.Cryptography.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Browser\Devoctomy.Blazwiz.Browser.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Auth\Devoctomy.Blazwiz.Auth.csproj" />
+  </ItemGroup>
+</Project>

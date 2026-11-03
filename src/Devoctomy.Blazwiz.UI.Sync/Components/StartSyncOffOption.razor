@@ -1,0 +1,19 @@
+@using Devoctomy.Blazwiz.Auth.Cognito.Services
+@using Devoctomy.Blazwiz.Auth.Services
+@using Devoctomy.Blazwiz.Browser.Services
+@using Devoctomy.Blazwiz.Sync.Connectivity
+@using Devoctomy.Blazwiz.Sync.Encryption
+@using Devoctomy.Blazwiz.Sync.Storage
+@using Devoctomy.Blazwiz.UI.Services
+@using Devoctomy.Blazwiz.UI.Sync.Services
+@inject StartSyncOffSignInOption Option
+@inject IStringLocalizer<SyncUiText> SyncText
+
+<div class="form-check">
+    <input type="checkbox"
+           id="start-sync-off"
+           class="form-check-input"
+           @bind="Option.StartWithSyncOff" />
+    <label class="form-check-label" for="start-sync-off">@SyncText["Sync.StartOff.Label"]</label>
+    <div class="form-text">@SyncText["Sync.StartOff.Help"]</div>
+</div>

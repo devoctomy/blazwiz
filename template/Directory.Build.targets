@@ -1,0 +1,27 @@
+<Project>
+  <!--
+    Repository only: this file is not part of generated apps.
+
+    In the blazwiz repository the template app builds against the framework's source, so a change to a package and the
+    app that uses it can be made and tested together. Each Devoctomy.Blazwiz.* PackageReference becomes a
+    ProjectReference to ../src. Build with -p:UseBlazwizPackages=true to use the packages instead, as a generated app
+    does (templatepack/test-template.ps1 does this against a local feed).
+  -->
+  <!--
+    The template's options, all on: generated apps have #if (IncludeNotes) and the like resolved by dotnet new, the
+    repository compiles the code for every option.
+  -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);IncludeSync;IncludeNotes;IncludeShowcase;IncludeTests</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseBlazwizPackages)' != 'true'">
+    <_BlazwizKnownPackage Include="Devoctomy.Blazwiz.Core;Devoctomy.Blazwiz.Cryptography;Devoctomy.Blazwiz.Encryption;Devoctomy.Blazwiz.Browser;Devoctomy.Blazwiz.Auth;Devoctomy.Blazwiz.Auth.Cognito;Devoctomy.Blazwiz.Sync;Devoctomy.Blazwiz.UI;Devoctomy.Blazwiz.UI.Sync;Devoctomy.Blazwiz.Testing" />
+    <_BlazwizUnusedPackage Include="@(_BlazwizKnownPackage)" Exclude="@(PackageReference)" />
+    <_BlazwizPackage Include="@(_BlazwizKnownPackage)" Exclude="@(_BlazwizUnusedPackage)" />
+    <PackageReference Remove="@(_BlazwizPackage)" />
+    <!-- The AWS base stack is content, not code: cloudformation/base-stack.ps1 uses its source here. -->
+    <PackageReference Remove="Devoctomy.Blazwiz.Aws" />
+    <ProjectReference Include="@(_BlazwizPackage->'$(MSBuildThisFileDirectory)../src/%(Identity)/%(Identity).csproj')" />
+  </ItemGroup>
+</Project>

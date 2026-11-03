@@ -1,0 +1,12 @@
+@using Devoctomy.Blazwiz.UI.Components
+@using Devoctomy.Blazwiz.UI.Text
+@using Devoctomy.Blazwiz.UI.ViewModels
+@inherits MvvmComponentBase<SettingsViewModel>
+@inject IStringLocalizer<UiText> Text
+
+<PageHeader Title="@Text["Settings.Title"]" Icon="bi-gear" Subtitle="@Text["Settings.Subtitle"]" />
+
+@foreach (var section in ViewModel.Sections)
+{
+    <DynamicComponent Type="section" />
+}

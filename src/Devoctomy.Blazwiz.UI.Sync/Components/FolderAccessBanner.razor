@@ -1,0 +1,18 @@
+@inherits MvvmComponentBase<FolderAccessBannerViewModel>
+@inject IStringLocalizer<SyncUiText> SyncText
+
+@if (ViewModel.IsVisible)
+{
+    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-3" role="alert" id="folder-access-banner">
+        <i class="bi bi-folder-x fs-5"></i>
+        <span class="flex-grow-1">@SyncText["Sync.Folder.Banner", ViewModel.FolderName ?? SyncText["Sync.Folder.Banner.Unnamed"]]</span>
+        <button type="button" class="btn btn-warning btn-sm" id="folder-reconnect-button"
+                @onclick="() => ViewModel.ReconnectCommand.ExecuteAsync(null)">
+            <i class="bi bi-folder-check me-1"></i>@SyncText["Sync.Folder.Reconnect"]
+        </button>
+        @if (!string.IsNullOrEmpty(ViewModel.Error))
+        {
+            <div class="w-100 small" id="folder-access-error">@ViewModel.Error</div>
+        }
+    </div>
+}

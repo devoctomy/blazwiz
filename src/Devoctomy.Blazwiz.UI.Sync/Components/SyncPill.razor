@@ -1,0 +1,41 @@
+@inherits MvvmComponentBase<SyncPillViewModel>
+@inject IStringLocalizer<SyncUiText> SyncText
+
+<div class="sync-pill-wrap">
+    @if (ViewModel.IsPopoverOpen)
+    {
+        <div class="sync-popover-backdrop" @onclick="() => ViewModel.ClosePopoverCommand.Execute(null)"></div>
+        <div class="sync-popover" id="sync-popover" role="dialog" aria-label="@SyncText["Sync.Switch"]">
+            <div class="sync-popover-status">
+                <i class="bi @ViewModel.Pill.Icon sync-tone-@ViewModel.Pill.Tone"></i>
+                <span id="sync-popover-reason">@ViewModel.Pill.Tooltip</span>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="sync-enabled-switch"
+                       checked="@ViewModel.IsSyncEnabled"
+                       @onchange="() => ViewModel.ToggleSyncCommand.ExecuteAsync(null)" />
+                <label class="form-check-label" for="sync-enabled-switch">@SyncText["Sync.Switch"]</label>
+            </div>
+            <div class="sync-popover-meta">
+                @SyncText["Sync.LastSynced"]: <span id="sync-last-synced">@(ViewModel.Status.LastSyncedAt?.ToLocalTime().ToString("g") ?? SyncText["Sync.LastSynced.NotYet"])</span>
+            </div>
+            <div class="sync-popover-actions">
+                <button type="button" class="btn btn-primary btn-sm" id="sync-now-button"
+                        disabled="@(!ViewModel.CanSyncNow)"
+                        @onclick="() => ViewModel.SyncNowCommand.ExecuteAsync(null)">
+                    <i class="bi bi-arrow-repeat me-1"></i>@SyncText["Sync.SyncNow"]
+                </button>
+                <a class="btn btn-link btn-sm" href="sync" id="view-sync-log" @onclick="() => ViewModel.ClosePopoverCommand.Execute(null)">@SyncText["Sync.ViewLog"]</a>
+            </div>
+        </div>
+    }
+    <button type="button"
+            class="sync-pill sync-tone-@ViewModel.Pill.Tone"
+            id="sync-status-pill"
+            title="@ViewModel.Pill.Tooltip"
+            aria-expanded="@ViewModel.IsPopoverOpen.ToString().ToLowerInvariant()"
+            @onclick="() => ViewModel.TogglePopoverCommand.Execute(null)">
+        <i class="bi @ViewModel.Pill.Icon @(ViewModel.Pill.IsSyncing ? "sync-spin" : null)"></i>
+        <span class="sync-pill-text">@ViewModel.Pill.Text</span>
+    </button>
+</div>

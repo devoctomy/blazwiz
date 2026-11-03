@@ -1,0 +1,22 @@
+@using Devoctomy.Blazwiz.UI.Text
+@using Devoctomy.Blazwiz.UI.ViewModels
+@inherits MvvmComponentBase<LanguageSettingsViewModel>
+@inject IStringLocalizer<UiText> Text
+
+@if (ViewModel.IsVisible)
+{
+    <div class="panel mb-4" id="language-settings">
+        <h2 class="panel-title">@Text["Settings.Language.Title"]</h2>
+        <p class="panel-text">@Text["Settings.Language.Text"]</p>
+        <label class="form-label" for="language-select">@Text["Settings.Language.Label"]</label>
+        <select class="form-select language-select"
+                id="language-select"
+                value="@ViewModel.Current"
+                @onchange="e => ViewModel.ChangeCommand.ExecuteAsync(e.Value?.ToString())">
+            @foreach (var option in ViewModel.Options)
+            {
+                <option value="@option.Name" lang="@option.Name">@option.DisplayName</option>
+            }
+        </select>
+    </div>
+}

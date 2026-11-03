@@ -1,32 +1,54 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path="analyzers.globalconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="CHANGELOG.md" />
+    <File Path="UPGRADING.md" />
+    <File Path="eng/check-versions.ps1" />
+    <File Path=".github/workflows/ci.yml" />
+    <File Path=".github/workflows/release.yml" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
     <File Path="global.json" />
     <File Path="README.md" />
+    <File Path="src/Directory.Build.props" />
+    <File Path="tests/Directory.Build.props" />
   </Folder>
-  <Folder Name="/cloudformation/">
-    <File Path="cloudformation/_common.ps1" />
-    <File Path="cloudformation/deploy.ps1" />
-    <File Path="cloudformation/README.md" />
-    <File Path="cloudformation/remove.ps1" />
-    <File Path="cloudformation/stack-policy.json" />
-    <File Path="cloudformation/stack.yaml" />
-    <File Path="cloudformation/test-auth.ps1" />
+  <Folder Name="/src/">
+    <Project Path="src/Devoctomy.Blazwiz.Core/Devoctomy.Blazwiz.Core.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Cryptography/Devoctomy.Blazwiz.Cryptography.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Encryption/Devoctomy.Blazwiz.Encryption.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Browser/Devoctomy.Blazwiz.Browser.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Auth/Devoctomy.Blazwiz.Auth.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Aws/Devoctomy.Blazwiz.Aws.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Auth.Cognito/Devoctomy.Blazwiz.Auth.Cognito.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Sync/Devoctomy.Blazwiz.Sync.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.UI/Devoctomy.Blazwiz.UI.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.UI.Sync/Devoctomy.Blazwiz.UI.Sync.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Testing/Devoctomy.Blazwiz.Testing.csproj" />
   </Folder>
-  <!--#if (IncludeTests)-->
-  <Folder Name="/Tests/">
-    <Project Path="blazwiz.Core.IntTests/blazwiz.Core.IntTests.csproj" />
-    <Project Path="blazwiz.Core.UnitTests/blazwiz.Core.UnitTests.csproj" />
-    <Project Path="blazwiz.Portal.Application.UnitTests/blazwiz.Portal.Application.UnitTests.csproj" />
-    <Project Path="blazwiz.Portal.UITests/blazwiz.Portal.UITests.csproj" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Devoctomy.Blazwiz.Auth.Cognito.UnitTests/Devoctomy.Blazwiz.Auth.Cognito.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Auth.UnitTests/Devoctomy.Blazwiz.Auth.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Browser.UnitTests/Devoctomy.Blazwiz.Browser.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Core.UnitTests/Devoctomy.Blazwiz.Core.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Cryptography.UnitTests/Devoctomy.Blazwiz.Cryptography.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Encryption.UnitTests/Devoctomy.Blazwiz.Encryption.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Sync.IntTests/Devoctomy.Blazwiz.Sync.IntTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Sync.UnitTests/Devoctomy.Blazwiz.Sync.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.TestSupport/Devoctomy.Blazwiz.TestSupport.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Testing.UnitTests/Devoctomy.Blazwiz.Testing.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.UI.Sync.UnitTests/Devoctomy.Blazwiz.UI.Sync.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.UI.UnitTests/Devoctomy.Blazwiz.UI.UnitTests.csproj" />
   </Folder>
-  <!--#endif-->
-  <Project Path="blazwiz.Core/blazwiz.Core.csproj" />
-  <Project Path="blazwiz.Portal.Application/blazwiz.Portal.Application.csproj" />
-  <Project Path="blazwiz.Portal.Models/blazwiz.Portal.Models.csproj" />
-  <Project Path="blazwiz.Portal/blazwiz.Portal.csproj" />
+  <Folder Name="/template/">
+    <Project Path="template/MyApp.Portal/MyApp.Portal.csproj" />
+    <Project Path="template/MyApp.Portal.Application/MyApp.Portal.Application.csproj" />
+    <Project Path="template/MyApp.Portal.Models/MyApp.Portal.Models.csproj" />
+    <Project Path="template/MyApp.Portal.Application.UnitTests/MyApp.Portal.Application.UnitTests.csproj" />
+    <Project Path="template/MyApp.Portal.UITests/MyApp.Portal.UITests.csproj" />
+  </Folder>
 </Solution>
