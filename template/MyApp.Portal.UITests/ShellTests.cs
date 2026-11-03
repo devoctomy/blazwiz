@@ -18,7 +18,7 @@ public class ShellTests : TestBase
         await Expect(Page.Locator("#sidebar")).ToHaveCSSAsync("width", "76px");
         await ScreenshotAsync("Collapsed");
 
-        await Page.ReloadAsync();
+        await ReloadAsync();
         await Expect(Page.Locator(".app-shell")).ToHaveClassAsync(new Regex("sidebar-collapsed"));
     }
 
@@ -32,7 +32,7 @@ public class ShellTests : TestBase
         await Page.WaitForTimeoutAsync(500); // let the colour transition finish before capturing
         await ScreenshotAsync("DashboardDark");
 
-        await Page.ReloadAsync();
+        await ReloadAsync();
         await Expect(Page.Locator("html")).ToHaveAttributeAsync("data-bs-theme", "dark");
     }
 
@@ -80,7 +80,7 @@ public class ShellTests : TestBase
             session.ExpiresAt = new Date(Date.now() + 4000).toISOString();
             localStorage.setItem('myapp_session', JSON.stringify(session));
         }");
-        await Page.ReloadAsync();
+        await ReloadAsync();
         await Expect(Page.Locator("#session-timer")).ToBeVisibleAsync();
 
         // Nothing is clicked: the countdown reaching zero ends the session.
@@ -97,7 +97,7 @@ public class ShellTests : TestBase
         await ExpectLoginPageAsync();
 
         // A protected page should bounce back to login now the session has gone.
-        await Page.GotoAsync($"{ServerUrl}/settings");
+        await GoToAsync("/settings");
         await ExpectLoginPageAsync();
     }
 

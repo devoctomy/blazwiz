@@ -47,7 +47,7 @@ public class NotesTests : TestBase
         await ScreenshotAsync("Editor");
 
         // Reload to prove it was stored, not just kept in memory.
-        await Page.ReloadAsync();
+        await ReloadAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("**ship it**");
 
         await Page.Locator("#close-note-button").ClickAsync();

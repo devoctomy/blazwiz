@@ -74,7 +74,7 @@ public class PasswordTests : TestBase
     public async Task GivenNoEmail_WhenAskingForACode_ThenToldToEnterIt()
     {
         // Arrange
-        await Page.GotoAsync($"{ServerUrl}/forgot-password");
+        await GoToAsync("/forgot-password");
 
         // Act
         await Page.Locator("#send-code-button").ClickAsync();

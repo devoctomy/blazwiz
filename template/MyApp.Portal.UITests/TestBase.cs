@@ -21,6 +21,13 @@ public class TestBase : PageTest
     /// </summary>
     protected const int StepTimeoutMs = 10000;
 
+    /// <summary>
+    /// Maximum time for the app to start after a page is loaded or reloaded. Each test has a fresh browser context, so
+    /// the first load downloads and starts the WebAssembly runtime with an empty cache, which takes far longer than a
+    /// step on a busy CI runner.
+    /// </summary>
+    protected const int AppStartTimeoutMs = 60000;
+
     private static readonly string ResultsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
     private static readonly string ScreenshotDirectory = Path.Combine(ResultsDirectory, "Screenshots");
     private static readonly TimeSpan PortalBuildTimeout = TimeSpan.FromMinutes(10);
@@ -114,8 +121,40 @@ public class TestBase : PageTest
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     protected async Task GoToLoginAsync()
     {
-        await Page.GotoAsync(ServerUrl);
+        await GoToAsync();
         await ExpectLoginPageAsync();
+    }
+
+    /// <summary>
+    /// Opens a page of the portal and waits for the app to start.
+    /// </summary>
+    /// <param name="path">The path to open, e.g. <c>/settings</c>; the home page if empty.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected Task GoToAsync(string path = "")
+    {
+        return GoToAsync(Page, path);
+    }
+
+    /// <summary>
+    /// Opens a page of the portal in the given browser page (e.g. a second tab) and waits for the app to start.
+    /// </summary>
+    /// <param name="page">The browser page.</param>
+    /// <param name="path">The path to open, e.g. <c>/settings</c>; the home page if empty.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task GoToAsync(IPage page, string path = "")
+    {
+        await page.GotoAsync($"{ServerUrl}{path}");
+        await WaitForAppAsync(page);
+    }
+
+    /// <summary>
+    /// Reloads the page and waits for the app to start again.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task ReloadAsync()
+    {
+        await Page.ReloadAsync();
+        await WaitForAppAsync(Page);
     }
 
     /// <summary>
@@ -157,6 +196,14 @@ public class TestBase : PageTest
         screenshotCounter++;
         var fileName = $"{TestContext.TestName}_{screenshotCounter:D2}_{name}.png";
         await Page.ScreenshotAsync(new() { Path = Path.Combine(ScreenshotDirectory, fileName) });
+    }
+
+    /// <summary>
+    /// Waits until the app has started: it replaces the loading indicator in <c>index.html</c> when it first renders.
+    /// </summary>
+    private async Task WaitForAppAsync(IPage page)
+    {
+        await Expect(page.Locator("#app > .loading-progress")).ToHaveCountAsync(0, new() { Timeout = AppStartTimeoutMs });
     }
 
     private static Process StartDotnet(string arguments)
