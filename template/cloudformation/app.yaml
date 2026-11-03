@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  myapp's own AWS resources, deployed by cloudformation/deploy.ps1 after the blazwiz base stack (released with the
+  framework) as "<app>-<environment>-app". Add the app's resources here; the base stack is replaced on upgrade, this
+  file is yours.
+
+Parameters:
+  BaseStackName:
+    Type: String
+    Description: The base stack, "<app>-<environment>". Its outputs are exported as "<base stack>-<output>".
+
+Resources:
+  # CloudFormation needs at least one resource. Replace this with the app's own, e.g. a table, a queue, or a policy
+  # on the base stack's data bucket:
+  #
+  #   Queue:
+  #     Type: AWS::SQS::Queue
+  #     Properties:
+  #       QueueName: !Sub '${BaseStackName}-jobs'
+  #
+  # Base stack outputs to import: Region, PortalUrl, PortalBucketName, DistributionId, DistributionDomainName,
+  # DataBucketName, UserPoolId, UserPoolClientId, IdentityPoolId, AuthenticatedRoleArn, e.g.
+  #   !ImportValue !Sub '${BaseStackName}-DataBucketName'
+  Placeholder:
+    Type: AWS::CloudFormation::WaitConditionHandle
+
+Outputs:
+  BaseStackName:
+    Description: The base stack this stack builds on.
+    Value: !Ref BaseStackName

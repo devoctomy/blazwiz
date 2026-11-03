@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <Description>The blazwiz sync module's UI and wiring: the Sync page, status pill, storage and end to end encryption settings, Cognito and S3.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.SecretsManager" />
+    <PackageReference Include="Blazing.Mvvm" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Core\Devoctomy.Blazwiz.Core.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Cryptography\Devoctomy.Blazwiz.Cryptography.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Encryption\Devoctomy.Blazwiz.Encryption.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Browser\Devoctomy.Blazwiz.Browser.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Auth\Devoctomy.Blazwiz.Auth.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Auth.Cognito\Devoctomy.Blazwiz.Auth.Cognito.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Sync\Devoctomy.Blazwiz.Sync.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.UI\Devoctomy.Blazwiz.UI.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,142 @@
+using System.Text.RegularExpressions;
+
+namespace MyApp.Portal.UITests;
+
+[TestClass]
+public class ShellTests : TestBase
+{
+    [TestMethod]
+    public async Task GivenExpandedSidebar_WhenCollapsing_ThenOnlyIconsAreShownAndStateIsRemembered()
+    {
+        await LoginAsync();
+        var shell = Page.Locator(".app-shell");
+        await Expect(shell).Not.ToHaveClassAsync(new Regex("sidebar-collapsed"));
+
+        await Page.Locator("#sidebar-toggle").ClickAsync();
+
+        await Expect(shell).ToHaveClassAsync(new Regex("sidebar-collapsed"));
+        await Expect(Page.Locator("#sidebar")).ToHaveCSSAsync("width", "76px");
+        await ScreenshotAsync("Collapsed");
+
+        await ReloadAsync();
+        await Expect(Page.Locator(".app-shell")).ToHaveClassAsync(new Regex("sidebar-collapsed"));
+    }
+
+    [TestMethod]
+    public async Task GivenSignedInUser_WhenTogglingTheme_ThenDarkThemeIsAppliedAndRemembered()
+    {
+        await LoginAsync();
+
+        await Page.Locator("#theme-toggle").ClickAsync();
+        await Expect(Page.Locator("html")).ToHaveAttributeAsync("data-bs-theme", "dark");
+        await Page.WaitForTimeoutAsync(500); // let the colour transition finish before capturing
+        await ScreenshotAsync("DashboardDark");
+
+        await ReloadAsync();
+        await Expect(Page.Locator("html")).ToHaveAttributeAsync("data-bs-theme", "dark");
+    }
+
+    [TestMethod]
+    public async Task GivenSignedInUser_WhenUsingNavigation_ThenPagesAreShown()
+    {
+        await LoginAsync();
+
+//#if (IncludeShowcase)
+        await Page.Locator("#nav-showcase").ClickAsync();
+        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Showcase");
+        await Expect(Page.Locator("#nav-showcase")).ToHaveClassAsync(new Regex("active"));
+        await ScreenshotAsync("Showcase");
+
+//#endif
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Settings");
+
+        await Page.Locator("#nav-profile").ClickAsync();
+        await Expect(Page.Locator("#profile-name")).ToHaveTextAsync("Bob Hoskins");
+
+        await Page.Locator("#nav-dashboard").ClickAsync();
+        await Expect(Page.Locator("#dashboard-greeting")).ToBeVisibleAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenSignedInUser_WhenShellShown_ThenSessionCountdownIsUnderTheUsername()
+    {
+        await LoginAsync();
+
+        var timer = Page.Locator("#nav-profile #session-timer");
+        await Expect(timer).ToHaveTextAsync(new Regex(@"^Session (\d+:)?\d{2}:\d{2}$"));
+        var first = await timer.TextContentAsync();
+        await Expect(timer).Not.ToHaveTextAsync(first!, new() { Timeout = 5000 });
+    }
+
+    [TestMethod]
+    public async Task GivenSessionAboutToExpire_WhenLeftIdle_ThenLoginPageIsShownAtExpiry()
+    {
+        // Arrange: the test controls the browser's clock (the app's time and timers run on it), so the session runs out
+        // when the test moves the clock on, however long the app takes to start.
+        await Page.Clock.InstallAsync();
+        await LoginAsync();
+
+        // Make the stored session expire a minute from now, then reload so the app reads it.
+        await Page.EvaluateAsync(@"() => {
+            const session = JSON.parse(localStorage.getItem('myapp_session'));
+            session.ExpiresAt = new Date(Date.now() + 60000).toISOString();
+            localStorage.setItem('myapp_session', JSON.stringify(session));
+        }");
+        await ReloadAsync();
+        await Expect(Page.Locator("#session-timer")).ToBeVisibleAsync();
+
+        // Act: the minute passes, and nothing is clicked.
+        await Page.Clock.FastForwardAsync("01:05");
+
+        // Assert: the countdown reaching zero ended the session.
+        await ExpectLoginPageAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenSignedInUser_WhenLoggingOut_ThenLoginPageIsShownAndSessionIsCleared()
+    {
+        await LoginAsync();
+
+        await Page.Locator("#logout-button").ClickAsync();
+        await ExpectLoginPageAsync();
+
+        // A protected page should bounce back to login now the session has gone.
+        await GoToAsync("/settings");
+        await ExpectLoginPageAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenReleaseBuild_WhenOpeningSettings_ThenAboutShowsWhenItWasBuiltAndTheFrameworkVersion()
+    {
+        // Arrange: the UI tests run the portal in Release, as deployments are.
+        await LoginAsync();
+
+        // Act
+        await Page.Locator("#nav-settings").ClickAsync();
+
+        // Assert
+        await Expect(Page.Locator("#app-build-time")).ToHaveTextAsync(new Regex(@"^\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$"));
+        await Expect(Page.Locator("#framework-version")).ToHaveTextAsync(new Regex(@"^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$"));
+    }
+
+    [TestMethod]
+    public async Task GivenMobileViewport_WhenOpeningMenu_ThenSidebarSlidesIn()
+    {
+        await Page.SetViewportSizeAsync(390, 844);
+        await LoginAsync();
+        var shell = Page.Locator(".app-shell");
+        await Expect(Page.Locator("#mobile-menu-toggle")).ToBeVisibleAsync();
+        await Expect(shell).Not.ToHaveClassAsync(new Regex("mobile-menu-open"));
+
+        await Page.Locator("#mobile-menu-toggle").ClickAsync();
+        await Expect(shell).ToHaveClassAsync(new Regex("mobile-menu-open"));
+        await Expect(Page.Locator("#nav-settings")).ToBeVisibleAsync();
+        await Page.WaitForTimeoutAsync(400);
+        await ScreenshotAsync("MobileMenu");
+
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Settings");
+        await Expect(shell).Not.ToHaveClassAsync(new Regex("mobile-menu-open"));
+    }
+}

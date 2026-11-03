@@ -1,0 +1,67 @@
+@page "/"
+@inherits MvvmComponentBase<DashboardViewModel>
+
+<PageTitle>Dashboard - @ViewModel.AppSettings.ApplicationTitle</PageTitle>
+
+<section class="hero-card mb-4">
+    <div class="hero-content">
+        <span class="hero-eyebrow"><i class="bi bi-stars me-1"></i>@ViewModel.AppSettings.ApplicationTitle</span>
+        <h1 class="hero-title" id="dashboard-greeting">@ViewModel.Greeting</h1>
+        <p class="hero-text">
+            This is your blank canvas. Everything here is a placeholder, ready to be replaced with
+            your own pages, components and AWS powered features.
+        </p>
+    </div>
+    <i class="bi bi-magic hero-art" aria-hidden="true"></i>
+</section>
+
+<h2 class="section-title">Jump in</h2>
+<div class="row g-3 mb-4">
+    @foreach (var link in ViewModel.QuickLinks)
+    {
+        <div class="col-12 col-sm-6 col-xl-4">
+            <a class="feature-card" href="@link.Href">
+                <span class="feature-icon"><i class="bi @link.Icon"></i></span>
+                <span class="feature-body">
+                    <span class="feature-title">@link.Text</span>
+                    <span class="feature-text">@link.Description</span>
+                </span>
+                <i class="bi bi-chevron-right feature-chevron"></i>
+            </a>
+        </div>
+    }
+</div>
+
+<h2 class="section-title">Build it out</h2>
+<div class="row g-3">
+    <div class="col-12 col-lg-4">
+        <div class="step-card">
+            <span class="step-number">1</span>
+            <h3 class="step-title">Add a page</h3>
+            <p class="step-text">
+                Create a view model in <code>Portal.Application/ViewModels</code>, a page in
+                <code>Portal/Pages</code>, then add it to <code>NavigationMenuService</code>.
+            </p>
+        </div>
+    </div>
+    <div class="col-12 col-lg-4">
+        <div class="step-card">
+            <span class="step-number">2</span>
+            <h3 class="step-title">Connect Cognito</h3>
+            <p class="step-text">
+                Run <code>cloudformation/deploy.ps1</code>. It writes the <code>AwsCognito</code> settings,
+                and the app then signs in with Cognito instead of the placeholder login.
+            </p>
+        </div>
+    </div>
+    <div class="col-12 col-lg-4">
+        <div class="step-card">
+            <span class="step-number">3</span>
+            <h3 class="step-title">Ship it</h3>
+            <p class="step-text">
+                Publish the portal as static files to S3 behind CloudFront. It installs as a PWA and
+                works offline once loaded.
+            </p>
+        </div>
+    </div>
+</div>

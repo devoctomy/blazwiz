@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Files.One" xml:space="preserve">
+    <value>{0} file</value>
+  </data>
+  <data name="Files.Other" xml:space="preserve">
+    <value>{0} files</value>
+  </data>
+  <data name="Greeting" xml:space="preserve">
+    <value>Hello</value>
+  </data>
+  <data name="Moved.Other" xml:space="preserve">
+    <value>{0} moved to {1}</value>
+  </data>
+  <data name="Named" xml:space="preserve">
+    <value>{0} in {1}</value>
+  </data>
+  <data name="OnlyNeutral" xml:space="preserve">
+    <value>Neutral only</value>
+  </data>
+  <data name="Price" xml:space="preserve">
+    <value>Costs {0:0.0}</value>
+  </data>
+  <data name="Shared" xml:space="preserve">
+    <value>Package neutral</value>
+  </data>
+</root>

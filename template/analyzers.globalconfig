@@ -1,0 +1,26 @@
+# Analyzer severities for the whole solution, included by Directory.Build.props.
+#
+# These are kept here rather than in .editorconfig because .editorconfig sections only apply to files whose path
+# matches, and the match is case sensitive: when a build sees the folder with different casing (e.g. E:\Source and
+# E:\source on Windows) the sections are ignored and every rule turned off there comes back. A global config applies
+# to every file in the compilation, whatever its path.
+is_global = true
+
+# SA1101: Prefix local calls with this - disabled because project style prefers no 'this.' qualifier
+dotnet_diagnostic.SA1101.severity = none
+
+# SA1200: Using directives should be placed correctly
+dotnet_diagnostic.SA1200.severity = none
+
+# SA1210: Using directives should be ordered alphabetically - disabled because apps made from the template get their
+# own namespace, which can sort anywhere among the other usings (e.g. after 'Microsoft')
+dotnet_diagnostic.SA1210.severity = none
+
+# SA1633: File should have header
+dotnet_diagnostic.SA1633.severity = none
+
+# SA1010: Opening square brackets should be spaced correctly
+dotnet_diagnostic.SA1010.severity = none
+
+# SA1011: Closing square brackets should be spaced correctly
+dotnet_diagnostic.SA1011.severity = none

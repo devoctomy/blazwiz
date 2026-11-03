@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Devoctomy.Blazwiz.UI" />
+    <PackageReference Include="Devoctomy.Blazwiz.Auth.Cognito" />
+<!--#if (IncludeSync)-->
+    <PackageReference Include="Devoctomy.Blazwiz.UI.Sync" />
+<!--#endif-->
+    <PackageReference Include="Blazing.Mvvm" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+<!--#if (IncludeNotes)-->
+    <PackageReference Include="Markdig" />
+<!--#endif-->
+    <PackageReference Include="StyleCop.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MyApp.Portal.Models\MyApp.Portal.Models.csproj" />
+  </ItemGroup>
+<!--#if (IncludeNotes)-->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\WelcomeNote.md" LogicalName="WelcomeNote.md" />
+  </ItemGroup>
+<!--#endif-->
+</Project>

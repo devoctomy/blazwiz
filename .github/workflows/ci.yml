@@ -1,0 +1,107 @@
+# Builds and tests the packages and the template on every push, to any branch. The release workflow only publishes a
+# commit this has passed.
+#
+# Pushes only, not pull requests as well: a pull request from a branch of this repository would run everything a
+# second time, and the push run's checks already show on the pull request (they are on the same commit). Pull requests
+# from forks are not built.
+#
+# - test: build, then each group of tests with dotnet test (unit, integration, UI).
+# - template: packs the packages and the template, then creates apps with every template option and builds and tests
+#   them against the packed packages (templatepack/test-template.ps1, which is not plain dotnet test).
+#
+# Both run on Linux: nothing is Windows-specific, and Linux runners are faster and cheaper. PowerShell is installed on
+# them, for the scripts. The Ubuntu version is fixed, not ubuntu-latest: the Playwright version in use must support it
+# (1.55 supports 24.04, not 26.04), and a new runner image should not change what the tests run on unannounced.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # Fresh MSBuild processes for every build (docs/techdebt/static-web-assets-compression.md).
+  MSBUILDDISABLENODEREUSE: 1
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Check versions
+        shell: pwsh
+        run: ./eng/check-versions.ps1
+
+      - name: Restore
+        run: dotnet restore blazwiz.slnx
+
+      - name: Build
+        run: dotnet build blazwiz.slnx --no-restore
+
+      - name: Unit tests
+        run: dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UnitTests" --logger trx --results-directory TestResults/unit
+
+      - name: Integration tests
+        run: dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~IntTests" --logger trx --results-directory TestResults/integration
+
+      # --with-deps also installs the libraries Chromium needs on Linux.
+      - name: Install the Playwright browser
+        shell: pwsh
+        run: ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
+
+      # The UI tests build and start the portal themselves (Release); its output is in TestResults/portal.log.
+      - name: UI tests
+        run: dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UITests" --logger trx --results-directory TestResults/ui
+
+      - name: Upload test results
+        if: ${{ !success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            TestResults/**
+            **/bin/Debug/net10.0/TestResults/**
+          if-no-files-found: ignore
+
+  template:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install the Playwright browser
+        shell: pwsh
+        run: |
+          dotnet build template/MyApp.Portal.UITests --nologo -v q
+          ./template/MyApp.Portal.UITests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
+
+      # The repository's own tests run in the test job.
+      - name: Pack, then create, build and test apps from the template
+        shell: pwsh
+        run: ./templatepack/test-template.ps1 -SkipRepositoryTests -KeepOutput -WorkRoot "${{ runner.temp }}/template-test"
+
+      - name: Upload the generated apps' test results
+        if: ${{ !success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: template-test-results
+          path: ${{ runner.temp }}/template-test/apps/*/*.UITests/bin/Debug/net10.0/TestResults/**
+          if-no-files-found: ignore

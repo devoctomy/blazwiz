@@ -1,0 +1,320 @@
+@using Devoctomy.Blazwiz.UI.Text
+@using Devoctomy.Blazwiz.UI.ViewModels
+@inherits MvvmComponentBase<LoginViewModel>
+@inject IStringLocalizer<UiText> Text
+
+<PageTitle>@Text["Login.PageTitle", ViewModel.AppSettings.ApplicationTitle]</PageTitle>
+
+<button type="button"
+        class="icon-btn theme-toggle auth-theme-toggle"
+        id="theme-toggle"
+        title="@Text["Shell.ToggleTheme"]"
+        @onclick="() => ViewModel.ToggleThemeCommand.ExecuteAsync(null)">
+    <i class="bi @ViewModel.ThemeIcon"></i>
+</button>
+
+<div class="auth-card">
+    <div class="auth-header">
+        <img src="images/icon.svg" class="auth-logo" alt="@ViewModel.AppSettings.ApplicationTitle" />
+        <h1 class="auth-title">@ViewModel.AppSettings.ApplicationTitle</h1>
+        @if (!string.IsNullOrEmpty(ViewModel.AppSettings.ApplicationDescription))
+        {
+            <p class="auth-subtitle">@ViewModel.AppSettings.ApplicationDescription</p>
+        }
+    </div>
+
+    @if (ViewModel.IsNewPasswordRequired)
+    {
+        <EditForm Model="ViewModel" OnSubmit="() => ViewModel.CompleteNewPasswordCommand.ExecuteAsync(null)" FormName="new-password">
+            <p class="small mb-3" id="new-password-intro">@Text["Login.NewPassword.Intro"]</p>
+            <div class="mb-3">
+                <label for="new-password" class="form-label">@Text["Login.NewPassword.Label"]</label>
+                <div class="input-icon">
+                    <i class="bi bi-lock"></i>
+                    <InputText id="new-password"
+                               type="password"
+                               class="form-control"
+                               autocomplete="new-password"
+                               @bind-Value="ViewModel.NewPassword"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="confirm-new-password" class="form-label">@Text["Login.NewPassword.Confirm"]</label>
+                <div class="input-icon">
+                    <i class="bi bi-lock"></i>
+                    <InputText id="confirm-new-password"
+                               type="password"
+                               class="form-control"
+                               autocomplete="new-password"
+                               @bind-Value="ViewModel.ConfirmNewPassword"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            {
+                <div class="alert alert-danger py-2 small" role="alert" id="login-error">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary btn-lg w-100" id="new-password-button" disabled="@ViewModel.IsBusy">
+                @if (ViewModel.IsBusy)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                    <span>@Text["Login.NewPassword.Saving"]</span>
+                }
+                else
+                {
+                    <span>@Text["Login.NewPassword.Submit"]</span>
+                    <i class="bi bi-arrow-right ms-1"></i>
+                }
+            </button>
+            <button type="button"
+                    class="btn btn-link w-100 mt-2"
+                    id="new-password-cancel"
+                    disabled="@ViewModel.IsBusy"
+                    @onclick="ViewModel.CancelNewPasswordCommand.Execute">
+                @Text["Login.NewPassword.Back"]
+            </button>
+        </EditForm>
+    }
+    else if (ViewModel.ShowUsersList && ViewModel.SavedUsers.Any())
+    {
+        <div id="saved-users">
+            <div class="d-grid gap-2">
+                @foreach (var user in ViewModel.SavedUsers)
+                {
+                    <div class="input-group saved-user">
+                        <button type="button"
+                                class="btn btn-outline-primary d-flex align-items-center flex-grow-1"
+                                disabled="@ViewModel.IsBusy"
+                                @onclick="() => ViewModel.SelectUserCommand.ExecuteAsync(user)">
+                            @if (ViewModel.LoadingUser == user)
+                            {
+                                <span class="spinner-border spinner-border-sm me-3" aria-hidden="true"></span>
+                            }
+                            else if (user.WebAuthnCredential != null)
+                            {
+                                <i class="bi bi-fingerprint me-3" title="@Text["Login.SavedUsers.PasskeyAvailable"]"></i>
+                            }
+                            else
+                            {
+                                <i class="bi bi-person-circle me-3"></i>
+                            }
+                            <span class="text-truncate">@user.Email</span>
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-danger"
+                                title="@Text["Login.SavedUsers.Remove"]"
+                                disabled="@ViewModel.IsBusy"
+                                @onclick="() => ViewModel.RemoveUserCommand.ExecuteAsync(user)">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <div class="form-check form-switch mt-3">
+                <input class="form-check-input" type="checkbox" role="switch" id="signin-offline"
+                       @bind="ViewModel.SignInOffline"
+                       disabled="@ViewModel.IsBusy" />
+                <label class="form-check-label" for="signin-offline">@Text["Login.Offline.Label"]</label>
+                <div class="form-text">@Text["Login.Offline.Help"]</div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            {
+                <div class="alert alert-danger py-2 small mt-3" role="alert" id="login-error">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+                </div>
+            }
+
+            <button type="button"
+                    class="btn btn-link w-100 mt-2"
+                    id="use-different-account"
+                    disabled="@ViewModel.IsBusy"
+                    @onclick="ViewModel.ShowLoginFormCommand.Execute">
+                @Text["Login.SavedUsers.UseDifferentAccount"]
+            </button>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="ViewModel" OnSubmit="() => ViewModel.LoginCommand.ExecuteAsync(null)" FormName="login">
+            @if (ViewModel.SavedUsers.Any())
+            {
+                <div class="mb-3 text-center">
+                    <button type="button"
+                            class="btn btn-outline-secondary btn-sm"
+                            id="show-saved-users"
+                            disabled="@ViewModel.IsBusy"
+                            @onclick="ViewModel.ShowUsersListCommandCommand.Execute">
+                        <i class="bi bi-people me-1"></i>@Text["Login.SavedUsers.Show"]
+                    </button>
+                </div>
+            }
+
+            <div class="mb-3">
+                <label for="username" class="form-label">@Text["Login.Email"]</label>
+                <div class="input-icon">
+                    <i class="bi bi-person"></i>
+                    <InputText id="username"
+                               class="form-control"
+                               placeholder="@Text["Login.Email.Placeholder"]"
+                               autocomplete="username"
+                               @bind-Value="ViewModel.Username"
+                               readonly="@ViewModel.IsUsernameReadonly"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
+            </div>
+            <div class="@(ViewModel.ShowRememberMe ? "mb-3" : "mb-4")">
+                <label for="password" class="form-label">@Text["Login.Password"]</label>
+                <div class="input-icon">
+                    <i class="bi bi-lock"></i>
+                    <InputText id="password"
+                               type="password"
+                               class="form-control"
+                               placeholder="@Text["Login.Password.Placeholder"]"
+                               autocomplete="current-password"
+                               @bind-Value="ViewModel.Password"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
+            </div>
+            <ForgotPasswordLink />
+
+            @if (ViewModel.ShowRememberMe)
+            {
+                <div class="form-check mb-4">
+                    <InputCheckbox id="remember-me"
+                                   class="form-check-input"
+                                   @bind-Value="ViewModel.RememberMe"
+                                   disabled="@ViewModel.IsBusy" />
+                    <label class="form-check-label" for="remember-me">@Text["Login.RememberMe"]</label>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            {
+                <div class="alert alert-danger py-2 small" role="alert" id="login-error">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary btn-lg w-100" id="login-button" disabled="@ViewModel.IsBusy">
+                @if (ViewModel.IsBusy)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                    <span>@Text["Login.SigningIn"]</span>
+                }
+                else
+                {
+                    <span>@Text["Login.SignIn"]</span>
+                    <i class="bi bi-arrow-right ms-1"></i>
+                }
+            </button>
+        </EditForm>
+    }
+
+    @if (!ViewModel.IsNewPasswordRequired && ViewModel.HasSignInOptions)
+    {
+        <div class="advanced-options">
+            <button type="button"
+                    class="btn btn-link btn-sm advanced-options-toggle"
+                    id="advanced-options-toggle"
+                    aria-expanded="@ViewModel.IsAdvancedOptionsExpanded.ToString().ToLowerInvariant()"
+                    aria-controls="advanced-options"
+                    @onclick="() => ViewModel.ToggleAdvancedOptionsCommand.Execute(null)">
+                <i class="bi @(ViewModel.IsAdvancedOptionsExpanded ? "bi-chevron-down" : "bi-chevron-right") me-1"></i>@Text["Login.AdvancedOptions"]
+            </button>
+            @if (ViewModel.IsAdvancedOptionsExpanded)
+            {
+                <fieldset class="advanced-options-body" id="advanced-options" disabled="@ViewModel.IsBusy">
+                    @foreach (var option in ViewModel.SignInOptionComponents)
+                    {
+                        <DynamicComponent Type="option" />
+                    }
+                </fieldset>
+            }
+        </div>
+    }
+
+    @if (ViewModel.IsPlaceholderLogin)
+    {
+        <p class="auth-hint">
+            <i class="bi bi-info-circle me-1"></i>
+            @Text["Login.PlaceholderHint"]
+        </p>
+    }
+</div>
+
+@if (!string.IsNullOrEmpty(ViewModel.AppSettings.CopyrightMessage))
+{
+    <p class="auth-footer">@ViewModel.AppSettings.CopyrightMessage</p>
+}
+
+@if (ViewModel.ShowWebAuthnPrompt)
+{
+    <div class="modal d-block" tabindex="-1" id="webauthn-prompt" style="background-color: rgba(0, 0, 0, 0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-fingerprint me-2"></i>@Text["Login.Passkey.Title"]
+                    </h5>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(ViewModel.WebAuthnErrorMessage))
+                    {
+                        <div class="alert alert-danger small" role="alert" id="webauthn-error">
+                            <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.WebAuthnErrorMessage
+                        </div>
+                        <button type="button"
+                                class="btn btn-primary w-100"
+                                id="webauthn-continue"
+                                @onclick="ViewModel.DismissWebAuthnErrorCommand.Execute">
+                            @Text["Login.Passkey.Continue"]
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="text-center mb-3">
+                            <i class="bi bi-fingerprint" style="font-size: 3rem; color: var(--bw-accent);"></i>
+                        </div>
+                        <p class="text-center mb-4">
+                            @((MarkupString)Text["Login.Passkey.Question"].Value)
+                            <br />
+                            <small class="text-muted">@Text["Login.Passkey.Hint"]</small>
+                        </p>
+                        <div class="d-grid gap-2">
+                            <button type="button"
+                                    class="btn btn-primary"
+                                    id="webauthn-enable"
+                                    disabled="@ViewModel.IsWebAuthnProcessing"
+                                    @onclick="() => ViewModel.HandleWebAuthnSetupCommand.ExecuteAsync(null)">
+                                @if (ViewModel.IsWebAuthnProcessing)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                                    <span>@Text["Login.Passkey.SettingUp"]</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-fingerprint me-2"></i>
+                                    <span>@Text["Login.Passkey.Enable"]</span>
+                                }
+                            </button>
+                            <button type="button"
+                                    class="btn btn-outline-secondary"
+                                    id="webauthn-skip"
+                                    disabled="@ViewModel.IsWebAuthnProcessing"
+                                    @onclick="ViewModel.SkipWebAuthnSetupCommand.Execute">
+                                <i class="bi bi-skip-forward me-2"></i>@Text["Login.Passkey.Skip"]
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
