@@ -149,6 +149,24 @@ public class IndexedDbSyncEventLogTests
     }
 
     [Fact]
+    public async Task GivenSearchTextOnlyInTheShownText_WhenQueryAsyncWithDescribe_ThenThatEventIsFound()
+    {
+        // Arrange: a connectivity event keeps a code; "no credentials" is only in the text the app shows for it.
+        stored.Add(new SyncEvent { Owner = Owner, Timestamp = Now, Kind = SyncEventKind.WentOffline, Code = SyncEventCodes.WentOffline, Arguments = ["NoCredentials"] });
+        stored.Add(Event(SyncEventKind.UploadNew, Now, "notes/Ideas.md"));
+        var sut = CreateSut();
+        static string Describe(SyncEvent e) => e.Code == SyncEventCodes.WentOffline ? "Offline: no credentials" : $"Uploaded {e.Key}";
+
+        // Act
+        var described = await sut.QueryAsync(new SyncEventQuery { Text = "CREDENTIALS", Describe = Describe });
+        var undescribed = await sut.QueryAsync(new SyncEventQuery { Text = "credentials" });
+
+        // Assert
+        Assert.Equal(SyncEventKind.WentOffline, Assert.Single(described.Events).Kind);
+        Assert.Empty(undescribed.Events);
+    }
+
+    [Fact]
     public async Task GivenSignedOut_WhenQueryAsync_ThenEmpty()
     {
         // Arrange

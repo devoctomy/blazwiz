@@ -6,7 +6,8 @@
     <TestSessionTimeout>900000</TestSessionTimeout>
   </RunConfiguration>
   <MSTest>
-    <!-- Fail any single test that takes longer than 30 seconds rather than hanging. -->
-    <TestTimeout>30000</TestTimeout>
+    <!-- Fail any single test that takes longer than 90 seconds rather than hanging. The longest tests (a picked folder
+         losing and regaining access) take about 15 seconds here and over 30 on a CI runner. -->
+    <TestTimeout>90000</TestTimeout>
   </MSTest>
 </RunSettings>

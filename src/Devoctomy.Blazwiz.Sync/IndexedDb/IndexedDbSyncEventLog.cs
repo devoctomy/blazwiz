@@ -166,7 +166,8 @@ public class IndexedDbSyncEventLog(
         }
 
         var text = query.Text.Trim();
-        return Contains(entry.Key, text) || Contains(entry.Detail, text) || Contains(entry.Profile, text);
+        return Contains(entry.Key, text) || Contains(entry.Detail, text) || Contains(entry.Profile, text) ||
+            (query.Describe != null && Contains(query.Describe(entry), text));
     }
 
     private static bool Contains(string? value, string text) => value?.Contains(text, StringComparison.OrdinalIgnoreCase) == true;

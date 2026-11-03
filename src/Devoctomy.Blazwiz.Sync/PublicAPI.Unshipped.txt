@@ -644,6 +644,8 @@ Devoctomy.Blazwiz.Sync.Models.SyncEventPage.HasMore.get -> bool
 Devoctomy.Blazwiz.Sync.Models.SyncEventPage.HasMore.set -> void
 Devoctomy.Blazwiz.Sync.Models.SyncEventPage.SyncEventPage() -> void
 Devoctomy.Blazwiz.Sync.Models.SyncEventQuery
+Devoctomy.Blazwiz.Sync.Models.SyncEventQuery.Describe.get -> System.Func<Devoctomy.Blazwiz.Sync.Models.SyncEvent!, string!>?
+Devoctomy.Blazwiz.Sync.Models.SyncEventQuery.Describe.set -> void
 Devoctomy.Blazwiz.Sync.Models.SyncEventQuery.From.get -> System.DateTimeOffset?
 Devoctomy.Blazwiz.Sync.Models.SyncEventQuery.From.set -> void
 Devoctomy.Blazwiz.Sync.Models.SyncEventQuery.Kinds.get -> System.Collections.Generic.IReadOnlyCollection<Devoctomy.Blazwiz.Sync.Models.SyncEventKind>?
