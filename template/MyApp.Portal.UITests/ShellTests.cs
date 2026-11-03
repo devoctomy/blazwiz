@@ -72,19 +72,24 @@ public class ShellTests : TestBase
     [TestMethod]
     public async Task GivenSessionAboutToExpire_WhenLeftIdle_ThenLoginPageIsShownAtExpiry()
     {
+        // Arrange: the test controls the browser's clock (the app's time and timers run on it), so the session runs out
+        // when the test moves the clock on, however long the app takes to start.
+        await Page.Clock.InstallAsync();
         await LoginAsync();
 
-        // Make the stored session expire a few seconds from now, then reload so the app reads it.
+        // Make the stored session expire a minute from now, then reload so the app reads it.
         await Page.EvaluateAsync(@"() => {
             const session = JSON.parse(localStorage.getItem('myapp_session'));
-            session.ExpiresAt = new Date(Date.now() + 4000).toISOString();
+            session.ExpiresAt = new Date(Date.now() + 60000).toISOString();
             localStorage.setItem('myapp_session', JSON.stringify(session));
         }");
         await ReloadAsync();
         await Expect(Page.Locator("#session-timer")).ToBeVisibleAsync();
 
-        // Nothing is clicked: the countdown reaching zero ends the session.
-        await Expect(Page.Locator("#login-button")).ToBeVisibleAsync(new() { Timeout = 15000 });
+        // Act: the minute passes, and nothing is clicked.
+        await Page.Clock.FastForwardAsync("01:05");
+
+        // Assert: the countdown reaching zero ended the session.
         await ExpectLoginPageAsync();
     }
 
