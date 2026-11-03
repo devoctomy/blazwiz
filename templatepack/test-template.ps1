@@ -1,19 +1,22 @@
 <#
 .SYNOPSIS
-Checks the repository still works as an app and as a dotnet new template.
+Checks the framework packages and the dotnet new template work together, as a user of them would see them.
 
 .DESCRIPTION
-  1. Builds the repository as it is and runs its tests (it must stay a working app).
-  2. Packs the template and installs it into an isolated location (your installed templates are not touched).
-  3. Creates apps with awkward names and different options, and checks each one:
-     no 'blazwiz' left in it, a valid CloudFormation AppName, it builds, and its tests pass.
+  1. Builds the repository and runs its tests (unless -SkipRepositoryTests).
+  2. Packs the framework packages (Devoctomy.Blazwiz.*) to a local feed, with a version unique to this run so the NuGet
+     cache never serves an older build of them.
+  3. Packs the template and installs it into an isolated location (your installed templates are not touched).
+  4. Creates apps with awkward names and different options, and checks each one: no template placeholder (MyApp) left
+     in it, a new app ID, a valid CloudFormation AppName, it builds against the packages from the local feed (not the
+     framework's source), and its tests pass.
 Exits with code 1 if anything fails. Output goes to a temporary folder, deleted afterwards unless -KeepOutput.
 
 .EXAMPLE
 ./templatepack/test-template.ps1
 
 .EXAMPLE
-./templatepack/test-template.ps1 -SkipUiTests -KeepOutput
+./templatepack/test-template.ps1 -SkipUiTests -SkipRepositoryTests -KeepOutput
 #>
 [CmdletBinding()]
 param(
@@ -23,23 +26,33 @@ param(
     # Skip building and testing the repository itself.
     [switch]$SkipRepositoryTests,
 
-    # Keep the generated apps and package for inspection.
-    [switch]$KeepOutput
+    # Keep the generated apps and packages for inspection.
+    [switch]$KeepOutput,
+
+    # Only create these apps (by name, e.g. -Only NoNotes), not all of them.
+    [string[]]$Only
 )
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
-$workRoot = Join-Path ([IO.Path]::GetTempPath()) "blazwiz-template-test-$([Guid]::NewGuid().ToString('N').Substring(0, 8))"
+$templateRoot = Join-Path $repositoryRoot 'template'
+$runId = [DateTime]::UtcNow.ToString('yyyyMMddHHmmss')
+$workRoot = Join-Path ([IO.Path]::GetTempPath()) "blazwiz-template-test-$runId"
 $script:Failures = New-Object System.Collections.Generic.List[string]
 
 # Name, extra options, and whether the generated app includes tests.
 $cases = @(
     @{ Name = 'AcmePortal'; Options = @('--Title', 'Acme Portal', '--Description', 'Welcome to Acme.'); Tests = $true; UiTests = $true },
-    @{ Name = 'my-app'; Options = @(); Tests = $true; UiTests = $false },
+    @{ Name = 'my-site'; Options = @(); Tests = $true; UiTests = $false },
     @{ Name = '1stApp'; Options = @('--IncludeShowcase', 'false'); Tests = $true; UiTests = $false },
-    @{ Name = 'NoNotes'; Options = @('--IncludeNotes', 'false'); Tests = $true; UiTests = $true },
-    @{ Name = 'Minimal'; Options = @('--IncludeTests', 'false', '--IncludeShowcase', 'false', '--IncludeNotes', 'false'); Tests = $false; UiTests = $false }
+    @{ Name = 'NoNotes'; Options = @('--Notes', 'false'); Tests = $true; UiTests = $true },
+    @{ Name = 'NoSync'; Options = @('--Sync', 'false'); Tests = $true; UiTests = $true },
+    @{ Name = 'Minimal'; Options = @('--IncludeTests', 'false', '--IncludeShowcase', 'false', '--Sync', 'false'); Tests = $false; UiTests = $false }
 )
+
+if ($Only) {
+    $cases = @($cases | Where-Object { $Only -contains $_.Name })
+}
 
 function Write-Step([string]$Message) {
     Write-Host ''
@@ -47,7 +60,8 @@ function Write-Step([string]$Message) {
 }
 
 function Invoke-Checked([string]$Description, [scriptblock]$Command) {
-    & $Command
+    # The command's output goes to the console, not into this function's result.
+    & $Command | Out-Host
     if ($LASTEXITCODE -ne 0) {
         $script:Failures.Add($Description)
         Write-Host "    [FAIL] $Description (exit code $LASTEXITCODE)" -ForegroundColor Red
@@ -58,15 +72,16 @@ function Invoke-Checked([string]$Description, [scriptblock]$Command) {
     return $true
 }
 
-function Test-Project([string]$Root, [string]$Solution, [bool]$UiTests, [string]$Label) {
-    if (-not (Invoke-Checked "$Label builds" { dotnet build (Join-Path $Root $Solution) --nologo -v q })) {
+function Test-Project([string]$Root, [string]$Solution, [bool]$UiTests, [string]$Label, [string[]]$BuildArguments) {
+    if (-not (Invoke-Checked "$Label builds" { dotnet build (Join-Path $Root $Solution) --nologo -v q -m:1 @BuildArguments })) {
         return
     }
 
     $testProjects = Get-ChildItem -Path $Root -Filter '*Tests.csproj' -Recurse |
+        Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
         Where-Object { $UiTests -or $_.BaseName -notlike '*.UITests' }
     foreach ($project in $testProjects) {
-        Invoke-Checked "$Label $($project.BaseName) pass" { dotnet test $project.FullName --nologo --no-build -v q } | Out-Null
+        Invoke-Checked "$Label $($project.BaseName) pass" { dotnet test $project.FullName --nologo --no-build -v q @BuildArguments } | Out-Null
     }
 }
 
@@ -74,21 +89,34 @@ try {
     New-Item -ItemType Directory -Path $workRoot | Out-Null
 
     if (-not $SkipRepositoryTests) {
-        Write-Step 'Repository builds and passes its tests as it is'
-        Test-Project -Root $repositoryRoot -Solution 'blazwiz.slnx' -UiTests (-not $SkipUiTests) -Label 'repository'
+        Write-Step 'Repository builds and passes its tests'
+        Test-Project -Root $repositoryRoot -Solution 'blazwiz.slnx' -UiTests (-not $SkipUiTests) -Label 'repository' -BuildArguments @()
+    }
+
+    # A version unique to this run: the NuGet cache keeps a package once it has a version, so reusing one would test an
+    # older build of the framework.
+    $versionPrefix = ([xml](Get-Content (Join-Path $repositoryRoot 'Directory.Build.props'))).Project.PropertyGroup.VersionPrefix | Where-Object { $_ } | Select-Object -First 1
+    $versionSuffix = "test.$runId"
+    $version = "$versionPrefix-$versionSuffix"
+    $feed = Join-Path $workRoot 'feed'
+
+    Write-Step "Packing the framework packages ($version)"
+    if (-not (Invoke-Checked 'framework packs' { dotnet pack (Join-Path $repositoryRoot 'blazwiz.slnx') -c Release -o $feed --nologo -v q -m:1 -p:VersionSuffix=$versionSuffix })) {
+        throw 'Could not pack the framework.'
     }
 
     Write-Step 'Packing and installing the template (isolated)'
-    $packageDirectory = Join-Path $workRoot 'package'
     $hive = Join-Path $workRoot 'hive'
-    if (-not (Invoke-Checked 'template packs' { dotnet pack (Join-Path $PSScriptRoot 'Devoctomy.Blazwiz.Templates.csproj') -c Release -o $packageDirectory --nologo -v q })) {
+    if (-not (Invoke-Checked 'template packs' { dotnet pack (Join-Path $PSScriptRoot 'Devoctomy.Blazwiz.Templates.csproj') -c Release -o $feed --nologo -v q -p:VersionSuffix=$versionSuffix })) {
         throw 'Could not pack the template.'
     }
 
-    $package = Get-ChildItem -Path $packageDirectory -Filter '*.nupkg' | Select-Object -First 1
+    $package = Get-ChildItem -Path $feed -Filter 'Devoctomy.Blazwiz.Templates.*.nupkg' | Select-Object -First 1
     if (-not (Invoke-Checked 'template installs' { dotnet new install $package.FullName --debug:custom-hive $hive })) {
         throw 'Could not install the template.'
     }
+
+    $templateAppId = [regex]::Match((Get-Content (Join-Path $templateRoot 'MyApp.Portal.Application/AppIdentity.cs') -Raw), 'Id = "([^"]+)"').Groups[1].Value
 
     foreach ($case in $cases) {
         $name = $case.Name
@@ -99,21 +127,40 @@ try {
             continue
         }
 
-        # Nothing should still be called blazwiz (ignoring restore output in obj/, which records this script's temp path).
+        # Use the packages from the local feed, at this run's version, as an app upgrading to them would: the version in
+        # Directory.Packages.props, and the feed in nuget.config (as well as nuget.org).
+        $packagesProps = Join-Path $output 'Directory.Packages.props'
+        (Get-Content $packagesProps -Raw) -replace '<BlazwizVersion>[^<]*</BlazwizVersion>', "<BlazwizVersion>$version</BlazwizVersion>" |
+            Set-Content -Path $packagesProps -NoNewline
+        @"
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="blazwiz-test" value="$feed" />
+  </packageSources>
+</configuration>
+"@ | Set-Content -Path (Join-Path $output 'nuget.config')
+
+        # Nothing should still have the template's placeholder name (ignoring build output).
         $leftovers = Get-ChildItem -Path $output -Recurse -File |
             Where-Object { $_.FullName.Substring($output.Length) -notmatch '[\\/](bin|obj)[\\/]' } |
-            Where-Object { $_.FullName.Substring($output.Length) -match 'blazwiz' -or (Select-String -Path $_.FullName -Pattern 'blazwiz' -SimpleMatch -Quiet) }
+            Where-Object { $_.FullName.Substring($output.Length) -match 'MyApp' -or (Select-String -Path $_.FullName -Pattern 'MyApp|myapp|MYAPP' -CaseSensitive -Quiet) }
         if ($leftovers) {
-            $script:Failures.Add("'$name' still contains 'blazwiz'")
-            Write-Host "    [FAIL] still contains 'blazwiz':" -ForegroundColor Red
+            $script:Failures.Add("'$name' still contains 'MyApp'")
+            Write-Host "    [FAIL] still contains 'MyApp':" -ForegroundColor Red
             $leftovers | ForEach-Object { Write-Host "           $($_.FullName.Substring($output.Length + 1))" }
         }
         else {
-            Write-Host "    [PASS] no 'blazwiz' left" -ForegroundColor Green
+            Write-Host "    [PASS] no 'MyApp' left" -ForegroundColor Green
+        }
+
+        # The app builds against the packages, not the framework's source.
+        if (Test-Path (Join-Path $output 'Directory.Build.targets')) {
+            $script:Failures.Add("'$name' has the repository's Directory.Build.targets")
+            Write-Host "    [FAIL] has the repository's Directory.Build.targets" -ForegroundColor Red
         }
 
         # Each app gets its own ID (the 'guids' in template.json), so its WebAuthn derived keys differ from every other app's.
-        $templateAppId = [regex]::Match((Get-Content (Join-Path $repositoryRoot 'blazwiz.Portal.Application/AppIdentity.cs') -Raw), 'Id = "([^"]+)"').Groups[1].Value
         $appIdentityFile = Get-ChildItem -Path $output -Filter 'AppIdentity.cs' -Recurse | Select-Object -First 1
         $appId = [regex]::Match((Get-Content $appIdentityFile.FullName -Raw), 'Id = "([^"]+)"').Groups[1].Value
         $parsedAppId = [Guid]::Empty
@@ -144,7 +191,7 @@ try {
             Write-Host "    [FAIL] test projects present: $hasTestProjects, expected $($case.Tests)" -ForegroundColor Red
         }
 
-        Test-Project -Root $output -Solution $solution -UiTests ($case.UiTests -and -not $SkipUiTests) -Label "'$name'"
+        Test-Project -Root $output -Solution $solution -UiTests ($case.UiTests -and -not $SkipUiTests) -Label "'$name'" -BuildArguments @()
     }
 }
 catch {

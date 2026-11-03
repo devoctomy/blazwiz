@@ -1,0 +1,16 @@
+@using Devoctomy.Blazwiz.UI.Text
+@using Devoctomy.Blazwiz.UI.Services.Interfaces
+@inject IStringLocalizer<UiText> Text
+@inject IAppBuildInfo BuildInfo
+
+<div class="panel">
+    <h2 class="panel-title">@Text["Settings.About.Title"]</h2>
+    <dl class="detail-list">
+        <dt>@Text["Settings.About.Version"]</dt>
+        <dd id="app-version">@BuildInfo.Version</dd>
+        <dt>@Text["Settings.About.Build"]</dt>
+        <dd>@(BuildInfo.IsDebugBuild ? Text["Settings.About.Debug"] : Text["Settings.About.Release"])</dd>
+        <dt>@Text["Settings.About.Built"]</dt>
+        <dd id="app-build-time">@(BuildInfo.BuildTime is { } built ? Text["Settings.About.BuiltAt", built] : Text["Settings.About.NotStamped"])</dd>
+    </dl>
+</div>

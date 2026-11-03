@@ -24,3 +24,7 @@ dotnet_diagnostic.SA1010.severity = none
 
 # SA1011: Closing square brackets should be spaced correctly
 dotnet_diagnostic.SA1011.severity = none
+
+# RS0041: Public API uses oblivious reference types. The Razor generator emits components' BuildRenderTree without
+# nullable annotations, which no source change can fix. Turned off with the maintainer's agreement.
+dotnet_diagnostic.RS0041.severity = none

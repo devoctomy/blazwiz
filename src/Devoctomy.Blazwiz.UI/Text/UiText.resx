@@ -1,0 +1,309 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Common.Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Common.Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Common.Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="Error.Auth.ChallengeUnsupported" xml:space="preserve">
+    <value>Sign-in needs '{0}', which this app does not support yet.</value>
+  </data>
+  <data name="Error.Auth.CredentialsRequired" xml:space="preserve">
+    <value>Please enter your email and password.</value>
+  </data>
+  <data name="Error.Auth.InvalidPassword" xml:space="preserve">
+    <value>That password does not meet the password rules. Choose another one.</value>
+  </data>
+  <data name="Error.Auth.NewPasswordRequired" xml:space="preserve">
+    <value>Please enter a new password.</value>
+  </data>
+  <data name="Error.Auth.NotAuthorized" xml:space="preserve">
+    <value>Incorrect email or password.</value>
+  </data>
+  <data name="Error.Auth.NotSignedIn" xml:space="preserve">
+    <value>Please sign in first.</value>
+  </data>
+  <data name="Error.Auth.PasswordResetRequired" xml:space="preserve">
+    <value>Your password must be reset before you can sign in. Please contact an administrator.</value>
+  </data>
+  <data name="Error.Auth.SignInAgain" xml:space="preserve">
+    <value>Please sign in again.</value>
+  </data>
+  <data name="Error.Auth.SignInExpired" xml:space="preserve">
+    <value>Your sign-in has expired. Please sign in again.</value>
+  </data>
+  <data name="Error.Auth.SignInFailed" xml:space="preserve">
+    <value>Sign in failed. Please try again.</value>
+  </data>
+  <data name="Error.Auth.TooManyAttempts" xml:space="preserve">
+    <value>Too many attempts. Please wait a moment and try again.</value>
+  </data>
+  <data name="Error.Auth.Unreachable" xml:space="preserve">
+    <value>Could not reach the sign-in service. Check your connection and try again.</value>
+  </data>
+  <data name="Error.Auth.UserNotConfirmed" xml:space="preserve">
+    <value>Your account has not been confirmed yet.</value>
+  </data>
+  <data name="Error.Unknown" xml:space="preserve">
+    <value>Something went wrong.</value>
+  </data>
+  <data name="Login.AdvancedOptions" xml:space="preserve">
+    <value>Advanced options</value>
+  </data>
+  <data name="Login.Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="Login.Email.Placeholder" xml:space="preserve">
+    <value>you@example.com</value>
+  </data>
+  <data name="Login.Error.Failed" xml:space="preserve">
+    <value>Sign in failed. Please try again.</value>
+  </data>
+  <data name="Login.Error.NewPasswordFailed" xml:space="preserve">
+    <value>Could not set the new password. Please try again.</value>
+  </data>
+  <data name="Login.Error.PasswordsDiffer" xml:space="preserve">
+    <value>The passwords do not match.</value>
+  </data>
+  <data name="Login.NewPassword.Back" xml:space="preserve">
+    <value>Back to sign in</value>
+  </data>
+  <data name="Login.NewPassword.Confirm" xml:space="preserve">
+    <value>Confirm new password</value>
+  </data>
+  <data name="Login.NewPassword.Intro" xml:space="preserve">
+    <value>Please choose a new password to finish signing in. It must be at least 12 characters and contain an upper case letter, a lower case letter and a number.</value>
+  </data>
+  <data name="Login.NewPassword.Label" xml:space="preserve">
+    <value>New password</value>
+  </data>
+  <data name="Login.NewPassword.Saving" xml:space="preserve">
+    <value>Saving...</value>
+  </data>
+  <data name="Login.NewPassword.Submit" xml:space="preserve">
+    <value>Set password and sign in</value>
+  </data>
+  <data name="Login.Offline.Help" xml:space="preserve">
+    <value>For accounts with a passkey. No connection needed: sync and some features are off, and the session lasts 15 minutes.</value>
+  </data>
+  <data name="Login.Offline.Label" xml:space="preserve">
+    <value>Sign in offline</value>
+  </data>
+  <data name="Login.PageTitle" xml:space="preserve">
+    <value>Sign in - {0}</value>
+  </data>
+  <data name="Login.Passkey.Continue" xml:space="preserve">
+    <value>Continue to app</value>
+  </data>
+  <data name="Login.Passkey.Enable" xml:space="preserve">
+    <value>Yes, enable biometric login</value>
+  </data>
+  <data name="Login.Passkey.Error.Failed" xml:space="preserve">
+    <value>Biometric login error. Please enter your password manually.</value>
+  </data>
+  <data name="Login.Passkey.Error.SetupFailed" xml:space="preserve">
+    <value>Biometric login could not be set up. Please continue with regular login.</value>
+  </data>
+  <data name="Login.Passkey.Error.SignInFailed" xml:space="preserve">
+    <value>Biometric login failed. Please enter your password manually.</value>
+  </data>
+  <data name="Login.Passkey.Error.Unsupported" xml:space="preserve">
+    <value>Your authenticator doesn't support the required security features for biometric login. Please continue with regular login.</value>
+  </data>
+  <data name="Login.Passkey.Hint" xml:space="preserve">
+    <value>Use Windows Hello, Touch ID, your phone's screen lock or a security key.</value>
+  </data>
+  <data name="Login.Passkey.Question" xml:space="preserve">
+    <value>Would you like to use &lt;strong&gt;biometrics&lt;/strong&gt; for quicker login next time?</value>
+  </data>
+  <data name="Login.Passkey.SettingUp" xml:space="preserve">
+    <value>Setting up biometric login...</value>
+  </data>
+  <data name="Login.Passkey.Skip" xml:space="preserve">
+    <value>Skip for now</value>
+  </data>
+  <data name="Login.Passkey.Title" xml:space="preserve">
+    <value>Enable biometric login</value>
+  </data>
+  <data name="Login.Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Login.Password.Placeholder" xml:space="preserve">
+    <value>Your password</value>
+  </data>
+  <data name="Login.PlaceholderHint" xml:space="preserve">
+    <value>Placeholder login - any username and password will do until Cognito is connected.</value>
+  </data>
+  <data name="Login.RememberMe" xml:space="preserve">
+    <value>Remember me</value>
+  </data>
+  <data name="Login.SavedUsers.PasskeyAvailable" xml:space="preserve">
+    <value>Biometric login available</value>
+  </data>
+  <data name="Login.SavedUsers.Remove" xml:space="preserve">
+    <value>Remove user</value>
+  </data>
+  <data name="Login.SavedUsers.Show" xml:space="preserve">
+    <value>Remembered users</value>
+  </data>
+  <data name="Login.SavedUsers.UseDifferentAccount" xml:space="preserve">
+    <value>Use different account</value>
+  </data>
+  <data name="Login.SignIn" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="Login.SigningIn" xml:space="preserve">
+    <value>Signing in...</value>
+  </data>
+  <data name="NotFound.BackHome" xml:space="preserve">
+    <value>Back home</value>
+  </data>
+  <data name="NotFound.PageTitle" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="NotFound.Text" xml:space="preserve">
+    <value>Sorry, the page you are looking for does not exist.</value>
+  </data>
+  <data name="NotFound.Title" xml:space="preserve">
+    <value>Nothing here</value>
+  </data>
+  <data name="Offline.Banner.Chosen" xml:space="preserve">
+    <value>You're in offline mode. Nothing is synced or sent to the cloud, and you'll be signed out 15 minutes after going offline.</value>
+  </data>
+  <data name="Offline.Banner.SignInOnline" xml:space="preserve">
+    <value>Sign in online</value>
+  </data>
+  <data name="Offline.Banner.Unreachable" xml:space="preserve">
+    <value>Couldn't reach the sign-in service, so you're signed in offline. Sync and some features are disabled, and the session lasts 15 minutes.</value>
+  </data>
+  <data name="Offline.Switch.Error" xml:space="preserve">
+    <value>Offline mode could not be turned on: {0}</value>
+  </data>
+  <data name="Offline.Switch.Help" xml:space="preserve">
+    <value>Nothing is synced or sent to the cloud, and you're signed out after 15 minutes. Turning it off signs you out, so you can sign in online.</value>
+  </data>
+  <data name="Offline.Switch.Label" xml:space="preserve">
+    <value>Offline mode</value>
+  </data>
+  <data name="Profile.Email" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="Profile.EmailNotSet" xml:space="preserve">
+    <value>Not set</value>
+  </data>
+  <data name="Profile.Expires" xml:space="preserve">
+    <value>Expires</value>
+  </data>
+  <data name="Profile.Session" xml:space="preserve">
+    <value>Session</value>
+  </data>
+  <data name="Profile.SignedIn" xml:space="preserve">
+    <value>Signed in</value>
+  </data>
+  <data name="Profile.Subtitle" xml:space="preserve">
+    <value>Details of the signed in user.</value>
+  </data>
+  <data name="Profile.Title" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="Session.Expired" xml:space="preserve">
+    <value>Session expired</value>
+  </data>
+  <data name="Session.OfflineRemaining" xml:space="preserve">
+    <value>Offline {0}</value>
+  </data>
+  <data name="Session.Remaining" xml:space="preserve">
+    <value>Session {0}</value>
+  </data>
+  <data name="Settings.About.Build" xml:space="preserve">
+    <value>Build</value>
+  </data>
+  <data name="Settings.About.Built" xml:space="preserve">
+    <value>Built</value>
+  </data>
+  <data name="Settings.About.BuiltAt" xml:space="preserve">
+    <value>{0} UTC</value>
+  </data>
+  <data name="Settings.About.Debug" xml:space="preserve">
+    <value>Debug</value>
+  </data>
+  <data name="Settings.About.NotStamped" xml:space="preserve">
+    <value>Not stamped (development build)</value>
+  </data>
+  <data name="Settings.About.Release" xml:space="preserve">
+    <value>Release</value>
+  </data>
+  <data name="Settings.About.Title" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="Settings.About.Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Settings.Appearance.Dark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Settings.Appearance.Light" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings.Appearance.Text" xml:space="preserve">
+    <value>Choose how the app looks. The default follows your operating system.</value>
+  </data>
+  <data name="Settings.Appearance.Title" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings.Offline.Text" xml:space="preserve">
+    <value>Work without connecting to the sign-in service or the cloud.</value>
+  </data>
+  <data name="Settings.Offline.Title" xml:space="preserve">
+    <value>Offline mode</value>
+  </data>
+  <data name="Settings.Subtitle" xml:space="preserve">
+    <value>Preferences are saved in this browser.</value>
+  </data>
+  <data name="Settings.Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Shell.CollapseSidebar" xml:space="preserve">
+    <value>Collapse sidebar</value>
+  </data>
+  <data name="Shell.ExpandSidebar" xml:space="preserve">
+    <value>Expand sidebar</value>
+  </data>
+  <data name="Shell.LogOut" xml:space="preserve">
+    <value>Log out</value>
+  </data>
+  <data name="Shell.MainNavigation" xml:space="preserve">
+    <value>Main navigation</value>
+  </data>
+  <data name="Shell.Menu" xml:space="preserve">
+    <value>Menu</value>
+  </data>
+  <data name="Shell.PageTitle" xml:space="preserve">
+    <value>{0} - {1}</value>
+  </data>
+  <data name="Shell.ToggleTheme" xml:space="preserve">
+    <value>Toggle theme</value>
+  </data>
+  <data name="Nav.Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Nav.Settings.Description" xml:space="preserve">
+    <value>Appearance and application preferences.</value>
+  </data>
+</root>

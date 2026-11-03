@@ -1,0 +1,23 @@
+@using Devoctomy.Blazwiz.UI.Text
+@inject IStringLocalizer<UiText> Text
+<PageTitle>@Text["Shell.PageTitle", Title, AppSettings.ApplicationTitle]</PageTitle>
+
+<div class="page-header">
+    <div class="page-header-text">
+        <h1 class="page-title">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <i class="bi @Icon page-title-icon"></i>
+            }
+            @Title
+        </h1>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="page-subtitle">@Subtitle</p>
+        }
+    </div>
+    @if (ChildContent != null)
+    {
+        <div class="page-header-actions">@ChildContent</div>
+    }
+</div>

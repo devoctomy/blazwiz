@@ -6,15 +6,14 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Blazor / ASP.NET -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
-<!--#if (IncludeNotes)-->
     <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.12" />
-<!--#endif-->
     <PackageVersion Include="Microsoft.Extensions.Localization.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.JSInterop" Version="10.0.12" />
@@ -23,20 +22,17 @@
     <PackageVersion Include="AWSSDK.CognitoIdentity" Version="4.0.100.15" />
     <PackageVersion Include="AWSSDK.CognitoIdentityProvider" Version="4.0.105.3" />
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.15" />
-<!--#if (IncludeNotes)-->
     <PackageVersion Include="AWSSDK.S3" Version="4.0.104" />
-<!--#endif-->
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
-<!--#if (IncludeNotes)-->
     <!-- Markdown -->
     <PackageVersion Include="Markdig" Version="1.4.0" />
-<!--#endif-->
     <!-- Cryptography -->
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <!-- MVVM -->
     <PackageVersion Include="Blazing.Mvvm" Version="3.2.1" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <!-- Analysers -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="4.14.0" />
     <PackageVersion Include="StyleCop.Analyzers" Version="1.1.118" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />

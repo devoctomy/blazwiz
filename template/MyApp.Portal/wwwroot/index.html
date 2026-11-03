@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" data-app-name="myapp">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>MyApp</title>
+    <base href="/" />
+    <!-- Applies the saved theme (or the OS preference) before first paint, to avoid a flash of the wrong theme. The
+         settings key is named after the app (data-app-name above, the same name as AppIdentity.Name). -->
+    <script>
+        (function () {
+            var theme = null;
+            try {
+                var prefix = document.documentElement.getAttribute('data-app-name') + '_';
+                theme = JSON.parse(localStorage.getItem(prefix + 'user_settings') || '{}').Theme;
+            } catch (e) {
+                // Unreadable settings: use the OS preference.
+            }
+
+            if (theme !== 'dark' && theme !== 'light') {
+                theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            document.documentElement.setAttribute('data-bs-theme', theme);
+        })();
+    </script>
+    <link rel="preload" id="webassembly" />
+    <!-- The framework's styles. Modules add their own (e.g. sync), then the app's own come last. -->
+    <link href="_content/Devoctomy.Blazwiz.UI/lib/inter/inter.css" rel="stylesheet" />
+    <link href="_content/Devoctomy.Blazwiz.UI/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="_content/Devoctomy.Blazwiz.UI/lib/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet" />
+    <link href="_content/Devoctomy.Blazwiz.UI/css/blazwiz.css" rel="stylesheet" />
+    <!--#if (IncludeNotes)-->
+    <link href="css/notes.css" rel="stylesheet" />
+    <!--#endif-->
+    <link href="css/app.css" rel="stylesheet" />
+    <!-- If you add any scoped CSS files, uncomment the following to load them
+    <link href="MyApp.Portal.styles.css" rel="stylesheet" /> -->
+
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <link href="manifest.webmanifest" rel="manifest" />
+    <meta name="theme-color" content="#7c3aed" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="MyApp" />
+    <script type="importmap"></script>
+</head>
+
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="app-update-banner" role="status" hidden>
+        <span>A new version of the app is available.</span>
+        <button type="button" class="btn btn-primary btn-sm app-update-button">Update</button>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+    <!--#if (IncludeNotes)-->
+    <script src="js/notes.js"></script>
+    <!--#endif-->
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+</body>
+
+</html>

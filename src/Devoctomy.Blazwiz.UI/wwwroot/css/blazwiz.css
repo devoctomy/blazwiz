@@ -1,0 +1,921 @@
+/* =========================================================================
+   blazwiz theme: the app shell, its pages and the building blocks apps use.
+   Built on Bootstrap 5.3 colour modes: the theme is switched by setting
+   data-bs-theme="light|dark" on <html> (see ThemeService).
+   Apps re-skin it by overriding the --bw-* tokens below in their own CSS,
+   loaded after this file; don't edit this file, it is replaced on upgrade.
+   ========================================================================= */
+
+:root,
+[data-bs-theme="light"] {
+    --bw-accent: #7c3aed;
+    --bw-accent-rgb: 124, 58, 237;
+    --bw-accent-2: #06b6d4;
+    --bw-gradient: linear-gradient(135deg, var(--bw-accent) 0%, var(--bw-accent-2) 100%);
+
+    --bw-bg: #f4f5fb;
+    --bw-surface: #ffffff;
+    --bw-surface-2: #f7f7fc;
+    --bw-sidebar-bg: #ffffff;
+    --bw-border: rgba(15, 23, 42, 0.08);
+    --bw-text: #0f172a;
+    --bw-text-muted: #64748b;
+    --bw-hover: rgba(var(--bw-accent-rgb), 0.07);
+    --bw-active: rgba(var(--bw-accent-rgb), 0.12);
+    --bw-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+    --bw-shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.12);
+    --bw-topbar-bg: rgba(244, 245, 251, 0.8);
+
+    --bs-primary: var(--bw-accent);
+    --bs-primary-rgb: var(--bw-accent-rgb);
+    --bs-link-color: var(--bw-accent);
+    --bs-link-color-rgb: var(--bw-accent-rgb);
+    --bs-link-hover-color: #6d28d9;
+    --bs-body-bg: var(--bw-bg);
+    --bs-body-color: var(--bw-text);
+    --bs-border-color: var(--bw-border);
+    --bs-secondary-color: var(--bw-text-muted);
+}
+
+[data-bs-theme="dark"] {
+    --bw-accent: #a78bfa;
+    --bw-accent-rgb: 167, 139, 250;
+    --bw-accent-2: #22d3ee;
+
+    --bw-bg: #0b0d17;
+    --bw-surface: #131627;
+    --bw-surface-2: #181c30;
+    --bw-sidebar-bg: #0f1220;
+    --bw-border: rgba(255, 255, 255, 0.07);
+    --bw-text: #e2e8f0;
+    --bw-text-muted: #94a3b8;
+    --bw-hover: rgba(255, 255, 255, 0.05);
+    --bw-active: rgba(var(--bw-accent-rgb), 0.16);
+    --bw-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    --bw-shadow-lg: 0 20px 50px rgba(0, 0, 0, 0.5);
+    --bw-topbar-bg: rgba(11, 13, 23, 0.75);
+
+    --bs-link-hover-color: #c4b5fd;
+    --bs-tertiary-bg: var(--bw-surface-2);
+    --bs-body-bg: var(--bw-bg);
+    --bs-body-color: var(--bw-text);
+}
+
+:root {
+    --bw-sidebar-width: 260px;
+    --bw-sidebar-collapsed-width: 76px;
+    --bw-topbar-height: 60px;
+    --bw-radius: 14px;
+    --bw-radius-sm: 10px;
+    --bw-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    --bs-font-sans-serif: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html, body {
+    height: 100%;
+}
+
+body {
+    background: var(--bw-bg);
+    color: var(--bw-text);
+    -webkit-font-smoothing: antialiased;
+    transition: background-color var(--bw-transition), color var(--bw-transition);
+}
+
+h1:focus {
+    outline: none;
+}
+
+code {
+    color: var(--bw-accent);
+    background: var(--bw-active);
+    padding: 0.1rem 0.35rem;
+    border-radius: 6px;
+    font-size: 0.85em;
+}
+
+/* ---------- Bootstrap overrides ---------- */
+
+.btn {
+    border-radius: var(--bw-radius-sm);
+    font-weight: 600;
+}
+
+.btn-primary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--bw-accent);
+    --bs-btn-border-color: transparent;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-border-color: transparent;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-border-color: transparent;
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-border-color: transparent;
+    background-image: var(--bw-gradient);
+    box-shadow: 0 6px 18px rgba(var(--bw-accent-rgb), 0.3);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(var(--bw-accent-rgb), 0.4);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--bw-accent);
+    --bs-btn-border-color: var(--bw-accent);
+    --bs-btn-hover-bg: var(--bw-accent);
+    --bs-btn-hover-border-color: var(--bw-accent);
+    --bs-btn-active-bg: var(--bw-accent);
+    --bs-btn-active-border-color: var(--bw-accent);
+}
+
+.form-control,
+.form-select {
+    border-radius: var(--bw-radius-sm);
+    background-color: var(--bw-surface-2);
+    border-color: var(--bw-border);
+    padding: 0.6rem 0.85rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--bw-accent);
+    background-color: var(--bw-surface);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bw-accent-rgb), 0.18);
+}
+
+.form-check-input:checked {
+    background-color: var(--bw-accent);
+    border-color: var(--bw-accent);
+}
+
+.form-label {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.alert {
+    border-radius: var(--bw-radius-sm);
+}
+
+/* Modals (see Components/ModalDialog) */
+.app-modal .modal-content {
+    background: var(--bw-surface);
+    border: 1px solid var(--bw-border);
+    border-radius: var(--bw-radius);
+    box-shadow: var(--bw-shadow-lg);
+}
+
+.app-modal .modal-header,
+.app-modal .modal-footer {
+    border-color: var(--bw-border);
+}
+
+.app-modal .modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.app-modal .modal-footer {
+    gap: 0.25rem;
+}
+
+.modal-backdrop.show {
+    opacity: 0.45;
+}
+
+.table {
+    --bs-table-bg: transparent;
+}
+
+.text-bg-primary {
+    background: var(--bw-gradient) !important;
+}
+
+/* ---------- Icon button ---------- */
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid transparent;
+    border-radius: var(--bw-radius-sm);
+    background: transparent;
+    color: var(--bw-text-muted);
+    font-size: 1.2rem;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.icon-btn:hover {
+    background: var(--bw-hover);
+    color: var(--bw-text);
+    border-color: var(--bw-border);
+}
+
+/* =========================================================================
+   Application shell
+   ========================================================================= */
+
+.app-splash {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.app-shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    width: var(--bw-sidebar-width);
+    height: 100vh;
+    padding: 1rem 0.75rem;
+    background: var(--bw-sidebar-bg);
+    border-right: 1px solid var(--bw-border);
+    transition: width var(--bw-transition), transform var(--bw-transition), background-color var(--bw-transition);
+    z-index: 1040;
+    overflow: hidden;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    height: 44px;
+    padding: 0 0.4rem;
+    margin-bottom: 1.5rem;
+    white-space: nowrap;
+}
+
+.brand-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    box-shadow: 0 6px 16px rgba(var(--bw-accent-rgb), 0.35);
+}
+
+.brand-name {
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: var(--bw-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--bw-border);
+}
+
+.sidebar-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    min-height: 44px;
+    padding: 0.55rem 0.9rem;
+    border: none;
+    border-radius: var(--bw-radius-sm);
+    background: transparent;
+    color: var(--bw-text-muted);
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, color 0.15s ease, padding var(--bw-transition);
+}
+
+.sidebar-link > .bi {
+    flex-shrink: 0;
+    width: 1.25rem;
+    font-size: 1.15rem;
+    text-align: center;
+}
+
+.sidebar-link:hover {
+    background: var(--bw-hover);
+    color: var(--bw-text);
+}
+
+.sidebar-link.active {
+    background: var(--bw-active);
+    color: var(--bw-accent);
+    font-weight: 600;
+}
+
+.sidebar-link.active::before {
+    content: "";
+    position: absolute;
+    left: -0.75rem;
+    top: 20%;
+    bottom: 20%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--bw-gradient);
+}
+
+.sidebar-label {
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+
+.sidebar-user {
+    padding-left: 0.55rem;
+}
+
+.user-meta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.2;
+}
+
+.user-name {
+    color: var(--bw-text);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-sub {
+    color: var(--bw-text-muted);
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-session {
+    color: var(--bw-text-muted);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.sidebar-logout:hover {
+    color: var(--bs-danger);
+    background: rgba(var(--bs-danger-rgb), 0.08);
+}
+
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bw-gradient);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.avatar-lg {
+    width: 72px;
+    height: 72px;
+    font-size: 1.6rem;
+    box-shadow: 0 10px 30px rgba(var(--bw-accent-rgb), 0.35);
+}
+
+/* Collapsed (desktop only) - icons only */
+@media (min-width: 768px) {
+    .sidebar-collapsed .sidebar {
+        width: var(--bw-sidebar-collapsed-width);
+    }
+
+    .sidebar-collapsed .sidebar-label {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .sidebar-collapsed .sidebar-brand {
+        padding: 0 0.3rem;
+    }
+
+    .sidebar-collapsed .sidebar-link {
+        padding-left: 0.95rem;
+    }
+
+    .sidebar-collapsed .sidebar-user {
+        padding-left: 0.6rem;
+    }
+}
+
+.sidebar-backdrop {
+    display: none;
+}
+
+/* Mobile - sidebar becomes an off-canvas overlay */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        box-shadow: none;
+    }
+
+    .mobile-menu-open .sidebar {
+        transform: translateX(0);
+        box-shadow: var(--bw-shadow-lg);
+    }
+
+    .mobile-menu-open .sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.5);
+        backdrop-filter: blur(2px);
+        z-index: 1030;
+    }
+}
+
+/* ---------- Main area ---------- */
+
+.app-main {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.topbar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: var(--bw-topbar-height);
+    padding: 0 1.25rem;
+    background: var(--bw-topbar-bg);
+    backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--bw-border);
+    z-index: 1020;
+}
+
+.topbar-title {
+    font-weight: 700;
+}
+
+.app-content {
+    flex-grow: 1;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+    animation: page-in 0.3s ease;
+}
+
+/* Wraps the page so it can be shown again from scratch (keyed), without affecting the layout. */
+.app-content-body {
+    display: contents;
+}
+
+@media (max-width: 575.98px) {
+    .app-content {
+        padding: 1.25rem 1rem 2rem;
+    }
+}
+
+@keyframes page-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* =========================================================================
+   Page building blocks
+   ========================================================================= */
+
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+}
+
+.page-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.page-title-icon {
+    color: var(--bw-accent);
+}
+
+.page-subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--bw-text-muted);
+}
+
+.section-title {
+    margin-bottom: 1rem;
+    color: var(--bw-text-muted);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.panel {
+    padding: 1.5rem;
+    background: var(--bw-surface);
+    border: 1px solid var(--bw-border);
+    border-radius: var(--bw-radius);
+    box-shadow: var(--bw-shadow);
+}
+
+.panel-title {
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.panel-text {
+    color: var(--bw-text-muted);
+}
+
+.detail-list {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.6rem 2rem;
+    margin: 0.75rem 0 0;
+}
+
+.detail-list dt {
+    color: var(--bw-text-muted);
+    font-weight: 500;
+}
+
+.detail-list dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+/* ---------- Settings ---------- */
+
+.theme-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.theme-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 180px;
+    padding: 0.75rem;
+    border: 2px solid var(--bw-border);
+    border-radius: var(--bw-radius);
+    background: var(--bw-surface-2);
+    color: var(--bw-text);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.theme-option:hover {
+    transform: translateY(-2px);
+}
+
+.theme-option.active {
+    border-color: var(--bw-accent);
+    box-shadow: 0 0 0 4px rgba(var(--bw-accent-rgb), 0.15);
+}
+
+.theme-option-label {
+    font-weight: 600;
+}
+
+.theme-preview {
+    display: grid;
+    grid-template-columns: 30% 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 6px;
+    height: 90px;
+    padding: 8px;
+    border-radius: var(--bw-radius-sm);
+}
+
+.theme-preview span {
+    border-radius: 5px;
+}
+
+.theme-preview span:first-child {
+    grid-row: span 2;
+}
+
+.theme-preview-light {
+    background: #f4f5fb;
+}
+
+.theme-preview-light span {
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+}
+
+.theme-preview-dark {
+    background: #0b0d17;
+}
+
+.theme-preview-dark span {
+    background: #181c30;
+}
+
+.theme-preview span:nth-child(2) {
+    background: linear-gradient(135deg, #7c3aed, #06b6d4);
+}
+
+/* ---------- Profile ---------- */
+
+.profile-panel {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.profile-name {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 800;
+}
+
+.profile-sub {
+    margin: 0;
+    color: var(--bw-text-muted);
+}
+
+/* =========================================================================
+   Login / auth pages
+   ========================================================================= */
+
+.auth-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    overflow: hidden;
+}
+
+.auth-glow {
+    position: absolute;
+    width: 520px;
+    height: 520px;
+    border-radius: 50%;
+    filter: blur(90px);
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.auth-glow-1 {
+    top: -160px;
+    left: -120px;
+    background: var(--bw-accent);
+}
+
+.auth-glow-2 {
+    right: -140px;
+    bottom: -180px;
+    background: var(--bw-accent-2);
+}
+
+.auth-theme-toggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 2;
+}
+
+.auth-card {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    padding: 2.5rem 2rem 2rem;
+    background: color-mix(in srgb, var(--bw-surface) 85%, transparent);
+    border: 1px solid var(--bw-border);
+    border-radius: calc(var(--bw-radius) + 8px);
+    box-shadow: var(--bw-shadow-lg);
+    backdrop-filter: blur(20px);
+    z-index: 1;
+    animation: page-in 0.4s ease;
+}
+
+.auth-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.auth-logo {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 1rem;
+    border-radius: 18px;
+    box-shadow: 0 12px 30px rgba(var(--bw-accent-rgb), 0.4);
+}
+
+.auth-title {
+    margin-bottom: 0.25rem;
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+}
+
+.auth-subtitle {
+    margin: 0;
+    color: var(--bw-text-muted);
+}
+
+.auth-hint {
+    margin: 1.5rem 0 0;
+    color: var(--bw-text-muted);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.auth-footer {
+    position: relative;
+    margin: 1.5rem 0 0;
+    color: var(--bw-text-muted);
+    font-size: 0.8rem;
+    z-index: 1;
+}
+
+.input-icon {
+    position: relative;
+}
+
+.input-icon > .bi {
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--bw-text-muted);
+    pointer-events: none;
+}
+
+.input-icon > .form-control {
+    padding-left: 2.5rem;
+}
+
+.not-found-code {
+    font-size: 5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    background: var(--bw-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* =========================================================================
+   Blazor framework UI (loading indicator, error bar, validation)
+   ========================================================================= */
+
+.valid.modified:not([type=checkbox]) {
+    outline: 1px solid #26b050;
+}
+
+.invalid {
+    outline: 1px solid var(--bs-danger);
+}
+
+.validation-message {
+    color: var(--bs-danger);
+}
+
+/* Shown by the app update check (Devoctomy.Blazwiz.UI.lib.module.js) when a new version of the app is ready. Plain HTML, so it works even if the app does not. */
+#app-update-banner {
+    position: fixed;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    z-index: 2001;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: calc(100% - 2rem);
+    padding: 0.6rem 0.75rem 0.6rem 1.25rem;
+    border-radius: var(--bw-radius-sm);
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.2);
+}
+
+#app-update-banner[hidden] {
+    display: none;
+}
+
+#blazor-error-ui {
+    color-scheme: light only;
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 2000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+.blazor-error-boundary {
+    padding: 1rem;
+    background: #b32121;
+    color: white;
+    border-radius: var(--bw-radius-sm);
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
+}
+
+.loading-progress {
+    position: absolute;
+    display: block;
+    width: 7rem;
+    height: 7rem;
+    inset: 30vh 0 auto 0;
+    margin: 0 auto;
+}
+
+.loading-progress circle {
+    fill: none;
+    stroke: var(--bw-border);
+    stroke-width: 0.5rem;
+    transform-origin: 50% 50%;
+    transform: rotate(-90deg);
+}
+
+.loading-progress circle:last-child {
+    stroke: var(--bw-accent);
+    stroke-linecap: round;
+    stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+    transition: stroke-dasharray 0.05s ease-in-out;
+}
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: 600;
+    color: var(--bw-text-muted);
+    inset: calc(30vh + 2.9rem) 0 auto 0.2rem;
+}
+
+.loading-progress-text:after {
+    content: var(--blazor-load-percentage-text, "Loading");
+}
