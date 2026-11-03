@@ -6,7 +6,7 @@ in `UPGRADING.md` from 1.0.
 
 Before 1.0 any release may break, and nothing is kept for earlier builds: no data migrations, no compatibility code.
 
-## Unreleased (0.1.0-preview.1)
+## Unreleased (0.1.0)
 
 The first release as packages. Apps created from the template build on the `Devoctomy.Blazwiz.*` packages and upgrade
 by changing `BlazwizVersion` in their `Directory.Packages.props`.
