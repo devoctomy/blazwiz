@@ -132,8 +132,15 @@ jobs:
         shell: pwsh
         env:
           NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        # dotnet nuget push does not expand a wildcard in a path with forward slashes on Windows ("File does not
+        # exist"), so the packages are listed here and pushed by full path. Each push takes its .snupkg with it.
         run: |
-          dotnet nuget push "artifacts/packages/*.nupkg" --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+          $packages = @(Get-ChildItem -Path artifacts/packages -Filter *.nupkg)
+          if ($packages.Count -eq 0) { throw 'No packages in artifacts/packages.' }
+          foreach ($package in $packages) {
+            dotnet nuget push $package.FullName --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
 
       - name: Keep the packages
         uses: actions/upload-artifact@v4
