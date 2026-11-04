@@ -57,7 +57,7 @@
       "datatype": "bool",
       "defaultValue": "true",
       "displayName": "Notes example",
-      "description": "Include the notes example: the Files page and a markdown note editor, synced by the sync module. Needs Sync."
+      "description": "Include the notes example: the Files page and a markdown note editor, synced by the sync module. Needs --sync: with --sync false it is left out."
     },
     "skipRestore": {
       "type": "parameter",

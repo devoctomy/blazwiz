@@ -62,8 +62,8 @@ These can change in any release:
   app's tests fail when one of its text overrides names a key that no longer exists, or uses placeholders that do not
   match (the template's `NotesTextTests` show how).
 - `templatepack/test-template.ps1`: creates apps from the template with the packages built from the repository, and
-  checks they build and pass their tests. With `-UpgradeFrom <folder>` it simulates upgrading an app from another
-  copy of the framework, for testing a change.
+  checks they build and pass their tests. With `-UpgradeFrom latest` (or a released version) it simulates upgrading
+  an app created from that release on nuget.org to the packages built from the repository, for testing a change.
 - Upgrade tests: every change that affects apps comes with a test of upgrading across it, as part of its acceptance
   (AGENTS.md, "Upgrade tests").
 

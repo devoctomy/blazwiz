@@ -11,15 +11,27 @@ dotnet new install Devoctomy.Blazwiz.Templates
 dotnet new blazwiz -n MyApp
 ```
 
+To install a pre-release (beta), give its version:
+
+```
+dotnet new install Devoctomy.Blazwiz.Templates@0.2.0-beta.8
+```
+
+Installing again replaces the installed version; `dotnet new update` updates to the latest release.
+
 Options:
 
-- `--Sync`: the sync module, with the Sync page and end to end encryption (default `true`).
-- `--Notes`: the notes example, a Files page and markdown note editor synced by the sync module (default `true`;
-  needs `--Sync`).
-- `--IncludeShowcase`: a page of themed building blocks to copy from (default `true`).
-- `--IncludeTests`: the unit and UI test projects (default `true`).
+- `--title`: shown in the browser tab, on the login page and in the PWA manifest (default: the name).
+- `--description`: shown under the title on the login page (default `Sign in to continue.`).
+- `--sync`: the sync module, with the Sync page and end to end encryption (default `true`).
+- `--notes`: the notes example, a Files page and markdown note editor synced by the sync module (default `true`;
+  needs the sync module, and is left out with `--sync false`).
+- `--showcase`: a page of themed building blocks to copy from (default `true`).
+- `--tests`: the unit and UI test projects (default `true`).
+- `--no-restore`: don't restore the app's packages after creating it.
 
-Run `dotnet new blazwiz --help` for all of them. The created app has a README on running, deploying and extending it.
+For example: `dotnet new blazwiz -n AcmePortal --title "Acme Portal" --showcase false`. Run
+`dotnet new blazwiz --help` for all of them. The created app has a README on running, deploying and extending it.
 
 ## Upgrading
 

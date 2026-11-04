@@ -186,7 +186,7 @@ jobs:
           $changelog = Get-Content CHANGELOG.md -Raw
           $section = [regex]::Match($changelog, "(?ms)^## $heading[^\r\n]*\r?\n(.*?)(?=^## |\z)").Groups[1].Value.Trim()
           $notes = if ($prerelease) {
-            "A beta of ``${{ github.ref_name }}`` at ${{ github.sha }}. Install the template with ``dotnet new install Devoctomy.Blazwiz.Templates::$version``.`n`n$section"
+            "A beta of ``${{ github.ref_name }}`` at ${{ github.sha }}. Install the template with ``dotnet new install Devoctomy.Blazwiz.Templates@$version``.`n`n$section"
           }
           else {
             $section
