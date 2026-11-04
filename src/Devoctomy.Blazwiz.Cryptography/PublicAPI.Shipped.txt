@@ -1,1 +1,107 @@
 #nullable enable
+Devoctomy.Blazwiz.Cryptography.AeadKeyWrapService
+Devoctomy.Blazwiz.Cryptography.AeadKeyWrapService.AeadKeyWrapService(Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher! cipher) -> void
+Devoctomy.Blazwiz.Cryptography.AeadKeyWrapService.CreateKey(int? length = null) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.AeadKeyWrapService.Unwrap(byte[]! keyEncryptionKey, Devoctomy.Blazwiz.Cryptography.Models.WrappedKey! wrappedKey, byte[]? associatedData = null) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.AeadKeyWrapService.Wrap(byte[]! keyEncryptionKey, byte[]! key, byte[]? associatedData = null) -> Devoctomy.Blazwiz.Cryptography.Models.WrappedKey!
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.BouncyCastleAesGcmAeadCipher() -> void
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.Decrypt(System.ReadOnlySpan<byte> key, System.ReadOnlySpan<byte> nonce, System.ReadOnlySpan<byte> ciphertext, System.ReadOnlySpan<byte> associatedData = default(System.ReadOnlySpan<byte>)) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.Encrypt(System.ReadOnlySpan<byte> key, System.ReadOnlySpan<byte> nonce, System.ReadOnlySpan<byte> plaintext, System.ReadOnlySpan<byte> associatedData = default(System.ReadOnlySpan<byte>)) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.KeySize.get -> int
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.NonceSize.get -> int
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.TagSize.get -> int
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmCryptoService
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmCryptoService.BouncyCastleAesGcmCryptoService() -> void
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmCryptoService.DecryptAsync(System.IO.Stream! inputStream, System.IO.Stream! outputStream, string? base64Key) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmCryptoService.EncryptAsync(System.IO.Stream! inputStream, System.IO.Stream! outputStream, string? base64Key) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService
+Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService.BouncyCastleArgon2idKeyDerivationService() -> void
+Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService.DeriveKeyAsync(string! passphrase, byte[]! salt, Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters! parameters, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+Devoctomy.Blazwiz.Cryptography.BouncyCastleHkdfKeyDerivationService
+Devoctomy.Blazwiz.Cryptography.BouncyCastleHkdfKeyDerivationService.BouncyCastleHkdfKeyDerivationService() -> void
+Devoctomy.Blazwiz.Cryptography.BouncyCastleHkdfKeyDerivationService.DeriveKey(byte[]! inputKeyMaterial, byte[]! salt, byte[]! info, int length) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions
+Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions.Argon2idOptions() -> void
+Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions.Parameters.get -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
+Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions.Parameters.set -> void
+Devoctomy.Blazwiz.Cryptography.Configuration.DerivedKeyOptions
+Devoctomy.Blazwiz.Cryptography.Configuration.DerivedKeyOptions.DerivedKeyOptions() -> void
+Devoctomy.Blazwiz.Cryptography.Configuration.DerivedKeyOptions.Length.get -> int
+Devoctomy.Blazwiz.Cryptography.Configuration.DerivedKeyOptions.Length.set -> void
+Devoctomy.Blazwiz.Cryptography.Configuration.DerivedKeyOptions.Name.get -> string!
+Devoctomy.Blazwiz.Cryptography.Configuration.DerivedKeyOptions.Name.set -> void
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder.AddKey(string! name, int length = 32) -> Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder!
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder.Options.get -> Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions!
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder.PrfKeyDerivationBuilder(Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions! options) -> void
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder.UseApplication(string! name, string! id) -> Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder!
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions.ApplicationId.get -> System.Guid
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions.ApplicationId.set -> void
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions.ApplicationName.get -> string!
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions.ApplicationName.set -> void
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions.Keys.get -> System.Collections.Generic.List<Devoctomy.Blazwiz.Cryptography.Configuration.DerivedKeyOptions!>!
+Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions.PrfKeyDerivationOptions() -> void
+Devoctomy.Blazwiz.Cryptography.Extensions.CryptographyServiceCollectionExtensions
+Devoctomy.Blazwiz.Cryptography.Extensions.PrfKeyDerivationServiceCollectionExtensions
+Devoctomy.Blazwiz.Cryptography.InMemoryDerivedKeyStore
+Devoctomy.Blazwiz.Cryptography.InMemoryDerivedKeyStore.Clear() -> void
+Devoctomy.Blazwiz.Cryptography.InMemoryDerivedKeyStore.InMemoryDerivedKeyStore() -> void
+Devoctomy.Blazwiz.Cryptography.InMemoryDerivedKeyStore.RemoveKey(string! name) -> bool
+Devoctomy.Blazwiz.Cryptography.InMemoryDerivedKeyStore.SetKey(string! name, byte[]! key) -> void
+Devoctomy.Blazwiz.Cryptography.InMemoryDerivedKeyStore.TryGetKey(string! name, out byte[]? key) -> bool
+Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher
+Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher.Decrypt(System.ReadOnlySpan<byte> key, System.ReadOnlySpan<byte> nonce, System.ReadOnlySpan<byte> ciphertext, System.ReadOnlySpan<byte> associatedData = default(System.ReadOnlySpan<byte>)) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher.Encrypt(System.ReadOnlySpan<byte> key, System.ReadOnlySpan<byte> nonce, System.ReadOnlySpan<byte> plaintext, System.ReadOnlySpan<byte> associatedData = default(System.ReadOnlySpan<byte>)) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher.KeySize.get -> int
+Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher.NonceSize.get -> int
+Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher.TagSize.get -> int
+Devoctomy.Blazwiz.Cryptography.Interfaces.IArgon2idKeyDerivationService
+Devoctomy.Blazwiz.Cryptography.Interfaces.IArgon2idKeyDerivationService.DeriveKeyAsync(string! passphrase, byte[]! salt, Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters! parameters, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
+Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService
+Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService.DecryptAsync(System.IO.Stream! inputStream, System.IO.Stream! outputStream, string? base64Key) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService.EncryptAsync(System.IO.Stream! inputStream, System.IO.Stream! outputStream, string? base64Key) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore
+Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore.Clear() -> void
+Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore.RemoveKey(string! name) -> bool
+Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore.SetKey(string! name, byte[]! key) -> void
+Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore.TryGetKey(string! name, out byte[]? key) -> bool
+Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyDerivationService
+Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyDerivationService.DeriveKey(byte[]! inputKeyMaterial, byte[]! salt, byte[]! info, int length) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService
+Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService.CreateKey(int? length = null) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService.Unwrap(byte[]! keyEncryptionKey, Devoctomy.Blazwiz.Cryptography.Models.WrappedKey! wrappedKey, byte[]? associatedData = null) -> byte[]!
+Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService.Wrap(byte[]! keyEncryptionKey, byte[]! key, byte[]? associatedData = null) -> Devoctomy.Blazwiz.Cryptography.Models.WrappedKey!
+Devoctomy.Blazwiz.Cryptography.Interfaces.IPrfKeyDerivator
+Devoctomy.Blazwiz.Cryptography.Interfaces.IPrfKeyDerivator.DeriveKeys(byte[]! prfOutput) -> void
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.Argon2idParameters() -> void
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.Clone() -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.Iterations.get -> int
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.Iterations.set -> void
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.KeyLength.get -> int
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.KeyLength.set -> void
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.MemoryKib.get -> int
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.MemoryKib.set -> void
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.Parallelism.get -> int
+Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.Parallelism.set -> void
+Devoctomy.Blazwiz.Cryptography.Models.WrappedKey
+Devoctomy.Blazwiz.Cryptography.Models.WrappedKey.Algorithm.get -> string!
+Devoctomy.Blazwiz.Cryptography.Models.WrappedKey.Algorithm.set -> void
+Devoctomy.Blazwiz.Cryptography.Models.WrappedKey.Nonce.get -> string!
+Devoctomy.Blazwiz.Cryptography.Models.WrappedKey.Nonce.set -> void
+Devoctomy.Blazwiz.Cryptography.Models.WrappedKey.Wrapped.get -> string!
+Devoctomy.Blazwiz.Cryptography.Models.WrappedKey.Wrapped.set -> void
+Devoctomy.Blazwiz.Cryptography.Models.WrappedKey.WrappedKey() -> void
+Devoctomy.Blazwiz.Cryptography.PrfKeyDerivator
+Devoctomy.Blazwiz.Cryptography.PrfKeyDerivator.DeriveKeys(byte[]! prfOutput) -> void
+Devoctomy.Blazwiz.Cryptography.PrfKeyDerivator.PrfKeyDerivator(Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions! options, Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyDerivationService! keyDerivationService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
+const Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.AlgorithmName = "aes-256-gcm" -> string!
+const Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService.MinSaltLength = 8 -> int
+const Devoctomy.Blazwiz.Cryptography.BouncyCastleHkdfKeyDerivationService.MaxKeyLength = 8160 -> int
+const Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions.DebugMemoryKib = 19456 -> int
+const Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions.ReleaseMemoryKib = 524288 -> int
+const Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder.DefaultKeyLength = 32 -> int
+static Devoctomy.Blazwiz.Cryptography.Extensions.CryptographyServiceCollectionExtensions.AddBlazwizCryptography(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Devoctomy.Blazwiz.Cryptography.Extensions.PrfKeyDerivationServiceCollectionExtensions.AddBlazwizPrfKeyDerivation(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

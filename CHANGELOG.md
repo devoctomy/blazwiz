@@ -6,7 +6,16 @@ in `UPGRADING.md` from 1.0.
 
 Before 1.0 any release may break, and nothing is kept for earlier builds: no data migrations, no compatibility code.
 
-## Unreleased (0.1.0)
+## Unreleased
+
+## 0.2.0
+
+### Added
+- Each release has a GitHub release and tag, with its changelog section and packages; betas of branches are GitHub
+  pre-releases.
+- A README for each package and the template on nuget.org: what it does, how to register it and its settings.
+
+## 0.1.0
 
 The first release as packages. Apps created from the template build on the `Devoctomy.Blazwiz.*` packages and upgrade
 by changing `BlazwizVersion` in their `Directory.Packages.props`.
