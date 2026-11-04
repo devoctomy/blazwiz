@@ -10,10 +10,10 @@ Checks the framework packages and the dotnet new template work together, as a us
   4. Creates apps with awkward names and different options, and checks each one: no template placeholder (MyApp) left
      in it, a new app ID, a valid CloudFormation AppName, it builds against the packages from the local feed (not the
      framework's source), and its tests pass.
-  5. With -UpgradeFrom, simulates an upgrade, for testing a change that affects apps: packs the framework from that
-     folder (e.g. a copy of the repository before the change), creates and customises an app from it, checks it, then
-     upgrades it to this run's packages and checks it again. Bumping the package version itself is ordinary .NET and
-     needs no test; what matters is the change.
+  5. With -UpgradeFrom, simulates an upgrade as a user would do it, for testing a change that affects apps: installs
+     the template of a release from nuget.org, creates and customises an app with it, checks it on that release's
+     packages, then upgrades it to this run's packages and checks it again. Bumping the package version itself is
+     ordinary .NET and needs no test; what matters is the change.
 Exits with code 1 if anything fails. Output goes to a temporary folder, deleted afterwards unless -KeepOutput.
 
 .EXAMPLE
@@ -23,7 +23,10 @@ Exits with code 1 if anything fails. Output goes to a temporary folder, deleted 
 ./templatepack/test-template.ps1 -SkipUiTests -SkipRepositoryTests -KeepOutput
 
 .EXAMPLE
-./templatepack/test-template.ps1 -UpgradeFrom ../blazwiz-before-change -Only AcmePortal
+./templatepack/test-template.ps1 -UpgradeFrom latest -Only AcmePortal
+
+.EXAMPLE
+./templatepack/test-template.ps1 -UpgradeFrom 0.2.0-beta.8 -Only AcmePortal
 #>
 [CmdletBinding()]
 param(
@@ -42,8 +45,8 @@ param(
     # Where to put the packages, generated apps and their test results. Defaults to a new folder in the temp folder.
     [string]$WorkRoot,
 
-    # What to upgrade an app from, to simulate an upgrade: a folder holding a copy of the repository (e.g. before a
-    # change), or a git tag or commit (read with git archive).
+    # What to upgrade an app from, to simulate an upgrade: a version released on nuget.org (e.g. 0.1.0 or
+    # 0.2.0-beta.8), or 'latest' for the newest release that is not a pre-release.
     [string]$UpgradeFrom
 )
 
@@ -56,12 +59,12 @@ $script:Failures = New-Object System.Collections.Generic.List[string]
 
 # Name, extra options, and whether the generated app includes tests.
 $cases = @(
-    @{ Name = 'AcmePortal'; Options = @('--Title', 'Acme Portal', '--Description', 'Welcome to Acme.'); Tests = $true; UiTests = $true },
+    @{ Name = 'AcmePortal'; Options = @('--title', 'Acme Portal', '--description', 'Welcome to Acme.'); Tests = $true; UiTests = $true },
     @{ Name = 'my-site'; Options = @(); Tests = $true; UiTests = $false },
-    @{ Name = '1stApp'; Options = @('--IncludeShowcase', 'false'); Tests = $true; UiTests = $false },
-    @{ Name = 'NoNotes'; Options = @('--Notes', 'false'); Tests = $true; UiTests = $true },
-    @{ Name = 'NoSync'; Options = @('--Sync', 'false'); Tests = $true; UiTests = $true },
-    @{ Name = 'Minimal'; Options = @('--IncludeTests', 'false', '--IncludeShowcase', 'false', '--Sync', 'false'); Tests = $false; UiTests = $false }
+    @{ Name = '1stApp'; Options = @('--showcase', 'false'); Tests = $true; UiTests = $false },
+    @{ Name = 'NoNotes'; Options = @('--notes', 'false'); Tests = $true; UiTests = $true },
+    @{ Name = 'NoSync'; Options = @('--sync', 'false'); Tests = $true; UiTests = $true },
+    @{ Name = 'Minimal'; Options = @('--tests', 'false', '--showcase', 'false', '--sync', 'false'); Tests = $false; UiTests = $false }
 )
 
 if ($Only) {
@@ -236,38 +239,25 @@ try {
     }
 
     if ($UpgradeFrom) {
-        Write-Step "Upgrade path: an app from $UpgradeFrom, upgraded to $version"
-        $baseRoot = Join-Path $workRoot 'upgrade-base'
-        if (Test-Path $UpgradeFrom -PathType Container) {
-            Copy-Item -Path $UpgradeFrom -Destination $baseRoot -Recurse
+        # The release to upgrade from, as published on nuget.org: its template, and the packages its apps use.
+        $released = @((Invoke-RestMethod 'https://api.nuget.org/v3-flatcontainer/devoctomy.blazwiz.templates/index.json').versions)
+        $baseVersion = if ($UpgradeFrom -eq 'latest') {
+            $released | Where-Object { $_ -match '^\d+\.\d+\.\d+$' } | Sort-Object { [version]$_ } | Select-Object -Last 1
         }
         else {
-            New-Item -ItemType Directory -Path $baseRoot | Out-Null
-            $archive = Join-Path $workRoot 'upgrade-base.tar'
-            if (-not (Invoke-Checked "$UpgradeFrom is read" { git -C $repositoryRoot archive --format=tar -o $archive $UpgradeFrom })) {
-                throw "Could not read $UpgradeFrom."
-            }
-
-            tar -xf $archive -C $baseRoot
+            $released | Where-Object { $_ -eq $UpgradeFrom }
         }
 
-        $basePrefix = ([xml](Get-Content (Join-Path $baseRoot 'Directory.Build.props'))).Project.PropertyGroup.VersionPrefix | Where-Object { $_ } | Select-Object -First 1
-        $baseSuffix = "upgradebase.$runId"
-        $baseVersion = "$basePrefix-$baseSuffix"
+        if (-not $baseVersion) {
+            throw "No release '$UpgradeFrom' of Devoctomy.Blazwiz.Templates on nuget.org (released: $($released -join ', '))."
+        }
+
+        Write-Step "Upgrade path: an app from release $baseVersion (nuget.org), upgraded to $version"
         $baseHive = Join-Path $workRoot 'upgrade-hive'
-        if (-not (Invoke-Checked "$UpgradeFrom packs ($baseVersion)" { dotnet pack (Join-Path $baseRoot 'blazwiz.slnx') -c Release -o $feed --nologo -v q -m:1 -p:VersionSuffix=$baseSuffix })) {
-            throw "Could not pack $UpgradeFrom."
-        }
-
-        if (-not (Invoke-Checked "$UpgradeFrom template packs" { dotnet pack (Join-Path $baseRoot 'templatepack/Devoctomy.Blazwiz.Templates.csproj') -c Release -o (Join-Path $workRoot 'upgrade-template') --nologo -v q -p:VersionSuffix=$baseSuffix })) {
-            throw "Could not pack the template of $UpgradeFrom."
-        }
-
-        $basePackage = Get-ChildItem -Path (Join-Path $workRoot 'upgrade-template') -Filter 'Devoctomy.Blazwiz.Templates.*.nupkg' | Select-Object -First 1
         $upgraded = Join-Path $workRoot 'apps/Upgraded'
-        if ((Invoke-Checked "$UpgradeFrom template installs" { dotnet new install $basePackage.FullName --debug:custom-hive $baseHive }) -and
-            (Invoke-Checked "'Upgraded' is created from $UpgradeFrom" { dotnet new blazwiz -n Upgraded -o $upgraded --no-restore --debug:custom-hive $baseHive })) {
-            Use-Packages -App $upgraded -Version $baseVersion -Feed $feed
+        if ((Invoke-Checked "template $baseVersion installs from nuget.org" { dotnet new install "Devoctomy.Blazwiz.Templates@$baseVersion" --debug:custom-hive $baseHive }) -and
+            (Invoke-Checked "'Upgraded' is created from $baseVersion" { dotnet new blazwiz -n Upgraded -o $upgraded --no-restore --debug:custom-hive $baseHive })) {
+            # Created as a user's app is: on the packages released with that template, from nuget.org.
 
             # Customise it as an app would: a page of its own, and the theme re-branded through the framework's tokens.
             @'
@@ -278,7 +268,7 @@ try {
 '@ | Set-Content -Path (Join-Path $upgraded 'Upgraded.Portal/Pages/Custom.razor')
             Add-Content -Path (Join-Path $upgraded 'Upgraded.Portal/wwwroot/css/app.css') -Value "`n:root { --bw-accent: #0d9488; }"
 
-            Test-Project -Root $upgraded -Solution 'Upgraded.slnx' -UiTests $false -Label "'Upgraded' at $UpgradeFrom"
+            Test-Project -Root $upgraded -Solution 'Upgraded.slnx' -UiTests $false -Label "'Upgraded' at $baseVersion"
 
             Use-Packages -App $upgraded -Version $version -Feed $feed
             Test-Project -Root $upgraded -Solution 'Upgraded.slnx' -UiTests (-not $SkipUiTests) -Label "'Upgraded' upgraded to $version"

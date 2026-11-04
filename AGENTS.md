@@ -147,8 +147,11 @@ package version is ordinary .NET and needs no test; the change does. Before 1.0 
 - **Public API**: PublicApiAnalyzers and package validation catch breaks; a deliberate one needs a major version and
   an `UPGRADING.md` entry.
 - **Anything else apps see** (configuration keys, routes, extension points, theme tokens, the AWS base stack):
-  simulate it with `./templatepack/test-template.ps1 -UpgradeFrom <copy of the repository before the change>`, and
-  test what changed.
+  simulate it with `./templatepack/test-template.ps1 -UpgradeFrom latest`, and test what changed. It creates an app
+  as a user would, with the latest release's template and packages from nuget.org, then upgrades it to the packages
+  built from the working tree. `-UpgradeFrom <version>` starts from another release or pre-release instead, e.g.
+  `0.2.0-beta.8`. What is not in an app does not need it: template options, for example, are only read when
+  `dotnet new` creates an app.
 
 ## CI and releases
 
