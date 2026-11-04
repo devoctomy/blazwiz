@@ -530,8 +530,9 @@ the riskiest phase. Doing it before splitting projects keeps the diff readable.
 - [x] Prove the upgrade path. Decided 2026-11-03: bumping the package version is ordinary .NET upgrading and needs no
   test of its own. Instead, every change that affects apps comes with an upgrade test for that change, as part of its
   acceptance (AGENTS.md, "Upgrade tests"): a migration test for a data change, an override test for a text change,
-  package validation for an API change, or a simulated upgrade. `test-template.ps1 -UpgradeFrom <folder>` simulates
-  one: an app from a copy of the framework before the change, upgraded to the changed packages.
+  package validation for an API change, or a simulated upgrade. `test-template.ps1 -UpgradeFrom latest` simulates
+  one: an app created from the latest release on nuget.org, upgraded to the changed packages. (It started from a copy
+  of the repository until the packages were published; changed 2026-11-04.)
 
 ---
 

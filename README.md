@@ -58,6 +58,15 @@ To run the template app: `dotnet run --project template/MyApp.Portal`.
 
 ## The template
 
+To create an app:
+
+```powershell
+dotnet new install Devoctomy.Blazwiz.Templates   # a beta: Devoctomy.Blazwiz.Templates@<version>
+dotnet new blazwiz -n AcmePortal --title "Acme Portal"
+```
+
+To work on the template in this repository:
+
 ```powershell
 ./templatepack/test-template.ps1    # packs the packages and template, creates apps with different options, builds and tests them
 dotnet pack templatepack -c Release # the template package
@@ -66,12 +75,17 @@ dotnet pack templatepack -c Release # the template package
 | Option | Default | Effect |
 |---|---|---|
 | `-n`, `--name` | output folder name | App name. Keeps your casing for projects, namespaces and the solution (`AcmePortal.Portal`). |
-| `--Title` | the name | Shown in the browser tab, login page, PWA manifest and copyright. Avoid quotes. |
-| `--Description` | `Sign in to continue.` | Shown under the title on the login page. |
-| `--IncludeTests` | `true` | Include the unit and UI test projects. |
-| `--IncludeShowcase` | `true` | Include the Showcase page of themed building blocks. |
-| `--Sync` | `true` | Include the sync module (`Devoctomy.Blazwiz.UI.Sync`). |
-| `--Notes` | `true` | Include the notes example (Files page and markdown editor). Needs `--Sync`. |
+| `--title` | the name | Shown in the browser tab, login page, PWA manifest and copyright. Avoid quotes. |
+| `--description` | `Sign in to continue.` | Shown under the title on the login page. |
+| `--tests` | `true` | Include the unit and UI test projects. |
+| `--showcase` | `true` | Include the Showcase page of themed building blocks. |
+| `--sync` | `true` | Include the sync module (`Devoctomy.Blazwiz.UI.Sync`). |
+| `--notes` | `true` | Include the notes example (Files page and markdown editor). Needs the sync module: left out with `--sync false`. |
+| `--no-restore` | `false` | Don't restore the app's packages after creating it. |
+
+The command-line names are set in `template/.template.config/dotnetcli.host.json`; `template.json` and the
+`#if` markers use the symbol names (`IncludeTests`, `IncludeShowcase`, `Sync`, `Notes`, `IncludeSync`,
+`IncludeNotes`).
 
 There is no option to sync without end to end encryption (yet). Whether an app may do that will be the app
 developer's choice, never its users', and it is not supported until it can be done with clear warnings: without
