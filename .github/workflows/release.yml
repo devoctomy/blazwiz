@@ -121,7 +121,8 @@ jobs:
           $versionArgs = @('-p:VersionPrefix=${{ steps.version.outputs.prefix }}', '-p:VersionSuffix=${{ steps.version.outputs.suffix }}')
           # From 1.0, packing fails on a binary breaking change against the latest release (docs/versioning.md).
           $baseline = ./eng/get-validation-baseline.ps1
-          $validation = if ($baseline) { @("-p:PackageValidationBaselineVersion=$baseline") } else { @() }
+          # @(...) around the if, so a single argument stays an array when splatted (see the release step).
+          $validation = @(if ($baseline) { "-p:PackageValidationBaselineVersion=$baseline" })
           dotnet pack blazwiz.slnx -c Release -o artifacts/packages --nologo @versionArgs @validation
           if ($LASTEXITCODE -ne 0) { exit 1 }
           # The template's Directory.Packages.props gets this version when packed, so new apps use these packages.
@@ -193,6 +194,8 @@ jobs:
           Set-Content -Path release-notes.md -Value $notes -Encoding utf8
 
           $assets = @(Get-ChildItem -Path artifacts/packages -File | ForEach-Object { $_.FullName })
-          $flags = if ($prerelease) { @('--prerelease') } else { @('--latest') }
+          # @(...) around the if: PowerShell unwraps a one-element array output from an if, and splatting a string
+          # passes it to a native command one character at a time ("no matches found for `-`").
+          $flags = @(if ($prerelease) { '--prerelease' } else { '--latest' })
           gh release create "v$version" @assets --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $version --notes-file release-notes.md @flags
           if ($LASTEXITCODE -ne 0) { exit 1 }
