@@ -4,42 +4,48 @@ Releases are made by the maintainer. Every `Devoctomy.Blazwiz.*` package and the
 together, at one version (`docs/versioning.md`), by `.github/workflows/release.yml`. It runs no tests: it only
 publishes a commit the CI workflow has passed, and waits for CI if it is still running for that commit.
 
-Run the Release workflow by hand (Run workflow). It works out what to publish from the branch it is run on:
+The version is set in one place: `VersionPrefix` in `Directory.Build.props`. Every package takes it from there, and the
+template package writes it into the apps it creates (`BlazwizVersion` in their `Directory.Packages.props`) when it is
+packed. Published versions are `MAJOR.MINOR.PATCH` for a release and `MAJOR.MINOR.PATCH-beta.<run>` for a beta.
 
-- **Release**: on main, it publishes the version in `Directory.Build.props` as it is. Pushing a tag `v<version>` on a
-  commit on main does the same.
-- **Beta of a branch**: on any other branch, it publishes
-  `<version>-beta.<run number>`, e.g. `0.1.0-beta.12`, and new apps from that template use those packages.
-  (NuGet versions cannot contain `_`, so it is `-beta`.)
+## A release
 
-## Before the tag
+1. On a branch, run:
 
-1. **Version.** Set `VersionPrefix` and `VersionSuffix` in `Directory.Build.props` (no suffix for a stable release),
-   and the same version as `BlazwizVersion` in `template/Directory.Packages.props`. `./eng/check-versions.ps1`
-   checks they match.
-2. **Changelog.** Move the `Unreleased` section of `CHANGELOG.md` under the new version. For a major version, add its
-   breaking changes, with what to do, to `UPGRADING.md`.
-3. **Public API.** For each package, move the lines of `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`, leaving
-   only `#nullable enable` in `PublicAPI.Unshipped.txt`.
-4. **Package validation.** From the second release, set `PackageValidationBaselineVersion` in
-   `src/Directory.Build.props` to the previous release, so packing fails on a binary-breaking change in a minor or
-   patch version.
-5. **AWS stack.** If the base stack (`src/Devoctomy.Blazwiz.Aws/cloudformation`) changed, say so in the release
-   notes, so apps deploy after upgrading. Never remove an exported output or change its value in a minor version:
-   apps' own stacks import them (`docs/versioning.md`).
-6. **Checks.** CI has passed for the commit to be released (the workflow checks), including the upgrade tests that
-   came with this release's changes (AGENTS.md, "Upgrade tests").
+   ```powershell
+   ./eng/bump-version.ps1                  # the next minor version, e.g. 0.1.0 -> 0.2.0
+   ./eng/bump-version.ps1 -Version 1.0.0   # or a version of your choice
+   ```
 
-## The tag
+   It sets the version, turns the `Unreleased` section of `CHANGELOG.md` into the new version's section (and starts
+   a new `Unreleased`), and moves each package's public API from `PublicAPI.Unshipped.txt` to
+   `PublicAPI.Shipped.txt`. Review the changes, and for a major version add its breaking changes to `UPGRADING.md`.
+2. Push, let CI pass, and merge to main.
+3. Run the Release workflow (Run workflow) on main.
 
-Push a tag `v<version>`, e.g. `v1.2.0`, on a commit on main. The release workflow:
+The workflow refuses to release a version that already has a GitHub release, or that has no section in
+`CHANGELOG.md`: run the bump script first. Then it:
 
-1. Checks CI passed for that commit (waiting for it if it is still running), and stops if not.
-2. Checks the commit is on main and the tag matches the version.
-3. Packs every package and the template, gets a short-lived nuget.org API key through Trusted Publishing, and pushes
-   them to nuget.org, skipping any already published.
+1. Checks CI passed for the commit (waiting for it if it is still running).
+2. Packs every package and the template at the version. From 1.0, packing fails on a binary breaking change against
+   the latest release (`eng/get-validation-baseline.ps1`) unless it is recorded in the package's
+   `CompatibilitySuppressions.xml`.
+3. Pushes them to nuget.org with a short-lived API key from Trusted Publishing, skipping any already published (so a
+   failed run can be run again).
+4. Creates the tag `v<version>` on the commit and the GitHub release, with the version's changelog section as its notes
+   and the packages attached.
+
+If the base stack (`src/Devoctomy.Blazwiz.Aws/cloudformation`) changed, say so in the changelog, so apps deploy after
+upgrading. Never remove an exported output or change its value in a minor version: apps' own stacks import them.
 
 Packages cannot be deleted from nuget.org, only unlisted, so a broken release is fixed with a new version.
+
+## A beta
+
+Run the Release workflow on any other branch. It publishes `<version>-beta.<run number>`, e.g. `0.2.0-beta.12`, and
+creates a GitHub pre-release with the `Unreleased` changelog section. New apps from that template use those packages.
+If the version in `Directory.Build.props` is already released, the beta is of the next minor version, so it sorts
+above the release: NuGet orders `0.1.0-beta.12` below `0.1.0`.
 
 ## Setting up (once)
 

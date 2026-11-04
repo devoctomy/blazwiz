@@ -156,11 +156,12 @@ package version is ordinary .NET and needs no test; the change does. Before 1.0 
   checks show on them): build, then unit, integration and UI tests as separate `dotnet test` steps, and in a parallel
   job `templatepack/test-template.ps1 -SkipRepositoryTests` (packages and template). Keep them passing locally first:
   CI cannot be run from here.
-- `.github/workflows/release.yml` publishes to nuget.org only a commit CI has passed: a manual run on main (or a `v*`
-  tag on main) publishes the version, on another branch `<version>-beta.<run>` (`docs/releasing.md`). Never push tags or
-  run the release yourself (rule 3).
-- `eng/check-versions.ps1` checks the version in `Directory.Build.props` matches `BlazwizVersion` in
-  `template/Directory.Packages.props`. Change both together.
+- `.github/workflows/release.yml` publishes to nuget.org only a commit CI has passed: a manual run on main publishes
+  the version and creates its tag and GitHub release, on another branch `<version>-beta.<run>` as a pre-release
+  (`docs/releasing.md`). Never run the release yourself (rule 3).
+- The version is set only in `VersionPrefix` in `Directory.Build.props`. `./eng/bump-version.ps1` sets the next one and
+  prepares the changelog and public API for it; the maintainer runs it. The template's `BlazwizVersion` stays `0.0.0`:
+  packing the template writes the real version.
 - Every user-visible change goes in the `Unreleased` section of `CHANGELOG.md`; breaking ones (from 1.0) also in
   `UPGRADING.md`. A change to stored data (from 1.0) ships an `IDataMigration`.
 

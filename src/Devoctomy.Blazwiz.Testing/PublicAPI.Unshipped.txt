@@ -1,10 +1,1 @@
 #nullable enable
-Devoctomy.Blazwiz.Testing.FrameworkText
-Devoctomy.Blazwiz.Testing.FrameworkText.Errors.get -> Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText!
-Devoctomy.Blazwiz.Testing.FrameworkText.For<TResource>() -> Microsoft.Extensions.Localization.IStringLocalizer<TResource>!
-Devoctomy.Blazwiz.Testing.FrameworkText.FrameworkText(params System.Type![]! moduleTextResources) -> void
-Devoctomy.Blazwiz.Testing.FrameworkText.MismatchedOverridePlaceholders(System.Type! overrides) -> System.Collections.Generic.IReadOnlyList<string!>!
-Devoctomy.Blazwiz.Testing.FrameworkText.Options.get -> Devoctomy.Blazwiz.Core.Text.TextOptions!
-Devoctomy.Blazwiz.Testing.FrameworkText.Plurals.get -> Devoctomy.Blazwiz.Core.Text.Interfaces.ITextPlurals!
-Devoctomy.Blazwiz.Testing.FrameworkText.Ui.get -> Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>!
-Devoctomy.Blazwiz.Testing.FrameworkText.UnknownOverrideKeys(System.Type! overrides) -> System.Collections.Generic.IReadOnlyList<string!>!

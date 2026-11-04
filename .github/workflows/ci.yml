@@ -42,10 +42,6 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Check versions
-        shell: pwsh
-        run: ./eng/check-versions.ps1
-
       - name: Restore
         run: dotnet restore blazwiz.slnx
 

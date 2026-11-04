@@ -135,8 +135,15 @@ try {
     $version = "$versionPrefix-$versionSuffix"
     $feed = Join-Path $workRoot 'feed'
 
+    # From 1.0, checked against the latest release for binary breaking changes, as the release workflow does.
+    $validation = @()
+    $baseline = & (Join-Path $repositoryRoot 'eng/get-validation-baseline.ps1')
+    if ($baseline) {
+        $validation = @("-p:PackageValidationBaselineVersion=$baseline")
+    }
+
     Write-Step "Packing the framework packages ($version)"
-    if (-not (Invoke-Checked 'framework packs' { dotnet pack (Join-Path $repositoryRoot 'blazwiz.slnx') -c Release -o $feed --nologo -v q -m:1 -p:VersionSuffix=$versionSuffix })) {
+    if (-not (Invoke-Checked 'framework packs' { dotnet pack (Join-Path $repositoryRoot 'blazwiz.slnx') -c Release -o $feed --nologo -v q -m:1 -p:VersionSuffix=$versionSuffix @validation })) {
         throw 'Could not pack the framework.'
     }
 
