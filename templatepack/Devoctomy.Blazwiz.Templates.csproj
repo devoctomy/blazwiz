@@ -12,6 +12,7 @@
     <Title>blazwiz: Blazor WebAssembly PWA with AWS Cognito</Title>
     <Description>dotnet new template for a Blazor WebAssembly progressive web app built on the blazwiz framework packages: signs in with AWS Cognito, syncs files with S3 and works offline, with CloudFormation scripts to host it on S3 and CloudFront.</Description>
     <PackageTags>dotnet-new;templates;blazor;webassembly;pwa;aws;cognito;cloudformation;blazwiz</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <IncludeContentInPack>true</IncludeContentInPack>
     <EnableDefaultItems>false</EnableDefaultItems>
@@ -29,5 +30,7 @@
           Exclude="$(TemplateRoot)/.vs/**;$(TemplateRoot)/.idea/**;$(TemplateRoot)/**/bin/**;$(TemplateRoot)/**/obj/**;$(TemplateRoot)/**/TestResults/**;$(TemplateRoot)/**/*.user;$(TemplateRoot)/publish/**;$(TemplateRoot)/**/appsettings.Production.json"
           Pack="true"
           PackagePath="content/blazwiz/" />
+    <!-- Shown on nuget.org; the created app's own README is template/README.md. -->
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>
