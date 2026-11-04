@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.3.0
+
 ### Changed
 - The template's options are lower case, with no single-letter forms: `--title`, `--description`, `--tests`
   (was `--IncludeTests`), `--showcase` (was `--IncludeShowcase`), `--sync`, `--notes` and `--no-restore`.
