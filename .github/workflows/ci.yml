@@ -9,6 +9,10 @@
 # - template: packs the packages and the template, then creates apps with every template option and builds and tests
 #   them against the packed packages (templatepack/test-template.ps1, which is not plain dotnet test).
 #
+# Neither runs when a push only creates a branch, with no commits of its own (as when a tool publishes a branch as soon as
+# it is made): that commit is already on the branch it was made from and was tested there. Running again would be
+# wasted, and its status would show on that branch too, as GitHub shows a run on its commit, not its branch.
+#
 # Both run on Linux: nothing is Windows-specific, and Linux runners are faster and cheaper. PowerShell is installed on
 # them, for the scripts. The Ubuntu version is fixed, not ubuntu-latest: the Playwright version in use must support it
 # (1.55 supports 24.04, not 26.04), and a new runner image should not change what the tests run on unannounced.
@@ -33,6 +37,8 @@ env:
 
 jobs:
   test:
+    # Not for a push that only creates a branch (see above).
+    if: ${{ !github.event.created || github.event.commits[0] != null }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -74,6 +80,8 @@ jobs:
           if-no-files-found: ignore
 
   template:
+    # Not for a push that only creates a branch (see above).
+    if: ${{ !github.event.created || github.event.commits[0] != null }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:

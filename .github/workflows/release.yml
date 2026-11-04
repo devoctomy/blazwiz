@@ -32,7 +32,13 @@ jobs:
           $deadline = (Get-Date).AddMinutes(110)
           while ($true) {
             $runs = (gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=50" | ConvertFrom-Json).workflow_runs
-            if ($runs | Where-Object { $_.status -eq 'completed' -and $_.conclusion -eq 'success' }) {
+            # A run counts only if its jobs ran and passed: CI skips them for a push that only creates a branch, and
+            # such a run can still end as a success.
+            $passed = $runs | Where-Object { $_.status -eq 'completed' -and $_.conclusion -eq 'success' } | Where-Object {
+              $jobs = @((gh api "repos/${{ github.repository }}/actions/runs/$($_.id)/jobs" | ConvertFrom-Json).jobs)
+              $jobs.Count -gt 0 -and -not ($jobs | Where-Object { $_.conclusion -ne 'success' })
+            }
+            if ($passed) {
               Write-Host "CI passed for $sha."
               break
             }

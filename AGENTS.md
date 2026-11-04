@@ -156,7 +156,7 @@ package version is ordinary .NET and needs no test; the change does. Before 1.0 
 ## CI and releases
 
 - `.github/workflows/ci.yml` runs on every push to any branch, and not again for pull requests (the push run's
-  checks show on them): build, then unit, integration and UI tests as separate `dotnet test` steps, and in a parallel
+  checks show on them), nor for a push that only creates a branch without commits of its own: build, then unit, integration and UI tests as separate `dotnet test` steps, and in a parallel
   job `templatepack/test-template.ps1 -SkipRepositoryTests` (packages and template). Keep them passing locally first:
   CI cannot be run from here.
 - `.github/workflows/release.yml` publishes to nuget.org only a commit CI has passed: a manual run on main publishes
