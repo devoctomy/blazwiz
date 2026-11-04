@@ -8,7 +8,11 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.2.0
+
 ### Added
+- Each release has a GitHub release and tag, with its changelog section and packages; betas of branches are GitHub
+  pre-releases.
 - A README for each package and the template on nuget.org: what it does, how to register it and its settings.
 
 ## 0.1.0

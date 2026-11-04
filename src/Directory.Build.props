@@ -7,8 +7,10 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <!-- Checks the package against the previous release once there is one (PackageValidationBaselineVersion), so a
-         breaking change cannot ship in a minor or patch version (docs/versioning.md). -->
+    <!-- From 1.0, packing checks each package against the latest release: the release workflow and
+         templatepack/test-template.ps1 pass -p:PackageValidationBaselineVersion from eng/get-validation-baseline.ps1.
+         A binary breaking change then fails unless it is recorded in the package's CompatibilitySuppressions.xml
+         (docs/versioning.md). Before 1.0 there is no baseline: any release may break. -->
     <EnablePackageValidation>true</EnablePackageValidation>
   </PropertyGroup>
   <ItemGroup>

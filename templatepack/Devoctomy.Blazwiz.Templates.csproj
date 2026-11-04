@@ -21,16 +21,40 @@
     <!-- Template content is not a library, so the lib/ folder warnings do not apply. -->
     <NoWarn>$(NoWarn);NU5128;NU5110;NU5111</NoWarn>
     <TemplateRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../template'))</TemplateRoot>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);AddVersionedPackagesProps</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- Forward slashes: with backslashes, a pack on Linux gives every file a path starting content/blazwiz//, which
-         dotnet new then creates from the root of the file system. -->
+         dotnet new then creates from the root of the file system. Directory.Packages.props is added by
+         AddVersionedPackagesProps instead. -->
     <None Include="$(TemplateRoot)/**/*"
-          Exclude="$(TemplateRoot)/.vs/**;$(TemplateRoot)/.idea/**;$(TemplateRoot)/**/bin/**;$(TemplateRoot)/**/obj/**;$(TemplateRoot)/**/TestResults/**;$(TemplateRoot)/**/*.user;$(TemplateRoot)/publish/**;$(TemplateRoot)/**/appsettings.Production.json"
+          Exclude="$(TemplateRoot)/.vs/**;$(TemplateRoot)/.idea/**;$(TemplateRoot)/**/bin/**;$(TemplateRoot)/**/obj/**;$(TemplateRoot)/**/TestResults/**;$(TemplateRoot)/**/*.user;$(TemplateRoot)/publish/**;$(TemplateRoot)/**/appsettings.Production.json;$(TemplateRoot)/Directory.Packages.props"
           Pack="true"
           PackagePath="content/blazwiz/" />
     <!-- Shown on nuget.org; the created app's own README is template/README.md. -->
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
+
+  <!--
+    The version is set in one place, VersionPrefix in Directory.Build.props. The template's Directory.Packages.props has
+    a placeholder BlazwizVersion; the packed copy gets this package's version, so a template creates apps using the
+    packages released with it (betas too).
+  -->
+  <Target Name="AddVersionedPackagesProps">
+    <PropertyGroup>
+      <_BlazwizPackagesProps>$([System.IO.File]::ReadAllText('$(TemplateRoot)/Directory.Packages.props'))</_BlazwizPackagesProps>
+      <_BlazwizVersionPlaceholder>&lt;BlazwizVersion&gt;0.0.0&lt;/BlazwizVersion&gt;</_BlazwizVersionPlaceholder>
+      <_BlazwizVersionedPackagesProps>$(IntermediateOutputPath)template/Directory.Packages.props</_BlazwizVersionedPackagesProps>
+    </PropertyGroup>
+    <Error Condition="!$(_BlazwizPackagesProps.Contains('$(_BlazwizVersionPlaceholder)'))"
+           Text="template/Directory.Packages.props must contain $(_BlazwizVersionPlaceholder), which packing replaces with the version." />
+    <WriteLinesToFile File="$(_BlazwizVersionedPackagesProps)"
+                      Lines="$([MSBuild]::Escape($(_BlazwizPackagesProps.Replace('$(_BlazwizVersionPlaceholder)', '&lt;BlazwizVersion&gt;$(PackageVersion)&lt;/BlazwizVersion&gt;'))))"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <TfmSpecificPackageFile Include="$(_BlazwizVersionedPackagesProps)" PackagePath="content/blazwiz/Directory.Packages.props" />
+    </ItemGroup>
+  </Target>
 </Project>

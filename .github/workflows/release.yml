@@ -1,15 +1,15 @@
-# Publishes every Devoctomy.Blazwiz package and the template package to nuget.org, all at one version. It does not run
-# the tests: it only publishes a commit the CI workflow (ci.yml) has already passed. See docs/releasing.md.
+# Publishes every Devoctomy.Blazwiz package and the template package to nuget.org, all at one version, and creates the
+# GitHub release with its tag. It does not run the tests: it only publishes a commit the CI workflow (ci.yml) has
+# already passed. See docs/releasing.md.
 #
 # Run workflow works out what to publish from the branch:
-# - main: the version in Directory.Build.props, as it is (a release).
-# - any other branch: a beta, <version>-beta.<run number>.
-# A tag v<version> on a commit on main also publishes that version, which must match Directory.Build.props.
+# - main: the version in Directory.Build.props (set with eng/bump-version.ps1): a release, tagged v<version>. Refused if
+#   that version is already released, or CHANGELOG.md has no section for it.
+# - any other branch: a beta, <version>-beta.<run number>, as a GitHub pre-release. If the version in
+#   Directory.Build.props is already released, the beta is of the next minor version, so it sorts above that release.
 name: Release
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -63,11 +63,11 @@ jobs:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
       MSBUILDDISABLENODEREUSE: 1
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          # main's history, to check a tagged commit is on it.
-          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -76,48 +76,56 @@ jobs:
       - name: Work out the version
         id: version
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          ./eng/check-versions.ps1
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-
           $props = [xml](Get-Content Directory.Build.props)
-          $suffix = $props.Project.PropertyGroup.VersionSuffix | Where-Object { $_ } | Select-Object -First 1
+          $prefix = $props.Project.PropertyGroup.VersionPrefix | Where-Object { $_ } | Select-Object -First 1
+          if ($prefix -notmatch '^\d+\.\d+\.\d+$') { throw "VersionPrefix in Directory.Build.props must be MAJOR.MINOR.PATCH, not '$prefix'." }
 
-          if ('${{ github.ref_type }}' -eq 'tag') {
-            # A release: from main only, and the tag must be the version.
-            git merge-base --is-ancestor '${{ github.sha }}' origin/main
-            if ($LASTEXITCODE -ne 0) { throw 'Release tags must be on a commit on main. Publish a branch as a beta with Run workflow.' }
-            ./eng/check-versions.ps1 -Tag '${{ github.ref_name }}'
-            if ($LASTEXITCODE -ne 0) { exit 1 }
-            $versionSuffix = $suffix
-          }
-          elseif ('${{ github.ref_name }}' -eq 'main') {
-            # A release: Run workflow on main publishes the version in Directory.Build.props as it is.
-            $versionSuffix = $suffix
+          # Released: a GitHub release exists for it, or it is on nuget.org.
+          gh release view "v$prefix" --repo '${{ github.repository }}' *> $null
+          $hasRelease = $LASTEXITCODE -eq 0
+          $global:LASTEXITCODE = 0
+          $published = (Invoke-RestMethod 'https://api.nuget.org/v3-flatcontainer/devoctomy.blazwiz.core/index.json').versions -contains $prefix
+
+          if ('${{ github.ref_name }}' -eq 'main') {
+            if ($hasRelease) { throw "$prefix is already released. Set the next version with ./eng/bump-version.ps1, merge it, then release." }
+            if (-not (Select-String -Path CHANGELOG.md -Pattern "^## $([regex]::Escape($prefix))\s*$" -Quiet)) {
+              throw "CHANGELOG.md has no section for $prefix. Set the version with ./eng/bump-version.ps1, merge it, then release."
+            }
+            if ($published) { Write-Host "$prefix is already on nuget.org: pushing skips it, and the GitHub release is created." }
+            $suffix = ''
+            $version = $prefix
+            $prerelease = 'false'
           }
           else {
-            # A beta of a branch: unique per run, as nuget.org never takes the same version twice.
-            $beta = "beta.${{ github.run_number }}"
-            $versionSuffix = if ($suffix) { "$suffix-$beta" } else { $beta }
+            if ($hasRelease -or $published) {
+              $v = [version]$prefix
+              $prefix = "$($v.Major).$($v.Minor + 1).0"
+            }
+            $suffix = "beta.${{ github.run_number }}"
+            $version = "$prefix-$suffix"
+            $prerelease = 'true'
           }
 
-          $prefix = $props.Project.PropertyGroup.VersionPrefix | Where-Object { $_ } | Select-Object -First 1
-          $version = if ($versionSuffix) { "$prefix-$versionSuffix" } else { $prefix }
           Write-Host "Publishing $version"
-          "suffix=$versionSuffix" >> $env:GITHUB_OUTPUT
+          "prefix=$prefix" >> $env:GITHUB_OUTPUT
+          "suffix=$suffix" >> $env:GITHUB_OUTPUT
           "version=$version" >> $env:GITHUB_OUTPUT
+          "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
 
       - name: Pack
         shell: pwsh
         run: |
-          $version = '${{ steps.version.outputs.version }}'
-          $suffix = '${{ steps.version.outputs.suffix }}'
-          # New apps from this template use the packages published with it (matters for betas).
-          $props = 'template/Directory.Packages.props'
-          (Get-Content $props -Raw) -replace '<BlazwizVersion>[^<]*</BlazwizVersion>', "<BlazwizVersion>$version</BlazwizVersion>" | Set-Content $props -NoNewline
-          dotnet pack blazwiz.slnx -c Release -o artifacts/packages --nologo "-p:VersionSuffix=$suffix"
+          $versionArgs = @('-p:VersionPrefix=${{ steps.version.outputs.prefix }}', '-p:VersionSuffix=${{ steps.version.outputs.suffix }}')
+          # From 1.0, packing fails on a binary breaking change against the latest release (docs/versioning.md).
+          $baseline = ./eng/get-validation-baseline.ps1
+          $validation = if ($baseline) { @("-p:PackageValidationBaselineVersion=$baseline") } else { @() }
+          dotnet pack blazwiz.slnx -c Release -o artifacts/packages --nologo @versionArgs @validation
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          dotnet pack templatepack/Devoctomy.Blazwiz.Templates.csproj -c Release -o artifacts/packages --nologo "-p:VersionSuffix=$suffix"
+          # The template's Directory.Packages.props gets this version when packed, so new apps use these packages.
+          dotnet pack templatepack/Devoctomy.Blazwiz.Templates.csproj -c Release -o artifacts/packages --nologo @versionArgs
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       # Trusted Publishing: no stored API key. The key is valid for an hour, so it is asked for just before pushing.
@@ -147,3 +155,44 @@ jobs:
         with:
           name: packages-${{ steps.version.outputs.version }}
           path: artifacts/packages
+
+  # The tag v<version> on this commit, and the GitHub release with the changelog section and the packages. A separate
+  # job, so only it can write to the repository, and only after the packages are published.
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-${{ needs.publish.outputs.version }}
+          path: artifacts/packages
+
+      - name: Create the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ needs.publish.outputs.version }}'
+          $prerelease = '${{ needs.publish.outputs.prerelease }}' -eq 'true'
+
+          # The changelog section: the version's for a release, Unreleased for a beta.
+          $heading = if ($prerelease) { 'Unreleased' } else { [regex]::Escape($version) }
+          $changelog = Get-Content CHANGELOG.md -Raw
+          $section = [regex]::Match($changelog, "(?ms)^## $heading[^\r\n]*\r?\n(.*?)(?=^## |\z)").Groups[1].Value.Trim()
+          $notes = if ($prerelease) {
+            "A beta of ``${{ github.ref_name }}`` at ${{ github.sha }}. Install the template with ``dotnet new install Devoctomy.Blazwiz.Templates::$version``.`n`n$section"
+          }
+          else {
+            $section
+          }
+          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+
+          $assets = @(Get-ChildItem -Path artifacts/packages -File | ForEach-Object { $_.FullName })
+          $flags = if ($prerelease) { @('--prerelease') } else { @('--latest') }
+          gh release create "v$version" @assets --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $version --notes-file release-notes.md @flags
+          if ($LASTEXITCODE -ne 0) { exit 1 }

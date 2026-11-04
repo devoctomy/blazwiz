@@ -53,8 +53,11 @@ These can change in any release:
 
 - `Microsoft.CodeAnalysis.PublicApiAnalyzers` on every package: public API changes must be recorded in
   `PublicAPI.Unshipped.txt`, so they show up in review. They move to `PublicAPI.Shipped.txt` at release.
-- `EnablePackageValidation` with `PackageValidationBaselineVersion` set to the last release: `dotnet pack` fails on a
-  binary-breaking change unless the major version changed.
+- `EnablePackageValidation`, from 1.0 against the latest release (`eng/get-validation-baseline.ps1`, passed as
+  `PackageValidationBaselineVersion` when packing): `dotnet pack` fails on any binary breaking change, whatever the
+  version. A deliberate break in a major version is recorded in the package's `CompatibilitySuppressions.xml`
+  (generate it with `dotnet pack -p:GenerateCompatibilitySuppressionFile=true`); delete those files once that version
+  is released. Before 1.0 there is no baseline, as any release may break.
 - `FrameworkText.UnknownOverrideKeys()` and `MismatchedOverridePlaceholders()` (in `Devoctomy.Blazwiz.Testing`): an
   app's tests fail when one of its text overrides names a key that no longer exists, or uses placeholders that do not
   match (the template's `NotesTextTests` show how).
