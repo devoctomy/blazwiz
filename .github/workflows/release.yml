@@ -1,11 +1,12 @@
-# Publishes every Devoctomy.Blazwiz package and the template package to nuget.org, all at one version, and creates the
-# GitHub release with its tag. It does not run the tests: it only publishes a commit the CI workflow (ci.yml) has
-# already passed. See docs/releasing.md.
+# Publishes every Devoctomy.Blazwiz package and the template package to nuget.org, all at one version, and on main
+# creates the GitHub release with its tag. It does not run the tests: it only publishes a commit the CI workflow (ci.yml)
+# has already passed. See docs/releasing.md.
 #
 # Run workflow works out what to publish from the branch:
-# - main: the version in Directory.Build.props (set with eng/bump-version.ps1): a release, tagged v<version>. Refused if
-#   that version is already released, or CHANGELOG.md has no section for it.
-# - any other branch: a beta, <version>-beta.<run number>, as a GitHub pre-release. If the version in
+# - main: the version in Directory.Build.props (set with eng/bump-version.ps1): a release, tagged v<version>, with a
+#   GitHub release. Refused if that version is already released, or CHANGELOG.md has no section for it.
+# - any other branch: a beta, <version>-beta.<run number>, on nuget.org only. No tag or GitHub release: the branch is
+#   deleted when it is merged, and a tag or release pointing at its commits would be left behind. If the version in
 #   Directory.Build.props is already released, the beta is of the next minor version, so it sorts above that release.
 name: Release
 
@@ -121,7 +122,8 @@ jobs:
           $versionArgs = @('-p:VersionPrefix=${{ steps.version.outputs.prefix }}', '-p:VersionSuffix=${{ steps.version.outputs.suffix }}')
           # From 1.0, packing fails on a binary breaking change against the latest release (docs/versioning.md).
           $baseline = ./eng/get-validation-baseline.ps1
-          # @(...) around the if, so a single argument stays an array when splatted (see the release step).
+          # @(...) around the if: PowerShell unwraps a one-element array output from an if, and splatting a string
+          # passes it to a native command one character at a time.
           $validation = @(if ($baseline) { "-p:PackageValidationBaselineVersion=$baseline" })
           dotnet pack blazwiz.slnx -c Release -o artifacts/packages --nologo @versionArgs @validation
           if ($LASTEXITCODE -ne 0) { exit 1 }
@@ -157,10 +159,28 @@ jobs:
           name: packages-${{ steps.version.outputs.version }}
           path: artifacts/packages
 
-  # The tag v<version> on this commit, and the GitHub release with the changelog section and the packages. A separate
-  # job, so only it can write to the repository, and only after the packages are published.
+      # A beta has no GitHub release, so the run's summary says what was published and how to install it.
+      - name: Summary
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $kind = if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { "Beta of ``${{ github.ref_name }}`` at ${{ github.sha }}" } else { 'Release' }
+          @(
+            "## Published $version to nuget.org",
+            '',
+            "$kind.",
+            '',
+            '```',
+            "dotnet new install Devoctomy.Blazwiz.Templates@$version",
+            '```'
+          ) | Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8
+
+  # The tag v<version> on this commit, and the GitHub release with the changelog section and the packages. Releases
+  # from main only; betas are on nuget.org only. A separate job, so only it can write to the repository, and only after
+  # the packages are published.
   github-release:
     needs: publish
+    if: needs.publish.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -179,23 +199,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = '${{ needs.publish.outputs.version }}'
-          $prerelease = '${{ needs.publish.outputs.prerelease }}' -eq 'true'
 
-          # The changelog section: the version's for a release, Unreleased for a beta.
-          $heading = if ($prerelease) { 'Unreleased' } else { [regex]::Escape($version) }
+          # The version's changelog section is the release notes.
           $changelog = Get-Content CHANGELOG.md -Raw
-          $section = [regex]::Match($changelog, "(?ms)^## $heading[^\r\n]*\r?\n(.*?)(?=^## |\z)").Groups[1].Value.Trim()
-          $notes = if ($prerelease) {
-            "A beta of ``${{ github.ref_name }}`` at ${{ github.sha }}. Install the template with ``dotnet new install Devoctomy.Blazwiz.Templates@$version``.`n`n$section"
-          }
-          else {
-            $section
-          }
-          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+          $section = [regex]::Match($changelog, "(?ms)^## $([regex]::Escape($version))[^\r\n]*\r?\n(.*?)(?=^## |\z)").Groups[1].Value.Trim()
+          Set-Content -Path release-notes.md -Value $section -Encoding utf8
 
           $assets = @(Get-ChildItem -Path artifacts/packages -File | ForEach-Object { $_.FullName })
-          # @(...) around the if: PowerShell unwraps a one-element array output from an if, and splatting a string
-          # passes it to a native command one character at a time ("no matches found for `-`").
-          $flags = @(if ($prerelease) { '--prerelease' } else { '--latest' })
-          gh release create "v$version" @assets --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $version --notes-file release-notes.md @flags
+          gh release create "v$version" @assets --repo '${{ github.repository }}' --target '${{ github.sha }}' --title $version --notes-file release-notes.md --latest
           if ($LASTEXITCODE -ne 0) { exit 1 }

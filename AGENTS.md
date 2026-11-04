@@ -160,8 +160,8 @@ package version is ordinary .NET and needs no test; the change does. Before 1.0 
   job `templatepack/test-template.ps1 -SkipRepositoryTests` (packages and template). Keep them passing locally first:
   CI cannot be run from here.
 - `.github/workflows/release.yml` publishes to nuget.org only a commit CI has passed: a manual run on main publishes
-  the version and creates its tag and GitHub release, on another branch `<version>-beta.<run>` as a pre-release
-  (`docs/releasing.md`). Never run the release yourself (rule 3).
+  the version and creates its tag and GitHub release, on another branch `<version>-beta.<run>` to nuget.org only, with
+  no tag or GitHub release (`docs/releasing.md`). Never run the release yourself (rule 3).
 - The version is set only in `VersionPrefix` in `Directory.Build.props`. `./eng/bump-version.ps1` sets the next one and
   prepares the changelog and public API for it; the maintainer runs it. The template's `BlazwizVersion` stays `0.0.0`:
   packing the template writes the real version.
