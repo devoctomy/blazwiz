@@ -42,10 +42,14 @@ Packages cannot be deleted from nuget.org, only unlisted, so a broken release is
 
 ## A beta
 
-Run the Release workflow on any other branch. It publishes `<version>-beta.<run number>`, e.g. `0.2.0-beta.12`, and
-creates a GitHub pre-release with the `Unreleased` changelog section. New apps from that template use those packages.
-If the version in `Directory.Build.props` is already released, the beta is of the next minor version, so it sorts
-above the release: NuGet orders `0.1.0-beta.12` below `0.1.0`.
+Run the Release workflow on any other branch. It publishes `<version>-beta.<run number>`, e.g. `0.2.0-beta.12`, to
+nuget.org only, and the run's summary gives the command to install it (`dotnet new install
+Devoctomy.Blazwiz.Templates@<version>`). New apps from that template use those packages. If the version in
+`Directory.Build.props` is already released, the beta is of the next minor version, so it sorts above the release:
+NuGet orders `0.1.0-beta.12` below `0.1.0`.
+
+A beta gets no tag and no GitHub release. The branch is deleted when it is merged, and a tag or release pointing at its
+commits would be left behind, its links to the branch broken.
 
 ## Setting up (once)
 

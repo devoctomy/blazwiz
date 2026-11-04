@@ -11,6 +11,7 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 ### Changed
 - The template's options are lower case, with no single-letter forms: `--title`, `--description`, `--tests`
   (was `--IncludeTests`), `--showcase` (was `--IncludeShowcase`), `--sync`, `--notes` and `--no-restore`.
+- Betas are published to nuget.org only, without a tag or GitHub pre-release. Releases from main still get both.
 
 ## 0.2.0
 
