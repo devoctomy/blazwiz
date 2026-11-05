@@ -114,7 +114,7 @@ The **Files** page and note editor are an example of using the sync module: mark
 kept in the browser for the signed in user and synced to their own prefix in the data bucket.
 
 - **Storage**: notes are plain `.md` files and folders are paths (`notes/Work/Ideas.md`), kept by the `notes` sync
-  profile's file store (`AddNotesProfile`). `NoteService` asks for it with
+  profile's file store (`Sync/NotesSyncProfile.cs`). `NoteService` asks for it with
   `[FromKeyedServices("notes")] ISyncFileStore`, so every change is tracked for sync automatically.
 - **Wording**: the sync module says "files"; `NotesText.resx` overrides its text to say "notes".
   `NotesTextTests` checks every override still names framework text after an upgrade.
@@ -174,6 +174,19 @@ theme.
 (region, user pool, client and identity pool ids) and `AwsS3` (region, data bucket).
 `appsettings.Development.json` overrides values when running locally and is not published. When
 deploying, `deploy.ps1` generates `appsettings.Production.json` with the stack's ids (git ignored).
+<!--#if (IncludeSync)-->
+
+Sync profiles (what is synced, where it is kept on the device, and whether it is encrypted) are classes deriving
+from `SyncProfileDefinition`, found in the app's assemblies by `AddProfilesFromAssemblyContaining` in `Program.cs`.
+<!--#if (IncludeNotes)-->
+The notes example's is `MyApp.Portal.Application/Sync/NotesSyncProfile.cs`.
+<!--#else-->
+The app's is `MyApp.Portal/Sync/FilesSyncProfile.cs`.
+<!--#endif-->
+Add a profile by adding a class like it. The other sync settings (when to sync after a change, how long the sync log
+is kept) are in `MyApp.Portal/sync.json`, embedded in the app and read by `UseEmbeddedConfiguration`. See the
+`Devoctomy.Blazwiz.Sync` README for both.
+<!--#endif-->
 
 ## Authentication
 

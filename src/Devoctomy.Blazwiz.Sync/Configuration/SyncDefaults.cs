@@ -7,6 +7,11 @@ namespace Devoctomy.Blazwiz.Sync.Configuration;
 public static class SyncDefaults
 {
     /// <summary>
+    /// The configuration section read by <see cref="SyncBuilder.UseEmbeddedConfiguration"/>.
+    /// </summary>
+    public const string ConfigurationSection = "Sync";
+
+    /// <summary>
     /// The IndexedDB database holding the sync index and the log, unless configured otherwise.
     /// </summary>
     public const string IndexDatabase = "sync";

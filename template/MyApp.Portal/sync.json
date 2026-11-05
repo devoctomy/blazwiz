@@ -1,0 +1,14 @@
+{
+  // Sync settings, embedded in the app and read by UseEmbeddedConfiguration in Program.cs. The profiles (what is synced,
+  // and where it is kept on the device) are classes deriving from SyncProfileDefinition. Time spans are written as
+  // 00:00:30 or 30.00:00:00.
+  "Sync": {
+    "ChangeDebounce": "00:00:02",
+    "EventLog": {
+      "Database": "sync",
+      "Store": "events",
+      "MaxAge": "30.00:00:00",
+      "MaxEventsPerUser": 5000
+    }
+  }
+}

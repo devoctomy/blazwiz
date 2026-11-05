@@ -15,6 +15,15 @@
     <DefineConstants>$(DefineConstants);IncludeSync;IncludeNotes;IncludeShowcase;IncludeTests</DefineConstants>
   </PropertyGroup>
 
+  <!--
+    The generic files profile is the app's profile when the notes example is left out (template.json excludes it from
+    apps with notes). The repository builds the app with notes, so it leaves it out too; apps made with notes false
+    build and test it (templatepack/test-template.ps1, NoNotes).
+  -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'MyApp.Portal'">
+    <Compile Remove="Sync\FilesSyncProfile.cs" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(UseBlazwizPackages)' != 'true'">
     <_BlazwizKnownPackage Include="Devoctomy.Blazwiz.Core;Devoctomy.Blazwiz.Cryptography;Devoctomy.Blazwiz.Encryption;Devoctomy.Blazwiz.Browser;Devoctomy.Blazwiz.Auth;Devoctomy.Blazwiz.Auth.Cognito;Devoctomy.Blazwiz.Sync;Devoctomy.Blazwiz.UI;Devoctomy.Blazwiz.UI.Sync;Devoctomy.Blazwiz.Testing" />
     <_BlazwizUnusedPackage Include="@(_BlazwizKnownPackage)" Exclude="@(PackageReference)" />

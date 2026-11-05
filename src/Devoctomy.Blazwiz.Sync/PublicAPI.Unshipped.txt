@@ -1,1 +1,12 @@
 #nullable enable
+const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.ConfigurationSection = "Sync" -> string!
+Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseConfiguration(Microsoft.Extensions.Configuration.IConfiguration! section) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
+Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseEmbeddedConfiguration(System.Reflection.Assembly! assembly, string! resourceName) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
+abstract Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition.Configure(Devoctomy.Blazwiz.Sync.Configuration.SyncProfileBuilder! profile) -> void
+abstract Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition.Name.get -> string!
+Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.AddProfile(Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition! definition) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
+Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.AddProfile<TProfile>() -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
+Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.AddProfilesFromAssembly(System.Reflection.Assembly! assembly) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
+Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.AddProfilesFromAssemblyContaining<T>() -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
+Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition
+Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition.SyncProfileDefinition() -> void

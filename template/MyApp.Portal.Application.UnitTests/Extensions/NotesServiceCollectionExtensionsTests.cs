@@ -13,6 +13,7 @@ using Moq;
 using MyApp.Portal.Application.Extensions;
 using MyApp.Portal.Application.Services;
 using MyApp.Portal.Application.Services.Interfaces;
+using MyApp.Portal.Application.Sync;
 using MyApp.Portal.Application.ViewModels;
 
 namespace MyApp.Portal.Application.UnitTests.Extensions;
@@ -20,11 +21,10 @@ namespace MyApp.Portal.Application.UnitTests.Extensions;
 public class NotesServiceCollectionExtensionsTests
 {
     [Fact]
-    public void GivenNullArguments_WhenAdding_ThenThrowsArgumentNullException()
+    public void GivenNullServices_WhenAdding_ThenThrowsArgumentNullException()
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => NotesServiceCollectionExtensions.AddNotes(null!));
-        Assert.Throws<ArgumentNullException>(() => NotesServiceCollectionExtensions.AddNotesProfile(null!));
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public class NotesServiceCollectionExtensionsTests
         services.AddBlazwizUi(configuration);
 
         // Act
-        services.AddBlazwizSyncModule(configuration, sync => sync.AddNotesProfile());
+        services.AddBlazwizSyncModule(configuration, sync => sync.AddProfilesFromAssemblyContaining<NotesSyncProfile>());
         var result = services.AddNotes();
         services.AddAppServices();
         services.AddScoped<FilesViewModel>();

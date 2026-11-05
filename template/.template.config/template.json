@@ -204,7 +204,15 @@
           "condition": "(!IncludeSync)",
           "exclude": [
             "MyApp.Portal.UITests/SyncTests.cs",
-            "MyApp.Portal.UITests/E2eEncryptionTests.cs"
+            "MyApp.Portal.UITests/E2eEncryptionTests.cs",
+            "MyApp.Portal/sync.json",
+            "MyApp.Portal/Sync/FilesSyncProfile.cs"
+          ]
+        },
+        {
+          "condition": "(IncludeNotes)",
+          "exclude": [
+            "MyApp.Portal/Sync/FilesSyncProfile.cs"
           ]
         },
         {
@@ -220,6 +228,7 @@
             "MyApp.Portal.Application/Services/NoteNameService.cs",
             "MyApp.Portal.Application/Services/NoteService.cs",
             "MyApp.Portal.Application/Services/NoteTreeService.cs",
+            "MyApp.Portal.Application/Sync/NotesSyncProfile.cs",
             "MyApp.Portal.Application/Services/Interfaces/IMarkdownFormatService.cs",
             "MyApp.Portal.Application/Services/Interfaces/IMarkdownRenderer.cs",
             "MyApp.Portal.Application/Services/Interfaces/INoteEditorInteropService.cs",
@@ -245,6 +254,7 @@
             "MyApp.Portal.Application.UnitTests/Services/NoteNameServiceTests.cs",
             "MyApp.Portal.Application.UnitTests/Services/NoteServiceTests.cs",
             "MyApp.Portal.Application.UnitTests/Services/NoteTreeServiceTests.cs",
+            "MyApp.Portal.Application.UnitTests/Sync/NotesSyncProfileTests.cs",
             "MyApp.Portal.Application.UnitTests/Text/NotesTextTests.cs",
             "MyApp.Portal.Application.UnitTests/ViewModels/FilesViewModelTests.cs",
             "MyApp.Portal.Application.UnitTests/ViewModels/NoteEditorViewModelTests.cs",

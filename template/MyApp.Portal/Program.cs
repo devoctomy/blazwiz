@@ -16,8 +16,6 @@ using Devoctomy.Blazwiz.UI.Sync.Extensions;
 #if (IncludeNotes)
 using MyApp.Portal.Application.Services.Interfaces;
 using MyApp.Portal.Services;
-#elif (IncludeSync)
-using Devoctomy.Blazwiz.Sync.Models;
 #endif
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -35,27 +33,17 @@ builder.Services.AddBlazwizUi(builder.Configuration);
 builder.Services.AddBlazwizCognito(builder.Configuration);
 //#if (IncludeSync)
 
-// Sync and end to end encryption: what is synced (profiles), where it is kept on the device, and the Sync page
+// Sync and end to end encryption, and the Sync page: the settings from sync.json (embedded in this project), and the
+// profiles (what is synced, and where it is kept on the device) from the SyncProfileDefinition classes in the app.
 builder.Services.AddBlazwizSyncModule(builder.Configuration, sync => sync
-    .UseIndexedDbEventLog(database: "sync", store: "events")
-    .UseEventLogRetention(maxAge: TimeSpan.FromDays(30), maxEventsPerUser: 5000)
-    .UseChangeDebounce(TimeSpan.FromSeconds(2))
+    .UseEmbeddedConfiguration(typeof(Program).Assembly, "sync.json")
+    .AddProfilesFromAssemblyContaining<Program>()
+    .AddProfilesFromAssemblyContaining<DashboardViewModel>());
 #if (IncludeNotes)
-    .AddNotesProfile());
 
 // The notes example: markdown notes in the synced "notes" profile, on the Files page
 builder.Services.AddNotes();
 builder.Services.AddScoped<INoteEditorInteropService, NoteEditorInteropService>();
-#else
-    .AddProfile("files", profile => profile
-        .UseIndexedDbIndexStore(database: "sync", store: "files_index")
-        .UseFileStores(stores => stores
-            .AddIndexedDb(database: "files", store: "files")
-            .AddOpfs(root: "files")
-            .AddLocalFolder()
-            .UseDefault(SyncStorageKind.IndexedDb))
-        .UseRemote("files/**/*")
-        .UseEncryption()));
 #endif
 //#endif
 

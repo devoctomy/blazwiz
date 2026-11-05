@@ -8,6 +8,18 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+### Added
+- Sync profiles can be classes deriving from `SyncProfileDefinition`, added with `AddProfile<TProfile>()` or found in
+  an assembly with `AddProfilesFromAssemblyContaining<T>()`.
+- Sync settings and profiles can be set in configuration as well as in code: `UseEmbeddedConfiguration` reads the
+  `Sync` section of a JSON file embedded in the app, and `UseConfiguration` reads any configuration section. Unknown
+  keys and invalid values stop the app at startup with an error naming the setting.
+
+### Changed
+- The template's sync profiles are classes (`NotesSyncProfile`, or `FilesSyncProfile` without the notes example),
+  found by `AddProfilesFromAssemblyContaining` in `Program.cs`; `AddNotesProfile` is gone. Its other sync settings are
+  in `MyApp.Portal/sync.json`, embedded in the app.
+
 ## 0.3.0
 
 ### Changed
