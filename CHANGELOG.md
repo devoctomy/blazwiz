@@ -63,9 +63,12 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 ### Removed
 - The account-wide passphrase and keys: `IE2eKeyManager`, `E2eWriteMode`, `E2eSyncGate`, `ISyncEncryptionSweeper`,
   `ISyncEncryptionService`, `E2eStatus`, `E2eSettingsViewModel`, `E2eAlreadyEnabledException` (`E2e.AlreadyEnabled`)
-  and the account key scope. Plain files are no longer synced or
-  read by encrypted profiles.
+  and the account key scope. Plain files are no longer synced or read by encrypted profiles.
 - The template's per-note lock icons (`NoteEntry.EncryptionKeyId`): locked notes are not shown at all.
+
+### Fixed
+- In development builds, the update banner's Update button did nothing: the template's development service worker
+  now takes over when asked, as the published one does.
 
 ## 0.3.0
 
