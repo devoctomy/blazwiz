@@ -546,6 +546,20 @@ public class FilesViewModelTests
     }
 
     [Fact]
+    public async Task GivenAnOpenNotebook_WhenLocked_ThenItIsLockedAndTheNotebooksPageIsShown()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        sut.LockCommand.Execute(null);
+
+        // Assert
+        mockManager.Verify(x => x.Lock(notesScope), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("notebooks"), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenTheNotebooksNotLoadedYet_WhenTheyLoad_ThenTheNotebookOpens()
     {
         // Arrange

@@ -5,7 +5,8 @@ namespace MyApp.Portal.Application.Services.Interfaces;
 
 /// <summary>
 /// The user's notebooks: the default notebook (the notes profile) and the protected profiles they create as notebooks,
-/// each with its own passphrase and keys. A notebook's name is kept encrypted inside it.
+/// each with its own passphrase and keys. A notebook's name is kept encrypted inside it, and on each device where it
+/// has been unlocked as the profile's label there.
 /// </summary>
 public interface INotebookService
 {

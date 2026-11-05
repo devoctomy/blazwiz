@@ -41,7 +41,7 @@ public class NotebooksTests : TestBase
     }
 
     [TestMethod]
-    public async Task GivenANotebook_WhenReloaded_ThenItIsLockedShownByIdAndItsPassphraseUnlocksIt()
+    public async Task GivenANotebook_WhenReloaded_ThenItIsLockedAndShownByNameHereAndInSettings()
     {
         await LoginAsync();
         await CreateNotebookAsync("Work");
@@ -49,19 +49,56 @@ public class NotebooksTests : TestBase
 
         await ReloadAsync();
         await Page.Locator("#nav-notebooks").ClickAsync();
-        var created = Page.Locator("#notebooks .notebook:not([data-notebook='notes'])");
+
+        var created = Created();
+        await Expect(created.Locator(".notebook-title")).ToHaveTextAsync("Work");
+        await Expect(created.Locator(".notebook-state")).ToHaveTextAsync("Locked");
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Expect(Page.Locator("#e2e-created-profiles .e2e-profile-name")).ToHaveTextAsync("Work");
+        await ScreenshotAsync("NamedInSettings");
+    }
+
+    [TestMethod]
+    public async Task GivenADeviceThatNeverUnlockedIt_WhenListed_ThenItIsShownByIdUntilUnlocked()
+    {
+        await LoginAsync();
+        await CreateNotebookAsync("Work");
+        await AddPageAsync("Plan", "work plan");
+
+        // As on a new device: the name is only kept on the device where the notebook was unlocked.
+        await Page.EvaluateAsync("() => Object.keys(localStorage).filter(k => k.includes('e2e_labels_')).forEach(k => localStorage.removeItem(k))");
+        await ReloadAsync();
+        await Page.Locator("#nav-notebooks").ClickAsync();
+        var created = Created();
         var id = await created.GetAttributeAsync("data-notebook");
         Assert.IsTrue(Guid.TryParseExact(id, "D", out _), $"'{id}' is not a GUID");
         await Expect(created.Locator(".notebook-title")).ToHaveTextAsync(id!);
-        await Expect(created.Locator(".notebook-state")).ToHaveTextAsync("Locked");
 
         await created.Locator(".notebook-open").ClickAsync();
-        await Expect(Page.Locator("#e2e-unlock-message")).ToContainTextAsync("is locked");
+        await Expect(Page.Locator("#e2e-unlock-message")).ToHaveTextAsync($"{id} is locked. Enter its passphrase to use it.");
         await UnlockAsync();
         await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Work");
         await Row("Plan.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("work plan");
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Expect(Page.Locator("#e2e-created-profiles .e2e-profile-name")).ToHaveTextAsync("Work");
     }
+
+    [TestMethod]
+    public async Task GivenAnOpenNotebook_WhenLocked_ThenItIsLockedAndTheNotebooksAreShown()
+    {
+        await LoginAsync();
+        await CreateNotebookAsync("Work");
+
+        await Page.Locator("#lock-notebook-button").ClickAsync();
+
+        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Notebooks");
+        await Expect(Created().Locator(".notebook-state")).ToHaveTextAsync("Locked");
+        await Expect(Created().Locator(".notebook-title")).ToHaveTextAsync("Work");
+        await Expect(Page.Locator("#e2e-lock-indicator")).ToHaveCountAsync(0);
+    }
+
+    private ILocator Created() => Page.Locator("#notebooks .notebook:not([data-notebook='notes'])");
 
     private ILocator Notebook(string name) => Page.Locator($"#notebooks .notebook[data-notebook='{name}']");
 

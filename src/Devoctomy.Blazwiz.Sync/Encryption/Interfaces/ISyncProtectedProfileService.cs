@@ -94,6 +94,16 @@ public interface ISyncProtectedProfileService
     Task UnlockWithDeviceAsync(E2eKeyScope scope);
 
     /// <summary>
+    /// Labels a profile the user created on this device, e.g. with a name the app keeps encrypted inside it, read once
+    /// it is unlocked. The label is kept only on this device and never synced; it is shown in place of the profile's
+    /// id.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <param name="label">The label.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task SetLabelAsync(E2eKeyScope scope, string label);
+
+    /// <summary>
     /// Locks every profile, and removes those the user created as sync profiles. Called when the user signs out.
     /// </summary>
     void Unload();

@@ -30,6 +30,11 @@ public partial class FilesViewModel : ViewModelBase
     public const string TopLevelId = "";
 
     /// <summary>
+    /// The URL of the notebooks page.
+    /// </summary>
+    public const string NotebooksUrl = "notebooks";
+
+    /// <summary>
     /// The name shown for the top level.
     /// </summary>
     public const string TopLevelName = "All notes";
@@ -318,6 +323,20 @@ public partial class FilesViewModel : ViewModelBase
         }
 
         IsLoading = false;
+    }
+
+    /// <summary>
+    /// Locks the notebook, and goes back to the notebooks page.
+    /// </summary>
+    [RelayCommand]
+    public void Lock()
+    {
+        if (Notebook != null)
+        {
+            manager.Lock(new E2eKeyScope(Notebook.Id));
+        }
+
+        navigationService.NavigateTo(NotebooksUrl);
     }
 
     /// <summary>

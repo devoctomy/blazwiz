@@ -53,6 +53,10 @@ Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eLockChannel
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eLockChannel.LockReceived -> System.EventHandler<string!>?
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eLockChannel.PostLockAsync(string! profileId) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eLockChannel.StartAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eProfileLabelStore
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eProfileLabelStore.GetAllAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<string!, string!>!>!
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eProfileLabelStore.RemoveAsync(string! profileId) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eProfileLabelStore.SetAsync(string! profileId, string! label) -> System.Threading.Tasks.Task!
 *REMOVED*Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService
 *REMOVED*Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService.CanDecrypt(string! keyId) -> bool
 *REMOVED*Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService.ChangePassphraseAsync(string! currentPassphrase, string! newPassphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -79,6 +83,7 @@ Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.IsLoad
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.LoadAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!>!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.Profiles.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile!>!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.ProfilesChanged -> System.EventHandler?
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.SetLabelAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! label) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.SetUpAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.Unload() -> void
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.UnlockWithDeviceAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
@@ -92,6 +97,11 @@ Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.GetAsync() -> System.Threading.Tasks.Task<string?>!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.LocalStorageE2eLocalProfileIndexStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext) -> void
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.SaveAsync(string! value) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.GetAllAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<string!, string!>!>!
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.LocalStorageE2eProfileLabelStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext) -> void
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.RemoveAsync(string! profileId) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.SetAsync(string! profileId, string! label) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageUserKeysStore
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageUserKeysStore.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageUserKeysStore.GetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
@@ -130,8 +140,9 @@ Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.IsLoaded.get -> bo
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.LoadAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!>!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.Profiles.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile!>!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.ProfilesChanged -> System.EventHandler?
+Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SetLabelAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! label) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SetUpAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SyncProtectedProfileService(Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver! storageResolver, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.ISyncLockService! lockService, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eLockChannel! lockChannel, Devoctomy.Blazwiz.Sync.Configuration.SyncOptions! options, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eIdleLock! idleLock) -> void
+Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SyncProtectedProfileService(Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver! storageResolver, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.ISyncLockService! lockService, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eLockChannel! lockChannel, Devoctomy.Blazwiz.Sync.Configuration.SyncOptions! options, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eIdleLock! idleLock, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eProfileLabelStore! labelStore) -> void
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.Unload() -> void
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.UnlockWithDeviceAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 *REMOVED*Devoctomy.Blazwiz.Sync.Folder.SyncFolderService.SyncFolderService(Devoctomy.Blazwiz.Sync.Interfaces.IFolderAccessClient! folderClient, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver! resolver, Devoctomy.Blazwiz.Sync.Configuration.SyncOptions! options) -> void
@@ -153,6 +164,8 @@ Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.IsCreatedByUser.get -> bool
 Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.IsCreatedByUser.set -> void
 Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.IsSetUp.get -> bool
 Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.IsSetUp.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.Label.get -> string?
+Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.Label.set -> void
 Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.Name.get -> string!
 Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.Name.set -> void
 Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile.Scope.get -> Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!
@@ -187,5 +200,6 @@ const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.ConfigurationSection = "
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.LockChannelName = "e2e-lock" -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.ProtectedProfilesFolder = "profiles" -> string!
 const Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.StorageKeyPrefix = "e2e_index_" -> string!
+const Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.StorageKeyPrefix = "e2e_labels_" -> string!
 const Devoctomy.Blazwiz.Sync.Encryption.LocalStorageUserKeysStore.IndexPrefix = "e2e_browser_index_" -> string!
 const Devoctomy.Blazwiz.Sync.Encryption.LocalStorageUserKeysStore.KeysPrefix = "e2e_browser_keys_" -> string!

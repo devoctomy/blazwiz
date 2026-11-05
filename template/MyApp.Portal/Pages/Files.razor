@@ -5,6 +5,9 @@
 <PageHeader Title="@(ViewModel.Notebook?.Title ?? "Notebook")" Icon="bi-journal-text" Subtitle="Pages in this notebook, stored in this browser and synced to your cloud storage.">
     @if (ViewModel.IsUnlocked)
     {
+        <button type="button" class="btn btn-outline-secondary" id="lock-notebook-button" @onclick="() => ViewModel.LockCommand.Execute(null)">
+            <i class="bi bi-lock me-1"></i>Lock
+        </button>
         <button type="button" class="btn btn-outline-primary" id="new-folder-button" @onclick="() => ViewModel.ShowNewFolderDialogCommand.Execute(null)">
             <i class="bi bi-folder-plus me-1"></i>New folder
         </button>

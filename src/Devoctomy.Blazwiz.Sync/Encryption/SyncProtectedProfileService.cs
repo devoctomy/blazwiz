@@ -21,6 +21,7 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// <param name="lockChannel">Locks a protected profile in every tab when it is locked in one.</param>
 /// <param name="options">The settings of the profiles users create.</param>
 /// <param name="idleLock">Locks a profile left unused for its idle timeout.</param>
+/// <param name="labelStore">The labels the user's profiles are shown by on this device.</param>
 public class SyncProtectedProfileService(
     IE2eProtectedProfileManager manager,
     ISyncProfileRegistry registry,
@@ -29,7 +30,8 @@ public class SyncProtectedProfileService(
     ISyncLockService lockService,
     IE2eLockChannel lockChannel,
     SyncOptions options,
-    IE2eIdleLock idleLock)
+    IE2eIdleLock idleLock,
+    IE2eProfileLabelStore labelStore)
     : ISyncProtectedProfileService
 {
     private readonly IE2eProtectedProfileManager manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -40,6 +42,8 @@ public class SyncProtectedProfileService(
     private readonly IE2eLockChannel lockChannel = lockChannel ?? throw new ArgumentNullException(nameof(lockChannel));
     private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IE2eIdleLock idleLock = idleLock ?? throw new ArgumentNullException(nameof(idleLock));
+    private readonly IE2eProfileLabelStore labelStore = labelStore ?? throw new ArgumentNullException(nameof(labelStore));
+    private readonly Dictionary<string, string> labels = new Dictionary<string, string>(StringComparer.Ordinal);
     private readonly HashSet<E2eKeyScope> setUp = [];
     private bool listening;
 
@@ -59,6 +63,7 @@ public class SyncProtectedProfileService(
                 Scope = p.KeyScope!,
                 IsCreatedByUser = IsCreatedByUser(p),
                 IsSetUp = setUp.Contains(p.KeyScope!),
+                Label = IsCreatedByUser(p) ? labels.GetValueOrDefault(p.KeyScope!.Id) : null,
                 Settings = p.Settings,
             })
             .OrderBy(p => p.IsCreatedByUser)
@@ -82,6 +87,7 @@ public class SyncProtectedProfileService(
         {
             // Deleted on another device: nothing of it is kept here either.
             await manager.ForgetAsync(gone.KeyScope!);
+            await labelStore.RemoveAsync(gone.KeyScope!.Id);
             await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + gone.Name, ct))
             {
                 await DeleteLocalFilesAsync(gone.Name, ct);
@@ -97,6 +103,12 @@ public class SyncProtectedProfileService(
 
         setUp.Clear();
         setUp.UnionWith(scopes);
+        labels.Clear();
+        foreach (var (id, label) in await labelStore.GetAllAsync())
+        {
+            labels[id] = label;
+        }
+
         IsLoaded = true;
         ProfilesChanged?.Invoke(this, EventArgs.Empty);
         return scopes;
@@ -155,6 +167,28 @@ public class SyncProtectedProfileService(
 
         registry.Remove(profile.Name);
         setUp.Remove(scope);
+        labels.Remove(scope.Id);
+        await labelStore.RemoveAsync(scope.Id);
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <inheritdoc/>
+    public async Task SetLabelAsync(E2eKeyScope scope, string label)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        ArgumentException.ThrowIfNullOrWhiteSpace(label);
+        if (!CreatedProfiles().Any(p => p.KeyScope == scope))
+        {
+            throw new ArgumentException($"There is no profile '{scope}' created by the user; profiles set up in code have display names.", nameof(scope));
+        }
+
+        if (labels.TryGetValue(scope.Id, out var current) && current == label)
+        {
+            return;
+        }
+
+        await labelStore.SetAsync(scope.Id, label);
+        labels[scope.Id] = label;
         ProfilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -182,6 +216,7 @@ public class SyncProtectedProfileService(
         }
 
         setUp.Clear();
+        labels.Clear();
         IsLoaded = false;
         ProfilesChanged?.Invoke(this, EventArgs.Empty);
     }

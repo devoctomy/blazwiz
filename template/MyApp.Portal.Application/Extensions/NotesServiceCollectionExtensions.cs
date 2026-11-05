@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Auth.Extensions;
 using Devoctomy.Blazwiz.Core.Extensions;
 using Devoctomy.Blazwiz.UI.Extensions;
 using Devoctomy.Blazwiz.UI.Models;
@@ -28,6 +29,7 @@ public static class NotesServiceCollectionExtensions
         services.AddScoped<INotesStateStore, IndexedDbNotesStateStore>();
         services.AddScoped<INoteServiceFactory, NoteServiceFactory>();
         services.AddScoped<INotebookService, NotebookService>();
+        services.AddSessionLifecycleHandler<NotebookLabelHandler>();
         services.AddSingleton<INoteNameService, NoteNameService>();
         services.AddSingleton<INoteTreeService, NoteTreeService>();
         services.AddSingleton<IMarkdownRenderer, MarkdownRenderer>();

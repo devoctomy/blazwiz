@@ -95,6 +95,7 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddBlazwizE2eEncryption(argon2 => configuration.GetSection(Argon2idConfigurationSection).Bind(argon2.Parameters));
         services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
         services.AddScoped<IE2eLocalProfileIndexStore, LocalStorageE2eLocalProfileIndexStore>();
+        services.AddScoped<IE2eProfileLabelStore, LocalStorageE2eProfileLabelStore>();
         services.AddScoped<IE2eLockChannel, E2eLockChannel>();
         services.AddScoped<IE2eIdleLock, E2eIdleLock>();
         services.AddScoped<ISyncProtectedProfileService, SyncProtectedProfileService>();

@@ -56,11 +56,14 @@ public sealed class ProtectedDevice
             locks.Object,
             Mock.Of<IE2eLockChannel>(),
             new SyncOptions(),
-            Mock.Of<IE2eIdleLock>());
+            Mock.Of<IE2eIdleLock>(),
+            Labels.Object);
         engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), TimeProvider.System, format);
     }
 
     public FakeE2eLocalKeyStore LocalKeys { get; } = new();
+
+    public Mock<IE2eProfileLabelStore> Labels { get; } = CreateLabels();
 
     public E2eKeyRings Rings { get; }
 
@@ -85,6 +88,13 @@ public sealed class ProtectedDevice
         {
             await engine.SyncAsync(Registry.GetSyncProfile(profile.Name), verify: false);
         }
+    }
+
+    private static Mock<IE2eProfileLabelStore> CreateLabels()
+    {
+        var labels = new Mock<IE2eProfileLabelStore>();
+        labels.Setup(x => x.GetAllAsync()).ReturnsAsync(new Dictionary<string, string>());
+        return labels;
     }
 
     internal InMemorySyncFileStore CreateStoredFiles(string name)

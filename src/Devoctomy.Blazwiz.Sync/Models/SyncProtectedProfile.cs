@@ -30,6 +30,11 @@ public class SyncProtectedProfile
     public bool IsSetUp { get; set; }
 
     /// <summary>
+    /// Gets or sets the label it is shown by on this device (set by the app, kept only on the device), or null.
+    /// </summary>
+    public string? Label { get; set; }
+
+    /// <summary>
     /// Gets or sets the profile's security settings.
     /// </summary>
     public E2eProfileSettings Settings { get; set; } = new E2eProfileSettings();

@@ -15,7 +15,8 @@ namespace MyApp.Portal.Application.Services;
 
 /// <summary>
 /// Implementation of <see cref="INotebookService"/>. A created notebook's pages are under its own folder in the
-/// user's prefix, and its name is in a <see cref="TitleFile"/> there, encrypted like its pages.
+/// user's prefix, and its name is in a <see cref="TitleFile"/> there, encrypted like its pages. Whenever the name is read
+/// (or set), it is kept as the profile's label on this device, so the notebook is shown by name while locked here too.
 /// </summary>
 /// <param name="profiles">The user's protected profiles.</param>
 /// <param name="manager">Says which are unlocked.</param>
@@ -68,6 +69,7 @@ public class NotebookService(
         var scope = await profiles.CreateAsync(passphrase, progress);
         var json = JsonSerializer.SerializeToUtf8Bytes(new NotebookTitle { Title = title.Trim() });
         await registry.GetFileStore(scope.Id).WriteAsync(RootOf(scope.Id) + TitleFile, json);
+        await profiles.SetLabelAsync(scope, title.Trim());
         return await FindAsync(scope.Id)
             ?? throw new InvalidOperationException($"Notebook {scope.Id} was created but is not listed.");
     }
@@ -88,9 +90,19 @@ public class NotebookService(
             HasPassphrase = profile.IsSetUp,
             IsUnlocked = manager.IsUnlocked(profile.Scope),
         };
-        notebook.Title = isDefault ? displayNames.GetDisplayName(profile.Name)
-            : notebook.IsUnlocked ? await ReadTitleAsync(notebook) ?? notebook.Id
-            : notebook.Id;
+        if (isDefault)
+        {
+            notebook.Title = displayNames.GetDisplayName(profile.Name);
+            return notebook;
+        }
+
+        var title = notebook.IsUnlocked ? await ReadTitleAsync(notebook) : null;
+        if (title != null && title != profile.Label)
+        {
+            await profiles.SetLabelAsync(profile.Scope, title);
+        }
+
+        notebook.Title = title ?? profile.Label ?? notebook.Id;
         return notebook;
     }
 

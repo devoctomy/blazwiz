@@ -21,14 +21,14 @@
             {
                 <li class="notebook d-flex flex-wrap align-items-center gap-2 py-2" data-notebook="@notebook.Name">
                     <i class="bi @(notebook.IsUnlocked ? "bi-journal-text text-success" : "bi-lock-fill text-body-secondary")"></i>
-                    <span class="notebook-title @(notebook.IsUnlocked || notebook.IsDefault ? null : "font-monospace small")">@notebook.Title</span>
+                    <span class="notebook-title @(notebook.Title == notebook.Id ? "font-monospace small" : null)">@notebook.Title</span>
                     <span class="notebook-state text-body-secondary small flex-grow-1">@NotebooksViewModel.GetStateText(notebook)</span>
                     <button type="button" class="btn btn-outline-primary btn-sm notebook-open" @onclick="() => ViewModel.OpenCommand.Execute(notebook.Name)">Open</button>
                 </li>
             }
         </ul>
         <p class="panel-text small mt-3 mb-0">
-            <i class="bi bi-info-circle me-1"></i>A locked notebook shows its id until it is unlocked. Lock, change the passphrase of, or delete notebooks in Settings.
+            <i class="bi bi-info-circle me-1"></i>A notebook shows its id on this device until it has been unlocked here. Lock, change the passphrase of, or delete notebooks in Settings.
         </p>
     }
 </div>

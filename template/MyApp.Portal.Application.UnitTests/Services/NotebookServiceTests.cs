@@ -76,6 +76,22 @@ public class NotebookServiceTests
                 Assert.Equal(lockedId, n.Title);
                 Assert.False(n.IsUnlocked);
             });
+        mockProfiles.Verify(x => x.SetLabelAsync(new E2eKeyScope(unlockedId), "Work"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenALockedNotebookLabelledOnThisDevice_WhenFound_ThenItsLabelIsShown()
+    {
+        // Arrange
+        var id = Add(Guid.NewGuid().ToString("D"), isCreatedByUser: true, isSetUp: true);
+        profiles[^1].Label = "Work";
+
+        // Act
+        var notebook = await CreateSut().FindAsync(id);
+
+        // Assert
+        Assert.Equal("Work", notebook!.Title);
+        mockProfiles.Verify(x => x.SetLabelAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>()), Times.Never);
     }
 
     [Fact]
@@ -121,6 +137,7 @@ public class NotebookServiceTests
         Assert.Equal(id, notebook.Name);
         Assert.Equal("Work", notebook.Title);
         Assert.Contains($"profiles/{id}/.notebook", stored[id].Keys);
+        mockProfiles.Verify(x => x.SetLabelAsync(new E2eKeyScope(id), "Work"), Times.AtLeastOnce);
     }
 
     [Fact]
