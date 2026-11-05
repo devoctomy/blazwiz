@@ -79,7 +79,7 @@ sequenceDiagram
     Mig->>IDB: GET blazwiz_sync/storage (finish or undo a storage move cut short)
     Layout->>Enc: InitializeAsync()
     Enc->>SM: GetSecretValue "{sub}/keys"
-    Enc->>LS: GET blazwiz_e2e_keys_{user}
+    Enc->>LS: GET blazwiz_e2e_keys_account_{user}
     Enc->>Mem: Load E2E keys if the passkey key is present (prf-remember-me.md, diagram 4)
     Layout->>Folder: NeedsReconnectAsync()
     Folder->>IDB: GET blazwiz_folders/handles + permission state

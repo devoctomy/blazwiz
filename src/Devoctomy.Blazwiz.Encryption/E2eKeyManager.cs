@@ -11,8 +11,9 @@ using Devoctomy.Blazwiz.Encryption.Models;
 namespace Devoctomy.Blazwiz.Encryption;
 
 /// <summary>
-/// Implementation of <see cref="IE2eKeyManager"/>. Raw keys are wiped as soon as they are handed to the
-/// <see cref="IE2eKeyRing"/>; the passphrase key is wiped as soon as the master key is wrapped or unwrapped.
+/// Implementation of <see cref="IE2eKeyManager"/> for the account's key scope (<see cref="E2eKeyScope.Account"/>). Raw
+/// keys are wiped as soon as they are handed to the <see cref="IE2eKeyRing"/>; the passphrase key is wiped as soon as
+/// the master key is wrapped or unwrapped.
 /// </summary>
 public class E2eKeyManager(
     IUserKeysStore userKeysStore,
@@ -37,6 +38,7 @@ public class E2eKeyManager(
 
     private const string Base32Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
+    private static readonly E2eKeyScope Scope = E2eKeyScope.Account;
     private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions();
 
     private readonly IUserKeysStore userKeysStore = userKeysStore ?? throw new ArgumentNullException(nameof(userKeysStore));
@@ -78,7 +80,7 @@ public class E2eKeyManager(
         var reached = true;
         try
         {
-            json = await userKeysStore.GetAsync(ct);
+            json = await userKeysStore.GetAsync(Scope, ct);
         }
         catch (InvalidOperationException)
         {
@@ -92,7 +94,7 @@ public class E2eKeyManager(
             reached = false;
         }
 
-        var local = await localKeyStore.GetAsync();
+        var local = await localKeyStore.GetAsync(Scope);
         if (!reached)
         {
             json = local?.CachedDocument;
@@ -130,7 +132,7 @@ public class E2eKeyManager(
             if (reached && local.CachedDocument != json)
             {
                 local.CachedDocument = json;
-                await localKeyStore.SaveAsync(local);
+                await localKeyStore.SaveAsync(Scope, local);
             }
 
             return SetStatus(E2eStatus.Unlocked);
@@ -144,7 +146,7 @@ public class E2eKeyManager(
     /// <inheritdoc/>
     public async Task<bool> IsEnabledAsync(CancellationToken ct = default)
     {
-        return await userKeysStore.GetAsync(ct) != null;
+        return await userKeysStore.GetAsync(Scope, ct) != null;
     }
 
     /// <inheritdoc/>
@@ -178,7 +180,7 @@ public class E2eKeyManager(
             progress?.Report(new E2eProgress(E2eStep.CreateKeys, true));
 
             progress?.Report(new E2eProgress(E2eStep.SaveKeys, false));
-            if (!await userKeysStore.TryCreateAsync(json, ct))
+            if (!await userKeysStore.TryCreateAsync(Scope, json, ct))
             {
                 // Another device got there first: never replace its keys.
                 keyRing.Clear(E2eWriteMode.Refuse);
@@ -189,7 +191,7 @@ public class E2eKeyManager(
             progress?.Report(new E2eProgress(E2eStep.SaveKeys, true));
 
             progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, false));
-            await localKeyStore.SaveAsync(new E2eLocalKeys
+            await localKeyStore.SaveAsync(Scope, new E2eLocalKeys
             {
                 WrappedMasterKey = keyWrapService.Wrap(kek, masterKey),
                 CachedDocument = json,
@@ -213,12 +215,12 @@ public class E2eKeyManager(
         byte[]? masterKey = null;
         try
         {
-            var json = await userKeysStore.GetAsync(ct)
+            var json = await userKeysStore.GetAsync(Scope, ct)
                 ?? throw new InvalidOperationException("End to end encryption is not enabled.");
             var document = Parse(json);
             masterKey = await UnwrapWithPassphraseAsync(document, passphrase, ct);
             UnlockFileKeys(document, masterKey);
-            await localKeyStore.SaveAsync(new E2eLocalKeys
+            await localKeyStore.SaveAsync(Scope, new E2eLocalKeys
             {
                 WrappedMasterKey = keyWrapService.Wrap(kek, masterKey),
                 CachedDocument = json,
@@ -237,7 +239,7 @@ public class E2eKeyManager(
         ArgumentException.ThrowIfNullOrEmpty(currentPassphrase);
         ArgumentException.ThrowIfNullOrEmpty(newPassphrase);
 
-        var json = await userKeysStore.GetAsync(ct)
+        var json = await userKeysStore.GetAsync(Scope, ct)
             ?? throw new InvalidOperationException("End to end encryption is not enabled.");
         var document = Parse(json);
         byte[]? masterKey = null;
@@ -251,13 +253,13 @@ public class E2eKeyManager(
             document.Kdf = KdfSettings.Create(salt, parameters);
             document.MasterKey = keyWrapService.Wrap(passphraseKey, masterKey);
             var updated = JsonSerializer.Serialize(document, JsonOptions);
-            await userKeysStore.SetAsync(updated, ct);
+            await userKeysStore.SetAsync(Scope, updated, ct);
 
-            var local = await localKeyStore.GetAsync();
+            var local = await localKeyStore.GetAsync(Scope);
             if (local != null)
             {
                 local.CachedDocument = updated;
-                await localKeyStore.SaveAsync(local);
+                await localKeyStore.SaveAsync(Scope, local);
             }
         }
         finally
@@ -271,7 +273,7 @@ public class E2eKeyManager(
     {
         ArgumentException.ThrowIfNullOrEmpty(passphrase);
 
-        var json = await userKeysStore.GetAsync(ct)
+        var json = await userKeysStore.GetAsync(Scope, ct)
             ?? throw new InvalidOperationException("End to end encryption is not enabled.");
         var masterKey = await UnwrapWithPassphraseAsync(Parse(json), passphrase, ct);
         CryptographicOperations.ZeroMemory(masterKey);
@@ -280,7 +282,7 @@ public class E2eKeyManager(
     /// <inheritdoc/>
     public async Task UnlockLocalCopyAsync(string? passphrase = null, CancellationToken ct = default)
     {
-        var local = await localKeyStore.GetAsync();
+        var local = await localKeyStore.GetAsync(Scope);
         if (local?.CachedDocument == null)
         {
             throw new InvalidOperationException("This device has no keys to unlock.");
@@ -326,7 +328,7 @@ public class E2eKeyManager(
     /// <inheritdoc/>
     public async Task<bool> CanUnlockLocalCopyWithPasskeyAsync()
     {
-        var local = await localKeyStore.GetAsync();
+        var local = await localKeyStore.GetAsync(Scope);
         if (local?.CachedDocument == null || !derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
         {
             return false;
@@ -351,14 +353,14 @@ public class E2eKeyManager(
     /// <inheritdoc/>
     public async Task RemoveAsync(CancellationToken ct = default)
     {
-        await userKeysStore.DeleteAsync(ct);
+        await userKeysStore.DeleteAsync(Scope, ct);
         await ForgetDeviceAsync();
     }
 
     /// <inheritdoc/>
     public async Task ForgetDeviceAsync()
     {
-        await localKeyStore.DeleteAsync();
+        await localKeyStore.DeleteAsync(Scope);
         keyRing.Clear(E2eWriteMode.Plaintext);
         SetStatus(HasKeyEncryptionKey ? E2eStatus.Disabled : E2eStatus.Unavailable);
     }

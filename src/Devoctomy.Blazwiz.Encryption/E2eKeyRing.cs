@@ -6,18 +6,26 @@ using Devoctomy.Blazwiz.Encryption.Models;
 namespace Devoctomy.Blazwiz.Encryption;
 
 /// <summary>
-/// Implementation of <see cref="IE2eKeyRing"/> holding the keys in the <see cref="IDerivedKeyStore"/> under
-/// <see cref="E2eKeyNames"/>, so they are wiped with the other session keys on sign out.
+/// Implementation of <see cref="IE2eKeyRing"/> for one key scope, holding the keys in the <see cref="IDerivedKeyStore"/>
+/// under names starting <see cref="E2eKeyNames.ScopePrefix"/> and the scope id, so they are wiped with the other session
+/// keys on sign out. Created by <see cref="E2eKeyRings"/>.
 /// </summary>
-public class E2eKeyRing(IDerivedKeyStore keyStore)
+/// <param name="keyStore">Holds the raw keys.</param>
+/// <param name="scope">The key scope.</param>
+public class E2eKeyRing(IDerivedKeyStore keyStore, E2eKeyScope scope)
     : IE2eKeyRing
 {
     private readonly IDerivedKeyStore keyStore = keyStore ?? throw new ArgumentNullException(nameof(keyStore));
+    private readonly string masterKeyName = E2eKeyNames.ScopePrefix + (scope ?? throw new ArgumentNullException(nameof(scope))).Id + E2eKeyNames.MasterKeySuffix;
+    private readonly string fileKeyPrefix = E2eKeyNames.ScopePrefix + scope.Id + E2eKeyNames.FileKeySuffix;
     private readonly Lock gate = new Lock();
     private readonly HashSet<string> fileKeyIds = new HashSet<string>(StringComparer.Ordinal);
 
     private E2eWriteMode writeMode = E2eWriteMode.Plaintext;
     private string? activeKeyId;
+
+    /// <inheritdoc/>
+    public E2eKeyScope Scope { get; } = scope;
 
     /// <inheritdoc/>
     public E2eWriteMode WriteMode
@@ -57,10 +65,10 @@ public class E2eKeyRing(IDerivedKeyStore keyStore)
         lock (gate)
         {
             RemoveKeys();
-            keyStore.SetKey(E2eKeyNames.MasterKey, masterKey);
+            keyStore.SetKey(masterKeyName, masterKey);
             foreach (var (id, key) in fileKeys)
             {
-                keyStore.SetKey(E2eKeyNames.FileKeyPrefix + id, key);
+                keyStore.SetKey(fileKeyPrefix + id, key);
                 fileKeyIds.Add(id);
             }
 
@@ -92,7 +100,7 @@ public class E2eKeyRing(IDerivedKeyStore keyStore)
         {
             if (fileKeyIds.Contains(keyId))
             {
-                return keyStore.TryGetKey(E2eKeyNames.FileKeyPrefix + keyId, out key);
+                return keyStore.TryGetKey(fileKeyPrefix + keyId, out key);
             }
         }
 
@@ -107,7 +115,7 @@ public class E2eKeyRing(IDerivedKeyStore keyStore)
         {
             if (activeKeyId != null)
             {
-                return keyStore.TryGetKey(E2eKeyNames.MasterKey, out key);
+                return keyStore.TryGetKey(masterKeyName, out key);
             }
         }
 
@@ -132,10 +140,10 @@ public class E2eKeyRing(IDerivedKeyStore keyStore)
 
     private void RemoveKeys()
     {
-        keyStore.RemoveKey(E2eKeyNames.MasterKey);
+        keyStore.RemoveKey(masterKeyName);
         foreach (var id in fileKeyIds)
         {
-            keyStore.RemoveKey(E2eKeyNames.FileKeyPrefix + id);
+            keyStore.RemoveKey(fileKeyPrefix + id);
         }
 
         fileKeyIds.Clear();

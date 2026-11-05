@@ -4,14 +4,20 @@ using Devoctomy.Blazwiz.Encryption.Models;
 namespace Devoctomy.Blazwiz.Encryption.Interfaces;
 
 /// <summary>
-/// The unlocked end to end encryption keys for this session, and what to do with files written. The raw keys are only
-/// ever held in memory (in the <see cref="Cryptography.Interfaces.IDerivedKeyStore"/>) and never written anywhere.
+/// The unlocked end to end encryption keys of one key scope for this session, and what to do with files written. The
+/// raw keys are only ever held in memory (in the <see cref="Cryptography.Interfaces.IDerivedKeyStore"/>) and never
+/// written anywhere.
 /// </summary>
 /// <remarks>
 /// Set by <see cref="IE2eKeyManager"/>; read by the encrypting file store.
 /// </remarks>
 public interface IE2eKeyRing
 {
+    /// <summary>
+    /// Gets the key scope the keys belong to.
+    /// </summary>
+    E2eKeyScope Scope { get; }
+
     /// <summary>
     /// Gets what happens to files written.
     /// </summary>

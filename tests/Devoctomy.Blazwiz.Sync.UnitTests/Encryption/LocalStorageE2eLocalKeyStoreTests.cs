@@ -9,7 +9,7 @@ namespace Devoctomy.Blazwiz.Sync.UnitTests.Encryption;
 
 public class LocalStorageE2eLocalKeyStoreTests
 {
-    private const string StorageKey = LocalStorageE2eLocalKeyStore.StorageKeyPrefix + "bob@example.com";
+    private const string StorageKey = LocalStorageE2eLocalKeyStore.StorageKeyPrefix + "account_bob@example.com";
 
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
@@ -35,7 +35,7 @@ public class LocalStorageE2eLocalKeyStoreTests
         mockLocalStorage.Setup(x => x.GetObjectAsync<E2eLocalKeys>(StorageKey)).ReturnsAsync(keys);
 
         // Act & Assert
-        Assert.Same(keys, await CreateSut().GetAsync());
+        Assert.Same(keys, await CreateSut().GetAsync(E2eKeyScope.Account));
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class LocalStorageE2eLocalKeyStoreTests
         var keys = new E2eLocalKeys();
 
         // Act
-        await CreateSut().SaveAsync(keys);
+        await CreateSut().SaveAsync(E2eKeyScope.Account, keys);
 
         // Assert
         mockLocalStorage.Verify(x => x.SetObjectAsync(StorageKey, keys), Times.Once);
@@ -55,14 +55,14 @@ public class LocalStorageE2eLocalKeyStoreTests
     public async Task GivenNullKeys_WhenSaveAsync_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().SaveAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().SaveAsync(E2eKeyScope.Account, null!));
     }
 
     [Fact]
     public async Task GivenKeys_WhenDeleteAsync_ThenUsersEntryRemoved()
     {
         // Act
-        await CreateSut().DeleteAsync();
+        await CreateSut().DeleteAsync(E2eKeyScope.Account);
 
         // Assert
         mockLocalStorage.Verify(x => x.RemoveItemAsync(StorageKey), Times.Once);
@@ -75,7 +75,32 @@ public class LocalStorageE2eLocalKeyStoreTests
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync((string?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().GetAsync(E2eKeyScope.Account));
+    }
+
+    [Fact]
+    public async Task GivenAnotherScope_WhenSaveAsync_ThenWrittenUnderThatScopesEntry()
+    {
+        // Arrange
+        var keys = new E2eLocalKeys();
+
+        // Act
+        await CreateSut().SaveAsync(new E2eKeyScope("s1"), keys);
+
+        // Assert
+        mockLocalStorage.Verify(x => x.SetObjectAsync(LocalStorageE2eLocalKeyStore.StorageKeyPrefix + "s1_bob@example.com", keys), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNullScope_WhenUsed_ThenThrowsArgumentNullException()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.GetAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(null!, new E2eLocalKeys()));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.DeleteAsync(null!));
     }
 
     private LocalStorageE2eLocalKeyStore CreateSut() => new(mockLocalStorage.Object, mockUser.Object);

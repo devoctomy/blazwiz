@@ -29,7 +29,7 @@ brought back to life, even if the refresh token is still valid.
 |---|---|
 | `blazwiz_cognito_session`: the session with ID and access tokens | The refresh token, so the session can no longer be renewed |
 | `blazwiz_saved_users`: remembered users and encrypted passwords | The offline session and offline mode, so a reload always leaves offline mode |
-| `blazwiz_e2e_keys_{user}`: this device's wrapped master key | Every PRF-derived and E2E key in `DerivedKeyStore` |
+| `blazwiz_e2e_keys_account_{user}`: this device's wrapped master key | Every PRF-derived and E2E key in `DerivedKeyStore` |
 | `blazwiz_sync_disabled`, theme, user settings | AWS credentials and the S3 client |
 | Notes, sync index, sync event log | Scheduler, connectivity and sync status |
 

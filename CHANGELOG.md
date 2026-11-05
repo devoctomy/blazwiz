@@ -16,6 +16,10 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   keys and invalid values stop the app at startup with an error naming the setting.
 
 ### Changed
+- End to end encryption keys belong to a key scope (`E2eKeyScope`), as the first step towards a separate passphrase
+  for each profile. `IUserKeysStore` and `IE2eLocalKeyStore` take the scope; apps that implement them must add it.
+  `IE2eKeyRings` gives each scope its key ring, and `IE2eKeyRing` is the account's. This device's copy of the keys is
+  now kept under `e2e_keys_account_<user>`, so each device asks for the passphrase once after updating.
 - The template's sync profiles are classes (`NotesSyncProfile`, or `FilesSyncProfile` without the notes example),
   found by `AddProfilesFromAssemblyContaining` in `Program.cs`; `AddNotesProfile` is gone. Its other sync settings are
   in `MyApp.Portal/sync.json`, embedded in the app.

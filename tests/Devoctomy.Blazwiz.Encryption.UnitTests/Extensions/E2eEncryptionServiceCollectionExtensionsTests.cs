@@ -5,6 +5,7 @@ using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Extensions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
@@ -40,6 +41,8 @@ public class E2eEncryptionServiceCollectionExtensionsTests
         Assert.IsType<EncryptedFileFormat>(sp.GetRequiredService<IEncryptedFileFormat>());
         Assert.IsType<BouncyCastleArgon2idKeyDerivationService>(sp.GetRequiredService<IArgon2idKeyDerivationService>());
         Assert.Same(sp.GetRequiredService<IE2eKeyRing>(), provider.GetRequiredService<IE2eKeyRing>());
+        Assert.Same(sp.GetRequiredService<IE2eKeyRings>().Get(E2eKeyScope.Account), sp.GetRequiredService<IE2eKeyRing>());
+        Assert.Same(E2eKeyScope.Account, sp.GetRequiredService<IE2eKeyRing>().Scope);
     }
 
     [Fact]

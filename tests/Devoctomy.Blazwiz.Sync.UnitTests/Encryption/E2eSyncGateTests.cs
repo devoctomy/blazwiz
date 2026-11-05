@@ -143,7 +143,7 @@ public class E2eSyncGateTests
             var argon2Options = new Argon2idOptions { Parameters = new Argon2idParameters { MemoryKib = 64, Iterations = 1, Parallelism = 1, KeyLength = 32 } };
             var clock = new Mock<TimeProvider>();
             clock.Setup(x => x.GetUtcNow()).Returns(DateTimeOffset.UtcNow);
-            Ring = new E2eKeyRing(derived);
+            Ring = new E2eKeyRing(derived, E2eKeyScope.Account);
             Manager = new E2eKeyManager(userKeys, new FakeE2eLocalKeyStore(), derived, Ring, new BouncyCastleArgon2idKeyDerivationService(), new AeadKeyWrapService(new BouncyCastleAesGcmAeadCipher()), argon2Options, clock.Object);
             Gate = new E2eSyncGate(Manager, options);
         }

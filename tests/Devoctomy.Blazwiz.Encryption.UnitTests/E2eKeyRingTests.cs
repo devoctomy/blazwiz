@@ -11,14 +11,22 @@ public class E2eKeyRingTests
 
     public E2eKeyRingTests()
     {
-        sut = new E2eKeyRing(keyStore);
+        sut = new E2eKeyRing(keyStore, E2eKeyScope.Account);
     }
 
     [Fact]
-    public void GivenNullKeyStore_WhenConstructing_ThenThrowsArgumentNullException()
+    public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("keyStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyRing(null!)).ParamName);
+        Assert.Equal("keyStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyRing(null!, E2eKeyScope.Account)).ParamName);
+        Assert.Equal("scope", Assert.Throws<ArgumentNullException>(() => new E2eKeyRing(keyStore, null!)).ParamName);
+    }
+
+    [Fact]
+    public void GivenAScope_WhenConstructed_ThenTheRingIsForThatScope()
+    {
+        // Act & Assert
+        Assert.Same(E2eKeyScope.Account, sut.Scope);
     }
 
     [Fact]
@@ -44,9 +52,9 @@ public class E2eKeyRingTests
         Assert.Equal(new byte[] { 1 }, master);
         Assert.True(sut.TryGetFileKey("k_1", out var first));
         Assert.Equal(new byte[] { 2 }, first);
-        Assert.True(keyStore.TryGetKey(E2eKeyNames.FileKeyPrefix + "k_2", out var second));
+        Assert.True(keyStore.TryGetKey("e2e:account:file:k_2", out var second));
         Assert.Equal(new byte[] { 3 }, second);
-        Assert.True(keyStore.TryGetKey(E2eKeyNames.MasterKey, out _));
+        Assert.True(keyStore.TryGetKey("e2e:account:master", out _));
     }
 
     [Fact]
@@ -67,7 +75,7 @@ public class E2eKeyRingTests
 
         // Assert
         Assert.False(sut.TryGetFileKey("k_1", out _));
-        Assert.False(keyStore.TryGetKey(E2eKeyNames.FileKeyPrefix + "k_1", out _));
+        Assert.False(keyStore.TryGetKey("e2e:account:file:k_1", out _));
     }
 
     [Fact]
@@ -84,7 +92,7 @@ public class E2eKeyRingTests
         Assert.Equal(E2eWriteMode.Refuse, sut.WriteMode);
         Assert.Null(sut.ActiveKeyId);
         Assert.False(sut.TryGetFileKey("k_1", out _));
-        Assert.False(keyStore.TryGetKey(E2eKeyNames.MasterKey, out _));
+        Assert.False(keyStore.TryGetKey("e2e:account:master", out _));
         Assert.True(keyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out _));
     }
 

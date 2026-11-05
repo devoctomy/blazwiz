@@ -36,7 +36,7 @@ public class E2eKeyManagerTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Arrange
-        var ring = new E2eKeyRing(device.DerivedKeys);
+        var ring = new E2eKeyRing(device.DerivedKeys, E2eKeyScope.Account);
 
         // Act & Assert
         Assert.Equal("userKeysStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(null!, device.LocalKeys, device.DerivedKeys, ring, argon2, keyWrap, options, mockClock.Object)).ParamName);
@@ -619,7 +619,7 @@ public class E2eKeyManagerTests
             LocalKeys = localKeys;
             DerivedKeys = derivedKeys;
             Kek = kek;
-            Ring = new E2eKeyRing(derivedKeys);
+            Ring = new E2eKeyRing(derivedKeys, E2eKeyScope.Account);
             Manager = new E2eKeyManager(owner.userKeys, localKeys, derivedKeys, Ring, owner.argon2, owner.keyWrap, owner.options, owner.mockClock.Object);
         }
 
@@ -669,12 +669,12 @@ public class E2eKeyManagerTests
 
     private sealed class FailingSetUserKeysStore(string value) : IUserKeysStore
     {
-        public Task<string?> GetAsync(CancellationToken ct = default) => Task.FromResult<string?>(value);
+        public Task<string?> GetAsync(E2eKeyScope scope, CancellationToken ct = default) => Task.FromResult<string?>(value);
 
-        public Task SetAsync(string value, CancellationToken ct = default) => throw new HttpRequestException();
+        public Task SetAsync(E2eKeyScope scope, string value, CancellationToken ct = default) => throw new HttpRequestException();
 
-        public Task<bool> TryCreateAsync(string value, CancellationToken ct = default) => throw new HttpRequestException();
+        public Task<bool> TryCreateAsync(E2eKeyScope scope, string value, CancellationToken ct = default) => throw new HttpRequestException();
 
-        public Task DeleteAsync(CancellationToken ct = default) => throw new HttpRequestException();
+        public Task DeleteAsync(E2eKeyScope scope, CancellationToken ct = default) => throw new HttpRequestException();
     }
 }

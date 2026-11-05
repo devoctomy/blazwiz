@@ -8,6 +8,7 @@ using Devoctomy.Blazwiz.Auth.Models;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
 using Devoctomy.Blazwiz.Core.Offline;
 using Devoctomy.Blazwiz.Core.Offline.Models;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services;
 using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Microsoft.IdentityModel.JsonWebTokens;
@@ -54,7 +55,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync());
+        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync(E2eKeyScope.Account));
         mockCredentials.VerifyNoOtherCalls();
         mockFactory.VerifyNoOtherCalls();
     }
@@ -67,7 +68,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(E2eKeyScope.Account));
         mockCredentials.VerifyNoOtherCalls();
         mockFactory.VerifyNoOtherCalls();
     }
@@ -82,7 +83,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(E2eKeyScope.Account));
         mockCredentials.VerifyNoOtherCalls();
     }
 
@@ -94,7 +95,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(E2eKeyScope.Account));
     }
 
     [Fact]
@@ -105,7 +106,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SetAsync("keys"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SetAsync(E2eKeyScope.Account, "keys"));
     }
 
     [Fact]
@@ -116,7 +117,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(E2eKeyScope.Account));
         mockFactory.VerifyNoOtherCalls();
     }
 
@@ -129,11 +130,37 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        var result = await sut.GetAsync();
+        var result = await sut.GetAsync(E2eKeyScope.Account);
 
         // Assert
         Assert.Equal("keys", result);
         mockClient.Verify(x => x.Dispose(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAnotherScope_WhenGetAsync_ThenReadsTheScopesOwnSecret()
+    {
+        // Arrange
+        mockClient.Setup(x => x.GetSecretValueAsync(It.Is<GetSecretValueRequest>(r => r.SecretId == SecretName + "/s1"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetSecretValueResponse { SecretString = "scope keys" });
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.GetAsync(new E2eKeyScope("s1"));
+
+        // Assert
+        Assert.Equal("scope keys", result);
+    }
+
+    [Fact]
+    public async Task GivenNullScope_WhenUsed_ThenThrowsArgumentNullException()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.GetAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.DeleteAsync(null!));
     }
 
     [Fact]
@@ -145,7 +172,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        Assert.Null(await sut.GetAsync());
+        Assert.Null(await sut.GetAsync(E2eKeyScope.Account));
     }
 
     [Fact]
@@ -155,7 +182,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        await sut.SetAsync("keys");
+        await sut.SetAsync(E2eKeyScope.Account, "keys");
 
         // Assert
         mockClient.Verify(x => x.PutSecretValueAsync(It.Is<PutSecretValueRequest>(r => r.SecretId == SecretName && r.SecretString == "keys"), It.IsAny<CancellationToken>()), Times.Once);
@@ -171,7 +198,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        await sut.SetAsync("keys");
+        await sut.SetAsync(E2eKeyScope.Account, "keys");
 
         // Assert
         mockClient.Verify(x => x.CreateSecretAsync(It.Is<CreateSecretRequest>(r => r.Name == SecretName && r.SecretString == "keys"), It.IsAny<CancellationToken>()), Times.Once);
@@ -189,7 +216,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        await sut.SetAsync("keys");
+        await sut.SetAsync(E2eKeyScope.Account, "keys");
 
         // Assert
         mockClient.Verify(x => x.PutSecretValueAsync(It.Is<PutSecretValueRequest>(r => r.SecretId == SecretName && r.SecretString == "keys"), It.IsAny<CancellationToken>()), Times.Exactly(2));
@@ -202,7 +229,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetAsync(E2eKeyScope.Account, null!));
     }
 
     [Fact]
@@ -212,7 +239,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        var created = await sut.TryCreateAsync("keys");
+        var created = await sut.TryCreateAsync(E2eKeyScope.Account, "keys");
 
         // Assert
         Assert.True(created);
@@ -228,7 +255,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        var created = await sut.TryCreateAsync("keys");
+        var created = await sut.TryCreateAsync(E2eKeyScope.Account, "keys");
 
         // Assert
         Assert.False(created);
@@ -242,7 +269,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.TryCreateAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.TryCreateAsync(E2eKeyScope.Account, null!));
     }
 
     [Fact]
@@ -253,7 +280,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.TryCreateAsync("keys"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.TryCreateAsync(E2eKeyScope.Account, "keys"));
     }
 
     [Fact]
@@ -263,7 +290,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        await sut.DeleteAsync();
+        await sut.DeleteAsync(E2eKeyScope.Account);
 
         // Assert
         mockClient.Verify(x => x.DeleteSecretAsync(It.Is<DeleteSecretRequest>(r => r.SecretId == SecretName && r.ForceDeleteWithoutRecovery == true), It.IsAny<CancellationToken>()), Times.Once);
@@ -278,7 +305,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await sut.DeleteAsync();
+        await sut.DeleteAsync(E2eKeyScope.Account);
     }
 
     [Fact]
@@ -289,7 +316,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<CognitoException>(() => sut.GetAsync());
+        await Assert.ThrowsAsync<CognitoException>(() => sut.GetAsync(E2eKeyScope.Account));
     }
 
     [Fact]
@@ -301,7 +328,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync());
+        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync(E2eKeyScope.Account));
     }
 
     [Fact]
@@ -313,7 +340,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<AmazonSecretsManagerException>(() => sut.GetAsync());
+        await Assert.ThrowsAsync<AmazonSecretsManagerException>(() => sut.GetAsync(E2eKeyScope.Account));
     }
 
     private SecretsManagerUserKeysStore CreateSut() =>

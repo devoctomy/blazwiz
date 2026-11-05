@@ -16,7 +16,7 @@ public class EncryptingSyncFileStoreTests
     private const string Key = "notes/Shopping.md";
 
     private readonly InMemorySyncFileStore inner;
-    private readonly E2eKeyRing ring = new(new InMemoryDerivedKeyStore());
+    private readonly E2eKeyRing ring = new(new InMemoryDerivedKeyStore(), E2eKeyScope.Account);
     private readonly EncryptedFileFormat format = new(new BouncyCastleAesGcmAeadCipher());
     private readonly byte[] fileKey = RandomNumberGenerator.GetBytes(32);
     private readonly EncryptingSyncFileStore sut;

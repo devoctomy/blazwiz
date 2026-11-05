@@ -2,6 +2,7 @@ using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Cryptography.Configuration;
 using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -39,7 +40,8 @@ public static class E2eEncryptionServiceCollectionExtensions
         services.TryAddSingleton<IArgon2idKeyDerivationService, BouncyCastleArgon2idKeyDerivationService>();
         services.TryAddSingleton<IDerivedKeyStore, InMemoryDerivedKeyStore>();
         services.TryAddSingleton<IEncryptedFileFormat, EncryptedFileFormat>();
-        services.TryAddSingleton<IE2eKeyRing, E2eKeyRing>();
+        services.TryAddSingleton<IE2eKeyRings, E2eKeyRings>();
+        services.TryAddSingleton(sp => sp.GetRequiredService<IE2eKeyRings>().Get(E2eKeyScope.Account));
         services.TryAddScoped<IE2eKeyManager, E2eKeyManager>();
 
         return services;

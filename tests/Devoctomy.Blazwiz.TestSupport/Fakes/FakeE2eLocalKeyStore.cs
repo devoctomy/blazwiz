@@ -10,21 +10,25 @@ namespace Devoctomy.Blazwiz.TestSupport.Fakes;
 /// </summary>
 public class FakeE2eLocalKeyStore : IE2eLocalKeyStore
 {
-    private string? json;
+    private readonly Dictionary<string, string> json = new Dictionary<string, string>(StringComparer.Ordinal);
 
-    public E2eLocalKeys? Saved => json == null ? null : JsonSerializer.Deserialize<E2eLocalKeys>(json);
+    // The account scope's keys.
+    public E2eLocalKeys? Saved => Get(E2eKeyScope.Account);
 
-    public Task<E2eLocalKeys?> GetAsync() => Task.FromResult(Saved);
+    public E2eLocalKeys? Get(E2eKeyScope scope) =>
+        json.TryGetValue(scope.Id, out var value) ? JsonSerializer.Deserialize<E2eLocalKeys>(value) : null;
 
-    public Task SaveAsync(E2eLocalKeys keys)
+    public Task<E2eLocalKeys?> GetAsync(E2eKeyScope scope) => Task.FromResult(Get(scope));
+
+    public Task SaveAsync(E2eKeyScope scope, E2eLocalKeys keys)
     {
-        json = JsonSerializer.Serialize(keys);
+        json[scope.Id] = JsonSerializer.Serialize(keys);
         return Task.CompletedTask;
     }
 
-    public Task DeleteAsync()
+    public Task DeleteAsync(E2eKeyScope scope)
     {
-        json = null;
+        json.Remove(scope.Id);
         return Task.CompletedTask;
     }
 }

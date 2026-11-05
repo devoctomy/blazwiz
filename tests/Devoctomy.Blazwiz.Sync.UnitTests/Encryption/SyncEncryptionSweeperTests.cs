@@ -20,7 +20,7 @@ public class SyncEncryptionSweeperTests
     private readonly Mock<ISyncUserContext> mockUser = new();
     private readonly InMemorySyncFileStore files;
     private readonly InMemorySyncIndexStore index = new();
-    private readonly E2eKeyRing ring = new(new InMemoryDerivedKeyStore());
+    private readonly E2eKeyRing ring = new(new InMemoryDerivedKeyStore(), E2eKeyScope.Account);
     private readonly EncryptedFileFormat format = new(new BouncyCastleAesGcmAeadCipher());
     private readonly EncryptingSyncFileStore appStore;
     private readonly SyncEncryptionSweeper sut;

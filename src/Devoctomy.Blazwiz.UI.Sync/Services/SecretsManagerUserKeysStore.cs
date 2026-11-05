@@ -5,15 +5,17 @@ using Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
 using Devoctomy.Blazwiz.Core.Offline.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace Devoctomy.Blazwiz.UI.Sync.Services;
 
 /// <summary>
-/// <see cref="IUserKeysStore"/> calling Secrets Manager from the browser with the session's identity pool credentials. The secret
-/// is named after the user pool sub, not the identity id, because identity ids contain ':', which secret names cannot;
-/// the stack only lets each user reach the secret matching their own sub (cloudformation/stack.yaml).
+/// <see cref="IUserKeysStore"/> calling Secrets Manager from the browser with the session's identity pool credentials.
+/// Each secret is named after the user pool sub, not the identity id, because identity ids contain ':', which secret
+/// names cannot: <c>&lt;sub&gt;/keys</c> for the account's key scope and <c>&lt;sub&gt;/keys/&lt;scope&gt;</c> for any
+/// other. The stack only lets each user reach the secrets matching their own sub (cloudformation/stack.yaml).
 /// </summary>
 public sealed class SecretsManagerUserKeysStore(
     IAuthenticationService authService,
@@ -28,8 +30,8 @@ public sealed class SecretsManagerUserKeysStore(
     private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
 
     /// <inheritdoc/>
-    public Task<string?> GetAsync(CancellationToken ct = default) =>
-        WithClientAsync(ct, async (client, secretName) =>
+    public Task<string?> GetAsync(E2eKeyScope scope, CancellationToken ct = default) =>
+        WithClientAsync(scope, ct, async (client, secretName) =>
         {
             try
             {
@@ -43,11 +45,11 @@ public sealed class SecretsManagerUserKeysStore(
         });
 
     /// <inheritdoc/>
-    public Task SetAsync(string value, CancellationToken ct = default)
+    public Task SetAsync(E2eKeyScope scope, string value, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        return WithClientAsync<object?>(ct, async (client, secretName) =>
+        return WithClientAsync<object?>(scope, ct, async (client, secretName) =>
         {
             try
             {
@@ -71,11 +73,11 @@ public sealed class SecretsManagerUserKeysStore(
     }
 
     /// <inheritdoc/>
-    public Task<bool> TryCreateAsync(string value, CancellationToken ct = default)
+    public Task<bool> TryCreateAsync(E2eKeyScope scope, string value, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        return WithClientAsync(ct, async (client, secretName) =>
+        return WithClientAsync(scope, ct, async (client, secretName) =>
         {
             try
             {
@@ -90,8 +92,8 @@ public sealed class SecretsManagerUserKeysStore(
     }
 
     /// <inheritdoc/>
-    public Task DeleteAsync(CancellationToken ct = default) =>
-        WithClientAsync<object?>(ct, async (client, secretName) =>
+    public Task DeleteAsync(E2eKeyScope scope, CancellationToken ct = default) =>
+        WithClientAsync<object?>(scope, ct, async (client, secretName) =>
         {
             try
             {
@@ -123,8 +125,10 @@ public sealed class SecretsManagerUserKeysStore(
         }
     }
 
-    private async Task<T> WithClientAsync<T>(CancellationToken ct, Func<IAmazonSecretsManager, string, Task<T>> action)
+    private async Task<T> WithClientAsync<T>(E2eKeyScope scope, CancellationToken ct, Func<IAmazonSecretsManager, string, Task<T>> action)
     {
+        ArgumentNullException.ThrowIfNull(scope);
+
         if (!authService.IsPlaceholder && offlineModeService.IsOffline)
         {
             // Not "cannot be used in this session" (InvalidOperationException), which would turn encryption off
@@ -143,7 +147,7 @@ public sealed class SecretsManagerUserKeysStore(
         using var client = clientFactory.Create(credentials);
         try
         {
-            return await action(client, $"{sub}/keys");
+            return await action(client, scope.IsAccount ? $"{sub}/keys" : $"{sub}/keys/{scope.Id}");
         }
         catch (AmazonServiceException ex) when (ex.InnerException is HttpRequestException)
         {
