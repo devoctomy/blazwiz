@@ -39,7 +39,6 @@
     </Content>
   </ItemGroup>
 <!--#if (IncludeSync)-->
-  <!-- The sync settings and profiles, read by UseEmbeddedConfiguration in Program.cs. -->
   <ItemGroup>
     <EmbeddedResource Include="sync.json" LogicalName="sync.json" />
     <Content Remove="sync.json" />

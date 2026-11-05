@@ -1,5 +1,4 @@
 {
-  // Comments are allowed, as in appsettings.json.
   "Sync": {
     "ChangeDebounce": "00:00:03",
     "Profiles": {
