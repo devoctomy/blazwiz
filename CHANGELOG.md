@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.4.0
+
 ### Added
 - Profiles can have a display name from resources: `UseDisplayText(key, resourceType)`, shown by Settings and the
   Sync page's profile filter (`ISyncProfileDisplayNames`).
@@ -16,6 +18,12 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 - A lock indicator beside the sync status pill: how many profiles are unlocked, with Lock all.
 - `ISyncProtectedProfileService.Profiles`, `IsLoaded` and `ProfilesChanged`: the user's profiles, and whether each has
   a passphrase yet.
+- Labels for protected profiles, kept only on the device and never synced: `ISyncProtectedProfileService.SetLabelAsync`,
+  stored by `IE2eProfileLabelStore` (local storage). Settings, the unlock panel and the Sync page's profile filter show
+  a profile by its label in place of its id. A label is removed when its profile is deleted, on this device or another.
+  The template labels each notebook with its name whenever it is unlocked, so a notebook shows its id on a device until
+  it has been unlocked there.
+- The template's notebook page has a Lock button: it locks the notebook and goes back to the Notebooks page.
 - Sync profiles can be classes deriving from `SyncProfileDefinition`, added with `AddProfile<TProfile>()` or found in
   an assembly with `AddProfilesFromAssemblyContaining<T>()`.
 - Protected profiles, each with its own passphrase and keys (`IE2eProtectedProfileManager`): create, list, unlock
