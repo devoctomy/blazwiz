@@ -71,13 +71,17 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddSessionLifecycleHandler<SyncSessionHandler>();
         services.AddErrorText<SyncUiText>();
 
-        // End to end encryption: the user's keys in their own Secrets Manager secret (<user pool sub>/keys), and this
+        // End to end encryption: the user's keys in their own Secrets Manager secrets (<user pool sub>/keys, and
+        // <user pool sub>/keys/<id> for each protected profile, listed in <user pool sub>/keys/index), and this
         // device's copy of the master key wrapped by a key derived from the passkey PRF.
         services.AddSingleton<ISecretsManagerClientFactory, SecretsManagerClientFactory>();
-        services.AddScoped<IUserKeysStore, SecretsManagerUserKeysStore>();
+        services.AddScoped<SecretsManagerUserKeysStore>();
+        services.AddScoped<IUserKeysStore>(sp => sp.GetRequiredService<SecretsManagerUserKeysStore>());
+        services.AddScoped<IE2eProfileIndexStore>(sp => sp.GetRequiredService<SecretsManagerUserKeysStore>());
         services.AddBlazwizPrfKeyDerivation(prf => prf.AddKey(E2eKeyNames.KeyEncryptionKey));
         services.AddBlazwizE2eEncryption();
         services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
+        services.AddScoped<IE2eLocalProfileIndexStore, LocalStorageE2eLocalProfileIndexStore>();
         services.AddScoped<IPasskeyUnlockService, PasskeyUnlockService>();
 
         services.AddBlazwizSync(configure);

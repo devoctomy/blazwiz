@@ -205,6 +205,8 @@ public class SyncServiceCollectionExtensionsTests
         var services = CreateServices();
         services.AddScoped(_ => Mock.Of<IUserKeysStore>());
         services.AddScoped(_ => Mock.Of<IE2eLocalKeyStore>());
+        services.AddScoped(_ => Mock.Of<IE2eProfileIndexStore>());
+        services.AddScoped(_ => Mock.Of<IE2eLocalProfileIndexStore>());
         services.AddBlazwizE2eEncryption();
         services.AddBlazwizSync(sync => sync
             .AddProfile("notes", p => p.UseRemote("notes/**/*.md").UseEncryption())

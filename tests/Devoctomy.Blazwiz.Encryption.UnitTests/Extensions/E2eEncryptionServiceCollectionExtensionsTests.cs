@@ -27,6 +27,8 @@ public class E2eEncryptionServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddScoped(_ => Mock.Of<IUserKeysStore>());
         services.AddScoped(_ => Mock.Of<IE2eLocalKeyStore>());
+        services.AddScoped(_ => Mock.Of<IE2eProfileIndexStore>());
+        services.AddScoped(_ => Mock.Of<IE2eLocalProfileIndexStore>());
 
         // Act
         var result = services.AddBlazwizE2eEncryption();
@@ -37,6 +39,8 @@ public class E2eEncryptionServiceCollectionExtensionsTests
         await using var scope = provider.CreateAsyncScope();
         var sp = scope.ServiceProvider;
         Assert.IsType<E2eKeyManager>(sp.GetRequiredService<IE2eKeyManager>());
+        Assert.IsType<E2eProtectedProfileManager>(sp.GetRequiredService<IE2eProtectedProfileManager>());
+        Assert.IsType<E2eKeysDocumentService>(sp.GetRequiredService<IE2eKeysDocumentService>());
         Assert.IsType<E2eKeyRing>(sp.GetRequiredService<IE2eKeyRing>());
         Assert.IsType<EncryptedFileFormat>(sp.GetRequiredService<IEncryptedFileFormat>());
         Assert.IsType<BouncyCastleArgon2idKeyDerivationService>(sp.GetRequiredService<IArgon2idKeyDerivationService>());

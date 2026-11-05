@@ -24,11 +24,13 @@ public class E2eKeyManagerTests
     private readonly CountingArgon2 argon2 = new();
     private readonly AeadKeyWrapService keyWrap = new(new BouncyCastleAesGcmAeadCipher());
     private readonly Mock<TimeProvider> mockClock = new();
+    private readonly E2eKeysDocumentService documents;
     private readonly Device device;
 
     public E2eKeyManagerTests()
     {
         mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
+        documents = new E2eKeysDocumentService(argon2, keyWrap, options, mockClock.Object);
         device = NewDevice();
     }
 
@@ -39,14 +41,12 @@ public class E2eKeyManagerTests
         var ring = new E2eKeyRing(device.DerivedKeys, E2eKeyScope.Account);
 
         // Act & Assert
-        Assert.Equal("userKeysStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(null!, device.LocalKeys, device.DerivedKeys, ring, argon2, keyWrap, options, mockClock.Object)).ParamName);
-        Assert.Equal("localKeyStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, null!, device.DerivedKeys, ring, argon2, keyWrap, options, mockClock.Object)).ParamName);
-        Assert.Equal("derivedKeyStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, null!, ring, argon2, keyWrap, options, mockClock.Object)).ParamName);
-        Assert.Equal("keyRing", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, null!, argon2, keyWrap, options, mockClock.Object)).ParamName);
-        Assert.Equal("argon2", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, null!, keyWrap, options, mockClock.Object)).ParamName);
-        Assert.Equal("keyWrapService", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, argon2, null!, options, mockClock.Object)).ParamName);
-        Assert.Equal("argon2Options", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, argon2, keyWrap, null!, mockClock.Object)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, argon2, keyWrap, options, null!)).ParamName);
+        Assert.Equal("userKeysStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(null!, device.LocalKeys, device.DerivedKeys, ring, documents, keyWrap)).ParamName);
+        Assert.Equal("localKeyStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, null!, device.DerivedKeys, ring, documents, keyWrap)).ParamName);
+        Assert.Equal("derivedKeyStore", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, null!, ring, documents, keyWrap)).ParamName);
+        Assert.Equal("keyRing", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, null!, documents, keyWrap)).ParamName);
+        Assert.Equal("keysDocuments", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, null!, keyWrap)).ParamName);
+        Assert.Equal("keyWrapService", Assert.Throws<ArgumentNullException>(() => new E2eKeyManager(userKeys, device.LocalKeys, device.DerivedKeys, ring, documents, null!)).ParamName);
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class E2eKeyManagerTests
         Assert.Equal(12, Convert.FromBase64String(json["master_key"]!["nonce"]!.GetValue<string>()).Length);
         Assert.Equal(48, Convert.FromBase64String(json["master_key"]!["wrapped"]!.GetValue<string>()).Length);
         var (keyId, entry) = Assert.Single(json["keys"]!.AsObject());
-        Assert.StartsWith(E2eKeyManager.KeyIdPrefix, keyId);
+        Assert.StartsWith(E2eKeysDocumentService.KeyIdPrefix, keyId);
         Assert.Equal(18, keyId.Length);
         Assert.Equal("active", entry!["status"]!.GetValue<string>());
         Assert.Equal(Now.UtcDateTime, entry["created"]!.GetValue<DateTime>());
@@ -392,7 +392,7 @@ public class E2eKeyManagerTests
         // Arrange
         await device.Manager.EnableAsync(Passphrase);
         var store = new FailingSetUserKeysStore(userKeys.Value!);
-        var manager = new E2eKeyManager(store, device.LocalKeys, device.DerivedKeys, device.Ring, argon2, keyWrap, options, mockClock.Object);
+        var manager = new E2eKeyManager(store, device.LocalKeys, device.DerivedKeys, device.Ring, documents, keyWrap);
 
         // Act & Assert
         await Assert.ThrowsAsync<HttpRequestException>(() => manager.ChangePassphraseAsync(Passphrase, "new passphrase"));
@@ -620,7 +620,7 @@ public class E2eKeyManagerTests
             DerivedKeys = derivedKeys;
             Kek = kek;
             Ring = new E2eKeyRing(derivedKeys, E2eKeyScope.Account);
-            Manager = new E2eKeyManager(owner.userKeys, localKeys, derivedKeys, Ring, owner.argon2, owner.keyWrap, owner.options, owner.mockClock.Object);
+            Manager = new E2eKeyManager(owner.userKeys, localKeys, derivedKeys, Ring, owner.documents, owner.keyWrap);
         }
 
         public FakeE2eLocalKeyStore LocalKeys { get; }

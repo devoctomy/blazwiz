@@ -21,7 +21,9 @@ public class E2eKeyRing(IDerivedKeyStore keyStore, E2eKeyScope scope)
     private readonly Lock gate = new Lock();
     private readonly HashSet<string> fileKeyIds = new HashSet<string>(StringComparer.Ordinal);
 
-    private E2eWriteMode writeMode = E2eWriteMode.Plaintext;
+    // Only the account's scope ever writes plaintext (while account encryption is off); every other scope is always
+    // encrypted, so it refuses writes until unlocked.
+    private E2eWriteMode writeMode = scope.IsAccount ? E2eWriteMode.Plaintext : E2eWriteMode.Refuse;
     private string? activeKeyId;
 
     /// <inheritdoc/>
@@ -82,6 +84,7 @@ public class E2eKeyRing(IDerivedKeyStore keyStore, E2eKeyScope scope)
     {
         lock (gate)
         {
+            CheckPlaintextAllowed(mode);
             if (mode == E2eWriteMode.Encrypt && activeKeyId == null)
             {
                 throw new InvalidOperationException("Files cannot be encrypted until the keys are unlocked.");
@@ -131,10 +134,20 @@ public class E2eKeyRing(IDerivedKeyStore keyStore, E2eKeyScope scope)
             throw new ArgumentException("Files cannot be encrypted without the keys.", nameof(mode));
         }
 
+        CheckPlaintextAllowed(mode);
+
         lock (gate)
         {
             RemoveKeys();
             writeMode = mode;
+        }
+    }
+
+    private void CheckPlaintextAllowed(E2eWriteMode mode)
+    {
+        if (mode == E2eWriteMode.Plaintext && !Scope.IsAccount)
+        {
+            throw new InvalidOperationException($"Key scope '{Scope}' is always encrypted and never writes plaintext.");
         }
     }
 

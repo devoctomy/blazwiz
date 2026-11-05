@@ -30,6 +30,29 @@ public class E2eKeyRingTests
     }
 
     [Fact]
+    public void GivenAnotherScope_WhenNew_ThenItRefusesWritesUntilUnlocked()
+    {
+        // Act
+        var ring = new E2eKeyRing(keyStore, new E2eKeyScope("s1"));
+
+        // Assert
+        Assert.Equal(E2eWriteMode.Refuse, ring.WriteMode);
+    }
+
+    [Fact]
+    public void GivenAnotherScope_WhenAskedToWritePlaintext_ThenThrows()
+    {
+        // Arrange
+        var ring = new E2eKeyRing(keyStore, new E2eKeyScope("s1"));
+        ring.Load([1], new Dictionary<string, byte[]> { ["k_1"] = [2] }, "k_1");
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => ring.SetWriteMode(E2eWriteMode.Plaintext));
+        Assert.Throws<InvalidOperationException>(() => ring.Clear(E2eWriteMode.Plaintext));
+        Assert.Equal(E2eWriteMode.Encrypt, ring.WriteMode);
+    }
+
+    [Fact]
     public void GivenNewRing_WhenGettingState_ThenPlaintextWithNoKeys()
     {
         // Act & Assert

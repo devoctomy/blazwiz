@@ -27,6 +27,9 @@
   <data name="Error.E2e.PassphraseRequired" xml:space="preserve">
     <value>Your passkey cannot unlock this device's keys. Enter your passphrase instead.</value>
   </data>
+  <data name="Error.E2e.ProfileNotFound" xml:space="preserve">
+    <value>There is no protected profile {0}.</value>
+  </data>
   <data name="Error.E2e.WrongPassphrase" xml:space="preserve">
     <value>That passphrase is not correct.</value>
   </data>

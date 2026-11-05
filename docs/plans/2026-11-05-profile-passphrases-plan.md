@@ -217,14 +217,24 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 - [ ] A registry of profiles added and removed at runtime, with no profile declared in code; the sync service,
       scheduler, storage resolver and gate work over the registry (R7). Protected profiles found again at sign in.
 - [ ] Local stores per runtime profile: IndexedDB databases, OPFS and folder directories named after the profile id.
-- [ ] The index secret: read at sign in, updated on create, delete and settings changes (D3).
-- [ ] Create a profile: GUID, new keys document (conditional create), index entry, local stores (R1, R2, R7, R8).
-- [ ] Unlock with the passphrase, online and offline (R4, R13); optional device unlock (R14).
+- [x] Keys-document cryptography shared by the account and protected profiles (`IE2eKeysDocumentService`), so it
+      exists once.
+- [x] Key rings of protected profiles start refusing writes and can never be set to write plaintext; only the
+      account's scope can (R3).
+- [x] `IE2eProtectedProfileManager`: list, create, unlock (online, or offline from this device's copy), lock, lock
+      all, change passphrase, delete the keys (R1, R2, R4, R5, R9, R10, R11, R13). Profile ids are GUIDs (R8).
+- [x] The index secret (`<sub>/keys/index`, `IE2eProfileIndexStore`) with this device's copy
+      (`IE2eLocalProfileIndexStore`), read when listing and updated on create and delete (D3). Index entries hold
+      the id and created date; per-profile settings are added with the features that use them.
+- [ ] Create a profile: its local stores and its registration as a sync profile (the keys, GUID and index entry are
+      done above) (R7).
+- [ ] Optional device unlock with the passkey (R14). Unlocking with the passphrase, online and offline, is done above.
 - [ ] Encrypting store: refuse when locked, coded errors, idle timer (R4, R5).
 - [ ] Leave passphrase scopes out of `E2eSyncGate` and the account sweeps; they sync while locked (R3, R12, R16).
 - [ ] Format version with scope and path in the authenticated data (R15).
-- [ ] Change passphrase (R10).
-- [ ] Delete a profile: files on every storage, cached keys, its secret and its index entry (R11).
+- [x] Change passphrase (R10).
+- [ ] Delete a profile's files on every storage, and remove it as a sync profile (its keys, this device's copy and
+      its index entry are done above) (R11).
 - [ ] Lock in every tab over a broadcast channel (R6); lock all from a session lifecycle handler on sign out.
 
 ### Phase 3: AWS

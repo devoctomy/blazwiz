@@ -13,6 +13,11 @@ Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalKeyStore.DeleteAsync(Devoc
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalKeyStore.GetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eLocalKeys?>!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalKeyStore.SaveAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, Devoctomy.Blazwiz.Encryption.Models.E2eLocalKeys! keys) -> System.Threading.Tasks.Task!
 *REMOVED*Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalKeyStore.SaveAsync(Devoctomy.Blazwiz.Encryption.Models.E2eLocalKeys! keys) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.GetAsync() -> System.Threading.Tasks.Task<string?>!
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.LocalStorageE2eLocalProfileIndexStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext) -> void
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.SaveAsync(string! value) -> System.Threading.Tasks.Task!
 abstract Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition.Configure(Devoctomy.Blazwiz.Sync.Configuration.SyncProfileBuilder! profile) -> void
 abstract Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition.Name.get -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.ConfigurationSection = "Sync" -> string!
+const Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.StorageKeyPrefix = "e2e_index_" -> string!

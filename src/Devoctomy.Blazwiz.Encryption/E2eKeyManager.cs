@@ -20,35 +20,18 @@ public class E2eKeyManager(
     IE2eLocalKeyStore localKeyStore,
     IDerivedKeyStore derivedKeyStore,
     IE2eKeyRing keyRing,
-    IArgon2idKeyDerivationService argon2,
-    IKeyWrapService keyWrapService,
-    Argon2idOptions argon2Options,
-    TimeProvider timeProvider)
+    IE2eKeysDocumentService keysDocuments,
+    IKeyWrapService keyWrapService)
     : IE2eKeyManager
 {
-    /// <summary>
-    /// The length of a new passphrase salt, in bytes.
-    /// </summary>
-    public const int SaltLength = 16;
-
-    /// <summary>
-    /// The prefix of every file key id.
-    /// </summary>
-    public const string KeyIdPrefix = "k_";
-
-    private const string Base32Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
-
     private static readonly E2eKeyScope Scope = E2eKeyScope.Account;
-    private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions();
 
     private readonly IUserKeysStore userKeysStore = userKeysStore ?? throw new ArgumentNullException(nameof(userKeysStore));
     private readonly IE2eLocalKeyStore localKeyStore = localKeyStore ?? throw new ArgumentNullException(nameof(localKeyStore));
     private readonly IDerivedKeyStore derivedKeyStore = derivedKeyStore ?? throw new ArgumentNullException(nameof(derivedKeyStore));
     private readonly IE2eKeyRing keyRing = keyRing ?? throw new ArgumentNullException(nameof(keyRing));
-    private readonly IArgon2idKeyDerivationService argon2 = argon2 ?? throw new ArgumentNullException(nameof(argon2));
+    private readonly IE2eKeysDocumentService keysDocuments = keysDocuments ?? throw new ArgumentNullException(nameof(keysDocuments));
     private readonly IKeyWrapService keyWrapService = keyWrapService ?? throw new ArgumentNullException(nameof(keyWrapService));
-    private readonly Argon2idOptions argon2Options = argon2Options ?? throw new ArgumentNullException(nameof(argon2Options));
-    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     private E2eStatus status = E2eStatus.Unknown;
 
@@ -113,7 +96,7 @@ public class E2eKeyManager(
             return SetStatus(!reached ? E2eStatus.Unknown : HasKeyEncryptionKey ? E2eStatus.Disabled : E2eStatus.Unavailable);
         }
 
-        var document = Parse(json);
+        var document = keysDocuments.Parse(json);
         if (!derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
         {
             keyRing.Clear(E2eWriteMode.Refuse);
@@ -155,29 +138,10 @@ public class E2eKeyManager(
         ArgumentException.ThrowIfNullOrEmpty(passphrase);
 
         var kek = GetKeyEncryptionKey();
-        byte[]? passphraseKey = null;
-        byte[]? masterKey = null;
-        byte[]? fileKey = null;
         try
         {
-            progress?.Report(new E2eProgress(E2eStep.DeriveKey, false));
-            var salt = RandomNumberGenerator.GetBytes(SaltLength);
-            var parameters = argon2Options.Parameters.Clone();
-            passphraseKey = await argon2.DeriveKeyAsync(passphrase, salt, parameters, ct);
-            progress?.Report(new E2eProgress(E2eStep.DeriveKey, true));
-
-            progress?.Report(new E2eProgress(E2eStep.CreateKeys, false));
-            masterKey = keyWrapService.CreateKey();
-            fileKey = keyWrapService.CreateKey();
-            var keyId = CreateKeyId();
-            var document = new UserKeysDocument
-            {
-                Kdf = KdfSettings.Create(salt, parameters),
-                MasterKey = keyWrapService.Wrap(passphraseKey, masterKey),
-            };
-            document.Keys[keyId] = CreateFileKeyEntry(keyWrapService.Wrap(masterKey, fileKey, Encoding.UTF8.GetBytes(keyId)));
-            var json = JsonSerializer.Serialize(document, JsonOptions);
-            progress?.Report(new E2eProgress(E2eStep.CreateKeys, true));
+            using var keys = await keysDocuments.CreateAsync(passphrase, progress, ct);
+            var json = keysDocuments.Serialize(keys.Document);
 
             progress?.Report(new E2eProgress(E2eStep.SaveKeys, false));
             if (!await userKeysStore.TryCreateAsync(Scope, json, ct))
@@ -193,16 +157,16 @@ public class E2eKeyManager(
             progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, false));
             await localKeyStore.SaveAsync(Scope, new E2eLocalKeys
             {
-                WrappedMasterKey = keyWrapService.Wrap(kek, masterKey),
+                WrappedMasterKey = keyWrapService.Wrap(kek, keys.MasterKey),
                 CachedDocument = json,
             });
-            keyRing.Load(masterKey, new Dictionary<string, byte[]>(StringComparer.Ordinal) { [keyId] = fileKey }, keyId);
+            keyRing.Load(keys.MasterKey, new Dictionary<string, byte[]>(StringComparer.Ordinal) { [keys.FileKeyId] = keys.FileKey }, keys.FileKeyId);
             progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, true));
             SetStatus(E2eStatus.Unlocked);
         }
         finally
         {
-            Wipe(kek, passphraseKey, masterKey, fileKey);
+            CryptographicOperations.ZeroMemory(kek);
         }
     }
 
@@ -217,9 +181,9 @@ public class E2eKeyManager(
         {
             var json = await userKeysStore.GetAsync(Scope, ct)
                 ?? throw new InvalidOperationException("End to end encryption is not enabled.");
-            var document = Parse(json);
-            masterKey = await UnwrapWithPassphraseAsync(document, passphrase, ct);
-            UnlockFileKeys(document, masterKey);
+            var document = keysDocuments.Parse(json);
+            masterKey = await keysDocuments.UnwrapMasterKeyAsync(document, passphrase, ct);
+            keysDocuments.LoadFileKeys(keyRing, document, masterKey);
             await localKeyStore.SaveAsync(Scope, new E2eLocalKeys
             {
                 WrappedMasterKey = keyWrapService.Wrap(kek, masterKey),
@@ -241,18 +205,13 @@ public class E2eKeyManager(
 
         var json = await userKeysStore.GetAsync(Scope, ct)
             ?? throw new InvalidOperationException("End to end encryption is not enabled.");
-        var document = Parse(json);
+        var document = keysDocuments.Parse(json);
         byte[]? masterKey = null;
-        byte[]? passphraseKey = null;
         try
         {
-            masterKey = await UnwrapWithPassphraseAsync(document, currentPassphrase, ct);
-            var salt = RandomNumberGenerator.GetBytes(SaltLength);
-            var parameters = argon2Options.Parameters.Clone();
-            passphraseKey = await argon2.DeriveKeyAsync(newPassphrase, salt, parameters, ct);
-            document.Kdf = KdfSettings.Create(salt, parameters);
-            document.MasterKey = keyWrapService.Wrap(passphraseKey, masterKey);
-            var updated = JsonSerializer.Serialize(document, JsonOptions);
+            masterKey = await keysDocuments.UnwrapMasterKeyAsync(document, currentPassphrase, ct);
+            await keysDocuments.RewrapMasterKeyAsync(document, masterKey, newPassphrase, ct);
+            var updated = keysDocuments.Serialize(document);
             await userKeysStore.SetAsync(Scope, updated, ct);
 
             var local = await localKeyStore.GetAsync(Scope);
@@ -264,7 +223,7 @@ public class E2eKeyManager(
         }
         finally
         {
-            Wipe(masterKey, passphraseKey);
+            Wipe(masterKey);
         }
     }
 
@@ -275,7 +234,7 @@ public class E2eKeyManager(
 
         var json = await userKeysStore.GetAsync(Scope, ct)
             ?? throw new InvalidOperationException("End to end encryption is not enabled.");
-        var masterKey = await UnwrapWithPassphraseAsync(Parse(json), passphrase, ct);
+        var masterKey = await keysDocuments.UnwrapMasterKeyAsync(keysDocuments.Parse(json), passphrase, ct);
         CryptographicOperations.ZeroMemory(masterKey);
     }
 
@@ -288,7 +247,7 @@ public class E2eKeyManager(
             throw new InvalidOperationException("This device has no keys to unlock.");
         }
 
-        var document = Parse(local.CachedDocument);
+        var document = keysDocuments.Parse(local.CachedDocument);
         if (derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
         {
             try
@@ -312,10 +271,10 @@ public class E2eKeyManager(
             throw new E2ePassphraseRequiredException();
         }
 
-        var masterKey = await UnwrapWithPassphraseAsync(document, passphrase, ct);
+        var masterKey = await keysDocuments.UnwrapMasterKeyAsync(document, passphrase, ct);
         try
         {
-            UnlockFileKeys(document, masterKey);
+            keysDocuments.LoadFileKeys(keyRing, document, masterKey);
         }
         finally
         {
@@ -365,41 +324,6 @@ public class E2eKeyManager(
         SetStatus(HasKeyEncryptionKey ? E2eStatus.Disabled : E2eStatus.Unavailable);
     }
 
-    private static UserKeysDocument Parse(string json)
-    {
-        UserKeysDocument? document;
-        try
-        {
-            document = JsonSerializer.Deserialize<UserKeysDocument>(json, JsonOptions);
-        }
-        catch (JsonException ex)
-        {
-            throw new InvalidDataException("The keys document is not valid JSON.", ex);
-        }
-
-        if (document == null)
-        {
-            throw new InvalidDataException("The keys document is empty.");
-        }
-
-        if (document.Version != UserKeysDocument.CurrentVersion)
-        {
-            throw new InvalidDataException($"Keys document version {document.Version} is not supported.");
-        }
-
-        if (!string.Equals(document.Kdf.Algorithm, KdfSettings.Argon2idAlgorithm, StringComparison.Ordinal))
-        {
-            throw new InvalidDataException($"Key derivation '{document.Kdf.Algorithm}' is not supported.");
-        }
-
-        if (document.Keys.Count(k => k.Value.Status == FileKeyEntry.ActiveStatus) != 1)
-        {
-            throw new InvalidDataException("The keys document must have exactly one active file key.");
-        }
-
-        return document;
-    }
-
     private static void Wipe(params byte[]?[] keys)
     {
         foreach (var key in keys)
@@ -411,69 +335,11 @@ public class E2eKeyManager(
         }
     }
 
-    private static string CreateKeyId()
-    {
-        // 10 random bytes as 16 Crockford base32 characters: 80 bits, so ids never collide.
-        var bytes = RandomNumberGenerator.GetBytes(10);
-        var id = new StringBuilder(KeyIdPrefix, KeyIdPrefix.Length + 16);
-        var buffer = 0;
-        var bits = 0;
-        foreach (var b in bytes)
-        {
-            buffer = (buffer << 8) | b;
-            bits += 8;
-            while (bits >= 5)
-            {
-                bits -= 5;
-                id.Append(Base32Alphabet[(buffer >> bits) & 31]);
-            }
-        }
-
-        return id.ToString();
-    }
-
-    private FileKeyEntry CreateFileKeyEntry(WrappedKey wrapped) => new FileKeyEntry
-    {
-        Algorithm = wrapped.Algorithm,
-        Nonce = wrapped.Nonce,
-        Wrapped = wrapped.Wrapped,
-        Created = timeProvider.GetUtcNow().UtcDateTime,
-        Status = FileKeyEntry.ActiveStatus,
-    };
-
     private byte[] GetKeyEncryptionKey()
     {
         return derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek)
             ? kek
             : throw new InvalidOperationException("End to end encryption needs you to sign in with your passkey.");
-    }
-
-    private async Task<byte[]> UnwrapWithPassphraseAsync(UserKeysDocument document, string passphrase, CancellationToken ct)
-    {
-        byte[] salt;
-        try
-        {
-            salt = Convert.FromBase64String(document.Kdf.Salt);
-        }
-        catch (FormatException ex)
-        {
-            throw new InvalidDataException("The keys document salt is not valid base64.", ex);
-        }
-
-        var passphraseKey = await argon2.DeriveKeyAsync(passphrase, salt, document.Kdf.ToParameters(), ct);
-        try
-        {
-            return keyWrapService.Unwrap(passphraseKey, document.MasterKey);
-        }
-        catch (CryptographicException ex)
-        {
-            // The GCM tag only checks out with the right passphrase key, so this is the passphrase check.
-            throw new E2eWrongPassphraseException(ex);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(passphraseKey);
-        }
     }
 
     private bool TryUnlock(UserKeysDocument document, byte[] kek, WrappedKey wrappedMasterKey)
@@ -490,7 +356,7 @@ public class E2eKeyManager(
 
         try
         {
-            UnlockFileKeys(document, masterKey);
+            keysDocuments.LoadFileKeys(keyRing, document, masterKey);
             return true;
         }
         catch (InvalidDataException)
@@ -500,36 +366,6 @@ public class E2eKeyManager(
         finally
         {
             CryptographicOperations.ZeroMemory(masterKey);
-        }
-    }
-
-    private void UnlockFileKeys(UserKeysDocument document, byte[] masterKey)
-    {
-        var fileKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal);
-        try
-        {
-            foreach (var (id, entry) in document.Keys)
-            {
-                try
-                {
-                    // The id is the associated data, so an entry moved to another id does not unwrap.
-                    fileKeys[id] = keyWrapService.Unwrap(masterKey, entry, Encoding.UTF8.GetBytes(id));
-                }
-                catch (CryptographicException ex)
-                {
-                    throw new InvalidDataException($"File key '{id}' does not belong to this master key.", ex);
-                }
-            }
-
-            var activeKeyId = document.Keys.Single(k => k.Value.Status == FileKeyEntry.ActiveStatus).Key;
-            keyRing.Load(masterKey, fileKeys, activeKeyId);
-        }
-        finally
-        {
-            foreach (var key in fileKeys.Values)
-            {
-                CryptographicOperations.ZeroMemory(key);
-            }
         }
     }
 

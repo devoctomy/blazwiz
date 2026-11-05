@@ -74,6 +74,9 @@ public class SyncModuleServiceCollectionExtensionsTests
         Assert.Contains(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>(), h => h is SyncSessionHandler);
         Assert.IsType<SecretsManagerClientFactory>(scope.ServiceProvider.GetRequiredService<ISecretsManagerClientFactory>());
         Assert.IsType<SecretsManagerUserKeysStore>(scope.ServiceProvider.GetRequiredService<IUserKeysStore>());
+        Assert.Same(scope.ServiceProvider.GetRequiredService<IUserKeysStore>(), scope.ServiceProvider.GetRequiredService<IE2eProfileIndexStore>());
+        Assert.IsType<LocalStorageE2eLocalProfileIndexStore>(scope.ServiceProvider.GetRequiredService<IE2eLocalProfileIndexStore>());
+        Assert.IsType<E2eProtectedProfileManager>(scope.ServiceProvider.GetRequiredService<IE2eProtectedProfileManager>());
         Assert.IsType<EncryptingSyncFileStore>(scope.ServiceProvider.GetRequiredKeyedService<ISyncFileStore>(Profile));
         Assert.IsType<E2eKeyManager>(scope.ServiceProvider.GetRequiredService<IE2eKeyManager>());
         Assert.IsType<LocalStorageE2eLocalKeyStore>(scope.ServiceProvider.GetRequiredService<IE2eLocalKeyStore>());

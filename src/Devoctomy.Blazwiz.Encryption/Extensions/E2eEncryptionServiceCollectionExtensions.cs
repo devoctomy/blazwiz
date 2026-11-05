@@ -14,11 +14,13 @@ namespace Devoctomy.Blazwiz.Encryption.Extensions;
 public static class E2eEncryptionServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds end to end encryption key management (<see cref="IE2eKeyManager"/>) and the encrypted file format.
+    /// Adds end to end encryption key management (<see cref="IE2eKeyManager"/> for the account,
+    /// <see cref="IE2eProtectedProfileManager"/> for protected profiles) and the encrypted file format.
     /// </summary>
     /// <remarks>
-    /// The app also registers an <see cref="IUserKeysStore"/> (where keys.json is kept), an
-    /// <see cref="IE2eLocalKeyStore"/> (this device's wrapped master key), and derives the
+    /// The app also registers an <see cref="IUserKeysStore"/> (where the keys documents are kept), an
+    /// <see cref="IE2eLocalKeyStore"/> (this device's copies), an <see cref="IE2eProfileIndexStore"/> and an
+    /// <see cref="IE2eLocalProfileIndexStore"/> (the index of protected profiles), and derives the
     /// <see cref="E2eKeyNames.KeyEncryptionKey"/> from the passkey PRF with <c>AddBlazwizPrfKeyDerivation</c>. Sync
     /// profiles opt in with <c>UseEncryption</c>.
     /// </remarks>
@@ -40,9 +42,11 @@ public static class E2eEncryptionServiceCollectionExtensions
         services.TryAddSingleton<IArgon2idKeyDerivationService, BouncyCastleArgon2idKeyDerivationService>();
         services.TryAddSingleton<IDerivedKeyStore, InMemoryDerivedKeyStore>();
         services.TryAddSingleton<IEncryptedFileFormat, EncryptedFileFormat>();
+        services.TryAddSingleton<IE2eKeysDocumentService, E2eKeysDocumentService>();
         services.TryAddSingleton<IE2eKeyRings, E2eKeyRings>();
         services.TryAddSingleton(sp => sp.GetRequiredService<IE2eKeyRings>().Get(E2eKeyScope.Account));
         services.TryAddScoped<IE2eKeyManager, E2eKeyManager>();
+        services.TryAddScoped<IE2eProtectedProfileManager, E2eProtectedProfileManager>();
 
         return services;
     }

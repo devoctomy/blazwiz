@@ -32,6 +32,11 @@ public static class E2eErrorCodes
     public const string PassphraseRequired = "E2e.PassphraseRequired";
 
     /// <summary>
+    /// The signed in user has no protected profile with the given id ({0}).
+    /// </summary>
+    public const string ProfileNotFound = "E2e.ProfileNotFound";
+
+    /// <summary>
     /// The passphrase is not correct.
     /// </summary>
     public const string WrongPassphrase = "E2e.WrongPassphrase";

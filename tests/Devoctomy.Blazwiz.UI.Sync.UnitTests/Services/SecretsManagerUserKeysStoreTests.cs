@@ -153,6 +153,34 @@ public class SecretsManagerUserKeysStoreTests
     }
 
     [Fact]
+    public async Task GivenTheIndex_WhenGetIndexAsync_ThenReadsTheIndexSecret()
+    {
+        // Arrange
+        mockClient.Setup(x => x.GetSecretValueAsync(It.Is<GetSecretValueRequest>(r => r.SecretId == SecretName + "/index"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetSecretValueResponse { SecretString = "index" });
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.GetIndexAsync();
+
+        // Assert
+        Assert.Equal("index", result);
+    }
+
+    [Fact]
+    public async Task GivenAnIndex_WhenSetIndexAsync_ThenWritesTheIndexSecret()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        await sut.SetIndexAsync("index");
+
+        // Assert
+        mockClient.Verify(x => x.PutSecretValueAsync(It.Is<PutSecretValueRequest>(r => r.SecretId == SecretName + "/index" && r.SecretString == "index"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenNullScope_WhenUsed_ThenThrowsArgumentNullException()
     {
         // Arrange

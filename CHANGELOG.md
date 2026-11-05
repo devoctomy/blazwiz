@@ -11,6 +11,10 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 ### Added
 - Sync profiles can be classes deriving from `SyncProfileDefinition`, added with `AddProfile<TProfile>()` or found in
   an assembly with `AddProfilesFromAssemblyContaining<T>()`.
+- Protected profiles, each with its own passphrase and keys (`IE2eProtectedProfileManager`): create, list, unlock
+  (offline from this device's copy too), lock, lock all, change the passphrase and delete. Each is identified only by
+  a GUID, with its keys in its own secret (`<sub>/keys/<id>`) and the user's profiles listed in an index secret
+  (`<sub>/keys/index`). Not yet connected to sync.
 - Sync settings and profiles can be set in configuration as well as in code: `UseEmbeddedConfiguration` reads the
   `Sync` section of a JSON file embedded in the app, and `UseConfiguration` reads any configuration section. Unknown
   keys and invalid values stop the app at startup with an error naming the setting.

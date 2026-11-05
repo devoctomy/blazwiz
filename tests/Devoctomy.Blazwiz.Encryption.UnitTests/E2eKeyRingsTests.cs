@@ -38,7 +38,7 @@ public class E2eKeyRingsTests
         // Assert
         Assert.Same(first, second);
         Assert.Equal(new E2eKeyScope("s1"), first.Scope);
-        Assert.Equal(E2eWriteMode.Plaintext, first.WriteMode);
+        Assert.Equal(E2eWriteMode.Refuse, first.WriteMode);
     }
 
     [Fact]
