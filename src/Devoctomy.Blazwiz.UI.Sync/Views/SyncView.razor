@@ -68,7 +68,7 @@
             <option value="" selected="@(ViewModel.ActiveProfile == null)">@SyncText["Sync.Page.Profile.All"]</option>
             @foreach (var profile in ViewModel.Profiles)
             {
-                <option value="@profile" selected="@(ViewModel.ActiveProfile == profile)">@profile</option>
+                <option value="@profile" selected="@(ViewModel.ActiveProfile == profile)">@ViewModel.GetProfileDisplayName(profile)</option>
             }
         </select>
     }

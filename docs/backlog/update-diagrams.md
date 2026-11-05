@@ -28,7 +28,7 @@ By document:
   handlers) drives what modules do at sign in and out.
 - `sync.md`: sync is started and stopped by `SyncSessionHandler` (UI.Sync), not `MainLayoutViewModel`; the wiring is
   `AddBlazwizSyncModule` (UI.Sync) and `AddBlazwizSync` (Sync); the notes profile is configured in the template app
-  (`AddNotesProfile`).
+  (`NotesSyncProfile`, a `SyncProfileDefinition` found by `AddProfilesFromAssemblyContaining`).
 - `sync-framework.md`: the engine is the Sync package, not `blazwiz.Core`; the setup should start from
   `AddBlazwizSyncModule(configuration, sync => ...)` in `Program.cs`, and show a neutral profile rather than notes.
 

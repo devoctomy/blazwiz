@@ -48,6 +48,7 @@ public class NotesTests : TestBase
 
         // Reload to prove it was stored, not just kept in memory.
         await ReloadAsync();
+        await UnlockAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("**ship it**");
 
         await Page.Locator("#close-note-button").ClickAsync();
@@ -155,13 +156,43 @@ public class NotesTests : TestBase
         await Expect(Page.Locator("#note-preview")).ToBeVisibleAsync();
     }
 
+    [TestMethod]
+    public async Task GivenNoPassphrase_WhenOpeningFiles_ThenThePanelPointsToSettings()
+    {
+        await LoginAsync();
+        await OpenNotesAsync();
+
+        await Expect(Page.Locator("#e2e-unlock-message")).ToHaveTextAsync("Notes needs a passphrase before it can be used. Set one in Settings.");
+        await Expect(Page.Locator("#new-note-button")).ToHaveCountAsync(0);
+        await ScreenshotAsync("NeedsPassphrase");
+        await Page.Locator("#e2e-unlock-settings").ClickAsync();
+        await Expect(Page.Locator("#e2e-section")).ToBeVisibleAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenNotesLocked_WhenOpeningFiles_ThenThePanelUnlocksThem()
+    {
+        await LoginAsync();
+        await SetPassphraseAsync();
+        await Page.Locator("#e2e-lock-indicator").ClickAsync();
+        await Page.Locator("#e2e-lock-menu-lock-all").ClickAsync();
+
+        await OpenNotesAsync();
+        await Expect(Page.Locator("#e2e-unlock-message")).ToHaveTextAsync("Notes is locked. Enter its passphrase to use it.");
+        await ScreenshotAsync("Locked");
+        await UnlockAsync();
+
+        await Expect(Row("Welcome.md")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#new-note-button")).ToBeVisibleAsync();
+    }
+
     private ILocator Row(string name) => Page.Locator($"#file-tree .file-row[data-name='{name}']");
 
     private async Task OpenFilesAsync()
     {
         await LoginAsync();
-        await Page.Locator("#nav-files").ClickAsync();
-        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Files");
+        await SetPassphraseAsync();
+        await OpenNotesAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
     }
 }

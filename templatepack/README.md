@@ -24,8 +24,8 @@ Options:
 - `--title`: shown in the browser tab, on the login page and in the PWA manifest (default: the name).
 - `--description`: shown under the title on the login page (default `Sign in to continue.`).
 - `--sync`: the sync module, with the Sync page and end to end encryption (default `true`).
-- `--notes`: the notes example, a Files page and markdown note editor synced by the sync module (default `true`;
-  needs the sync module, and is left out with `--sync false`).
+- `--notes`: the notes example, notebooks of markdown pages (each with its own passphrase) and an editor, synced by
+  the sync module (default `true`; needs the sync module, and is left out with `--sync false`).
 - `--showcase`: a page of themed building blocks to copy from (default `true`).
 - `--tests`: the unit and UI test projects (default `true`).
 - `--no-restore`: don't restore the app's packages after creating it.

@@ -4,18 +4,19 @@ using Devoctomy.Blazwiz.Encryption.Models;
 namespace Devoctomy.Blazwiz.Encryption.Interfaces;
 
 /// <summary>
-/// The unlocked end to end encryption keys for this session, and what to do with files written. The raw keys are only
-/// ever held in memory (in the <see cref="Cryptography.Interfaces.IDerivedKeyStore"/>) and never written anywhere.
+/// The unlocked end to end encryption keys of one key scope (one profile) for this session. The raw keys are only ever
+/// held in memory (in the <see cref="Cryptography.Interfaces.IDerivedKeyStore"/>) and never written anywhere. While
+/// it holds no keys, the profile is locked: its files can be neither read nor written.
 /// </summary>
 /// <remarks>
-/// Set by <see cref="IE2eKeyManager"/>; read by the encrypting file store.
+/// Set by <see cref="IE2eProtectedProfileManager"/>; read by the encrypting file store.
 /// </remarks>
 public interface IE2eKeyRing
 {
     /// <summary>
-    /// Gets what happens to files written.
+    /// Gets the key scope the keys belong to.
     /// </summary>
-    E2eWriteMode WriteMode { get; }
+    E2eKeyScope Scope { get; }
 
     /// <summary>
     /// Gets the id of the file key new files are encrypted with, or null when locked.
@@ -23,20 +24,12 @@ public interface IE2eKeyRing
     string? ActiveKeyId { get; }
 
     /// <summary>
-    /// Holds the unlocked keys, replacing any held, and encrypts files written from now on.
+    /// Holds the unlocked keys, replacing any held.
     /// </summary>
     /// <param name="masterKey">The master key.</param>
     /// <param name="fileKeys">Every file key by id.</param>
     /// <param name="activeKeyId">The id of the key new files are encrypted with.</param>
     void Load(byte[] masterKey, IReadOnlyDictionary<string, byte[]> fileKeys, string activeKeyId);
-
-    /// <summary>
-    /// Changes what happens to files written, keeping the keys, e.g. <see cref="E2eWriteMode.Plaintext"/> while files
-    /// are being decrypted to turn encryption off.
-    /// </summary>
-    /// <param name="mode">The mode.</param>
-    /// <exception cref="InvalidOperationException">Encrypting without the keys.</exception>
-    void SetWriteMode(E2eWriteMode mode);
 
     /// <summary>
     /// Gets a copy of a file key.
@@ -54,8 +47,7 @@ public interface IE2eKeyRing
     bool TryGetMasterKey([NotNullWhen(true)] out byte[]? key);
 
     /// <summary>
-    /// Wipes and forgets the keys, and sets what happens to files written from now on.
+    /// Wipes and forgets the keys: the profile is locked.
     /// </summary>
-    /// <param name="mode"><see cref="E2eWriteMode.Plaintext"/> or <see cref="E2eWriteMode.Refuse"/>.</param>
-    void Clear(E2eWriteMode mode);
+    void Clear();
 }

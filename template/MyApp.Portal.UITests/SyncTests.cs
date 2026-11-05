@@ -29,7 +29,8 @@ public class SyncTests : TestBase
     public async Task GivenNoCloud_WhenEditingNotes_ThenTheyAreSavedAndThePendingCountGoesUp()
     {
         await LoginAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await SetPassphraseAsync();
+        await OpenNotesAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
 
         // The welcome note is a local change waiting to sync.
@@ -47,6 +48,7 @@ public class SyncTests : TestBase
 
         // Stored locally, so still there after a reload.
         await ReloadAsync();
+        await UnlockAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("written with no cloud");
     }
 //#endif
@@ -116,7 +118,7 @@ public class SyncTests : TestBase
         await Expect(Page.Locator("#offline-banner-text")).ToContainTextAsync("You're in offline mode");
         await Expect(Page.Locator("#session-timer")).ToHaveTextAsync(new Regex(@"^Offline 1[45]:\d{2}$"));
         await Expect(Page.Locator("#sync-status-pill")).ToHaveAttributeAsync("title", new Regex("Offline: offline mode"));
-        await Expect(Page.Locator("#e2e-status")).ToContainTextAsync("You're offline");
+        await Expect(Page.Locator("#e2e-offline")).ToContainTextAsync("You're offline");
         await ScreenshotAsync("OfflineMode");
     }
 
@@ -196,7 +198,8 @@ public class SyncTests : TestBase
     public async Task GivenNotes_WhenStorageSwitchedToOpfsAndBack_ThenNotesMoveWithNothingNewToSync()
     {
         await LoginAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await SetPassphraseAsync();
+        await OpenNotesAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
         await Page.Locator("#new-note-button").ClickAsync();
         await Page.Locator("#dialog-name").FillAsync("Moving");
@@ -223,7 +226,8 @@ public class SyncTests : TestBase
         // Still in OPFS, and still readable, after a reload.
         await ReloadAsync();
         await Expect(Page.Locator("#storage-option-opfs")).ToHaveClassAsync(new Regex("active"));
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
+        await UnlockAsync();
         await Row("Moving.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("kept in OPFS");
         await Expect(Page.Locator("#sync-status-pill")).ToContainTextAsync("2 pending");
@@ -236,7 +240,8 @@ public class SyncTests : TestBase
         await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
         Assert.AreEqual(0, (await ListOpfsFilesAsync()).Count);
         await ReloadAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
+        await UnlockAsync();
         await Row("Moving.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("kept in OPFS");
     }
@@ -263,7 +268,8 @@ public class SyncTests : TestBase
     {
         await StubFolderPickerAsync();
         await LoginAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await SetPassphraseAsync();
+        await OpenNotesAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
         await Page.Locator("#new-note-button").ClickAsync();
         await Page.Locator("#dialog-name").FillAsync("In a folder");
@@ -296,7 +302,8 @@ public class SyncTests : TestBase
         await Page.Locator("#folder-reconnect-button").ClickAsync();
         await Expect(Page.Locator("#folder-access-banner")).ToHaveCountAsync(0);
         Assert.IsTrue(await Page.EvaluateAsync<bool>("() => window.notReloaded === true"));
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
+        await UnlockAsync();
         await Row("In a folder.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("visible on disk");
 

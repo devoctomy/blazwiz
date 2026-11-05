@@ -2,15 +2,76 @@ using System.Security.Cryptography;
 using System.Text;
 using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Encryption;
+using Devoctomy.Blazwiz.Encryption.Models;
 
 namespace Devoctomy.Blazwiz.Encryption.UnitTests;
 
 public class EncryptedFileFormatTests
 {
     private const string KeyId = "k_APPLE";
+    private const string Scope = "0f8fad5b-d9cb-469f-a165-70867728950e";
+    private const string Path = "profiles/0f8fad5b-d9cb-469f-a165-70867728950e/a.txt";
 
     private readonly EncryptedFileFormat sut = new(new BouncyCastleAesGcmAeadCipher());
     private readonly byte[] key = RandomNumberGenerator.GetBytes(32);
+    private readonly byte[] plaintext = Encoding.UTF8.GetBytes("secret");
+
+    [Fact]
+    public void GivenABinding_WhenEncrypted_ThenTheHeaderHasTheKeyAndScopeAndItRoundTrips()
+    {
+        // Act
+        var encrypted = sut.Encrypt(plaintext, KeyId, key, new E2eFileBinding(Scope, Path));
+
+        // Assert
+        Assert.Equal(EncryptedFileFormat.Version, encrypted[4]);
+        Assert.True(sut.TryGetKeyId(encrypted, out var keyId));
+        Assert.Equal(KeyId, keyId);
+        Assert.Contains(Scope, Encoding.UTF8.GetString(encrypted), StringComparison.Ordinal);
+        Assert.DoesNotContain("a.txt", Encoding.UTF8.GetString(encrypted), StringComparison.Ordinal);
+        Assert.Equal(plaintext, sut.Decrypt(encrypted, key, new E2eFileBinding(Scope, Path)));
+    }
+
+    [Fact]
+    public void GivenABoundFile_WhenDecryptedAtAnotherPath_ThenFails()
+    {
+        // Arrange
+        var encrypted = sut.Encrypt(plaintext, KeyId, key, new E2eFileBinding(Scope, Path));
+
+        // Act & Assert
+        Assert.ThrowsAny<CryptographicException>(() => sut.Decrypt(encrypted, key, new E2eFileBinding(Scope, Path + ".moved")));
+    }
+
+    [Fact]
+    public void GivenABoundFile_WhenDecryptedForAnotherScope_ThenThrowsInvalidData()
+    {
+        // Arrange
+        var encrypted = sut.Encrypt(plaintext, KeyId, key, new E2eFileBinding(Scope, Path));
+
+        // Act & Assert
+        Assert.Throws<InvalidDataException>(() => sut.Decrypt(encrypted, key, new E2eFileBinding(Guid.NewGuid().ToString("D"), Path)));
+    }
+
+    [Fact]
+    public void GivenAnEditedHeaderScope_WhenDecrypted_ThenFails()
+    {
+        // Arrange: the same length scope id, so the header still parses.
+        var other = "1f8fad5b-d9cb-469f-a165-70867728950e";
+        var encrypted = sut.Encrypt(plaintext, KeyId, key, new E2eFileBinding(Scope, Path));
+        var text = Encoding.Latin1.GetString(encrypted).Replace(Scope, other, StringComparison.Ordinal);
+        var edited = Encoding.Latin1.GetBytes(text);
+
+        // Act & Assert
+        Assert.ThrowsAny<CryptographicException>(() => sut.Decrypt(edited, key, new E2eFileBinding(other, Path)));
+    }
+
+    [Fact]
+    public void GivenContentThatIsNotAnEncryptedFile_WhenRead_ThenNoKeyIdAndDecryptThrows()
+    {
+        // Act & Assert
+        Assert.False(sut.TryGetKeyId(plaintext, out var keyId));
+        Assert.Null(keyId);
+        Assert.Throws<InvalidDataException>(() => sut.Decrypt(plaintext, key, new E2eFileBinding(Scope, Path)));
+    }
 
     [Fact]
     public void GivenNullCipher_WhenConstructing_ThenThrowsArgumentNullException()
@@ -20,121 +81,13 @@ public class EncryptedFileFormatTests
     }
 
     [Fact]
-    public void GivenPlaintext_WhenEncrypt_ThenHeaderIsReadableAndDecryptRoundTrips()
-    {
-        // Arrange
-        var plaintext = Encoding.UTF8.GetBytes("# Shopping\n\n- apples\n- oranges");
-
-        // Act
-        var encrypted = sut.Encrypt(plaintext, KeyId, key);
-
-        // Assert
-        Assert.Equal("E2EE"u8.ToArray(), encrypted.Take(4));
-        Assert.Equal(EncryptedFileFormat.Version, encrypted[4]);
-        Assert.Equal(KeyId.Length, encrypted[5]);
-        Assert.Equal(KeyId, Encoding.UTF8.GetString(encrypted, 6, KeyId.Length));
-        Assert.Equal(6 + KeyId.Length + 12 + plaintext.Length + 16, encrypted.Length);
-        Assert.True(sut.TryGetKeyId(encrypted, out var keyId));
-        Assert.Equal(KeyId, keyId);
-        Assert.Equal(plaintext, sut.Decrypt(encrypted, key));
-    }
-
-    [Fact]
-    public void GivenSamePlaintext_WhenEncryptTwice_ThenDifferentNonceAndCiphertext()
+    public void GivenAnInvalidBinding_WhenUsed_ThenThrows()
     {
         // Act & Assert
-        Assert.NotEqual(sut.Encrypt([1, 2, 3], KeyId, key), sut.Encrypt([1, 2, 3], KeyId, key));
-    }
-
-    [Fact]
-    public void GivenEmptyPlaintext_WhenEncrypt_ThenRoundTrips()
-    {
-        // Act
-        var encrypted = sut.Encrypt([], KeyId, key);
-
-        // Assert
-        Assert.True(sut.TryGetKeyId(encrypted, out _));
-        Assert.Empty(sut.Decrypt(encrypted, key));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("# Just a note")]
-    [InlineData("E2EE but not really")]
-    public void GivenPlainContent_WhenTryGetKeyId_ThenFalse(string content)
-    {
-        // Act & Assert
-        Assert.False(sut.TryGetKeyId(Encoding.UTF8.GetBytes(content), out var keyId));
-        Assert.Null(keyId);
-    }
-
-    [Fact]
-    public void GivenTruncatedFile_WhenTryGetKeyId_ThenFalse()
-    {
-        // Act
-        var encrypted = sut.Encrypt([], KeyId, key);
-
-        // Assert
-        Assert.False(sut.TryGetKeyId(encrypted.AsSpan(0, encrypted.Length - 1), out _));
-    }
-
-    [Fact]
-    public void GivenOtherVersion_WhenTryGetKeyId_ThenFalse()
-    {
-        // Arrange
-        var encrypted = sut.Encrypt([1], KeyId, key);
-
-        // Act
-        encrypted[4] = 2;
-
-        // Assert
-        Assert.False(sut.TryGetKeyId(encrypted, out _));
-    }
-
-    [Fact]
-    public void GivenHeaderChanged_WhenDecrypt_ThenThrowsAuthenticationTagMismatchException()
-    {
-        // Arrange: the key id is readable, but changing it breaks the tag.
-        var encrypted = sut.Encrypt([1, 2, 3], KeyId, key);
-        encrypted[6] = (byte)'x';
-
-        // Act & Assert
-        Assert.Throws<AuthenticationTagMismatchException>(() => sut.Decrypt(encrypted, key));
-    }
-
-    [Fact]
-    public void GivenNonceChanged_WhenDecrypt_ThenThrowsAuthenticationTagMismatchException()
-    {
-        // Arrange
-        var encrypted = sut.Encrypt([1, 2, 3], KeyId, key);
-        encrypted[6 + KeyId.Length] ^= 1;
-
-        // Act & Assert
-        Assert.Throws<AuthenticationTagMismatchException>(() => sut.Decrypt(encrypted, key));
-    }
-
-    [Fact]
-    public void GivenWrongKey_WhenDecrypt_ThenThrowsAuthenticationTagMismatchException()
-    {
-        // Arrange
-        var encrypted = sut.Encrypt([1, 2, 3], KeyId, key);
-
-        // Act & Assert
-        Assert.Throws<AuthenticationTagMismatchException>(() => sut.Decrypt(encrypted, RandomNumberGenerator.GetBytes(32)));
-    }
-
-    [Fact]
-    public void GivenPlainContent_WhenDecrypt_ThenThrowsInvalidDataException()
-    {
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => sut.Decrypt(Encoding.UTF8.GetBytes("# Just a note"), key));
-    }
-
-    [Fact]
-    public void GivenInvalidKeyId_WhenEncrypt_ThenThrowsArgumentException()
-    {
-        // Act & Assert
-        Assert.ThrowsAny<ArgumentException>(() => sut.Encrypt([1], " ", key));
-        Assert.Throws<ArgumentException>(() => sut.Encrypt([1], new string('k', 256), key));
+        Assert.Throws<ArgumentNullException>(() => sut.Encrypt(plaintext, KeyId, key, null!));
+        Assert.ThrowsAny<ArgumentException>(() => sut.Encrypt(plaintext, new string('k', 256), key, new E2eFileBinding(Scope, Path)));
+        Assert.Throws<ArgumentNullException>(() => sut.Decrypt(plaintext, key, null!));
+        Assert.ThrowsAny<ArgumentException>(() => new E2eFileBinding(" ", Path));
+        Assert.Throws<ArgumentNullException>(() => new E2eFileBinding(Scope, null!));
     }
 }

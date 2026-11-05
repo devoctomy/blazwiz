@@ -1,7 +1,7 @@
 # Devoctomy.Blazwiz.Sync
 
 Offline-first file sync for blazwiz apps. Files are kept on the device (IndexedDB, the origin private file system or a
-local folder) and synced with the user's prefix in an S3 bucket, with optional end to end encryption. Changes made
+local folder) and synced with the user's prefix in an S3 bucket, end to end encrypted. Changes made
 offline are synced when the app is back online.
 
 ## Usage
@@ -13,19 +13,91 @@ UI, Cognito credentials and encryption keys. It takes the same builder:
 builder.Services.AddBlazwizSyncModule(builder.Configuration, sync => sync
     .UseIndexedDbEventLog(database: "sync", store: "events")
     .AddProfile("files", profile => profile
+        .UseKeyId("3f2b8c1e-6d4a-4f7b-9c2e-8a1d5b7e9f40")
         .UseIndexedDbIndexStore(database: "sync", store: "files_index")
         .UseFileStores(stores => stores
             .AddIndexedDb(database: "files", store: "files")
             .AddOpfs(root: "files")
             .AddLocalFolder()
             .UseDefault(SyncStorageKind.IndexedDb))
-        .UseRemote("files/**/*")
-        .UseEncryption()));
+        .UseRemote("files/**/*")));
 ```
 
-A profile is a set of files synced together: where they are kept on the device, which remote paths it syncs, and
-whether they are encrypted. To use the engine without the module, call `AddBlazwizSync` and provide its services
-yourself (the S3 target and the signed-in user).
+A profile is a set of files synced together: where they are kept on the device and which remote paths it syncs. Every
+profile is end to end encrypted with its own keys and its own passphrase, named by its id (`UseKeyId`, a GUID). Use a
+fixed id to reach the same keys every time, or generate one. Until the passphrase is entered the profile is locked:
+its files cannot be read or written, and it does not sync. `UseProfileSettings` sets when it locks itself again, whether
+it can be unlocked with the passkey, its passphrase rules and Argon2id costs; `UseProfileDefaults` sets them for the
+profiles users create while the app runs. To use the engine without the module, call `AddBlazwizSync` and provide its
+services yourself (the S3 target, the signed-in user and the keys).
+
+### Profiles as classes
+
+A profile can be a class deriving from `SyncProfileDefinition`. `AddProfilesFromAssemblyContaining<T>()` adds every
+one in an assembly (public or not, with a parameterless constructor, in order of name), so adding a profile is adding
+a class; `AddProfile<TProfile>()` adds one.
+
+```csharp
+public sealed class PhotosSyncProfile : SyncProfileDefinition
+{
+    public override string Name => "photos";
+
+    public override void Configure(SyncProfileBuilder profile) => profile
+        .UseKeyId("7c9e2a4b-1f3d-4e8a-b6c5-2d9f0e1a3b57")
+        .UseRemote("photos/**/*");
+}
+```
+
+```csharp
+builder.Services.AddBlazwizSyncModule(builder.Configuration, sync => sync
+    .AddProfilesFromAssemblyContaining<Program>());
+```
+
+App code gets a profile's files by its name: `[FromKeyedServices("photos")] ISyncFileStore files`.
+
+### From configuration
+
+The same settings and profiles can come from configuration instead: a JSON file embedded in the app
+(`UseEmbeddedConfiguration`), or any configuration section, such as `Sync` in `wwwroot/appsettings.json`
+(`UseConfiguration(builder.Configuration.GetSection("Sync"))`). Code before and after can change or add to them.
+
+```csharp
+builder.Services.AddBlazwizSyncModule(builder.Configuration, sync => sync
+    .UseEmbeddedConfiguration(typeof(Program).Assembly, "sync.json")
+    .AddProfilesFromAssemblyContaining<Program>());
+```
+
+```xml
+<EmbeddedResource Include="sync.json" LogicalName="sync.json" />
+```
+
+```json
+{
+  "Sync": {
+    "ChangeDebounce": "00:00:02",
+    "EventLog": { "Database": "sync", "Store": "events", "MaxAge": "30.00:00:00", "MaxEventsPerUser": 5000 },
+    "Profiles": {
+      "files": {
+        "Id": "3f2b8c1e-6d4a-4f7b-9c2e-8a1d5b7e9f40",
+        "Remote": "files/**/*",
+        "IndexStore": { "Database": "sync", "Store": "files_index" },
+        "Storages": {
+          "IndexedDb": { "Database": "files", "Store": "files" },
+          "Opfs": { "Root": "files" },
+          "LocalFolder": {}
+        },
+        "DefaultStorage": "IndexedDb"
+      }
+    }
+  }
+}
+```
+
+Each profile is keyed by its name, and needs `Id` and `Remote`. Its files are kept either in one IndexedDB store (`FileStore`)
+or in `Storages` the user can switch between (keyed `IndexedDb`, `Opfs` or `LocalFolder`). `ConnectivityTimings`
+(`CacheFor`, `ProbeTimeout`, `RecheckBackoff`) can be set too. Profiles are added in order of name. An unknown key or
+an invalid value stops the app at startup with an error naming the setting. Custom stores and logs (`UseFileStore<T>`,
+`UseIndexStore<T>`, `UseEventLog<T>`) are set in code.
 
 ## Versions
 

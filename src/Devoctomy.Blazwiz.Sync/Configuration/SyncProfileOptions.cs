@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 
@@ -65,10 +66,26 @@ public class SyncProfileOptions
     public SyncStorageKind? DefaultStorageKind { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the files can be end to end encrypted (<c>UseEncryption</c>). Needs
-    /// <c>AddBlazwizE2eEncryption</c>.
+    /// Gets or sets the profile's key scope: its own keys and passphrase. Every profile has one: set with
+    /// <c>UseKeyId</c> for a profile set up in code, and a new GUID for a profile a user creates.
     /// </summary>
-    public bool IsEncrypted { get; set; }
+    public E2eKeyScope? KeyScope { get; set; }
+
+    /// <summary>
+    /// Gets or sets the profile's security settings (idle timeout, device unlock, passphrase rules, Argon2id costs).
+    /// </summary>
+    public E2eProfileSettings Settings { get; set; } = new E2eProfileSettings();
+
+    /// <summary>
+    /// Gets or sets the key of the profile's display name in <see cref="DisplayTextResource"/>, or null to show its
+    /// name.
+    /// </summary>
+    public string? DisplayText { get; set; }
+
+    /// <summary>
+    /// Gets or sets the class the display name's resources are named after (e.g. the app's own resources).
+    /// </summary>
+    public Type? DisplayTextResource { get; set; }
 
     /// <summary>
     /// Gets a value indicating whether the user can switch the storage the files are kept in.

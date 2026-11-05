@@ -7,19 +7,32 @@ namespace Devoctomy.Blazwiz.Sync.UnitTests.Configuration;
 public class SyncProfileBuilderTests
 {
     [Fact]
-    public void GivenProfile_WhenUseEncryption_ThenEncrypted()
+    public void GivenAGuid_WhenUseKeyId_ThenTheProfileHasThatKeyScope()
     {
         // Arrange
         var options = new SyncProfileOptions { Name = "notes" };
+        var builder = new SyncProfileBuilder(options);
+        var id = Guid.NewGuid().ToString("D");
 
         // Act
-        var builder = new SyncProfileBuilder(options);
-        var result = builder.UseEncryption();
+        var result = builder.UseKeyId(id);
 
         // Assert
         Assert.Same(builder, result);
-        Assert.True(options.IsEncrypted);
-        Assert.False(new SyncProfileOptions().IsEncrypted);
+        Assert.Equal(id, options.KeyScope!.Id);
+        Assert.Null(new SyncProfileOptions().KeyScope);
+    }
+
+    [Theory]
+    [InlineData("notes")]
+    [InlineData(" ")]
+    public void GivenAnIdThatIsNotAGuid_WhenUseKeyId_ThenThrows(string id)
+    {
+        // Arrange
+        var builder = new SyncProfileBuilder(new SyncProfileOptions { Name = "notes" });
+
+        // Act & Assert
+        Assert.ThrowsAny<ArgumentException>(() => builder.UseKeyId(id));
     }
 
     [Fact]

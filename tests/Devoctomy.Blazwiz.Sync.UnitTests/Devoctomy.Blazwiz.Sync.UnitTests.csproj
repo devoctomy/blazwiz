@@ -23,4 +23,7 @@
     <ProjectReference Include="..\..\src\Devoctomy.Blazwiz.Sync\Devoctomy.Blazwiz.Sync.csproj" />
     <ProjectReference Include="..\Devoctomy.Blazwiz.TestSupport\Devoctomy.Blazwiz.TestSupport.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\Resources\*.json" LogicalName="%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

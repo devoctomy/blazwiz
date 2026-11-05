@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,13 +33,53 @@ public class SyncProfileBuilder(SyncProfileOptions options)
     }
 
     /// <summary>
-    /// Lets the user end to end encrypt the files: app code is given a store that encrypts on write and decrypts on
-    /// read once encryption is on, and the files are kept and synced as ciphertext. Needs <c>AddBlazwizE2eEncryption</c>.
+    /// Sets the profile's id, which names its keys and its passphrase. Every profile is end to end encrypted with its
+    /// own keys: app code is given a store that encrypts on write and decrypts on read, and the files are kept and
+    /// synced as ciphertext. Use a fixed id to reach the same keys every time, or generate one. Needs
+    /// <c>AddBlazwizE2eEncryption</c>.
     /// </summary>
+    /// <param name="id">The id: a GUID.</param>
     /// <returns>The builder.</returns>
-    public SyncProfileBuilder UseEncryption()
+    public SyncProfileBuilder UseKeyId(string id)
     {
-        Options.IsEncrypted = true;
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (!Guid.TryParseExact(id, "D", out _))
+        {
+            throw new ArgumentException($"The id of sync profile '{Options.Name}' must be a GUID.", nameof(id));
+        }
+
+        Options.KeyScope = new E2eKeyScope(id);
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the name the profile is shown by, from resources so it can be reworded and translated. Without it, the
+    /// profile is shown by its name.
+    /// </summary>
+    /// <param name="key">The display name's key in the resources.</param>
+    /// <param name="resource">The class the resources are named after, e.g. the app's own resources.</param>
+    /// <returns>The builder.</returns>
+    public SyncProfileBuilder UseDisplayText(string key, Type resource)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(resource);
+
+        Options.DisplayText = key;
+        Options.DisplayTextResource = resource;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the profile's security settings: when it locks itself, whether it can be unlocked with the passkey, its
+    /// passphrase rules and Argon2id costs.
+    /// </summary>
+    /// <param name="configure">Changes the settings, starting from the framework's defaults.</param>
+    /// <returns>The builder.</returns>
+    public SyncProfileBuilder UseProfileSettings(Action<E2eProfileSettings> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        configure(Options.Settings);
         return this;
     }
 

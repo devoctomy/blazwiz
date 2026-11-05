@@ -11,7 +11,10 @@ Main classes (all under `blazwiz.Core/Sync/` unless noted):
 - `SyncService`: runs passes per profile, gates, status, pending count
 - `SyncEngine` + `SyncPlanner`: one pass, the decision table
 - `TrackingSyncFileStore`: marks the index when the app writes a file
-- `EncryptingSyncFileStore` (`Encryption/`): plaintext in the app, ciphertext on disk and in S3
+- `EncryptingSyncFileStore` (`Encryption/`): plaintext in the app, ciphertext on disk and in S3, with the profile's
+  own keys
+- `SyncProtectedProfileService` (`Encryption/`) and `E2eProtectedProfileManager` (Encryption package): each profile's
+  keys and passphrase, the profiles the user creates, unlocking and locking
 - `S3SyncRemoteStore` (`S3/`), with `CognitoS3TargetProvider` (`blazwiz.Portal.Application/Services/`) for the client
 - `WebLockSyncLockService`: one pass per profile across all tabs
 
@@ -22,7 +25,7 @@ Wiring is in `blazwiz.Core/Extensions/SyncServiceCollectionExtensions.cs` and th
 
 | What | Where | Key / name | Notes |
 |---|---|---|---|
-| Note files | IndexedDB **or** OPFS **or** a folder the user picked (per device, Settings) | `blazwiz_notes` / `files`, OPFS `blazwiz_notes/`, or the folder | Ciphertext once E2E is on |
+| Note files | IndexedDB **or** OPFS **or** a folder the user picked (per device, Settings) | `blazwiz_notes` / `files`, OPFS `blazwiz_notes/`, or the folder | Always ciphertext, with the profile's own keys |
 | Folder handle (for the picked folder) | IndexedDB | `blazwiz_folders` / `handles` | Browser asks again for permission after a restart |
 | Which storage is in use, per user | IndexedDB | `blazwiz_sync` / `storage` | Default IndexedDB |
 | Sync index: per file `BaseETag`, `BaseHash`, `Dirty`, `Deleted`, `Revision`, `KeyId` | IndexedDB | `blazwiz_sync` / `notes_index` | Keyed by profile + owner + file key |
@@ -32,7 +35,10 @@ Wiring is in `blazwiz.Core/Extensions/SyncServiceCollectionExtensions.cs` and th
 | Connectivity status (online, reason, last checked) | Memory | `ConnectivityService.status` | Cached 30 seconds |
 | Sync status (state, last error, pending count, last synced) | Memory | `SyncService.status` | Shown in the status pill |
 | AWS credentials and S3 client | Memory | see [authentication.md](authentication.md) | |
-| E2E master and file keys | Memory | `DerivedKeyStore` via `E2eKeyRing` | see [prf-remember-me.md](prf-remember-me.md) |
+| E2E master and file keys, per profile | Memory | `DerivedKeyStore` via `E2eKeyRings` (one ring per profile) | Only while the profile is unlocked |
+| Each profile's keys document | Secrets Manager (localStorage without Cognito) | `{sub}/keys/{profile id}` | Wrapped by its passphrase (Argon2id) |
+| Index of the user's profiles | Secrets Manager (localStorage without Cognito) | `{sub}/keys/index` | Ids only; this device keeps a copy |
+| This device's copy of each keys document | localStorage | `e2e_keys_{profile id}_{user}` | For unlocking offline, and with the passkey where allowed |
 | Remote copy | S3 | `{identityId}/notes/**/*.md` | `x-amz-meta-modified-at` holds the edit time |
 
 ### The file store stack
@@ -55,7 +61,7 @@ sequenceDiagram
     participant Layout as MainLayoutViewModel
     participant Chan as SyncStorageChannel
     participant Mig as SyncStorageMigrationService
-    participant Enc as SyncEncryptionService
+    participant Prof as SyncProtectedProfileService
     participant Folder as SyncFolderService
     participant Sched as SyncScheduler
     participant Conn as ConnectivityService
@@ -77,10 +83,11 @@ sequenceDiagram
     Layout->>Chan: StartAsync() (BroadcastChannel "blazwiz-sync-storage")
     Layout->>Mig: RecoverAsync()
     Mig->>IDB: GET blazwiz_sync/storage (finish or undo a storage move cut short)
-    Layout->>Enc: InitializeAsync()
-    Enc->>SM: GetSecretValue "{sub}/keys"
-    Enc->>LS: GET blazwiz_e2e_keys_{user}
-    Enc->>Mem: Load E2E keys if the passkey key is present (prf-remember-me.md, diagram 4)
+    Layout->>Prof: LoadAsync()
+    Prof->>SM: GetSecretValue "{sub}/keys/index" (this device's copy when offline)
+    Prof->>Mem: Add the profiles the user created to the registry
+    Prof->>LS: Forget the keys of profiles deleted on another device, and delete their files here
+    Note over Prof: Every profile starts locked, and syncs its ciphertext while locked
     Layout->>Folder: NeedsReconnectAsync()
     Folder->>IDB: GET blazwiz_folders/handles + permission state
     alt Folder storage and permission lost
@@ -112,14 +119,12 @@ sequenceDiagram
     end
 
     Notes->>EncFS: WriteAsync("notes/foo.md", plaintext)
-    EncFS->>Ring: WriteMode?
-    alt Encrypt (E2E on and unlocked)
+    EncFS->>Ring: ActiveKeyId? (the notes profile's ring)
+    alt Unlocked
         Ring->>Mem: TryGetFileKey(activeKeyId) from DerivedKeyStore
-        EncFS->>EncFS: Encrypt with the file key (header carries the key id), zero key copy
-    else Refuse (E2E on but this device cannot encrypt)
+        EncFS->>EncFS: Encrypt with the file key, binding the profile id and path; reset the idle timer
+    else Locked
         EncFS-->>Notes: E2eLockedException, nothing saved
-    else Plaintext (E2E off)
-        EncFS->>EncFS: Pass through
     end
     EncFS->>Track: WriteAsync(key, bytes)
     Track->>Files: Write file
@@ -142,7 +147,6 @@ sequenceDiagram
     participant Conn as ConnectivityService
     participant Lock as Web Locks
     participant Svc as SyncService
-    participant Gate as E2eSyncGate
     participant Eng as SyncEngine
     participant Plan as SyncPlanner
     box rgb(240,240,255) In memory
@@ -184,9 +188,7 @@ sequenceDiagram
             Sched->>Mem: verify = VerifyPending, VerifyPending = false
             Sched->>Svc: SyncAsync("notes", verify)
             Svc->>Mem: status.State = Syncing
-            Svc->>Gate: CanSyncAsync("notes")
-            Note over Gate: Holds back while E2E is locked or unknown, so plaintext never replaces ciphertext in S3
-            Gate-->>Svc: true
+            Note over Svc: Locked or not, the engine only moves ciphertext
             Svc->>Eng: SyncAsync(profile, verify)
             Eng->>Files: List local files
             Eng->>S3: ListObjectsV2 prefix "{identityId}/notes/"
@@ -275,7 +277,7 @@ sequenceDiagram
     else Not edited locally
         Eng->>Files: Write file (no index marking, untracked store)
         Eng->>IDB: PUT record {BaseETag, BaseHash, KeyId from the file header}
-        Eng->>Mem: Remember changed key (FilesChanged event, pages reload, E2E encrypts plaintext arrivals)
+        Eng->>Mem: Remember changed key (FilesChanged event, pages reload)
     end
     end
 

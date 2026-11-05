@@ -1,27 +1,32 @@
 namespace Devoctomy.Blazwiz.UI.Sync.Models;
 
 /// <summary>
-/// The end to end encryption dialog shown in settings. Passphrases are only ever entered in these dialogs.
+/// The dialogs of the end to end encryption settings.
 /// </summary>
 public enum E2eDialogKind
 {
     /// <summary>
-    /// Turn encryption on with a new passphrase.
+    /// Set the first passphrase of a profile set up in code.
     /// </summary>
-    Enable,
+    SetPassphrase,
 
     /// <summary>
-    /// Set this device up with the existing passphrase.
+    /// Create a protected profile with its own passphrase.
     /// </summary>
-    SetUp,
+    Create,
 
     /// <summary>
-    /// Change the passphrase.
+    /// Unlock a profile with its passphrase.
+    /// </summary>
+    Unlock,
+
+    /// <summary>
+    /// Change a profile's passphrase.
     /// </summary>
     ChangePassphrase,
 
     /// <summary>
-    /// Turn encryption off.
+    /// Delete a protected profile the user created, and its files.
     /// </summary>
-    Disable,
+    Delete,
 }

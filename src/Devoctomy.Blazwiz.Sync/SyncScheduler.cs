@@ -12,6 +12,7 @@ namespace Devoctomy.Blazwiz.Sync;
 public sealed class SyncScheduler : ISyncScheduler, IDisposable
 {
     private readonly ISyncService syncService;
+    private readonly ISyncProfileRegistry registry;
     private readonly IConnectivityService connectivityService;
     private readonly IBrowserNetworkStatus browserNetworkStatus;
     private readonly ISyncLockService lockService;
@@ -26,6 +27,7 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
     /// Initializes a new instance of the <see cref="SyncScheduler"/> class.
     /// </summary>
     /// <param name="syncService">Runs the passes.</param>
+    /// <param name="registry">The profiles, including those added and removed while sync runs.</param>
     /// <param name="connectivityService">Decides whether the app is online.</param>
     /// <param name="browserNetworkStatus">Raises the focus events.</param>
     /// <param name="lockService">The cross tab lock.</param>
@@ -33,6 +35,7 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
     /// <param name="timeProvider">The timers.</param>
     public SyncScheduler(
         ISyncService syncService,
+        ISyncProfileRegistry registry,
         IConnectivityService connectivityService,
         IBrowserNetworkStatus browserNetworkStatus,
         ISyncLockService lockService,
@@ -40,6 +43,7 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
         TimeProvider timeProvider)
     {
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+        this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
         this.browserNetworkStatus = browserNetworkStatus ?? throw new ArgumentNullException(nameof(browserNetworkStatus));
         this.lockService = lockService ?? throw new ArgumentNullException(nameof(lockService));
@@ -69,6 +73,8 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
         wasOffline = false;
         connectivityService.StatusChanged += OnConnectivityChanged;
         browserNetworkStatus.BecameVisible += OnBecameVisible;
+        registry.ProfileAdded += OnProfileAdded;
+        registry.ProfileRemoved += OnProfileRemoved;
         await connectivityService.InitializeAsync();
         await browserNetworkStatus.StartAsync();
         await RunAllAsync();
@@ -86,6 +92,8 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
         lifetime = null;
         connectivityService.StatusChanged -= OnConnectivityChanged;
         browserNetworkStatus.BecameVisible -= OnBecameVisible;
+        registry.ProfileAdded -= OnProfileAdded;
+        registry.ProfileRemoved -= OnProfileRemoved;
         foreach (var state in states.Values)
         {
             state.Debounce?.Cancel();
@@ -126,6 +134,8 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
     {
         connectivityService.StatusChanged -= OnConnectivityChanged;
         browserNetworkStatus.BecameVisible -= OnBecameVisible;
+        registry.ProfileAdded -= OnProfileAdded;
+        registry.ProfileRemoved -= OnProfileRemoved;
         lifetime?.Cancel();
         lifetime?.Dispose();
         lifetime = null;
@@ -243,6 +253,28 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
         catch (Exception)
         {
             // Event handlers must not throw.
+        }
+    }
+
+    private void OnProfileAdded(object? sender, string profile)
+    {
+        if (lifetime == null || states.ContainsKey(profile))
+        {
+            return;
+        }
+
+        // A new profile syncs straight away, hashing its local files against its index first.
+        states[profile] = new ProfileState { VerifyPending = true };
+        _ = RunProfileAsync(profile);
+    }
+
+    private void OnProfileRemoved(object? sender, string profile)
+    {
+        if (states.Remove(profile, out var state))
+        {
+            state.Debounce?.Cancel();
+            state.Debounce = null;
+            state.RunAgain = false;
         }
     }
 

@@ -26,6 +26,7 @@ public class NoteServiceTests
     private readonly Mock<TimeProvider> mockClock = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
     private readonly NoteTreeService tree = new();
+    private Notebook notebook = new() { Name = NoteService.ProfileName, Id = Guid.NewGuid().ToString("D"), Root = NoteService.DefaultRoot, IsDefault = true };
     private readonly InMemorySyncFileStore files;
     private readonly Dictionary<string, NotesState> states = [];
     private SyncStatus syncStatus = new();
@@ -49,14 +50,15 @@ public class NoteServiceTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new NoteService(null!, files, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("fileStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, null!, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, null!, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, null!, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockSync.Object, null!, mockNames.Object, tree, mockClock.Object)).ParamName);
-        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockSync.Object, mockConnectivity.Object, null!, tree, mockClock.Object)).ParamName);
-        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, null!, mockClock.Object)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new NoteService(mockAuth.Object, files, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, null!)).ParamName);
+        Assert.Equal("notebook", Assert.Throws<ArgumentNullException>(() => new NoteService(null!, files, mockAuth.Object, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new NoteService(notebook, files, null!, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("fileStore", Assert.Throws<ArgumentNullException>(() => new NoteService(notebook, null!, mockAuth.Object, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new NoteService(notebook, files, mockAuth.Object, null!, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteService(notebook, files, mockAuth.Object, mockState.Object, null!, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new NoteService(notebook, files, mockAuth.Object, mockState.Object, mockSync.Object, null!, mockNames.Object, tree, mockClock.Object)).ParamName);
+        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new NoteService(notebook, files, mockAuth.Object, mockState.Object, mockSync.Object, mockConnectivity.Object, null!, tree, mockClock.Object)).ParamName);
+        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new NoteService(notebook, files, mockAuth.Object, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, null!, mockClock.Object)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new NoteService(notebook, files, mockAuth.Object, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, null!)).ParamName);
     }
 
     [Fact]
@@ -89,6 +91,26 @@ public class NoteServiceTests
         Assert.Equal(NoteService.ReadWelcomeNote(), await ReadAsync("notes/Welcome.md"));
         Assert.Single(second);
         Assert.True(states[Owner].WelcomeNoteCreated);
+    }
+
+    [Fact]
+    public async Task GivenACreatedNotebook_WhenGettingEntriesAndCreatingANote_ThenNoWelcomeNoteAndItsRootIsUsed()
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        notebook = new Notebook { Name = id, Id = id, Root = $"profiles/{id}/" };
+        await files.WriteAsync($"profiles/{id}/.notebook", Encoding.UTF8.GetBytes("{}"));
+        var sut = CreateSut();
+
+        // Act
+        var before = await sut.GetEntriesAsync();
+        var note = await sut.CreateNoteAsync("Page", null);
+
+        // Assert
+        Assert.Empty(before);
+        Assert.Equal($"profiles/{id}/Page.md", note.Id);
+        Assert.False(states.ContainsKey(Owner));
+        Assert.Equal([note.Id], (await sut.GetEntriesAsync()).Select(e => e.Id));
     }
 
     [Fact]
@@ -487,5 +509,5 @@ public class NoteServiceTests
     }
 
     private NoteService CreateSut() =>
-        new(mockAuth.Object, files, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object);
+        new(notebook, files, mockAuth.Object, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object);
 }

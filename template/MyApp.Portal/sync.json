@@ -1,0 +1,11 @@
+{
+  "Sync": {
+    "ChangeDebounce": "00:00:02",
+    "EventLog": {
+      "Database": "sync",
+      "Store": "events",
+      "MaxAge": "30.00:00:00",
+      "MaxEventsPerUser": 5000
+    }
+  }
+}

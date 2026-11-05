@@ -10,8 +10,11 @@ Checks, and reports PASS / FAIL for each:
   - The ID token can be exchanged for temporary AWS credentials via the identity pool.
   - Those credentials can read / write / list the user's own prefix in the data bucket,
     and are denied access to anyone else's prefix.
+  - They can create, read and delete a profile's keys secret (<sub>/keys/<id>), read and write the index
+    (<sub>/keys/index), and are denied another user's secrets.
 
-The only thing it creates is a small test object under the user's own prefix, which it deletes again.
+It creates a small test object under the user's own prefix and a test profile secret, and deletes both again. The
+index is written back unchanged, or deleted again if it did not exist.
 Exits with code 1 if any check fails.
 
 .EXAMPLE
@@ -36,6 +39,18 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '_common.ps1')
 
 $script:Failures = 0
+
+function Get-TokenSubject([string]$Token) {
+    $payload = $Token.Split('.')[1].Replace('-', '+').Replace('_', '/')
+    $payload += '=' * ((4 - $payload.Length % 4) % 4)
+    ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json).sub
+}
+
+function New-TempTextFile([string]$Text) {
+    $path = Join-Path ([IO.Path]::GetTempPath()) "$([Guid]::NewGuid().ToString('N')).txt"
+    [IO.File]::WriteAllText($path, $Text)
+    $path
+}
 
 function Test-Check([string]$Name, [scriptblock]$Check) {
     try {
@@ -203,6 +218,64 @@ if ($credentials) {
 
         Test-Check 'Can delete from own prefix (clean up)' {
             Invoke-Aws -NoProfile -Arguments @('s3', 'rm', "s3://$bucket/$ownKey", '--only-show-errors') | Out-Null
+        } | Out-Null
+
+        Write-Step "Keys secrets as the signed-in user"
+
+        $sub = Get-TokenSubject $idToken
+        $profileSecret = "$sub/keys/$([Guid]::NewGuid().ToString('D'))"
+        $indexSecret = "$sub/keys/index"
+        $secretText = "$AppName test-auth"
+
+        Test-Check 'Can create a profile secret' {
+            Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'create-secret', '--name', $profileSecret, '--secret-string', $secretText) | Out-Null
+            $profileSecret
+        } | Out-Null
+
+        Test-Check 'Can read a profile secret' {
+            $secret = Invoke-Aws -NoProfile -Json -Arguments @('secretsmanager', 'get-secret-value', '--secret-id', $profileSecret)
+            if ($secret.SecretString -ne $secretText) { throw 'Unexpected content' }
+        } | Out-Null
+
+        Test-Check 'Can delete a profile secret (clean up)' {
+            Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $profileSecret, '--force-delete-without-recovery') | Out-Null
+        } | Out-Null
+
+        # The index lists the user's real profiles, so it is written back unchanged, or deleted again if it is new.
+        Test-Check 'Can read and write the index secret' {
+            $index = Invoke-Aws -NoProfile -Json -AllowFailure -Arguments @('secretsmanager', 'get-secret-value', '--secret-id', $indexSecret)
+            if ($null -ne $index) {
+                $indexFile = New-TempTextFile $index.SecretString
+                try {
+                    Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'put-secret-value', '--secret-id', $indexSecret, '--secret-string', "file://$indexFile") | Out-Null
+                }
+                finally {
+                    Remove-Item -Force $indexFile -ErrorAction SilentlyContinue
+                }
+                'Existing index written back unchanged'
+            }
+            elseif ($script:LastAwsError -match 'ResourceNotFoundException') {
+                Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'create-secret', '--name', $indexSecret, '--secret-string', $secretText) | Out-Null
+                Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $indexSecret, '--force-delete-without-recovery') | Out-Null
+                'No index yet: created and deleted again'
+            }
+            else {
+                throw $script:LastAwsError
+            }
+        } | Out-Null
+
+        Test-Check "Is denied another user's secrets" {
+            foreach ($otherSecret in @("someone-else/keys/$([Guid]::NewGuid().ToString('D'))", 'someone-else/keys/index')) {
+                $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('secretsmanager', 'create-secret', '--name', $otherSecret, '--secret-string', $secretText)
+                if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied') {
+                    throw "Expected AccessDenied creating $otherSecret"
+                }
+                $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('secretsmanager', 'get-secret-value', '--secret-id', $otherSecret)
+                if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied') {
+                    throw "Expected AccessDenied reading $otherSecret"
+                }
+            }
+            'AccessDenied, as expected'
         } | Out-Null
     }
     finally {

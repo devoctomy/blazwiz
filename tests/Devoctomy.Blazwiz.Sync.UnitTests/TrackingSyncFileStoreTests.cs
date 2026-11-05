@@ -1,5 +1,6 @@
 using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Encryption;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync;
 using Devoctomy.Blazwiz.Sync.InMemory;
 using Devoctomy.Blazwiz.Sync.Interfaces;
@@ -164,7 +165,7 @@ public class TrackingSyncFileStoreTests
     {
         // Arrange
         var sut = CreateSut();
-        var encrypted = format.Encrypt([1, 2], "k_1", new byte[32]);
+        var encrypted = format.Encrypt([1, 2], "k_1", new byte[32], new E2eFileBinding("s1", "x"));
 
         // Act
         await sut.WriteAsync(Key, encrypted);

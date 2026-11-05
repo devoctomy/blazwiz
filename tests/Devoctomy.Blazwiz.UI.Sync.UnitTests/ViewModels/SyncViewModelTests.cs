@@ -3,6 +3,7 @@ using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services;
+using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Microsoft.Extensions.Time.Testing;
 using Moq;
@@ -19,6 +20,7 @@ public class SyncViewModelTests
     private readonly Mock<ISyncService> mockSync = new();
     private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly Mock<ISyncScheduler> mockScheduler = new();
+    private readonly Mock<ISyncProfileDisplayNames> mockDisplayNames = new();
     private readonly SyncEventPresenter eventPresenter;
     private readonly FakeTimeProvider time = new(Now);
     private readonly List<SyncEvent> events = [];
@@ -51,13 +53,14 @@ public class SyncViewModelTests
         var presenter = new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors);
 
         // Act & Assert
-        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(null!, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync)).ParamName);
-        Assert.Equal("eventPresenter", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, null!, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync)).ParamName);
-        Assert.Equal("statusPresenter", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, null!, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync)).ParamName);
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, null!, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, null!, mockScheduler.Object, time, testText.Sync)).ParamName);
-        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, null!, time, testText.Sync)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, testText.Sync)).ParamName);
+        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(null!, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, mockDisplayNames.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("eventPresenter", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, null!, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, mockDisplayNames.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("statusPresenter", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, null!, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, mockDisplayNames.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, null!, mockConnectivity.Object, mockScheduler.Object, mockDisplayNames.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, null!, mockScheduler.Object, mockDisplayNames.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, null!, mockDisplayNames.Object, time, testText.Sync)).ParamName);
+        Assert.Equal("displayNames", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, time, testText.Sync)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, mockDisplayNames.Object, null!, testText.Sync)).ParamName);
     }
 
     [Fact]
@@ -354,6 +357,16 @@ public class SyncViewModelTests
     }
 
     [Fact]
+    public void GivenAProfile_WhenGettingItsDisplayName_ThenTheDisplayNamesAreUsed()
+    {
+        // Arrange
+        mockDisplayNames.Setup(x => x.GetDisplayName("notes")).Returns("Notes");
+
+        // Act & Assert
+        Assert.Equal("Notes", CreateSut().GetProfileDisplayName("notes"));
+    }
+
+    [Fact]
     public async Task GivenSeveralProfiles_WhenProfileSelected_ThenFilterShownAndQueried()
     {
         // Arrange
@@ -447,5 +460,5 @@ public class SyncViewModelTests
     }
 
     private SyncViewModel CreateSut() =>
-        new(mockLog.Object, eventPresenter, new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors), mockSync.Object, mockConnectivity.Object, mockScheduler.Object, time, testText.Sync);
+        new(mockLog.Object, eventPresenter, new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors), mockSync.Object, mockConnectivity.Object, mockScheduler.Object, mockDisplayNames.Object, time, testText.Sync);
 }

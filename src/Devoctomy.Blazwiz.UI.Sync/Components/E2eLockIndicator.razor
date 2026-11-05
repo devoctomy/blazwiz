@@ -1,0 +1,24 @@
+@inherits MvvmComponentBase<E2eLockIndicatorViewModel>
+@inject IStringLocalizer<SyncUiText> SyncText
+
+@if (ViewModel.IsVisible)
+{
+    <div class="e2e-lock-indicator">
+        @if (ViewModel.IsMenuOpen)
+        {
+            <div class="sync-popover-backdrop" @onclick="() => ViewModel.CloseMenuCommand.Execute(null)"></div>
+            <div class="sync-popover e2e-lock-menu" id="e2e-lock-menu" role="dialog" aria-label="@ViewModel.Text">
+                <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="e2e-lock-menu-lock-all"
+                        @onclick="() => ViewModel.LockAllCommand.Execute(null)">
+                    <i class="bi bi-lock me-1"></i>@SyncText["Sync.E2e.LockAll"]
+                </button>
+            </div>
+        }
+        <button type="button" class="sync-pill" id="e2e-lock-indicator" title="@ViewModel.Text"
+                aria-expanded="@ViewModel.IsMenuOpen.ToString().ToLowerInvariant()"
+                @onclick="() => ViewModel.ToggleMenuCommand.Execute(null)">
+            <i class="bi bi-unlock text-success"></i>
+            <span class="sync-pill-text">@ViewModel.Text</span>
+        </button>
+    </div>
+}

@@ -29,13 +29,16 @@
             </div>
         </div>
     }
-    <button type="button"
-            class="sync-pill sync-tone-@ViewModel.Pill.Tone"
-            id="sync-status-pill"
-            title="@ViewModel.Pill.Tooltip"
-            aria-expanded="@ViewModel.IsPopoverOpen.ToString().ToLowerInvariant()"
-            @onclick="() => ViewModel.TogglePopoverCommand.Execute(null)">
-        <i class="bi @ViewModel.Pill.Icon @(ViewModel.Pill.IsSyncing ? "sync-spin" : null)"></i>
-        <span class="sync-pill-text">@ViewModel.Pill.Text</span>
-    </button>
+    <div class="sync-pill-row">
+        <E2eLockIndicator />
+        <button type="button"
+                class="sync-pill sync-tone-@ViewModel.Pill.Tone"
+                id="sync-status-pill"
+                title="@ViewModel.Pill.Tooltip"
+                aria-expanded="@ViewModel.IsPopoverOpen.ToString().ToLowerInvariant()"
+                @onclick="() => ViewModel.TogglePopoverCommand.Execute(null)">
+            <i class="bi @ViewModel.Pill.Icon @(ViewModel.Pill.IsSyncing ? "sync-spin" : null)"></i>
+            <span class="sync-pill-text">@ViewModel.Pill.Text</span>
+        </button>
+    </div>
 </div>

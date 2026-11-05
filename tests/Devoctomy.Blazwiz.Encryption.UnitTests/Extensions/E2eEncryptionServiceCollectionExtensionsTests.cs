@@ -5,6 +5,7 @@ using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Extensions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 
@@ -26,6 +27,8 @@ public class E2eEncryptionServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddScoped(_ => Mock.Of<IUserKeysStore>());
         services.AddScoped(_ => Mock.Of<IE2eLocalKeyStore>());
+        services.AddScoped(_ => Mock.Of<IE2eProfileIndexStore>());
+        services.AddScoped(_ => Mock.Of<IE2eLocalProfileIndexStore>());
 
         // Act
         var result = services.AddBlazwizE2eEncryption();
@@ -35,11 +38,11 @@ public class E2eEncryptionServiceCollectionExtensionsTests
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         await using var scope = provider.CreateAsyncScope();
         var sp = scope.ServiceProvider;
-        Assert.IsType<E2eKeyManager>(sp.GetRequiredService<IE2eKeyManager>());
-        Assert.IsType<E2eKeyRing>(sp.GetRequiredService<IE2eKeyRing>());
+        Assert.IsType<E2eProtectedProfileManager>(sp.GetRequiredService<IE2eProtectedProfileManager>());
+        Assert.IsType<E2eKeysDocumentService>(sp.GetRequiredService<IE2eKeysDocumentService>());
         Assert.IsType<EncryptedFileFormat>(sp.GetRequiredService<IEncryptedFileFormat>());
+        Assert.Same(sp.GetRequiredService<IE2eKeyRings>(), provider.GetRequiredService<IE2eKeyRings>());
         Assert.IsType<BouncyCastleArgon2idKeyDerivationService>(sp.GetRequiredService<IArgon2idKeyDerivationService>());
-        Assert.Same(sp.GetRequiredService<IE2eKeyRing>(), provider.GetRequiredService<IE2eKeyRing>());
     }
 
     [Fact]

@@ -15,59 +15,20 @@
   <data name="Sync.E2e.Acknowledge" xml:space="preserve">
     <value>I understand that if I forget this passphrase, my encrypted notes cannot be recovered.</value>
   </data>
-  <data name="Sync.E2e.Banner.Blocked" xml:space="preserve">
-    <value>Your notes are end to end encrypted and locked. Use your passkey to unlock them: the hardware PRF key your passkey provides is essential to keeping your data secure, so they cannot be read or synced without it.</value>
-  </data>
-  <data name="Sync.E2e.Banner.NeedsPasskeyAndSetup" xml:space="preserve">
-    <value>Your notes are end to end encrypted. Use your passkey, then set up this device with your passphrase to read and sync them.</value>
-  </data>
-  <data name="Sync.E2e.Banner.NeedsSetup" xml:space="preserve">
-    <value>Your notes are end to end encrypted. Set up this device with your passphrase to read and sync them.</value>
-  </data>
-  <data name="Sync.E2e.Dialog.ChangePassphrase.Text" xml:space="preserve">
-    <value>Your notes and other devices are not affected. Use the new passphrase when you next set up a device.</value>
-  </data>
-  <data name="Sync.E2e.Dialog.Disable.Text" xml:space="preserve">
-    <value>Every note will be decrypted on this device, then synced unencrypted. Your keys are deleted, and other devices turn encryption off when they next start.</value>
-  </data>
-  <data name="Sync.E2e.Dialog.Enable.Text" xml:space="preserve">
-    <value>Your notes will be encrypted on this device before they are synced. Other devices need this passphrase once to be set up.</value>
-  </data>
   <data name="Sync.E2e.NoRecoveryWarning" xml:space="preserve">
     <value>There is no passphrase recovery. If you forget your passphrase, nobody can decrypt your notes, including us.</value>
   </data>
-  <data name="Sync.E2e.Resolve.Text1" xml:space="preserve">
-    <value>End to end encryption was turned off on another device, so your notes there were decrypted and synced unencrypted.</value>
-  </data>
-  <data name="Sync.E2e.Resolve.Text2" xml:space="preserve">
-    <value>This device will decrypt its own changes that have not been synced yet, forget its keys, then sync, which brings down the decrypted notes.</value>
-  </data>
-  <data name="Sync.E2e.Status.NeedsSetup" xml:space="preserve">
-    <value>On, but this device has not been set up yet. Enter your passphrase to read and sync your notes here.</value>
-  </data>
-  <data name="Sync.E2e.Status.Unlocked" xml:space="preserve">
-    <value>On. Your notes are encrypted on this device before they are synced.</value>
-  </data>
-  <data name="Sync.E2e.Step.CheckIndex" xml:space="preserve">
-    <value>Check no notes are already encrypted</value>
-  </data>
-  <data name="Sync.E2e.Step.DecryptFiles" xml:space="preserve">
-    <value>Decrypt your notes</value>
-  </data>
-  <data name="Sync.E2e.Step.EncryptFiles" xml:space="preserve">
-    <value>Encrypt your notes</value>
-  </data>
-  <data name="Sync.E2e.Step.Sync" xml:space="preserve">
-    <value>Sync every note to this device</value>
-  </data>
   <data name="Sync.E2e.Text" xml:space="preserve">
-    <value>Encrypts your notes on this device with a key only you hold, so they are synced and stored encrypted. It needs your passkey and a passphrase of your own.</value>
+    <value>Your notes are encrypted on this device, with keys only you hold, before they are synced. They have a passphrase of their own.</value>
   </data>
   <data name="Sync.Folder.Banner" xml:space="preserve">
     <value>Your notes are kept in the folder {0}. Allow access to it again to use them and sync.</value>
   </data>
   <data name="Sync.Folder.NotKept" xml:space="preserve">
     <value>The browser did not keep access to the folder. Try again, or move your notes to browser storage in Settings.</value>
+  </data>
+  <data name="Sync.Profile.Files" xml:space="preserve">
+    <value>Notes</value>
   </data>
   <data name="Sync.Settings.Text" xml:space="preserve">
     <value>Your notes are kept in this browser and synced with your cloud storage when you are online.</value>

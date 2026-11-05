@@ -1,4 +1,8 @@
+using System.Reflection;
+using System.Text.Json;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Devoctomy.Blazwiz.Sync.Configuration;
@@ -91,6 +95,144 @@ public class SyncBuilder(SyncOptions options)
     }
 
     /// <summary>
+    /// Applies sync settings and profiles from configuration, e.g. <c>builder.Configuration.GetSection("Sync")</c>. Code
+    /// before and after this call can change or add to them; the last setting applied wins, and a profile name may be
+    /// used once. A missing section changes nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>The section holds <c>ChangeDebounce</c>, <c>ConnectivityTimings</c> (<c>CacheFor</c>,
+    /// <c>ProbeTimeout</c>, <c>RecheckBackoff</c>), <c>EventLog</c> (<c>Database</c>, <c>Store</c>, <c>MaxAge</c>,
+    /// <c>MaxEventsPerUser</c>) and <c>Profiles</c>, each keyed by the profile name, with <c>Remote</c> (required),
+    /// <c>IncludeEmptyFolders</c>, <c>Id</c> (required: a GUID), <c>IndexStore</c> (<c>Database</c>, <c>Store</c>), and either
+    /// <c>FileStore</c> (<c>Database</c>, <c>Store</c>) or <c>Storages</c> keyed by <see cref="Models.SyncStorageKind"/>
+    /// (<c>IndexedDb</c>: <c>Database</c>, <c>Store</c>; <c>Opfs</c>: <c>Root</c>, <c>MetadataDatabase</c>,
+    /// <c>MetadataStore</c>; <c>LocalFolder</c>: <c>MetadataDatabase</c>, <c>MetadataStore</c>) with
+    /// <c>DefaultStorage</c>. Time spans are written as <c>00:00:30</c> or <c>30.00:00:00</c>.</para>
+    /// <para>Profiles are added in order of name, and storages in the order of <see cref="Models.SyncStorageKind"/>.
+    /// Custom stores and logs (<see cref="UseEventLog{T}"/>, <see cref="SyncProfileBuilder.UseIndexStore{T}"/>,
+    /// <see cref="SyncProfileBuilder.UseFileStore{T}"/>) are set in code.</para>
+    /// </remarks>
+    /// <param name="section">The configuration section.</param>
+    /// <returns>The builder.</returns>
+    /// <exception cref="InvalidOperationException">The section has an unknown key, a missing or invalid value, or a
+    /// profile that cannot be added.</exception>
+    public SyncBuilder UseConfiguration(IConfiguration section)
+    {
+        ArgumentNullException.ThrowIfNull(section);
+
+        new SyncConfigurationReader(this).Read(section);
+        return this;
+    }
+
+    /// <summary>
+    /// Applies sync settings and profiles from a JSON file embedded in an assembly, from its <c>Sync</c> section (see
+    /// <see cref="UseConfiguration"/>). Embed it with <c>&lt;EmbeddedResource Include="sync.json" LogicalName="sync.json" /&gt;</c>.
+    /// </summary>
+    /// <param name="assembly">The assembly holding the file, e.g. <c>typeof(Program).Assembly</c>.</param>
+    /// <param name="resourceName">The resource name, e.g. <c>sync.json</c>.</param>
+    /// <returns>The builder.</returns>
+    /// <exception cref="InvalidOperationException">The resource is missing, is not valid JSON, has no <c>Sync</c>
+    /// section, or its settings are invalid.</exception>
+    public SyncBuilder UseEmbeddedConfiguration(Assembly assembly, string resourceName)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        ArgumentException.ThrowIfNullOrWhiteSpace(resourceName);
+
+        IConfigurationRoot configuration;
+        using (var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"'{assembly.GetName().Name}' has no embedded resource called '{resourceName}'."))
+        {
+            try
+            {
+                configuration = new ConfigurationBuilder().AddJsonStream(stream).Build();
+            }
+            catch (Exception ex) when (ex is FormatException or JsonException)
+            {
+                throw new InvalidOperationException($"The embedded resource '{resourceName}' is not valid JSON: {ex.Message}", ex);
+            }
+        }
+
+        var section = configuration.GetSection(SyncDefaults.ConfigurationSection);
+        if (!section.Exists())
+        {
+            throw new InvalidOperationException($"The embedded resource '{resourceName}' has no '{SyncDefaults.ConfigurationSection}' section.");
+        }
+
+        return UseConfiguration(section);
+    }
+
+    /// <summary>
+    /// Sets the security settings of the profiles users create: when they lock themselves, whether they can be
+    /// unlocked with the passkey, their passphrase rules and Argon2id costs.
+    /// </summary>
+    /// <param name="configure">Changes the settings, starting from the framework's defaults.</param>
+    /// <returns>The builder.</returns>
+    public SyncBuilder UseProfileDefaults(Action<E2eProfileSettings> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        configure(Options.ProfileDefaults);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a profile defined as a class.
+    /// </summary>
+    /// <typeparam name="TProfile">The profile definition.</typeparam>
+    /// <returns>The builder.</returns>
+    public SyncBuilder AddProfile<TProfile>()
+        where TProfile : SyncProfileDefinition, new()
+    {
+        return AddProfile(new TProfile());
+    }
+
+    /// <summary>
+    /// Adds a profile defined as a class.
+    /// </summary>
+    /// <param name="definition">The profile definition.</param>
+    /// <returns>The builder.</returns>
+    public SyncBuilder AddProfile(SyncProfileDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+
+        return AddProfile(definition.Name, definition.Configure);
+    }
+
+    /// <summary>
+    /// Adds every profile defined in an assembly: each concrete <see cref="SyncProfileDefinition"/> with a parameterless
+    /// constructor, public or not, in order of profile name.
+    /// </summary>
+    /// <param name="assembly">The assembly, e.g. <c>typeof(Program).Assembly</c>.</param>
+    /// <returns>The builder.</returns>
+    /// <exception cref="InvalidOperationException">A definition has no parameterless constructor.</exception>
+    public SyncBuilder AddProfilesFromAssembly(Assembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+
+        var definitions = assembly.GetTypes()
+            .Where(t => t is { IsAbstract: false, IsGenericTypeDefinition: false } && typeof(SyncProfileDefinition).IsAssignableFrom(t))
+            .Select(CreateDefinition)
+            .OrderBy(d => d.Name, StringComparer.Ordinal)
+            .ToList();
+        foreach (var definition in definitions)
+        {
+            AddProfile(definition);
+        }
+
+        return this;
+    }
+
+    /// <summary>
+    /// Adds every profile defined in the assembly holding <typeparamref name="T"/> (see <see cref="AddProfilesFromAssembly"/>).
+    /// </summary>
+    /// <typeparam name="T">A type in the assembly, e.g. <c>Program</c>.</typeparam>
+    /// <returns>The builder.</returns>
+    public SyncBuilder AddProfilesFromAssemblyContaining<T>()
+    {
+        return AddProfilesFromAssembly(typeof(T).Assembly);
+    }
+
+    /// <summary>
     /// Adds a profile: one set of index store, file store and remote pattern.
     /// </summary>
     /// <param name="name">The profile name, e.g. <c>documents</c>. App code gets its file store with this service key.</param>
@@ -112,7 +254,30 @@ public class SyncBuilder(SyncOptions options)
             throw new ArgumentException($"Sync profile '{name}' needs a remote pattern (UseRemote).", nameof(configure));
         }
 
+        if (profile.KeyScope == null)
+        {
+            throw new ArgumentException($"Sync profile '{name}' needs an id for its keys (UseKeyId).", nameof(configure));
+        }
+
+        if (Options.Profiles.Any(p => p.KeyScope == profile.KeyScope))
+        {
+            throw new ArgumentException($"Sync profile '{name}' has the same id as another profile.", nameof(configure));
+        }
+
         Options.Profiles.Add(profile);
         return this;
+    }
+
+    private static SyncProfileDefinition CreateDefinition(Type type)
+    {
+        try
+        {
+            var definition = Activator.CreateInstance(type, nonPublic: true);
+            return (SyncProfileDefinition)definition!;
+        }
+        catch (MissingMethodException ex)
+        {
+            throw new InvalidOperationException($"The sync profile definition '{type.FullName}' needs a parameterless constructor.", ex);
+        }
     }
 }

@@ -28,6 +28,13 @@ public class TestBase : PageTest
     /// </summary>
     protected const int AppStartTimeoutMs = 60000;
 
+//#if (IncludeSync)
+    /// <summary>
+    /// The passphrase the tests protect their files with.
+    /// </summary>
+    protected const string Passphrase = "correct horse battery staple";
+
+//#endif
     private static readonly string ResultsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
     private static readonly string ScreenshotDirectory = Path.Combine(ResultsDirectory, "Screenshots");
     private static readonly TimeSpan PortalBuildTimeout = TimeSpan.FromMinutes(10);
@@ -185,6 +192,83 @@ public class TestBase : PageTest
         await Page.Locator("#login-button").ClickAsync();
         await Expect(Page.Locator("#dashboard-greeting")).ToBeVisibleAsync();
     }
+
+//#if (IncludeSync)
+    /// <summary>
+    /// Sets the first passphrase of the app's profile in Settings, which unlocks it, and returns to the page it
+    /// started on.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task SetPassphraseAsync()
+    {
+        var startUrl = Page.Url;
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#e2e-app-profiles .e2e-set-passphrase").First.ClickAsync();
+        await EnterNewPassphraseAsync();
+        await CloseFinishedDialogAsync();
+        await Expect(Page.Locator("#e2e-banner")).ToHaveCountAsync(0);
+        await GoBackToAsync(startUrl);
+    }
+
+    /// <summary>
+    /// Fills in a new passphrase, its confirmation and the no recovery acknowledgement, and confirms the dialog.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task EnterNewPassphraseAsync()
+    {
+        await Page.Locator("#e2e-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-confirm-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-acknowledge").CheckAsync();
+        await Page.Locator("#e2e-confirm").ClickAsync();
+    }
+
+    /// <summary>
+    /// Waits for the dialog's change to finish, and closes it.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task CloseFinishedDialogAsync()
+    {
+        await Expect(Page.Locator("#e2e-finished")).ToBeVisibleAsync();
+        await Page.Locator("#e2e-close").ClickAsync();
+        await Expect(Page.Locator("#e2e-dialog")).ToHaveCountAsync(0);
+    }
+
+    /// <summary>
+    /// Unlocks the profile shown on the page with its passphrase, in the unlock panel shown in place of its content.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task UnlockAsync()
+    {
+        await Page.Locator("#e2e-unlock-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-unlock-button").ClickAsync();
+        await Expect(Page.Locator("#e2e-unlock-panel")).ToHaveCountAsync(0);
+    }
+
+//#if (IncludeNotes)
+    /// <summary>
+    /// Opens the pages of the default notebook (the notes profile) from the Notebooks page.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task OpenNotesAsync()
+    {
+        await Page.Locator("#nav-notebooks").ClickAsync();
+        await Page.Locator("#notebooks .notebook[data-notebook='notes'] .notebook-open").ClickAsync();
+        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Notes");
+    }
+
+//#endif
+    /// <summary>
+    /// Goes back to a page, in the app (so the keys are kept), if the test has moved on from it.
+    /// </summary>
+    private async Task GoBackToAsync(string url)
+    {
+        if (Page.Url != url)
+        {
+            await Page.GoBackAsync();
+            await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"^{System.Text.RegularExpressions.Regex.Escape(url)}$"));
+        }
+    }
+//#endif
 
     /// <summary>
     /// Saves a screenshot to TestResults/Screenshots.

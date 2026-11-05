@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Core.Extensions;
 using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Extensions;
@@ -37,7 +38,7 @@ public class SyncServiceCollectionExtensionsTests
     {
         // Arrange
         var services = CreateServices();
-        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p.UseRemote("notes/**/*.md", includeEmptyFolders: true)));
+        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*.md", includeEmptyFolders: true)));
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         await using var scope = provider.CreateAsyncScope();
         var sp = scope.ServiceProvider;
@@ -75,12 +76,12 @@ public class SyncServiceCollectionExtensionsTests
         var untracked = Assert.IsType<IndexedDbSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
         Assert.Equal(("files", "notes"), (untracked.Store.Database, untracked.Store.Name));
 
-        Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
-        Assert.IsType<S3SyncRemoteStore>(sp.GetRequiredKeyedService<ISyncRemoteStore>("notes"));
+        Assert.IsType<EncryptingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
+        Assert.IsType<S3SyncRemoteStore>(sp.GetRequiredService<ISyncProfileRegistry>().GetSyncProfile("notes").RemoteStore);
         var matcher = sp.GetRequiredKeyedService<ISyncPathMatcher>("notes");
         Assert.True(matcher.IsMatch("notes/Work/"));
 
-        var profile = Assert.Single(sp.GetServices<SyncProfile>());
+        var profile = sp.GetRequiredService<ISyncProfileRegistry>().GetSyncProfile(Assert.Single(sp.GetRequiredService<ISyncProfileRegistry>().Profiles).Name);
         Assert.Equal("notes", profile.Name);
         Assert.Same(untracked, profile.FileStore);
         Assert.Same(index, profile.IndexStore);
@@ -97,7 +98,7 @@ public class SyncServiceCollectionExtensionsTests
         var services = CreateServices();
         services.AddBlazwizSync(sync => sync
             .UseIndexedDbEventLog("sync", "log")
-            .AddProfile("notes", p => p
+            .AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D"))
                 .UseIndexedDbIndexStore("sync", "notes_index")
                 .UseIndexedDbFileStore("notes", "files")
                 .UseRemote("notes/**/*.md", includeEmptyFolders: true)));
@@ -119,7 +120,7 @@ public class SyncServiceCollectionExtensionsTests
     {
         // Arrange
         var services = CreateServices();
-        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p
+        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D"))
             .UseFileStores(s => s.AddIndexedDb("notes", "files").AddOpfs("notes_root").AddLocalFolder())
             .UseRemote("notes/**/*.md")));
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
@@ -131,8 +132,8 @@ public class SyncServiceCollectionExtensionsTests
 
         // Assert
         var untracked = Assert.IsType<SwitchableSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
-        Assert.Same(untracked, Assert.Single(sp.GetServices<SyncProfile>()).FileStore);
-        Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
+        Assert.Same(untracked, sp.GetRequiredService<ISyncProfileRegistry>().GetSyncProfile("notes").FileStore);
+        Assert.IsType<EncryptingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
 
         var indexedDb = Assert.IsType<IndexedDbSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.IndexedDb));
         Assert.Equal(("notes", "files"), (indexedDb.Store.Database, indexedDb.Store.Name));
@@ -148,7 +149,7 @@ public class SyncServiceCollectionExtensionsTests
     {
         // Arrange
         var services = CreateServices();
-        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p
+        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D"))
             .UseIndexStore<InMemorySyncIndexStore>()
             .UseFileStore<InMemorySyncFileStore>()
             .UseRemote("notes/**/*.md")));
@@ -159,7 +160,7 @@ public class SyncServiceCollectionExtensionsTests
         // Assert
         Assert.IsType<InMemorySyncIndexStore>(sp.GetRequiredKeyedService<ISyncIndexStore>("notes"));
         Assert.IsType<InMemorySyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
-        Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
+        Assert.IsType<EncryptingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
     }
 
     [Fact]
@@ -168,8 +169,8 @@ public class SyncServiceCollectionExtensionsTests
         // Arrange
         var services = CreateServices();
         services.AddBlazwizSync(sync => sync
-            .AddProfile("notes", p => p.UseFileStore<InMemorySyncFileStore>().UseRemote("notes/**/*.md"))
-            .AddProfile("photos", p => p.UseIndexStore<InMemorySyncIndexStore>().UseRemote("photos/**/*.png")));
+            .AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseFileStore<InMemorySyncFileStore>().UseRemote("notes/**/*.md"))
+            .AddProfile("photos", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseIndexStore<InMemorySyncIndexStore>().UseRemote("photos/**/*.png")));
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
         var sp = scope.ServiceProvider;
@@ -179,7 +180,7 @@ public class SyncServiceCollectionExtensionsTests
         Assert.IsType<InMemorySyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
         Assert.IsType<InMemorySyncIndexStore>(sp.GetRequiredKeyedService<ISyncIndexStore>("photos"));
         Assert.IsType<IndexedDbSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("photos" + SyncDefaults.UntrackedFileStoreKeySuffix));
-        Assert.Equal(["notes", "photos"], sp.GetServices<SyncProfile>().Select(p => p.Name));
+        Assert.Equal(["notes", "photos"], sp.GetRequiredService<ISyncProfileRegistry>().Profiles.Select(p => p.Name));
     }
 
     [Fact]
@@ -189,7 +190,7 @@ public class SyncServiceCollectionExtensionsTests
         var services = CreateServices();
         var resolver = Mock.Of<ISyncConflictResolver>();
         services.AddSingleton(resolver);
-        services.AddBlazwizSync(sync => sync.UseEventLog<InMemoryLog>().AddProfile("notes", p => p.UseRemote("notes/*.md")));
+        services.AddBlazwizSync(sync => sync.UseEventLog<InMemoryLog>().AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/*.md")));
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
 
@@ -199,42 +200,26 @@ public class SyncServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task GivenEncryptedProfile_WhenAddBlazwizSync_ThenAppStoreEncryptsAndEncryptionServicesResolve()
+    public async Task GivenProfiles_WhenAddBlazwizSync_ThenEveryAppStoreEncrypts()
     {
         // Arrange
         var services = CreateServices();
         services.AddScoped(_ => Mock.Of<IUserKeysStore>());
         services.AddScoped(_ => Mock.Of<IE2eLocalKeyStore>());
+        services.AddScoped(_ => Mock.Of<IE2eProfileIndexStore>());
+        services.AddScoped(_ => Mock.Of<IE2eLocalProfileIndexStore>());
         services.AddBlazwizE2eEncryption();
         services.AddBlazwizSync(sync => sync
-            .AddProfile("notes", p => p.UseRemote("notes/**/*.md").UseEncryption())
-            .AddProfile("photos", p => p.UseRemote("photos/**/*")));
+            .AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*.md"))
+            .AddProfile("photos", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("photos/**/*")));
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         await using var scope = provider.CreateAsyncScope();
         var sp = scope.ServiceProvider;
 
         // Assert
         Assert.IsType<EncryptingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
-        Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("photos"));
-        Assert.Equal("notes", Assert.Single(sp.GetServices<EncryptedSyncProfile>()).Name);
-        Assert.IsType<E2eSyncGate>(Assert.Single(sp.GetServices<ISyncGate>()));
-        Assert.IsType<SyncEncryptionSweeper>(sp.GetRequiredService<ISyncEncryptionSweeper>());
-        Assert.IsType<SyncEncryptionService>(sp.GetRequiredService<ISyncEncryptionService>());
-    }
-
-    [Fact]
-    public async Task GivenNoEncryptedProfile_WhenAddBlazwizSync_ThenNoGateOrEncryptionService()
-    {
-        // Arrange
-        var services = CreateServices();
-        services.AddBlazwizSync(sync => sync.AddProfile("notes", p => p.UseRemote("notes/**/*.md")));
-        await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-        await using var scope = provider.CreateAsyncScope();
-
-        // Assert
-        Assert.Empty(scope.ServiceProvider.GetServices<ISyncGate>());
-        Assert.Null(scope.ServiceProvider.GetService<ISyncEncryptionService>());
-        Assert.IsType<EncryptedFileFormat>(scope.ServiceProvider.GetRequiredService<IEncryptedFileFormat>());
+        Assert.IsType<EncryptingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("photos"));
+        Assert.Empty(sp.GetServices<ISyncGate>());
     }
 
     private static ServiceCollection CreateServices()
@@ -245,6 +230,7 @@ public class SyncServiceCollectionExtensionsTests
         services.AddScoped(_ => Mock.Of<IS3SyncTargetProvider>());
         services.AddScoped(_ => Mock.Of<ISyncUserContext>());
         services.AddScoped(_ => Mock.Of<ISyncEnabledStore>());
+        services.AddSingleton<IE2eKeyRings>(new E2eKeyRings(new InMemoryDerivedKeyStore()));
         return services;
     }
 
