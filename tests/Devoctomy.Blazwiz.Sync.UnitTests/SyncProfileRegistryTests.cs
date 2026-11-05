@@ -21,7 +21,7 @@ public class SyncProfileRegistryTests
 
     public SyncProfileRegistryTests()
     {
-        options.Profiles.Add(Profile("notes", isEncrypted: true));
+        options.Profiles.Add(Profile("notes"));
         var services = new ServiceCollection();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton(Mock.Of<ISyncUserContext>());
@@ -142,42 +142,28 @@ public class SyncProfileRegistryTests
     }
 
     [Fact]
-    public void GivenAnEncryptedAndAPlainProfile_WhenTheirStoresAreAskedFor_ThenOnlyTheEncryptedOneEncrypts()
+    public async Task GivenAProfile_WhenAdded_ThenItsStoreUsesItsOwnKeysAndRefusesWritesWhileLocked()
     {
         // Arrange
         var sut = CreateSut();
-        sut.Add(Profile("photos"));
-
-        // Act & Assert
-        Assert.IsType<EncryptingSyncFileStore>(sut.GetFileStore("notes"));
-        Assert.IsType<TrackingSyncFileStore>(sut.GetFileStore("photos"));
-        Assert.Equal("notes", Assert.Single(sut.GetAccountEncryptedProfiles()).Name);
-    }
-
-    [Fact]
-    public async Task GivenAProtectedProfile_WhenAdded_ThenItsStoreUsesItsOwnKeysAndRefusesWritesWhileLocked()
-    {
-        // Arrange
-        var sut = CreateSut();
-        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
-        var profile = Profile(scope.Id);
-        profile.KeyScope = scope;
+        var profile = Profile("photos");
+        var scope = profile.KeyScope!;
+        var name = profile.Name;
 
         // Act
         sut.Add(profile);
 
         // Assert
-        Assert.IsType<EncryptingSyncFileStore>(sut.GetFileStore(scope.Id));
-        Assert.DoesNotContain(sut.GetAccountEncryptedProfiles(), p => p.Name == scope.Id);
-        await Assert.ThrowsAsync<E2eLockedException>(() => sut.GetFileStore(scope.Id).WriteAsync("a.txt", [1]));
-        Assert.Equal(E2eWriteMode.Refuse, keyRings.Get(scope).WriteMode);
+        Assert.IsType<EncryptingSyncFileStore>(sut.GetFileStore(name));
+        await Assert.ThrowsAsync<E2eLockedException>(() => sut.GetFileStore(name).WriteAsync("a.txt", [1]));
+        Assert.Null(keyRings.Get(scope).ActiveKeyId);
     }
 
-    private static SyncProfileOptions Profile(string name, bool isEncrypted = false) => new()
+    private static SyncProfileOptions Profile(string name) => new()
     {
         Name = name,
         RemotePattern = name + "/**/*",
-        IsEncrypted = isEncrypted,
+        KeyScope = new E2eKeyScope(Guid.NewGuid().ToString("D")),
         IndexStoreFactory = _ => new InMemorySyncIndexStore(),
         FileStoreFactory = sp => new InMemorySyncFileStore(sp.GetRequiredService<ISyncUserContext>(), TimeProvider.System),
     };

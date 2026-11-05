@@ -38,15 +38,11 @@ public class E2eEncryptionServiceCollectionExtensionsTests
         await using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
         await using var scope = provider.CreateAsyncScope();
         var sp = scope.ServiceProvider;
-        Assert.IsType<E2eKeyManager>(sp.GetRequiredService<IE2eKeyManager>());
         Assert.IsType<E2eProtectedProfileManager>(sp.GetRequiredService<IE2eProtectedProfileManager>());
         Assert.IsType<E2eKeysDocumentService>(sp.GetRequiredService<IE2eKeysDocumentService>());
-        Assert.IsType<E2eKeyRing>(sp.GetRequiredService<IE2eKeyRing>());
         Assert.IsType<EncryptedFileFormat>(sp.GetRequiredService<IEncryptedFileFormat>());
+        Assert.Same(sp.GetRequiredService<IE2eKeyRings>(), provider.GetRequiredService<IE2eKeyRings>());
         Assert.IsType<BouncyCastleArgon2idKeyDerivationService>(sp.GetRequiredService<IArgon2idKeyDerivationService>());
-        Assert.Same(sp.GetRequiredService<IE2eKeyRing>(), provider.GetRequiredService<IE2eKeyRing>());
-        Assert.Same(sp.GetRequiredService<IE2eKeyRings>().Get(E2eKeyScope.Account), sp.GetRequiredService<IE2eKeyRing>());
-        Assert.Same(E2eKeyScope.Account, sp.GetRequiredService<IE2eKeyRing>().Scope);
     }
 
     [Fact]

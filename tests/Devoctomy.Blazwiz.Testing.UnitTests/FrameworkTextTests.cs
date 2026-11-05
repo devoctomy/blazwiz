@@ -69,7 +69,7 @@ public class FrameworkTextTests
         var text = new FrameworkText();
 
         // Act & Assert
-        Assert.Equal(["Error.E2e.AlreadyEnabled", "Renamed.In.An.Upgrade"], text.UnknownOverrideKeys(typeof(TestOverrides)));
+        Assert.Equal(["Error.E2e.WrongPassphrase", "Renamed.In.An.Upgrade"], text.UnknownOverrideKeys(typeof(TestOverrides)));
     }
 
     [Fact]

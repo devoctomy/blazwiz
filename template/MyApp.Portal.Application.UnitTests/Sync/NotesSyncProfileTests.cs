@@ -22,7 +22,7 @@ public class NotesSyncProfileTests
         Assert.Equal(NoteService.ProfileName, profile.Name);
         Assert.Equal("notes/**/*.md", profile.RemotePattern);
         Assert.True(profile.IncludeEmptyFolders);
-        Assert.True(profile.IsEncrypted);
+        Assert.Equal(NotesSyncProfile.KeyId, profile.KeyScope!.Id);
         Assert.Equal("notes_index", profile.ResolvedIndexStoreName);
         Assert.Equal([SyncStorageKind.IndexedDb, SyncStorageKind.Opfs, SyncStorageKind.LocalFolder], profile.FileStores.Select(s => s.Kind));
         Assert.Equal(SyncStorageKind.IndexedDb, profile.ResolvedDefaultStorageKind);

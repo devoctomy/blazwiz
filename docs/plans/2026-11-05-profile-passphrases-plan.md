@@ -66,8 +66,8 @@ Derived from the goal. Each is numbered so the work below can refer to it.
   allows it, and the user turns it on for that profile on that device. Off by default.
 - **R15. Files are bound to their profile and path.** A file's ciphertext cannot be moved to another path or another
   profile and still decrypt (fixes L1 for these profiles).
-- **R16. Coexists with account encryption.** Profiles using the account's keys (`UseEncryption()` today) keep working
-  as they do. An app can use both kinds.
+- **R16. Every profile has its own passphrase.** Profiles set up in code and profiles users create alike have their own
+  passphrase and keys. There is no passphrase for the whole account.
 - **R17. Stronger defaults.** The passphrase rules (minimum length) and Argon2id costs can be set for each profile,
   and are stored in each keys document so they can be raised later.
 
@@ -192,6 +192,8 @@ What the user sees, in the framework (`UI.Sync`, D5):
 | D5 | Does the framework provide UI? | Yes. For now Settings lists the user's protected profiles, including those needing their passphrase on a new device. The template's demo shows only notes |
 | D6 | Is there any recovery? | No. Recorded as a request: `docs/requests/2026-11-05-protected-profile-recovery.md` |
 | D7 | Replacing a profile's file key? | Not added. Changing the passphrase stays (R10) |
+| D9 | Where do the settings of profiles users create come from? | Defaults the developer sets in code |
+| D10 | What id does a profile set up in code have? | One set in code; the developer chooses a fixed id or a newly generated one. The notes example has a fixed id, so it can be tested. Profiles users create get new GUIDs |
 | D8 | How is a protected profile named? | Only by its GUID, shown as a string. The user remembers what it represents. The notes sample has one configured profile, so it cannot be anything else |
 
 ## Work
@@ -200,52 +202,36 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 
 ### Phase 1: key scopes, with the account as the only scope
 
-- [x] `E2eKeyScope` (`Account`, or an id of ASCII letters, digits, `-` and `_`).
-- [x] A key ring per scope (`IE2eKeyRings`), holding its keys as `e2e:<scope>:master` and `e2e:<scope>:file:<id>`;
-      `IE2eKeyRing` is the account's ring. Lock all moves to Phase 2, where it is first used.
-- [x] Keys store and local key store keyed by scope: the account keeps `<sub>/keys`, other scopes `<sub>/keys/<id>`;
-      on the device `e2e_keys_<scope>_<user>`.
-- [x] The key manager stays the account scope's manager. A passphrase scope's states (locked, unlocked) and
-      operations (create, unlock, lock, change passphrase, delete) differ from the account's (enable, set up a device,
-      disable), so it gets its own manager in Phase 2 rather than a scope parameter here.
-- [x] No behaviour change for apps, except that each device sets up account encryption again once, as its local key
-      entry is renamed (pre-1.0, nothing is migrated). New tests for two scopes in the key rings and both stores.
+- [x] Key ring holds keys per scope, with lock per scope and lock all.
+- [x] Keys store and local key store keyed by scope; account scope keeps `<sub>/keys`.
+- [x] Key manager takes a scope; status per scope.
+  - Done differently: the account's key manager stays the account's; protected profiles have their own manager
+    (Phase 2), with a locked or unlocked status per profile.
+- [x] No behaviour change for apps; existing tests still pass, new tests for two scopes in the key ring and stores.
+  - Each device asks for the account passphrase once after updating, as its local key entry is renamed.
 
 ### Phase 2: passphrase scopes
 
-- [ ] Each protected profile's own settings, with framework defaults: idle timeout, device unlock allowed, passphrase
-      rules, Argon2id costs (R5, R14, R17). (Replaces `UseOwnPassphrase(...)` on the profile builder: protected
-      profiles are created at runtime, not configured in code.)
-- [x] A registry of profiles (`ISyncProfileRegistry`): the configured ones and those added and removed at runtime,
-      each with its stores created once. The sync service, scheduler (which syncs a profile as soon as it is added),
-      storage resolver, storage moves, folder service, gate and account encryption all work over it. Configured
-      profiles' keyed services (`[FromKeyedServices("notes")]`) come from it (R7).
-- [x] Local stores per protected profile, named after its id (see "Separate local storage per profile").
-- [x] `ISyncProtectedProfileService`: adds the user's protected profiles as sync profiles when the session starts
-      (and removes any deleted elsewhere), creates them, and locks and removes them all on sign out.
-- [x] Keys-document cryptography shared by the account and protected profiles (`IE2eKeysDocumentService`), so it
-      exists once.
-- [x] Key rings of protected profiles start refusing writes and can never be set to write plaintext; only the
-      account's scope can (R3).
-- [x] `IE2eProtectedProfileManager`: list, create, unlock (online, or offline from this device's copy), lock, lock
-      all, change passphrase, delete the keys (R1, R2, R4, R5, R9, R10, R11, R13). Profile ids are GUIDs (R8).
-- [x] The index secret (`<sub>/keys/index`, `IE2eProfileIndexStore`) with this device's copy
-      (`IE2eLocalProfileIndexStore`), read when listing and updated on create and delete (D3). Index entries hold
-      the id and created date; per-profile settings are added with the features that use them.
-- [x] Create a profile: its keys, then its registration as a sync profile (R7).
-- [ ] Optional device unlock with the passkey (R14). Unlocking with the passphrase, online and offline, is done above.
-- [x] A locked protected profile's store refuses reads and writes with `E2eLockedException` (its key ring refuses
-      writes and has no keys to decrypt with) (R4).
-- [ ] Idle timer that locks a protected profile after a period without use (R5).
-- [x] Protected profiles are left out of `E2eSyncGate` and the account's sweeps, so they sync while locked (R3, R12,
-      R16). Unit tested; an integration scenario is in Phase 5.
-- [ ] Format version with scope and path in the authenticated data (R15).
+- [x] Each profile's settings (idle timeout, device unlock allowed, passphrase rules, Argon2id costs): set in code for
+      profiles set up in code, and defaults set in code for profiles users create (R5, R14, R17).
+- [x] A registry of profiles added and removed at runtime, with no profile declared in code; the sync service,
+      scheduler, storage resolver and gate work over the registry (R7). Protected profiles found again at sign in.
+- [x] Local stores per runtime profile: IndexedDB databases, OPFS and folder directories named after the profile id.
+  - Done differently: each profile's own object stores, named after its id, in the existing databases.
+- [x] The index secret: read at sign in, updated on create, delete and settings changes (D3).
+- [x] Create a profile: GUID, new keys document (conditional create), index entry, local stores (R1, R2, R7, R8).
+- [x] Unlock with the passphrase, online and offline (R4, R13); optional device unlock (R14).
+- [x] Encrypting store: refuse when locked, coded errors, idle timer (R4, R5).
+- [x] Leave passphrase scopes out of `E2eSyncGate` and the account sweeps; they sync while locked (R3, R12, R16).
+- [x] Format version with scope and path in the authenticated data (R15).
 - [x] Change passphrase (R10).
-- [x] Delete a profile: its keys first, then under its sync lock its files in S3, its index records, and its files in
-      IndexedDB and OPFS (and the picked folder when that is the storage in use), then the sync profile (R11).
-- [x] Lock all on sign out, from the sync module's session handler, so keys are wiped then and not when the sign-in
-      page next loads (R5).
-- [ ] Lock in every tab over a broadcast channel (R6).
+- [x] Delete a profile: files on every storage, cached keys, its secret and its index entry (R11).
+  - Files in the picked folder are deleted only when it is the storage in use.
+- [x] Lock in every tab over a broadcast channel (R6); lock all from a session lifecycle handler on sign out.
+- [x] Profiles set up in code (like notes) are protected profiles: each has an id set in code, its own passphrase and
+      keys, and the user sets its passphrase the first time (R16, D10).
+- [ ] Remove the account-wide passphrase: `E2eKeyManager`, the sweeps, the gate, and its Settings section and banner
+      (R16).
 
 ### Phase 3: AWS
 

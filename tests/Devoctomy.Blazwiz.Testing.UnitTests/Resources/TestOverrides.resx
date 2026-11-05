@@ -15,7 +15,7 @@
   <data name="Settings.About.Title" xml:space="preserve">
     <value>About this app</value>
   </data>
-  <data name="Error.E2e.AlreadyEnabled" xml:space="preserve">
+  <data name="Error.E2e.WrongPassphrase" xml:space="preserve">
     <value>Already on.</value>
   </data>
   <data name="Renamed.In.An.Upgrade" xml:space="preserve">

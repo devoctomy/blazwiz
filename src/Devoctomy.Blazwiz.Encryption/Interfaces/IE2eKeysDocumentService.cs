@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Models;
 
 namespace Devoctomy.Blazwiz.Encryption.Interfaces;
@@ -14,10 +15,11 @@ public interface IE2eKeysDocumentService
     /// passphrase, and one active file key wrapped by the master key.
     /// </summary>
     /// <param name="passphrase">The passphrase.</param>
+    /// <param name="parameters">The Argon2id costs, or null for the app's.</param>
     /// <param name="progress">Told when the key is derived and when the keys are created.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>The document and its raw keys; dispose it to wipe them.</returns>
-    Task<E2eNewKeys> CreateAsync(string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
+    Task<E2eNewKeys> CreateAsync(string passphrase, Argon2idParameters? parameters = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
     /// Reads and checks a keys document.
@@ -52,9 +54,10 @@ public interface IE2eKeysDocumentService
     /// <param name="document">The document to change.</param>
     /// <param name="masterKey">The raw master key.</param>
     /// <param name="passphrase">The new passphrase.</param>
+    /// <param name="parameters">The Argon2id costs, or null for the app's.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task RewrapMasterKeyAsync(UserKeysDocument document, byte[] masterKey, string passphrase, CancellationToken ct = default);
+    Task RewrapMasterKeyAsync(UserKeysDocument document, byte[] masterKey, string passphrase, Argon2idParameters? parameters = null, CancellationToken ct = default);
 
     /// <summary>
     /// Unwraps a document's file keys with its master key and loads them, with the master key, into a key ring.

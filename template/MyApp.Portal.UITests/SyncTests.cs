@@ -29,6 +29,7 @@ public class SyncTests : TestBase
     public async Task GivenNoCloud_WhenEditingNotes_ThenTheyAreSavedAndThePendingCountGoesUp()
     {
         await LoginAsync();
+        await SetPassphraseAsync();
         await Page.Locator("#nav-files").ClickAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
 
@@ -47,6 +48,7 @@ public class SyncTests : TestBase
 
         // Stored locally, so still there after a reload.
         await ReloadAsync();
+        await UnlockAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("written with no cloud");
     }
 //#endif
@@ -196,6 +198,7 @@ public class SyncTests : TestBase
     public async Task GivenNotes_WhenStorageSwitchedToOpfsAndBack_ThenNotesMoveWithNothingNewToSync()
     {
         await LoginAsync();
+        await SetPassphraseAsync();
         await Page.Locator("#nav-files").ClickAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
         await Page.Locator("#new-note-button").ClickAsync();
@@ -222,6 +225,7 @@ public class SyncTests : TestBase
 
         // Still in OPFS, and still readable, after a reload.
         await ReloadAsync();
+        await UnlockAsync();
         await Expect(Page.Locator("#storage-option-opfs")).ToHaveClassAsync(new Regex("active"));
         await Page.Locator("#nav-files").ClickAsync();
         await Row("Moving.md").Locator(".file-name").ClickAsync();
@@ -236,6 +240,7 @@ public class SyncTests : TestBase
         await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
         Assert.AreEqual(0, (await ListOpfsFilesAsync()).Count);
         await ReloadAsync();
+        await UnlockAsync();
         await Page.Locator("#nav-files").ClickAsync();
         await Row("Moving.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("kept in OPFS");
@@ -263,6 +268,7 @@ public class SyncTests : TestBase
     {
         await StubFolderPickerAsync();
         await LoginAsync();
+        await SetPassphraseAsync();
         await Page.Locator("#nav-files").ClickAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
         await Page.Locator("#new-note-button").ClickAsync();
@@ -288,6 +294,7 @@ public class SyncTests : TestBase
         // The browser forgets the permission: the app asks for it back before syncing.
         await Page.EvaluateAsync("() => localStorage.setItem('test-folder-revoked', '1')");
         await ReloadAsync();
+        await UnlockAsync();
         await Expect(Page.Locator("#folder-access-banner")).ToContainTextAsync("picked-folder");
         await ScreenshotAsync("ReconnectBanner");
 

@@ -48,6 +48,7 @@ public class NotesTests : TestBase
 
         // Reload to prove it was stored, not just kept in memory.
         await ReloadAsync();
+        await UnlockAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("**ship it**");
 
         await Page.Locator("#close-note-button").ClickAsync();
@@ -160,6 +161,7 @@ public class NotesTests : TestBase
     private async Task OpenFilesAsync()
     {
         await LoginAsync();
+        await SetPassphraseAsync();
         await Page.Locator("#nav-files").ClickAsync();
         await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Files");
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();

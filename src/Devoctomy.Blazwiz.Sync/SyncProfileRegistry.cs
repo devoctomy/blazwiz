@@ -3,6 +3,7 @@ using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Encryption;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.IndexedDb;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.S3;
@@ -70,6 +71,11 @@ public class SyncProfileRegistry(IServiceProvider services, SyncOptions options)
             throw new ArgumentException($"Sync profile '{profile.Name}' needs a remote pattern.", nameof(profile));
         }
 
+        if (profile.KeyScope == null)
+        {
+            throw new ArgumentException($"Sync profile '{profile.Name}' needs a key scope.", nameof(profile));
+        }
+
         lock (gate)
         {
             if (options.Profiles.Concat(added).Any(p => p.Name == profile.Name))
@@ -121,15 +127,6 @@ public class SyncProfileRegistry(IServiceProvider services, SyncOptions options)
 
     /// <inheritdoc/>
     public ISyncPathMatcher GetMatcher(string name) => GetParts(name).Matcher.Value;
-
-    /// <inheritdoc/>
-    public IReadOnlyList<EncryptedSyncProfile> GetAccountEncryptedProfiles()
-    {
-        return Profiles
-            .Where(p => p.IsEncrypted && !p.IsProtected)
-            .Select(p => new EncryptedSyncProfile(p.Name, GetFileStore(p.Name), GetIndexStore(p.Name)))
-            .ToList();
-    }
 
     private Parts GetParts(string name)
     {
@@ -183,16 +180,9 @@ public class SyncProfileRegistry(IServiceProvider services, SyncOptions options)
                     sp.GetRequiredService<TimeProvider>(),
                     sp.GetRequiredService<IEncryptedFileFormat>());
 
-                // App code reads and writes plaintext; the store holds (and syncs) ciphertext. A protected profile
-                // always uses its own keys; another encrypted profile uses the account's once encryption is on.
-                if (profile.KeyScope is { } scope)
-                {
-                    return new EncryptingSyncFileStore(store, sp.GetRequiredService<IE2eKeyRings>().Get(scope), sp.GetRequiredService<IEncryptedFileFormat>());
-                }
-
-                return profile.IsEncrypted
-                    ? new EncryptingSyncFileStore(store, sp.GetRequiredService<IE2eKeyRings>().Get(E2eKeyScope.Account), sp.GetRequiredService<IEncryptedFileFormat>())
-                    : store;
+                // App code reads and writes plaintext; the store holds (and syncs) ciphertext, encrypted with the
+                // profile's own keys.
+                return new EncryptingSyncFileStore(store, sp.GetRequiredService<IE2eKeyRings>().Get(profile.KeyScope!), sp.GetRequiredService<IEncryptedFileFormat>(), sp.GetService<IE2eIdleLock>());
             });
 
             SyncProfile = new Lazy<SyncProfile>(() => new SyncProfile(

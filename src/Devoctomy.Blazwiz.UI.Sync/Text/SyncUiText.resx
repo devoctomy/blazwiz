@@ -12,9 +12,6 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Error.E2e.AlreadyEnabled" xml:space="preserve">
-    <value>End to end encryption is already enabled on another device. Set up this device with your passphrase instead.</value>
-  </data>
   <data name="Error.E2e.CannotDecrypt" xml:space="preserve">
     <value>'{0}' is end to end encrypted, and this device cannot decrypt it yet.</value>
   </data>
@@ -26,6 +23,9 @@
   </data>
   <data name="Error.E2e.PassphraseRequired" xml:space="preserve">
     <value>Your passkey cannot unlock this device's keys. Enter your passphrase instead.</value>
+  </data>
+  <data name="Error.E2e.PassphraseTooShort" xml:space="preserve">
+    <value>Use a passphrase of at least {0} characters.</value>
   </data>
   <data name="Error.E2e.ProfileNotFound" xml:space="preserve">
     <value>There is no protected profile {0}.</value>
@@ -129,20 +129,8 @@
   <data name="Sync.E2e.Acknowledge" xml:space="preserve">
     <value>I understand that if I forget this passphrase, my encrypted files cannot be recovered.</value>
   </data>
-  <data name="Sync.E2e.Banner.Blocked" xml:space="preserve">
-    <value>Your files are end to end encrypted and locked. Use your passkey to unlock them: the hardware PRF key your passkey provides is essential to keeping your data secure, so they cannot be read or synced without it.</value>
-  </data>
-  <data name="Sync.E2e.Banner.DisabledElsewhere" xml:space="preserve">
-    <value>End to end encryption was turned off on another device. Sync is paused until this device finishes turning it off.</value>
-  </data>
-  <data name="Sync.E2e.Banner.NeedsPasskeyAndSetup" xml:space="preserve">
-    <value>Your files are end to end encrypted. Use your passkey, then set up this device with your passphrase to read and sync them.</value>
-  </data>
   <data name="Sync.E2e.Banner.NeedsSetup" xml:space="preserve">
     <value>Your files are end to end encrypted. Set up this device with your passphrase to read and sync them.</value>
-  </data>
-  <data name="Sync.E2e.Banner.Unlock" xml:space="preserve">
-    <value>Unlock with passkey</value>
   </data>
   <data name="Sync.E2e.ChangePassphrase" xml:space="preserve">
     <value>Change passphrase</value>
@@ -158,15 +146,6 @@
   </data>
   <data name="Sync.E2e.Dialog.Deriving" xml:space="preserve">
     <value>Deriving your passphrase key… this can take a few seconds.</value>
-  </data>
-  <data name="Sync.E2e.Dialog.Disable" xml:space="preserve">
-    <value>Disable end to end encryption</value>
-  </data>
-  <data name="Sync.E2e.Dialog.Disable.Text" xml:space="preserve">
-    <value>Every file will be decrypted on this device, then synced unencrypted. Your keys are deleted, and other devices turn encryption off when they next start.</value>
-  </data>
-  <data name="Sync.E2e.Dialog.Disabled" xml:space="preserve">
-    <value>E2E Encryption Disabled</value>
   </data>
   <data name="Sync.E2e.Dialog.Enable" xml:space="preserve">
     <value>Enable end to end encryption</value>
@@ -186,9 +165,6 @@
   <data name="Sync.E2e.Dialog.SetUpDone" xml:space="preserve">
     <value>This device is set up</value>
   </data>
-  <data name="Sync.E2e.Disable" xml:space="preserve">
-    <value>Disable encryption</value>
-  </data>
   <data name="Sync.E2e.Enable" xml:space="preserve">
     <value>Enable encryption</value>
   </data>
@@ -197,9 +173,6 @@
   </data>
   <data name="Sync.E2e.Error.CurrentPassphraseRequired" xml:space="preserve">
     <value>Enter your current passphrase.</value>
-  </data>
-  <data name="Sync.E2e.Error.PasskeyNotUsed" xml:space="preserve">
-    <value>Your passkey was not used, or it does not support the PRF security feature.</value>
   </data>
   <data name="Sync.E2e.Error.PassphraseRequired" xml:space="preserve">
     <value>Enter your passphrase.</value>
@@ -222,41 +195,17 @@
   <data name="Sync.E2e.Passphrase" xml:space="preserve">
     <value>Passphrase</value>
   </data>
-  <data name="Sync.E2e.Resolve.Confirm" xml:space="preserve">
-    <value>Turn off on this device</value>
-  </data>
-  <data name="Sync.E2e.Resolve.NeedsPassphrase" xml:space="preserve">
-    <value>Your passkey cannot unlock this device's keys, and it has changes that have not been synced yet. Enter your passphrase to decrypt them.</value>
-  </data>
-  <data name="Sync.E2e.Resolve.Text1" xml:space="preserve">
-    <value>End to end encryption was turned off on another device, so your files there were decrypted and synced unencrypted.</value>
-  </data>
-  <data name="Sync.E2e.Resolve.Text2" xml:space="preserve">
-    <value>This device will decrypt its own changes that have not been synced yet, forget its keys, then sync, which brings down the decrypted files.</value>
-  </data>
-  <data name="Sync.E2e.Resolve.Title" xml:space="preserve">
-    <value>Turn off encryption on this device?</value>
-  </data>
-  <data name="Sync.E2e.Resolve.Warning" xml:space="preserve">
-    <value>If you did not turn encryption off yourself, cancel and check your other devices first.</value>
-  </data>
   <data name="Sync.E2e.SetUp" xml:space="preserve">
     <value>Set up</value>
   </data>
   <data name="Sync.E2e.SetUpDevice" xml:space="preserve">
     <value>Set up this device</value>
   </data>
-  <data name="Sync.E2e.Status.Blocked" xml:space="preserve">
-    <value>On, but locked: use your passkey to unlock it.</value>
-  </data>
   <data name="Sync.E2e.Status.Checking" xml:space="preserve">
     <value>Checking…</value>
   </data>
   <data name="Sync.E2e.Status.Disabled" xml:space="preserve">
     <value>Off.</value>
-  </data>
-  <data name="Sync.E2e.Status.DisabledElsewhere" xml:space="preserve">
-    <value>Turned off on another device.</value>
   </data>
   <data name="Sync.E2e.Status.NeedsSetup" xml:space="preserve">
     <value>On, but this device has not been set up yet. Enter your passphrase to read and sync your files here.</value>
@@ -267,29 +216,14 @@
   <data name="Sync.E2e.Status.OffOnThisDevice" xml:space="preserve">
     <value>Off on this device.</value>
   </data>
-  <data name="Sync.E2e.Status.Unavailable" xml:space="preserve">
-    <value>Off. Sign in with your passkey to turn it on: it needs the hardware PRF key your passkey provides.</value>
-  </data>
   <data name="Sync.E2e.Status.Unlocked" xml:space="preserve">
     <value>On. Your files are encrypted on this device before they are synced.</value>
   </data>
   <data name="Sync.E2e.Status.Unsupported" xml:space="preserve">
     <value>Not available with this sign in.</value>
   </data>
-  <data name="Sync.E2e.Step.CheckExistingKeys" xml:space="preserve">
-    <value>Check encryption is not already on</value>
-  </data>
-  <data name="Sync.E2e.Step.CheckIndex" xml:space="preserve">
-    <value>Check no files are already encrypted</value>
-  </data>
   <data name="Sync.E2e.Step.CreateKeys" xml:space="preserve">
     <value>Create your master key and file key</value>
-  </data>
-  <data name="Sync.E2e.Step.DecryptFiles" xml:space="preserve">
-    <value>Decrypt your files</value>
-  </data>
-  <data name="Sync.E2e.Step.DeleteKeys" xml:space="preserve">
-    <value>Delete your keys</value>
   </data>
   <data name="Sync.E2e.Step.DeriveKey" xml:space="preserve">
     <value>Derive your passphrase key (Argon2id)</value>
@@ -297,17 +231,8 @@
   <data name="Sync.E2e.Step.Done" xml:space="preserve">
     <value>Done</value>
   </data>
-  <data name="Sync.E2e.Step.EncryptFiles" xml:space="preserve">
-    <value>Encrypt your files</value>
-  </data>
   <data name="Sync.E2e.Step.Failed" xml:space="preserve">
     <value>Failed</value>
-  </data>
-  <data name="Sync.E2e.Step.GoOffline" xml:space="preserve">
-    <value>Pause syncing</value>
-  </data>
-  <data name="Sync.E2e.Step.GoOnline" xml:space="preserve">
-    <value>Resume syncing</value>
   </data>
   <data name="Sync.E2e.Step.Progress" xml:space="preserve">
     <value>{0} of {1}</value>
@@ -320,12 +245,6 @@
   </data>
   <data name="Sync.E2e.Step.StoreDeviceKey" xml:space="preserve">
     <value>Secure this device with your passkey</value>
-  </data>
-  <data name="Sync.E2e.Step.Sync" xml:space="preserve">
-    <value>Sync every file to this device</value>
-  </data>
-  <data name="Sync.E2e.Step.VerifyPassphrase" xml:space="preserve">
-    <value>Check your passphrase</value>
   </data>
   <data name="Sync.E2e.Step.Waiting" xml:space="preserve">
     <value>Waiting</value>

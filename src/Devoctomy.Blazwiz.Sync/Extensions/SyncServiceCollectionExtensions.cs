@@ -86,14 +86,6 @@ public static class SyncServiceCollectionExtensions
             AddProfile(services, profile.Name);
         }
 
-        if (options.Profiles.Any(p => p.IsEncrypted))
-        {
-            // End to end encryption (needs AddBlazwizE2eEncryption for the keys).
-            services.AddScoped<ISyncGate, E2eSyncGate>();
-            services.TryAddScoped<ISyncEncryptionSweeper, SyncEncryptionSweeper>();
-            services.TryAddScoped<ISyncEncryptionService, SyncEncryptionService>();
-        }
-
         return services;
     }
 

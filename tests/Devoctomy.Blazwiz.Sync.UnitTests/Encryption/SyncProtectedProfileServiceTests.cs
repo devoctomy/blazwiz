@@ -2,6 +2,7 @@ using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Encryption;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 using Moq;
@@ -16,11 +17,14 @@ public class SyncProtectedProfileServiceTests
     private readonly Mock<ISyncStorageResolver> mockResolver = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
     private readonly Mock<ISyncLockService> mockLock = new();
+    private readonly Mock<IE2eLockChannel> mockChannel = new();
+    private readonly Mock<IE2eIdleLock> mockIdle = new();
     private readonly List<string> calls = [];
+    private readonly E2eKeyScope notes = new(Guid.NewGuid().ToString("D"));
 
     public SyncProtectedProfileServiceTests()
     {
-        options.Profiles.Add(new SyncProfileOptions { Name = "notes", RemotePattern = "notes/**/*.md" });
+        options.Profiles.Add(new SyncProfileOptions { Name = "notes", RemotePattern = "notes/**/*.md", KeyScope = notes });
         registry = FakeSyncProfileRegistry.Of(options);
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync("bob");
         mockLock.Setup(x => x.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -32,11 +36,14 @@ public class SyncProtectedProfileServiceTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(null!, registry, mockResolver.Object, mockUser.Object, mockLock.Object)).ParamName);
-        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, null!, mockResolver.Object, mockUser.Object, mockLock.Object)).ParamName);
-        Assert.Equal("storageResolver", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, null!, mockUser.Object, mockLock.Object)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, null!, mockLock.Object)).ParamName);
-        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, null!)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(null!, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, null!, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object)).ParamName);
+        Assert.Equal("storageResolver", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, null!, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object)).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, null!, mockLock.Object, mockChannel.Object, options, mockIdle.Object)).ParamName);
+        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, null!, mockChannel.Object, options, mockIdle.Object)).ParamName);
+        Assert.Equal("lockChannel", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, null!, options, mockIdle.Object)).ParamName);
+        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, null!, mockIdle.Object)).ParamName);
+        Assert.Equal("idleLock", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, null!)).ParamName);
     }
 
     [Fact]
@@ -55,8 +62,6 @@ public class SyncProtectedProfileServiceTests
         Assert.Equal(["notes", first, second], registry.Profiles.Select(p => p.Name));
         var profile = registry.Find(first)!;
         Assert.Equal(new E2eKeyScope(first), profile.KeyScope);
-        Assert.True(profile.IsProtected);
-        Assert.False(profile.IsEncrypted);
         Assert.Equal($"profiles/{first}/**/*", profile.RemotePattern);
         Assert.True(profile.IncludeEmptyFolders);
         Assert.Equal($"{first}_index", profile.ResolvedIndexStoreName);
@@ -89,7 +94,7 @@ public class SyncProtectedProfileServiceTests
     {
         // Arrange
         var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
-        mockManager.Setup(x => x.CreateAsync("pass", null, It.IsAny<CancellationToken>())).ReturnsAsync(scope);
+        mockManager.Setup(x => x.CreateAsync("pass", options.ProfileDefaults, null, It.IsAny<CancellationToken>())).ReturnsAsync(scope);
 
         // Act
         var result = await CreateSut().CreateAsync("pass");
@@ -104,7 +109,7 @@ public class SyncProtectedProfileServiceTests
     {
         // Arrange
         var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
-        mockManager.Setup(x => x.CreateAsync("pass", null, It.IsAny<CancellationToken>())).ReturnsAsync(scope);
+        mockManager.Setup(x => x.CreateAsync("pass", options.ProfileDefaults, null, It.IsAny<CancellationToken>())).ReturnsAsync(scope);
         mockManager.Setup(x => x.DeleteAsync(scope, It.IsAny<CancellationToken>())).Callback(() => calls.Add("delete keys")).Returns(Task.CompletedTask);
         var sut = CreateSut();
         await sut.CreateAsync("pass");
@@ -136,10 +141,10 @@ public class SyncProtectedProfileServiceTests
     }
 
     [Fact]
-    public async Task GivenAConfiguredProfile_WhenDeleted_ThenThrowsAndNothingIsDeleted()
+    public async Task GivenAnUnknownProfile_WhenDeleted_ThenThrowsAndNothingIsDeleted()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => CreateSut().DeleteAsync(new E2eKeyScope("notes")));
+        await Assert.ThrowsAsync<ArgumentException>(() => CreateSut().DeleteAsync(new E2eKeyScope("other")));
         mockManager.Verify(x => x.DeleteAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -159,6 +164,161 @@ public class SyncProtectedProfileServiceTests
         Assert.Equal(["notes"], registry.Profiles.Select(p => p.Name));
     }
 
+    [Fact]
+    public async Task GivenLoaded_WhenAProfileIsLockedInThisTab_ThenTheOtherTabsAreTold()
+    {
+        // Arrange
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        mockManager.Setup(x => x.IsUnlocked(scope)).Returns(false);
+        await CreateSut().LoadAsync();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+
+        // Assert
+        mockChannel.Verify(x => x.StartAsync(), Times.Once);
+        mockChannel.Verify(x => x.PostLockAsync(scope.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenLoaded_WhenAProfileIsUnlockedInThisTab_ThenNothingIsSent()
+    {
+        // Arrange
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        mockManager.Setup(x => x.IsUnlocked(scope)).Returns(true);
+        await CreateSut().LoadAsync();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+
+        // Assert
+        mockChannel.Verify(x => x.PostLockAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenLoaded_WhenAnotherTabLocksAProfile_ThenItIsLockedHere()
+    {
+        // Arrange
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        await CreateSut().LoadAsync();
+
+        // Act
+        mockChannel.Raise(x => x.LockReceived += null, mockChannel.Object, scope.Id);
+        mockChannel.Raise(x => x.LockReceived += null, mockChannel.Object, "notes");
+
+        // Assert
+        mockManager.Verify(x => x.Lock(scope), Times.Once);
+        mockManager.Verify(x => x.Lock(It.Is<E2eKeyScope>(s => s.Id == "notes")), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenLoadedTwice_WhenAProfileIsLocked_ThenTheOtherTabsAreToldOnce()
+    {
+        // Arrange
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+        await sut.LoadAsync();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+
+        // Assert
+        mockChannel.Verify(x => x.StartAsync(), Times.Once);
+        mockChannel.Verify(x => x.PostLockAsync(scope.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenSettingsNotAllowingDeviceUnlock_WhenUsed_ThenThrowsAndTheManagerIsNotCalled()
+    {
+        // Arrange
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.EnableDeviceUnlockAsync(scope));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.UnlockWithDeviceAsync(scope));
+        mockManager.Verify(x => x.EnableDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+        mockManager.Verify(x => x.UnlockWithDeviceAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenSettingsAllowingDeviceUnlock_WhenUsed_ThenTheManagerIsCalled()
+    {
+        // Arrange
+        options.ProfileDefaults.AllowDeviceUnlock = true;
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+
+        // Act
+        await sut.EnableDeviceUnlockAsync(scope);
+        await sut.UnlockWithDeviceAsync(scope);
+
+        // Assert
+        mockManager.Verify(x => x.EnableDeviceUnlockAsync(scope), Times.Once);
+        mockManager.Verify(x => x.UnlockWithDeviceAsync(scope), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenLoadedAndUnloaded_ThenItStays()
+    {
+        // Arrange
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = notes.Id }]);
+        var sut = CreateSut();
+
+        // Act
+        await sut.LoadAsync();
+        sut.Unload();
+
+        // Assert
+        Assert.Equal(["notes"], registry.Profiles.Select(p => p.Name));
+        mockManager.Verify(x => x.LockAll(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenSetUpAndItsPassphraseChanged_ThenItsSettingsAreUsed()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var settings = options.Profiles[0].Settings;
+
+        // Act
+        await sut.SetUpAsync(notes, "correct horse");
+        await sut.ChangePassphraseAsync(notes, "correct horse", "battery staple");
+
+        // Assert
+        mockManager.Verify(x => x.CreateKeysAsync(notes, "correct horse", settings, null, It.IsAny<CancellationToken>()), Times.Once);
+        mockManager.Verify(x => x.ChangePassphraseAsync(notes, "correct horse", "battery staple", settings, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTheIndex_WhenIsSetUp_ThenTrueOnlyForProfilesInIt()
+    {
+        // Arrange
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = notes.Id }]);
+        var sut = CreateSut();
+
+        // Act & Assert
+        Assert.True(await sut.IsSetUpAsync(notes));
+        Assert.False(await sut.IsSetUpAsync(new E2eKeyScope(Guid.NewGuid().ToString("D"))));
+    }
+
+    [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenDeleted_ThenThrowsAndNothingIsDeleted()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => CreateSut().DeleteAsync(notes));
+        mockManager.Verify(x => x.DeleteAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private Mock<ISyncFileStore> StoreWith(string key, string label)
     {
         var store = new Mock<ISyncFileStore>();
@@ -167,7 +327,7 @@ public class SyncProtectedProfileServiceTests
         return store;
     }
 
-    private SyncProtectedProfileService CreateSut() => new(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object);
+    private SyncProtectedProfileService CreateSut() => new(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object);
 
     private sealed class Releaser(List<string> calls) : IAsyncDisposable
     {

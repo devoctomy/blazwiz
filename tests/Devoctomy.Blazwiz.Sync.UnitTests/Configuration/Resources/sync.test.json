@@ -3,8 +3,7 @@
     "ChangeDebounce": "00:00:03",
     "Profiles": {
       "files": {
-        "Remote": "files/**/*",
-        "Encrypted": true,
+        "Id": "0f563173-336b-4fec-b43a-4462e804682b", "Remote": "files/**/*",
         "Storages": {
           "IndexedDb": { "Database": "files", "Store": "files" },
           "Opfs": { "Root": "files" },

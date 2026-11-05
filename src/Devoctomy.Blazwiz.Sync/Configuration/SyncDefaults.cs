@@ -62,4 +62,9 @@ public static class SyncDefaults
     /// The BroadcastChannel the app's tabs use to tell each other about storage moves.
     /// </summary>
     public const string StorageChannelName = "sync-storage";
+
+    /// <summary>
+    /// The BroadcastChannel the app's tabs use to lock a protected profile in every tab.
+    /// </summary>
+    public const string LockChannelName = "e2e-lock";
 }

@@ -20,7 +20,7 @@ public class SyncProfileDefinitionTests
         var profile = Assert.Single(options.Profiles);
         Assert.Equal("beta", profile.Name);
         Assert.Equal("beta/**/*", profile.RemotePattern);
-        Assert.True(profile.IsEncrypted);
+        Assert.NotNull(profile.KeyScope);
     }
 
     [Fact]
@@ -82,14 +82,14 @@ public class SyncProfileDefinitionTests
 
         public override string Name => "alpha";
 
-        public override void Configure(SyncProfileBuilder profile) => profile.UseRemote("alpha/**/*.md", includeEmptyFolders: true);
+        public override void Configure(SyncProfileBuilder profile) => profile.UseRemote("alpha/**/*.md", includeEmptyFolders: true).UseKeyId("4b9d6e1a-2c7f-4a3e-8d5b-1f0e9c2a7b63");
     }
 
     public sealed class BetaSyncProfile : SyncProfileDefinition
     {
         public override string Name => "beta";
 
-        public override void Configure(SyncProfileBuilder profile) => profile.UseRemote("beta/**/*").UseEncryption();
+        public override void Configure(SyncProfileBuilder profile) => profile.UseRemote("beta/**/*").UseKeyId("8e2f4a6c-9b1d-4c5e-a7f3-0d6b2e8c4a19");
     }
 
     public abstract class SharedSyncProfile : SyncProfileDefinition

@@ -21,25 +21,10 @@ public class E2eKeyRing(IDerivedKeyStore keyStore, E2eKeyScope scope)
     private readonly Lock gate = new Lock();
     private readonly HashSet<string> fileKeyIds = new HashSet<string>(StringComparer.Ordinal);
 
-    // Only the account's scope ever writes plaintext (while account encryption is off); every other scope is always
-    // encrypted, so it refuses writes until unlocked.
-    private E2eWriteMode writeMode = scope.IsAccount ? E2eWriteMode.Plaintext : E2eWriteMode.Refuse;
     private string? activeKeyId;
 
     /// <inheritdoc/>
     public E2eKeyScope Scope { get; } = scope;
-
-    /// <inheritdoc/>
-    public E2eWriteMode WriteMode
-    {
-        get
-        {
-            lock (gate)
-            {
-                return writeMode;
-            }
-        }
-    }
 
     /// <inheritdoc/>
     public string? ActiveKeyId
@@ -75,22 +60,6 @@ public class E2eKeyRing(IDerivedKeyStore keyStore, E2eKeyScope scope)
             }
 
             this.activeKeyId = activeKeyId;
-            writeMode = E2eWriteMode.Encrypt;
-        }
-    }
-
-    /// <inheritdoc/>
-    public void SetWriteMode(E2eWriteMode mode)
-    {
-        lock (gate)
-        {
-            CheckPlaintextAllowed(mode);
-            if (mode == E2eWriteMode.Encrypt && activeKeyId == null)
-            {
-                throw new InvalidOperationException("Files cannot be encrypted until the keys are unlocked.");
-            }
-
-            writeMode = mode;
         }
     }
 
@@ -127,27 +96,11 @@ public class E2eKeyRing(IDerivedKeyStore keyStore, E2eKeyScope scope)
     }
 
     /// <inheritdoc/>
-    public void Clear(E2eWriteMode mode)
+    public void Clear()
     {
-        if (mode == E2eWriteMode.Encrypt)
-        {
-            throw new ArgumentException("Files cannot be encrypted without the keys.", nameof(mode));
-        }
-
-        CheckPlaintextAllowed(mode);
-
         lock (gate)
         {
             RemoveKeys();
-            writeMode = mode;
-        }
-    }
-
-    private void CheckPlaintextAllowed(E2eWriteMode mode)
-    {
-        if (mode == E2eWriteMode.Plaintext && !Scope.IsAccount)
-        {
-            throw new InvalidOperationException($"Key scope '{Scope}' is always encrypted and never writes plaintext.");
         }
     }
 

@@ -5,6 +5,7 @@ using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.InMemory;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Moq;
@@ -16,9 +17,11 @@ public class EncryptingSyncFileStoreTests
     private const string Key = "notes/Shopping.md";
 
     private readonly InMemorySyncFileStore inner;
-    private readonly E2eKeyRing ring = new(new InMemoryDerivedKeyStore(), E2eKeyScope.Account);
+    private readonly E2eKeyScope scope = new(Guid.NewGuid().ToString("D"));
+    private readonly E2eKeyRing ring;
     private readonly EncryptedFileFormat format = new(new BouncyCastleAesGcmAeadCipher());
     private readonly byte[] fileKey = RandomNumberGenerator.GetBytes(32);
+    private readonly Mock<IE2eIdleLock> mockIdle = new();
     private readonly EncryptingSyncFileStore sut;
 
     public EncryptingSyncFileStoreTests()
@@ -28,7 +31,8 @@ public class EncryptingSyncFileStoreTests
         var clock = new Mock<TimeProvider>();
         clock.Setup(x => x.GetUtcNow()).Returns(DateTimeOffset.UnixEpoch);
         inner = new InMemorySyncFileStore(user.Object, clock.Object);
-        sut = new EncryptingSyncFileStore(inner, ring, format);
+        ring = new E2eKeyRing(new InMemoryDerivedKeyStore(), scope);
+        sut = new EncryptingSyncFileStore(inner, ring, format, mockIdle.Object);
     }
 
     [Fact]
@@ -41,83 +45,91 @@ public class EncryptingSyncFileStoreTests
     }
 
     [Fact]
-    public async Task GivenPlaintextMode_WhenWriteAsync_ThenStoredAsIs()
-    {
-        // Act
-        await sut.WriteAsync(Key, Bytes("apple"));
-
-        // Assert
-        Assert.Equal(Bytes("apple"), (await inner.ReadAsync(Key))!.Content);
-        Assert.Equal(Bytes("apple"), (await sut.ReadAsync(Key))!.Content);
-    }
-
-    [Fact]
-    public async Task GivenUnlocked_WhenWriteAsync_ThenStoredEncryptedWithActiveKeyAndReadDecrypts()
+    public async Task GivenUnlocked_WhenWrittenAndRead_ThenStoredBoundToTheProfileAndPathAndReadBack()
     {
         // Arrange
         Unlock();
-        var modifiedAt = new DateTimeOffset(2026, 10, 3, 9, 0, 0, TimeSpan.Zero);
 
         // Act
-        await sut.WriteAsync(Key, Bytes("apple"), modifiedAt);
+        await sut.WriteAsync(Key, Bytes("milk"));
 
         // Assert
-        var stored = (await inner.ReadAsync(Key))!;
-        Assert.True(format.TryGetKeyId(stored.Content, out var keyId));
+        var stored = (await inner.ReadAsync(Key))!.Content;
+        Assert.True(stored.AsSpan().StartsWith(EncryptedFileFormat.MagicBytes));
+        Assert.True(format.TryGetKeyId(stored, out var keyId));
         Assert.Equal("k_1", keyId);
-        Assert.Equal(modifiedAt, stored.ModifiedAt);
-        var read = (await sut.ReadAsync(Key))!;
-        Assert.Equal(Bytes("apple"), read.Content);
-        Assert.Equal(modifiedAt, read.ModifiedAt);
-        Assert.Equal(Key, read.Key);
+        Assert.Equal("milk", Encoding.UTF8.GetString((await sut.ReadAsync(Key))!.Content));
+        Assert.Equal("milk", Encoding.UTF8.GetString(format.Decrypt(stored, fileKey, new E2eFileBinding(scope.Id, Key))));
     }
 
     [Fact]
-    public async Task GivenRefuseMode_WhenWriteAsync_ThenThrowsLockedAndNothingStored()
+    public async Task GivenAFileMovedToAnotherPath_WhenRead_ThenItFailsToDecrypt()
     {
         // Arrange
-        ring.Clear(E2eWriteMode.Refuse);
+        Unlock();
+        await sut.WriteAsync(Key, Bytes("milk"));
+        await inner.WriteAsync("notes/Moved.md", (await inner.ReadAsync(Key))!.Content);
 
         // Act & Assert
-        await Assert.ThrowsAsync<E2eLockedException>(() => sut.WriteAsync(Key, Bytes("apple")));
+        await Assert.ThrowsAnyAsync<CryptographicException>(() => sut.ReadAsync("notes/Moved.md"));
+    }
+
+    [Fact]
+    public async Task GivenAFileOfAnotherProfile_WhenRead_ThenThrowsInvalidData()
+    {
+        // Arrange
+        Unlock();
+        await inner.WriteAsync(Key, format.Encrypt(Bytes("milk"), "k_1", fileKey, new E2eFileBinding(Guid.NewGuid().ToString("D"), Key)));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(() => sut.ReadAsync(Key));
+    }
+
+    [Fact]
+    public async Task GivenPlaintextInTheStore_WhenRead_ThenThrowsInvalidData()
+    {
+        // Arrange
+        Unlock();
+        await inner.WriteAsync(Key, Bytes("plain"));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(() => sut.ReadAsync(Key));
+    }
+
+    [Fact]
+    public async Task GivenLocked_WhenWriteAsync_ThenThrowsLockedAndNothingStored()
+    {
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<E2eLockedException>(() => sut.WriteAsync(Key, Bytes("milk")));
+        Assert.Equal(E2eErrorCodes.CannotEncrypt, ex.Code);
         Assert.Null(await inner.ReadAsync(Key));
     }
 
     [Fact]
-    public async Task GivenEncryptedFileAndNoKey_WhenReadAsync_ThenThrowsLocked()
-    {
-        // Arrange
-        await inner.WriteAsync(Key, format.Encrypt(Bytes("apple"), "k_other", fileKey));
-
-        // Act & Assert
-        await Assert.ThrowsAsync<E2eLockedException>(() => sut.ReadAsync(Key));
-    }
-
-    [Fact]
-    public async Task GivenPlainFileWhileUnlocked_WhenReadAsync_ThenReturnedAsIs()
-    {
-        // Arrange
-        await inner.WriteAsync(Key, Bytes("apple"));
-        Unlock();
-
-        // Act & Assert
-        Assert.Equal(Bytes("apple"), (await sut.ReadAsync(Key))!.Content);
-    }
-
-    [Fact]
-    public async Task GivenKeysHeldWritingPlaintext_WhenReadThenWrite_ThenFileDecryptedInPlace()
+    public async Task GivenAnEncryptedFileAndLocked_WhenReadAsync_ThenThrowsLocked()
     {
         // Arrange
         Unlock();
-        await sut.WriteAsync(Key, Bytes("apple"));
-        ring.SetWriteMode(E2eWriteMode.Plaintext);
+        await sut.WriteAsync(Key, Bytes("milk"));
+        ring.Clear();
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<E2eLockedException>(() => sut.ReadAsync(Key));
+        Assert.Equal(E2eErrorCodes.CannotDecrypt, ex.Code);
+    }
+
+    [Fact]
+    public async Task GivenUnlocked_WhenItsFilesAreWrittenAndRead_ThenItsIdleTimerIsRestartedEachTime()
+    {
+        // Arrange
+        Unlock();
 
         // Act
-        var file = (await sut.ReadAsync(Key))!;
-        await sut.WriteAsync(Key, file.Content);
+        await sut.WriteAsync(Key, Bytes("milk"));
+        await sut.ReadAsync(Key);
 
         // Assert
-        Assert.Equal(Bytes("apple"), (await inner.ReadAsync(Key))!.Content);
+        mockIdle.Verify(x => x.Touch(scope), Times.Exactly(2));
     }
 
     [Fact]
@@ -128,11 +140,10 @@ public class EncryptingSyncFileStoreTests
     }
 
     [Fact]
-    public async Task GivenRefuseMode_WhenFolderCreatedOrFileDeleted_ThenPassedThrough()
+    public async Task GivenLocked_WhenFolderCreatedOrFileDeleted_ThenPassedThrough()
     {
         // Arrange
         await inner.WriteAsync(Key, Bytes("apple"));
-        ring.Clear(E2eWriteMode.Refuse);
 
         // Act
         await sut.CreateFolderAsync("notes/Work/");

@@ -38,20 +38,20 @@ public class E2eKeyRingsTests
         // Assert
         Assert.Same(first, second);
         Assert.Equal(new E2eKeyScope("s1"), first.Scope);
-        Assert.Equal(E2eWriteMode.Refuse, first.WriteMode);
+        Assert.Null(first.ActiveKeyId);
     }
 
     [Fact]
     public void GivenTwoScopes_WhenOneIsLoadedAndCleared_ThenTheOtherKeepsItsKeys()
     {
         // Arrange
-        var account = sut.Get(E2eKeyScope.Account);
+        var account = sut.Get(new E2eKeyScope("s0"));
         var other = sut.Get(new E2eKeyScope("s1"));
         account.Load([1], new Dictionary<string, byte[]> { ["k_1"] = [2] }, "k_1");
         other.Load([3], new Dictionary<string, byte[]> { ["k_1"] = [4] }, "k_1");
 
         // Act
-        account.Clear(E2eWriteMode.Refuse);
+        account.Clear();
 
         // Assert
         Assert.False(account.TryGetFileKey("k_1", out _));
@@ -59,8 +59,8 @@ public class E2eKeyRingsTests
         Assert.Equal(new byte[] { 4 }, key);
         Assert.True(other.TryGetMasterKey(out var master));
         Assert.Equal(new byte[] { 3 }, master);
-        Assert.Equal(E2eWriteMode.Encrypt, other.WriteMode);
+        Assert.NotNull(other.ActiveKeyId);
         Assert.True(keyStore.TryGetKey("e2e:s1:file:k_1", out _));
-        Assert.False(keyStore.TryGetKey("e2e:account:file:k_1", out _));
+        Assert.False(keyStore.TryGetKey("e2e:s0:file:k_1", out _));
     }
 }

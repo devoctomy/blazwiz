@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 
@@ -9,8 +10,8 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 
 /// <summary>
 /// Wraps a profile's file store so app code reads and writes plaintext while the store holds end to end encrypted
-/// files. Reads decrypt any file with an encrypted file header (and pass other files through); writes follow the
-/// <see cref="IE2eKeyRing.WriteMode"/>: encrypt with the active key, write plaintext, or refuse.
+/// files, each bound to the profile and its path. While the profile is locked (its key ring holds no keys), reads and
+/// writes are refused; content that is not an encrypted file of the profile is never returned.
 /// </summary>
 /// <remarks>
 /// It wraps the <see cref="TrackingSyncFileStore"/>, so the index records the stored (encrypted) content. Folder
@@ -19,7 +20,8 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 public class EncryptingSyncFileStore(
     ISyncFileStore inner,
     IE2eKeyRing keyRing,
-    IEncryptedFileFormat encryptedFileFormat)
+    IEncryptedFileFormat encryptedFileFormat,
+    IE2eIdleLock? idleLock = null)
     : ISyncFileStore
 {
     private readonly ISyncFileStore inner = inner ?? throw new ArgumentNullException(nameof(inner));
@@ -34,9 +36,15 @@ public class EncryptingSyncFileStore(
     public async Task<SyncFile?> ReadAsync(string key, CancellationToken ct = default)
     {
         var file = await inner.ReadAsync(key, ct);
-        if (file == null || !encryptedFileFormat.TryGetKeyId(file.Content, out var keyId))
+        if (file == null || file.Content.Length == 0)
         {
             return file;
+        }
+
+        if (!encryptedFileFormat.TryGetKeyId(file.Content, out var keyId))
+        {
+            // Every profile is encrypted: plaintext there was not written by this app.
+            throw new InvalidDataException($"'{key}' is not an encrypted file of this profile.");
         }
 
         if (!keyRing.TryGetFileKey(keyId!, out var fileKey))
@@ -46,10 +54,11 @@ public class EncryptingSyncFileStore(
 
         try
         {
+            idleLock?.Touch(keyRing.Scope);
             return new SyncFile
             {
                 Key = file.Key,
-                Content = encryptedFileFormat.Decrypt(file.Content, fileKey),
+                Content = encryptedFileFormat.Decrypt(file.Content, fileKey, new E2eFileBinding(keyRing.Scope.Id, key)),
                 ModifiedAt = file.ModifiedAt,
             };
         }
@@ -65,12 +74,7 @@ public class EncryptingSyncFileStore(
     {
         ArgumentNullException.ThrowIfNull(content);
 
-        return keyRing.WriteMode switch
-        {
-            E2eWriteMode.Encrypt => WriteEncryptedAsync(key, content, modifiedAt, ct),
-            E2eWriteMode.Refuse => throw new E2eLockedException(E2eErrorCodes.CannotEncrypt),
-            _ => inner.WriteAsync(key, content, modifiedAt, ct),
-        };
+        return WriteEncryptedAsync(key, content, modifiedAt, ct);
     }
 
     /// <inheritdoc/>
@@ -90,7 +94,8 @@ public class EncryptingSyncFileStore(
         byte[] encrypted;
         try
         {
-            encrypted = encryptedFileFormat.Encrypt(content, keyId, fileKey);
+            // Bound to the profile and to the file's path.
+            encrypted = encryptedFileFormat.Encrypt(content, keyId, fileKey, new E2eFileBinding(keyRing.Scope.Id, key));
         }
         finally
         {
@@ -98,5 +103,6 @@ public class EncryptingSyncFileStore(
         }
 
         await inner.WriteAsync(key, encrypted, modifiedAt, ct);
+        idleLock?.Touch(keyRing.Scope);
     }
 }

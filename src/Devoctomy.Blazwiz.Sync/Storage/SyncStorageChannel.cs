@@ -48,7 +48,7 @@ public sealed class SyncStorageChannel(IJSRuntime jsRuntime, IAppStorageKeys sto
         }
 
         var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("unsubscribe");
+        await js.InvokeVoidAsync("unsubscribe", storageKeys.For(SyncDefaults.StorageChannelName));
         selfReference.Dispose();
         selfReference = null;
     }

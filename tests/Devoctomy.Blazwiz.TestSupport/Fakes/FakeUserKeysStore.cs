@@ -10,12 +10,6 @@ public class FakeUserKeysStore : IUserKeysStore
 {
     public Dictionary<string, string> Values { get; } = new Dictionary<string, string>(StringComparer.Ordinal);
 
-    // The account scope's value.
-    public string? Value
-    {
-        get => Values.GetValueOrDefault(E2eKeyScope.AccountId);
-        set => Set(E2eKeyScope.Account, value);
-    }
 
     public Exception? Failure { get; set; }
 

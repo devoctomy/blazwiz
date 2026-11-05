@@ -19,9 +19,4 @@ public enum E2eDialogKind
     /// Change the passphrase.
     /// </summary>
     ChangePassphrase,
-
-    /// <summary>
-    /// Turn encryption off.
-    /// </summary>
-    Disable,
 }

@@ -22,7 +22,6 @@ public class E2eSettingsViewModelTests
     public E2eSettingsViewModelTests()
     {
         mockEncryption.SetupGet(x => x.Status).Returns(() => status);
-        mockEncryption.SetupGet(x => x.HasPasskeyKeys).Returns(true);
     }
 
     [Fact]
@@ -37,8 +36,6 @@ public class E2eSettingsViewModelTests
     [InlineData(E2eStatus.Disabled, true, false, false)]
     [InlineData(E2eStatus.NeedsSetup, false, true, false)]
     [InlineData(E2eStatus.Unlocked, false, false, true)]
-    [InlineData(E2eStatus.Blocked, false, false, false)]
-    [InlineData(E2eStatus.Unavailable, false, false, false)]
     [InlineData(E2eStatus.Unsupported, false, false, false)]
     [InlineData(E2eStatus.Unknown, false, false, false)]
     public void GivenStatus_WhenGettingActions_ThenOnlyTheValidOnesOffered(E2eStatus current, bool canEnable, bool canSetUp, bool canManage)
@@ -52,17 +49,6 @@ public class E2eSettingsViewModelTests
         Assert.Equal(canSetUp, sut.CanSetUp);
         Assert.Equal(canManage, sut.CanManage);
         Assert.False(string.IsNullOrEmpty(sut.StatusText));
-    }
-
-    [Fact]
-    public void GivenNeedsSetupWithoutPasskeyKeys_WhenGettingCanSetUp_ThenFalse()
-    {
-        // Arrange
-        status = E2eStatus.NeedsSetup;
-        mockEncryption.SetupGet(x => x.HasPasskeyKeys).Returns(false);
-
-        // Act & Assert
-        Assert.False(CreateSut().CanSetUp);
     }
 
     [Fact]
@@ -113,8 +99,8 @@ public class E2eSettingsViewModelTests
             {
                 foreach (var step in Enum.GetValues<E2eStep>())
                 {
-                    progress!.Report(new E2eProgress(step, false, 0, step == E2eStep.EncryptFiles ? 2 : 0));
-                    progress.Report(new E2eProgress(step, true, step == E2eStep.EncryptFiles ? 2 : 0, step == E2eStep.EncryptFiles ? 2 : 0));
+                    progress!.Report(new E2eProgress(step, false));
+                    progress.Report(new E2eProgress(step, true));
                 }
 
                 status = E2eStatus.Unlocked;
@@ -135,11 +121,10 @@ public class E2eSettingsViewModelTests
         Assert.Null(sut.DialogError);
         Assert.Empty(sut.Passphrase);
         Assert.Empty(sut.ConfirmPassphrase);
-        Assert.Equal(10, sut.Steps.Count);
-        Assert.Equal(E2eStep.Sync, sut.Steps[0].Step);
-        Assert.Equal(E2eStep.GoOnline, sut.Steps[^1].Step);
+        Assert.Equal(4, sut.Steps.Count);
+        Assert.Equal(E2eStep.DeriveKey, sut.Steps[0].Step);
+        Assert.Equal(E2eStep.StoreDeviceKey, sut.Steps[^1].Step);
         Assert.All(sut.Steps, s => Assert.Equal(E2eStepState.Done, s.State));
-        Assert.Equal("2 of 2", sut.Steps.Single(s => s.Step == E2eStep.EncryptFiles).Detail);
         Assert.True(sut.CanManage);
     }
 
@@ -150,11 +135,11 @@ public class E2eSettingsViewModelTests
         mockEncryption.Setup(x => x.EnableAsync(Passphrase, It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
             .Callback<string, IProgress<E2eProgress>?, CancellationToken>((_, progress, _) =>
             {
-                progress!.Report(new E2eProgress(E2eStep.Sync, false));
-                progress.Report(new E2eProgress(E2eStep.Sync, true));
-                progress.Report(new E2eProgress(E2eStep.CheckExistingKeys, false));
+                progress!.Report(new E2eProgress(E2eStep.DeriveKey, false));
+                progress.Report(new E2eProgress(E2eStep.DeriveKey, true));
+                progress.Report(new E2eProgress(E2eStep.CreateKeys, false));
             })
-            .ThrowsAsync(new E2eAlreadyEnabledException());
+            .ThrowsAsync(new E2ePassphraseTooShortException(12));
         var sut = CreateSut();
         sut.OpenDialog(E2eDialogKind.Enable);
         sut.Passphrase = Passphrase;
@@ -166,9 +151,9 @@ public class E2eSettingsViewModelTests
 
         // Assert
         Assert.False(sut.IsFinished);
-        Assert.Contains("already enabled", sut.DialogError);
-        Assert.Equal(E2eStepState.Done, sut.Steps.Single(s => s.Step == E2eStep.Sync).State);
-        Assert.Equal(E2eStepState.Failed, sut.Steps.Single(s => s.Step == E2eStep.CheckExistingKeys).State);
+        Assert.Equal("Use a passphrase of at least 12 characters.", sut.DialogError);
+        Assert.Equal(E2eStepState.Done, sut.Steps.Single(s => s.Step == E2eStep.DeriveKey).State);
+        Assert.Equal(E2eStepState.Failed, sut.Steps.Single(s => s.Step == E2eStep.CreateKeys).State);
     }
 
     [Fact]
@@ -199,16 +184,13 @@ public class E2eSettingsViewModelTests
     }
 
     [Fact]
-    public async Task GivenNoPassphrase_WhenConfirmSetUpOrDisable_ThenAskedForIt()
+    public async Task GivenNoPassphrase_WhenConfirmSetUp_ThenAskedForIt()
     {
         // Arrange
         var sut = CreateSut();
         sut.OpenDialog(E2eDialogKind.SetUp);
 
         // Act & Assert
-        await sut.ConfirmDialogAsync();
-        Assert.Equal("Enter your passphrase.", sut.DialogError);
-        sut.OpenDialog(E2eDialogKind.Disable);
         await sut.ConfirmDialogAsync();
         Assert.Equal("Enter your passphrase.", sut.DialogError);
     }
@@ -249,53 +231,11 @@ public class E2eSettingsViewModelTests
     }
 
     [Fact]
-    public async Task GivenPassphrase_WhenConfirmDisable_ThenDisableStepsRun()
-    {
-        // Arrange
-        status = E2eStatus.Unlocked;
-        mockEncryption.Setup(x => x.DisableAsync(Passphrase, It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
-            .Callback(() => status = E2eStatus.Disabled)
-            .Returns(Task.CompletedTask);
-        var sut = CreateSut();
-        sut.OpenDialog(E2eDialogKind.Disable);
-        sut.Passphrase = Passphrase;
-
-        // Act
-        await sut.ConfirmDialogAsync();
-
-        // Assert
-        Assert.True(sut.IsFinished);
-        Assert.Equal(
-            [E2eStep.VerifyPassphrase, E2eStep.Sync, E2eStep.GoOffline, E2eStep.DecryptFiles, E2eStep.DeleteKeys, E2eStep.GoOnline],
-            sut.Steps.Select(s => s.Step));
-        Assert.True(sut.CanEnable);
-    }
-
-    [Fact]
-    public async Task GivenWrongPassphrase_WhenConfirmDisable_ThenFirstStepFailed()
-    {
-        // Arrange
-        mockEncryption.Setup(x => x.DisableAsync("wrong", It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
-            .Callback<string, IProgress<E2eProgress>?, CancellationToken>((_, progress, _) => progress!.Report(new E2eProgress(E2eStep.VerifyPassphrase, false)))
-            .ThrowsAsync(new E2eWrongPassphraseException());
-        var sut = CreateSut();
-        sut.OpenDialog(E2eDialogKind.Disable);
-        sut.Passphrase = "wrong";
-
-        // Act
-        await sut.ConfirmDialogAsync();
-
-        // Assert
-        Assert.Equal("That passphrase is not correct.", sut.DialogError);
-        Assert.Equal(E2eStepState.Failed, sut.Steps[0].State);
-    }
-
-    [Fact]
     public void GivenOpenDialog_WhenCloseDialog_ThenClosedAndCleared()
     {
         // Arrange
         var sut = CreateSut();
-        sut.OpenDialog(E2eDialogKind.Disable);
+        sut.OpenDialog(E2eDialogKind.ChangePassphrase);
         sut.Passphrase = "typed";
 
         // Act
@@ -323,7 +263,6 @@ public class E2eSettingsViewModelTests
     }
 
     [Theory]
-    [InlineData(E2eStep.EncryptFiles, "Encrypt your files")]
     [InlineData(E2eStep.DeriveKey, "Derive your passphrase key (Argon2id)")]
     public void GivenStep_WhenGetStepLabel_ThenDescribed(E2eStep step, string expected)
     {

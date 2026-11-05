@@ -19,7 +19,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
     private const string StoreKey = "Store";
     private const string RemoteKey = "Remote";
     private const string IncludeEmptyFoldersKey = "IncludeEmptyFolders";
-    private const string EncryptedKey = "Encrypted";
+    private const string IdKey = "Id";
     private const string IndexStoreKey = "IndexStore";
     private const string FileStoreKey = "FileStore";
     private const string StoragesKey = "Storages";
@@ -31,7 +31,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
     private static readonly string[] SyncKeys = [ChangeDebounceKey, ConnectivityTimingsKey, EventLogKey, ProfilesKey];
     private static readonly string[] ConnectivityTimingsKeys = ["CacheFor", "ProbeTimeout", "RecheckBackoff"];
     private static readonly string[] EventLogKeys = [DatabaseKey, StoreKey, "MaxAge", "MaxEventsPerUser"];
-    private static readonly string[] ProfileKeys = [RemoteKey, IncludeEmptyFoldersKey, EncryptedKey, IndexStoreKey, FileStoreKey, StoragesKey, DefaultStorageKey];
+    private static readonly string[] ProfileKeys = [IdKey, RemoteKey, IncludeEmptyFoldersKey, IndexStoreKey, FileStoreKey, StoragesKey, DefaultStorageKey];
     private static readonly string[] IndexedDbKeys = [DatabaseKey, StoreKey];
     private static readonly string[] OpfsKeys = [RootKey, MetadataDatabaseKey, MetadataStoreKey];
     private static readonly string[] LocalFolderKeys = [MetadataDatabaseKey, MetadataStoreKey];
@@ -235,7 +235,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
         CheckKeys(section, ProfileKeys);
         var remote = ReadRequiredString(section, RemoteKey);
         var includeEmptyFolders = ReadBool(section, IncludeEmptyFoldersKey) ?? false;
-        var encrypted = ReadBool(section, EncryptedKey) ?? false;
+        var id = ReadRequiredString(section, IdKey);
 
         var indexStore = section.GetSection(IndexStoreKey);
         CheckKeys(indexStore, IndexedDbKeys);
@@ -288,10 +288,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
             }
 
             profile.UseRemote(remote, includeEmptyFolders);
-            if (encrypted)
-            {
-                profile.UseEncryption();
-            }
+            profile.UseKeyId(id);
         }));
     }
 }

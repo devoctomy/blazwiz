@@ -17,12 +17,18 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// <param name="storageResolver">The storages each profile's files are kept in.</param>
 /// <param name="userContext">The signed in user.</param>
 /// <param name="lockService">The cross tab sync lock.</param>
+/// <param name="lockChannel">Locks a protected profile in every tab when it is locked in one.</param>
+/// <param name="options">The settings of the profiles users create.</param>
+/// <param name="idleLock">Locks a profile left unused for its idle timeout.</param>
 public class SyncProtectedProfileService(
     IE2eProtectedProfileManager manager,
     ISyncProfileRegistry registry,
     ISyncStorageResolver storageResolver,
     ISyncUserContext userContext,
-    ISyncLockService lockService)
+    ISyncLockService lockService,
+    IE2eLockChannel lockChannel,
+    SyncOptions options,
+    IE2eIdleLock idleLock)
     : ISyncProtectedProfileService
 {
     private readonly IE2eProtectedProfileManager manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -30,21 +36,34 @@ public class SyncProtectedProfileService(
     private readonly ISyncStorageResolver storageResolver = storageResolver ?? throw new ArgumentNullException(nameof(storageResolver));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly ISyncLockService lockService = lockService ?? throw new ArgumentNullException(nameof(lockService));
+    private readonly IE2eLockChannel lockChannel = lockChannel ?? throw new ArgumentNullException(nameof(lockChannel));
+    private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly IE2eIdleLock idleLock = idleLock ?? throw new ArgumentNullException(nameof(idleLock));
+    private bool listening;
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<E2eKeyScope>> LoadAsync(CancellationToken ct = default)
     {
+        if (!listening)
+        {
+            listening = true;
+            idleLock.Start();
+            manager.LockStateChanged += OnLockStateChanged;
+            lockChannel.LockReceived += OnLockReceived;
+            await lockChannel.StartAsync();
+        }
+
         var scopes = (await manager.GetProfilesAsync(ct)).Select(p => new E2eKeyScope(p.Id)).ToList();
-        foreach (var gone in registry.Profiles.Where(p => p.IsProtected && !scopes.Contains(p.KeyScope!)).ToList())
+        foreach (var gone in CreatedProfiles().Where(p => !scopes.Contains(p.KeyScope!)).ToList())
         {
             // Deleted on another device.
             manager.Lock(gone.KeyScope!);
             registry.Remove(gone.Name);
         }
 
-        foreach (var scope in scopes.Where(s => registry.Find(s.Id) == null))
+        foreach (var scope in scopes.Where(s => FindProfile(s) == null))
         {
-            registry.Add(CreateOptions(scope));
+            registry.Add(CreateOptions(scope, options.ProfileDefaults));
         }
 
         return scopes;
@@ -53,20 +72,39 @@ public class SyncProtectedProfileService(
     /// <inheritdoc/>
     public async Task<E2eKeyScope> CreateAsync(string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
-        var scope = await manager.CreateAsync(passphrase, progress, ct);
-        registry.Add(CreateOptions(scope));
+        var scope = await manager.CreateAsync(passphrase, options.ProfileDefaults, progress, ct);
+        registry.Add(CreateOptions(scope, options.ProfileDefaults));
         return scope;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> IsSetUpAsync(E2eKeyScope scope, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        return (await manager.GetProfilesAsync(ct)).Any(p => p.Id == scope.Id);
+    }
+
+    /// <inheritdoc/>
+    public Task SetUpAsync(E2eKeyScope scope, string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    {
+        var profile = FindProfile(scope) ?? throw new ArgumentException($"There is no profile '{scope}'.", nameof(scope));
+        return manager.CreateKeysAsync(scope, passphrase, profile.Settings, progress, ct);
+    }
+
+    /// <inheritdoc/>
+    public Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, CancellationToken ct = default)
+    {
+        var profile = FindProfile(scope) ?? throw new ArgumentException($"There is no profile '{scope}'.", nameof(scope));
+        return manager.ChangePassphraseAsync(scope, currentPassphrase, newPassphrase, profile.Settings, ct);
     }
 
     /// <inheritdoc/>
     public async Task DeleteAsync(E2eKeyScope scope, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(scope);
-        var profile = registry.Find(scope.Id);
-        if (profile is not { IsProtected: true })
-        {
-            throw new ArgumentException($"There is no protected profile '{scope}'.", nameof(scope));
-        }
+        var profile = CreatedProfiles().FirstOrDefault(p => p.KeyScope == scope)
+            ?? throw new ArgumentException($"There is no profile '{scope}' created by the user; profiles set up in code are not deleted.", nameof(scope));
 
         // The keys go first: whatever happens to the files after this, they can no longer be decrypted.
         await manager.DeleteAsync(scope, ct);
@@ -103,30 +141,94 @@ public class SyncProtectedProfileService(
     }
 
     /// <inheritdoc/>
+    public Task EnableDeviceUnlockAsync(E2eKeyScope scope)
+    {
+        CheckDeviceUnlockAllowed(scope);
+        return manager.EnableDeviceUnlockAsync(scope);
+    }
+
+    /// <inheritdoc/>
+    public Task UnlockWithDeviceAsync(E2eKeyScope scope)
+    {
+        CheckDeviceUnlockAllowed(scope);
+        return manager.UnlockWithDeviceAsync(scope);
+    }
+
+    /// <inheritdoc/>
     public void Unload()
     {
         manager.LockAll();
-        foreach (var profile in registry.Profiles.Where(p => p.IsProtected).ToList())
+        foreach (var profile in CreatedProfiles().ToList())
         {
             registry.Remove(profile.Name);
         }
     }
 
-    private static SyncProfileOptions CreateOptions(E2eKeyScope scope)
+    private static SyncProfileOptions CreateOptions(E2eKeyScope scope, E2eProfileSettings settings)
     {
         var id = scope.Id;
-        var options = new SyncProfileOptions
+        var profile = new SyncProfileOptions
         {
             Name = id,
             KeyScope = scope,
             RemotePattern = $"{SyncDefaults.ProtectedProfilesFolder}/{id}/**/*",
             IncludeEmptyFolders = true,
+            Settings = settings,
         };
-        new SyncFileStoresBuilder(options)
+        new SyncFileStoresBuilder(profile)
             .AddIndexedDb(SyncDefaults.FileDatabase, id)
             .AddOpfs(root: id)
             .AddLocalFolder()
             .UseDefault(SyncStorageKind.IndexedDb);
-        return options;
+        return profile;
+    }
+
+    private SyncProfileOptions? FindProfile(E2eKeyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        return registry.Profiles.FirstOrDefault(p => p.KeyScope == scope);
+    }
+
+    // The profiles users created: every profile except those set up in code.
+    private IEnumerable<SyncProfileOptions> CreatedProfiles() =>
+        registry.Profiles.Where(p => !options.Profiles.Any(c => c.Name == p.Name));
+
+    private void CheckDeviceUnlockAllowed(E2eKeyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        if (FindProfile(scope) is not { Settings.AllowDeviceUnlock: true })
+        {
+            throw new InvalidOperationException($"Protected profile '{scope}' cannot be unlocked with the passkey.");
+        }
+    }
+
+    private void OnLockStateChanged(object? sender, E2eKeyScope scope)
+    {
+        if (!manager.IsUnlocked(scope))
+        {
+            // Locked here (by the user, or on sign out): lock it in the other tabs too. Unlocking is never sent.
+            _ = PostLockAsync(scope.Id);
+        }
+    }
+
+    private async Task PostLockAsync(string profileId)
+    {
+        try
+        {
+            await lockChannel.PostLockAsync(profileId);
+        }
+        catch (Exception)
+        {
+            // Another tab keeps it unlocked until it locks it itself or signs out.
+        }
+    }
+
+    private void OnLockReceived(object? sender, string profileId)
+    {
+        if (registry.Profiles.FirstOrDefault(p => p.KeyScope?.Id == profileId) is { KeyScope: { } scope })
+        {
+            manager.Lock(scope);
+        }
     }
 }

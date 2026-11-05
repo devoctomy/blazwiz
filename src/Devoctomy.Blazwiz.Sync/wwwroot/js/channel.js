@@ -1,27 +1,30 @@
-// Messages between tabs of the app (BroadcastChannel), imported by SyncStorageChannel (Devoctomy.Blazwiz.Sync). A tab does not
-// receive its own messages. Browsers without BroadcastChannel send and receive nothing.
+// Messages between tabs of the app (BroadcastChannel), imported by SyncStorageChannel and E2eLockChannel
+// (Devoctomy.Blazwiz.Sync). A tab does not receive its own messages. Browsers without BroadcastChannel send and receive
+// nothing.
 
-let channel = null;
+const channels = new Map();
 
-// Calls OnMessage(string) for each message posted by another tab.
+// Calls OnMessage(string) for each message posted on the named channel by another tab.
 export function subscribe(name, dotNetRef) {
-    unsubscribe();
+    unsubscribe(name);
     if (typeof BroadcastChannel !== 'function') {
         return;
     }
 
-    channel = new BroadcastChannel(name);
+    const channel = new BroadcastChannel(name);
     channel.onmessage = function (e) {
         if (typeof e.data === 'string') {
             dotNetRef.invokeMethodAsync('OnMessage', e.data);
         }
     };
+    channels.set(name, channel);
 }
 
-export function unsubscribe() {
+export function unsubscribe(name) {
+    const channel = channels.get(name);
     if (channel) {
         channel.close();
-        channel = null;
+        channels.delete(name);
     }
 }
 
@@ -32,7 +35,8 @@ export function post(name, message) {
         return;
     }
 
-    if (channel && channel.name === name) {
+    const channel = channels.get(name);
+    if (channel) {
         channel.postMessage(message);
         return;
     }

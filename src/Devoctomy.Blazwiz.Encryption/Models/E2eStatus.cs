@@ -1,49 +1,32 @@
 namespace Devoctomy.Blazwiz.Encryption.Models;
 
 /// <summary>
-/// Where end to end encryption stands for the signed in user on this device.
+/// Where the profiles set up in code stand for the signed in user on this device.
 /// </summary>
 public enum E2eStatus
 {
     /// <summary>
-    /// Not checked yet, or the keys could not be reached and this device has no copy.
+    /// Not checked yet.
     /// </summary>
     Unknown,
 
     /// <summary>
-    /// The keys store cannot be used in this session (e.g. the local placeholder sign in), so encryption is not offered.
+    /// Their keys cannot be reached in this session.
     /// </summary>
     Unsupported,
 
     /// <summary>
-    /// Encryption is not enabled, and this session was not signed in with a passkey (PRF), so it cannot be enabled.
-    /// </summary>
-    Unavailable,
-
-    /// <summary>
-    /// Encryption is enabled, but this session has no passkey (PRF) keys, so files cannot be read or synced until the
-    /// passkey is used.
-    /// </summary>
-    Blocked,
-
-    /// <summary>
-    /// Encryption is not enabled, and can be.
+    /// Their passphrase has not been set yet.
     /// </summary>
     Disabled,
 
     /// <summary>
-    /// Encryption is enabled, but this device has not been set up with the passphrase yet.
+    /// Their passphrase is set, and they are locked on this device.
     /// </summary>
     NeedsSetup,
 
     /// <summary>
-    /// Encryption is enabled and the keys are in memory.
+    /// Their keys are in memory.
     /// </summary>
     Unlocked,
-
-    /// <summary>
-    /// Encryption was turned off on another device, but this device still has its keys and may have encrypted
-    /// changes not yet synced.
-    /// </summary>
-    DisabledElsewhere,
 }

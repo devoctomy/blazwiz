@@ -19,8 +19,7 @@ public class SyncConfigurationTests
             "EventLog": { "Database": "db", "Store": "log", "MaxAge": "7.00:00:00", "MaxEventsPerUser": 100 },
             "Profiles": {
               "photos": {
-                "Remote": "/photos/**/*",
-                "Encrypted": true,
+                "Id": "bafcbb1a-0eff-4267-ad1a-e7b94a1b4ead", "Remote": "/photos/**/*",
                 "IndexStore": { "Database": "sync", "Store": "photos_index" },
                 "Storages": {
                   "LocalFolder": {},
@@ -30,7 +29,7 @@ public class SyncConfigurationTests
                 "DefaultStorage": "opfs"
               },
               "documents": {
-                "Remote": "documents/**/*.md",
+                "Id": "f5f28a29-0b40-4e6d-be72-2da274499a47", "Remote": "documents/**/*.md",
                 "IncludeEmptyFolders": true,
                 "FileStore": { "Database": "files", "Store": "documents" }
               }
@@ -65,7 +64,7 @@ public class SyncConfigurationTests
         var documents = options.Profiles[0];
         Assert.Equal("documents/**/*.md", documents.RemotePattern);
         Assert.True(documents.IncludeEmptyFolders);
-        Assert.False(documents.IsEncrypted);
+        Assert.NotNull(documents.KeyScope);
         Assert.False(documents.IsSwitchable);
         Assert.Equal("files", documents.FileDatabase);
         Assert.Equal("documents", documents.ResolvedFileStoreName);
@@ -74,7 +73,7 @@ public class SyncConfigurationTests
         var photos = options.Profiles[1];
         Assert.Equal("photos/**/*", photos.RemotePattern);
         Assert.False(photos.IncludeEmptyFolders);
-        Assert.True(photos.IsEncrypted);
+        Assert.NotNull(photos.KeyScope);
         Assert.Equal("sync", photos.IndexDatabase);
         Assert.Equal("photos_index", photos.ResolvedIndexStoreName);
         Assert.Equal([SyncStorageKind.IndexedDb, SyncStorageKind.Opfs, SyncStorageKind.LocalFolder], photos.FileStores.Select(s => s.Kind));
@@ -90,7 +89,7 @@ public class SyncConfigurationTests
         // Act
         sut.UseConfiguration(Section("""
             { "Sync": { "Profiles": { "files": {
-              "Remote": "files/**/*",
+              "Id": "d05ceee5-17fc-48b9-abd0-6c0d60eb550c", "Remote": "files/**/*",
               "Storages": { "LocalFolder": {}, "Opfs": { "Root": "files" } }
             } } } }
             """));
@@ -137,10 +136,10 @@ public class SyncConfigurationTests
     public void GivenProfilesInCodeAndConfiguration_WhenApplied_ThenBothAreAdded()
     {
         // Arrange
-        var sut = new SyncBuilder(options).AddProfile("notes", p => p.UseRemote("notes/**/*.md"));
+        var sut = new SyncBuilder(options).AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*.md"));
 
         // Act
-        sut.UseConfiguration(Section("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*" } } } }"""));
+        sut.UseConfiguration(Section("""{ "Sync": { "Profiles": { "photos": { "Id": "38811a35-3ae0-4cf5-b935-e2e9f3b7180f", "Remote": "photos/**/*" } } } }"""));
 
         // Assert
         Assert.Equal(["notes", "photos"], options.Profiles.Select(p => p.Name));
@@ -150,10 +149,10 @@ public class SyncConfigurationTests
     public void GivenAProfileAlreadyAddedInCode_WhenApplied_ThenThrowsNamingTheSetting()
     {
         // Arrange
-        var sut = new SyncBuilder(options).AddProfile("photos", p => p.UseRemote("photos/**/*"));
+        var sut = new SyncBuilder(options).AddProfile("photos", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("photos/**/*"));
 
         // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(() => sut.UseConfiguration(Section("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*" } } } }""")));
+        var ex = Assert.Throws<InvalidOperationException>(() => sut.UseConfiguration(Section("""{ "Sync": { "Profiles": { "photos": { "Id": "bd313a4d-a720-490c-8976-29ff3517c422", "Remote": "photos/**/*" } } } }""")));
         Assert.Contains("Sync:Profiles:photos", ex.Message);
         Assert.IsAssignableFrom<ArgumentException>(ex.InnerException);
     }
@@ -161,21 +160,22 @@ public class SyncConfigurationTests
     [Theory]
     [InlineData("""{ "Sync": { "Debounce": "00:00:01" } }""", "Sync:Debounce")]
     [InlineData("""{ "Sync": { "EventLog": { "Retention": 1 } } }""", "Sync:EventLog:Retention")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "Encrypt": true } } } }""", "Sync:Profiles:photos:Encrypt")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "Storages": { "S3": {}, "Opfs": { "Root": "p" } } } } } }""", "Sync:Profiles:photos:Storages:S3")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "Storages": { "Opfs": { "Root": "p", "Database": "x" }, "LocalFolder": {} } } } } }""", "Sync:Profiles:photos:Storages:Opfs:Database")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Encrypted": true } } } }""", "Sync:Profiles:photos:Remote")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "Encrypted": "yes" } } } }""", "Sync:Profiles:photos:Encrypted")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "09ba271d-c930-4470-8f0b-ea8c95ebcf23", "Remote": "photos/**/*", "Encrypt": true } } } }""", "Sync:Profiles:photos:Encrypt")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "72f7b075-c86d-4dc8-8876-833f08561c9d", "Remote": "photos/**/*", "Storages": { "S3": {}, "Opfs": { "Root": "p" } } } } } }""", "Sync:Profiles:photos:Storages:S3")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "3ce890bc-88e4-46d4-897d-433c44247b03", "Remote": "photos/**/*", "Storages": { "Opfs": { "Root": "p", "Database": "x" }, "LocalFolder": {} } } } } }""", "Sync:Profiles:photos:Storages:Opfs:Database")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { } } } }""", "Sync:Profiles:photos:Remote")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "not a guid", "Remote": "photos/**/*" } } } }""", "Sync:Profiles:photos")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*" } } } }""", "Sync:Profiles:photos:Id")]
     [InlineData("""{ "Sync": { "ChangeDebounce": "soon" } }""", "Sync:ChangeDebounce")]
     [InlineData("""{ "Sync": { "EventLog": { "MaxEventsPerUser": "lots" } } }""", "Sync:EventLog:MaxEventsPerUser")]
     [InlineData("""{ "Sync": { "ChangeDebounce": "-00:00:01" } }""", "Sync")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "IndexStore": { "Database": "sync" } } } } }""", "Sync:Profiles:photos:IndexStore:Store")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "Storages": { "Opfs": {}, "LocalFolder": {} } } } } }""", "Sync:Profiles:photos:Storages:Opfs:Root")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "Storages": { "Opfs": { "Root": "p" } } } } } }""", "Sync:Profiles:photos")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "Storages": { "Opfs": { "Root": "p" }, "LocalFolder": {} }, "DefaultStorage": "IndexedDb" } } } }""", "Sync:Profiles:photos")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "Storages": { "Opfs": { "Root": "p" }, "LocalFolder": {} }, "DefaultStorage": "Cloud" } } } }""", "Sync:Profiles:photos:DefaultStorage")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "DefaultStorage": "Opfs" } } } }""", "Sync:Profiles:photos")]
-    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Remote": "photos/**/*", "FileStore": { "Database": "f", "Store": "p" }, "Storages": { "Opfs": { "Root": "p" }, "LocalFolder": {} } } } } }""", "Sync:Profiles:photos")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "739ae05d-522b-48d3-9ec6-732ea43562db", "Remote": "photos/**/*", "IndexStore": { "Database": "sync" } } } } }""", "Sync:Profiles:photos:IndexStore:Store")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "376b3ae0-fe13-4070-a61c-9d3d8c2e1a10", "Remote": "photos/**/*", "Storages": { "Opfs": {}, "LocalFolder": {} } } } } }""", "Sync:Profiles:photos:Storages:Opfs:Root")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "abaaef7b-a08f-4e8a-ac7f-45b14317cc7d", "Remote": "photos/**/*", "Storages": { "Opfs": { "Root": "p" } } } } } }""", "Sync:Profiles:photos")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "5fb7810d-7b97-4c50-8565-f04df2a605c4", "Remote": "photos/**/*", "Storages": { "Opfs": { "Root": "p" }, "LocalFolder": {} }, "DefaultStorage": "IndexedDb" } } } }""", "Sync:Profiles:photos")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "fc63e51b-1133-4f92-b0a7-04e9e67db449", "Remote": "photos/**/*", "Storages": { "Opfs": { "Root": "p" }, "LocalFolder": {} }, "DefaultStorage": "Cloud" } } } }""", "Sync:Profiles:photos:DefaultStorage")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "2d642f4d-b0ec-4ff2-b1ad-e33e5d6fb50b", "Remote": "photos/**/*", "DefaultStorage": "Opfs" } } } }""", "Sync:Profiles:photos")]
+    [InlineData("""{ "Sync": { "Profiles": { "photos": { "Id": "b869d587-d37c-4442-8037-27294e8335f4", "Remote": "photos/**/*", "FileStore": { "Database": "f", "Store": "p" }, "Storages": { "Opfs": { "Root": "p" }, "LocalFolder": {} } } } } }""", "Sync:Profiles:photos")]
     public void GivenAnInvalidSetting_WhenApplied_ThenThrowsNamingIt(string json, string path)
     {
         // Arrange
@@ -201,7 +201,7 @@ public class SyncConfigurationTests
         var profile = Assert.Single(options.Profiles);
         Assert.Equal("files", profile.Name);
         Assert.Equal("files/**/*", profile.RemotePattern);
-        Assert.True(profile.IsEncrypted);
+        Assert.NotNull(profile.KeyScope);
         Assert.Equal([SyncStorageKind.IndexedDb, SyncStorageKind.Opfs, SyncStorageKind.LocalFolder], profile.FileStores.Select(s => s.Kind));
     }
 

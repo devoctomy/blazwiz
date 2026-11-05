@@ -28,6 +28,35 @@ public interface ISyncProtectedProfileService
     Task<E2eKeyScope> CreateAsync(string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
+    /// Gets whether a profile has its keys yet: a profile set up in code has none until the user sets its passphrase.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>True when the profile has its keys.</returns>
+    Task<bool> IsSetUpAsync(E2eKeyScope scope, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets the passphrase of a profile set up in code the first time, creating its keys with its settings. It is
+    /// unlocked.
+    /// </summary>
+    /// <param name="scope">The profile's scope (its id, from <c>UseKeyId</c>).</param>
+    /// <param name="passphrase">The passphrase.</param>
+    /// <param name="progress">Told about each step.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task SetUpAsync(E2eKeyScope scope, string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Changes a profile's passphrase, with its passphrase rules and Argon2id costs.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <param name="currentPassphrase">The current passphrase.</param>
+    /// <param name="newPassphrase">The new passphrase.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes a protected profile: its keys first, so nothing left behind can be decrypted, then its files in S3 and
     /// on this device, under its sync lock, and then the sync profile.
     /// </summary>
@@ -37,7 +66,24 @@ public interface ISyncProtectedProfileService
     Task DeleteAsync(E2eKeyScope scope, CancellationToken ct = default);
 
     /// <summary>
-    /// Locks every protected profile and removes them as sync profiles. Called when the user signs out.
+    /// Lets this device unlock a protected profile with the passkey, when its settings allow it
+    /// (<see cref="E2eProfileSettings.AllowDeviceUnlock"/>). The profile must be unlocked.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="InvalidOperationException">The profile's settings do not allow device unlock.</exception>
+    Task EnableDeviceUnlockAsync(E2eKeyScope scope);
+
+    /// <summary>
+    /// Unlocks a protected profile with the passkey, when its settings allow it and it was turned on on this device.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="InvalidOperationException">The profile's settings do not allow device unlock.</exception>
+    Task UnlockWithDeviceAsync(E2eKeyScope scope);
+
+    /// <summary>
+    /// Locks every profile, and removes those the user created as sync profiles. Called when the user signs out.
     /// </summary>
     void Unload();
 }

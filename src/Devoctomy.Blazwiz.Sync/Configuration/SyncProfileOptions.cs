@@ -66,21 +66,15 @@ public class SyncProfileOptions
     public SyncStorageKind? DefaultStorageKind { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether the files can be end to end encrypted (<c>UseEncryption</c>). Needs
-    /// <c>AddBlazwizE2eEncryption</c>.
-    /// </summary>
-    public bool IsEncrypted { get; set; }
-
-    /// <summary>
-    /// Gets or sets the key scope of a protected profile (one with its own passphrase), or null. A protected profile is
-    /// always encrypted with its own keys, and <see cref="IsEncrypted"/> (the account's keys) does not apply to it.
+    /// Gets or sets the profile's key scope: its own keys and passphrase. Every profile has one: set with
+    /// <c>UseKeyId</c> for a profile set up in code, and a new GUID for a profile a user creates.
     /// </summary>
     public E2eKeyScope? KeyScope { get; set; }
 
     /// <summary>
-    /// Gets a value indicating whether this is a protected profile (<see cref="KeyScope"/> is set).
+    /// Gets or sets the profile's security settings (idle timeout, device unlock, passphrase rules, Argon2id costs).
     /// </summary>
-    public bool IsProtected => KeyScope != null;
+    public E2eProfileSettings Settings { get; set; } = new E2eProfileSettings();
 
     /// <summary>
     /// Gets a value indicating whether the user can switch the storage the files are kept in.

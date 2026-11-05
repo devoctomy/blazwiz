@@ -113,8 +113,8 @@ no longer need it.
 The **Files** page and note editor are an example of using the sync module: markdown notes, organised into folders,
 kept in the browser for the signed in user and synced to their own prefix in the data bucket.
 
-- **Storage**: notes are plain `.md` files and folders are paths (`notes/Work/Ideas.md`), kept by the `notes` sync
-  profile's file store (`Sync/NotesSyncProfile.cs`). `NoteService` asks for it with
+- **Storage**: notes are `.md` files and folders are paths (`notes/Work/Ideas.md`), kept by the `notes` sync
+  profile's file store (`Sync/NotesSyncProfile.cs`), which encrypts them. `NoteService` asks for it with
   `[FromKeyedServices("notes")] ISyncFileStore`, so every change is tracked for sync automatically.
 - **Wording**: the sync module says "files"; `NotesText.resx` overrides its text to say "notes".
   `NotesTextTests` checks every override still names framework text after an upgrade.
@@ -126,11 +126,11 @@ kept in the browser for the signed in user and synced to their own prefix in the
 <!--#if (IncludeSync)-->
 ### End to end encryption
 
-Synced profiles marked `UseEncryption()` are encrypted end to end, so files in S3 can only be read on the user's own
-devices. Syncing without encryption is not supported (yet): without it, files sit in S3 as plain text that anyone who
-can read the bucket (the AWS account's operators, leaked credentials, backups and old versions) can read, with access
-control as the only protection. If it is ever allowed, it will be your decision as the app's developer, with clear
-warnings, never your users'.
+Every sync profile is encrypted end to end with its own keys and its own passphrase, so files on the device and in S3
+can only be read once the user has entered it. A profile's id (`UseKeyId`, a GUID) names its keys, kept in the user's
+own Secrets Manager secrets, or in the browser when no user pool is configured (local development). Until its
+passphrase is set or entered the profile is locked: Settings asks for it, and a banner says so. There is no recovery:
+a forgotten passphrase loses the profile's files. Syncing without encryption is not supported.
 
 <!--#endif-->
 ### Add a service
@@ -172,11 +172,12 @@ theme.
 
 `wwwroot/appsettings.json` holds `AppSettings` (title, description, copyright), `AwsCognito`
 (region, user pool, client and identity pool ids) and `AwsS3` (region, data bucket).
-`appsettings.Development.json` overrides values when running locally and is not published. When
+`appsettings.Development.json` overrides values when running locally and is not published; it lightens the Argon2id
+settings (`Argon2id`), so passphrases are quick to enter while developing and in the UI tests. When
 deploying, `deploy.ps1` generates `appsettings.Production.json` with the stack's ids (git ignored).
 <!--#if (IncludeSync)-->
 
-Sync profiles (what is synced, where it is kept on the device, and whether it is encrypted) are classes deriving
+Sync profiles (what is synced, where it is kept on the device, and the id of its keys) are classes deriving
 from `SyncProfileDefinition`, found in the app's assemblies by `AddProfilesFromAssemblyContaining` in `Program.cs`.
 <!--#if (IncludeNotes)-->
 The notes example's is `MyApp.Portal.Application/Sync/NotesSyncProfile.cs`.

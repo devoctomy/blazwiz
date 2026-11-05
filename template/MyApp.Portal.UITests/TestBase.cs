@@ -28,6 +28,13 @@ public class TestBase : PageTest
     /// </summary>
     protected const int AppStartTimeoutMs = 60000;
 
+//#if (IncludeSync)
+    /// <summary>
+    /// The passphrase the tests protect their files with.
+    /// </summary>
+    protected const string Passphrase = "correct horse battery staple";
+
+//#endif
     private static readonly string ResultsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
     private static readonly string ScreenshotDirectory = Path.Combine(ResultsDirectory, "Screenshots");
     private static readonly TimeSpan PortalBuildTimeout = TimeSpan.FromMinutes(10);
@@ -186,6 +193,39 @@ public class TestBase : PageTest
         await Expect(Page.Locator("#dashboard-greeting")).ToBeVisibleAsync();
     }
 
+//#if (IncludeSync)
+    /// <summary>
+    /// Sets the passphrase of the sync profiles in Settings, which unlocks them, and returns to the page it started on.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task SetPassphraseAsync()
+    {
+        var startUrl = Page.Url;
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#e2e-enable").ClickAsync();
+        await Page.Locator("#e2e-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-confirm-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-acknowledge").CheckAsync();
+        await Page.Locator("#e2e-confirm").ClickAsync(new() { Timeout = AppStartTimeoutMs });
+        await CloseFinishedDialogAsync(startUrl);
+    }
+
+    /// <summary>
+    /// Unlocks the sync profiles with their passphrase from the banner shown after a reload, and returns to the page
+    /// it started on.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task UnlockAsync()
+    {
+        var startUrl = Page.Url;
+        await Page.Locator("#e2e-setup-button").ClickAsync();
+        await Page.Locator("#e2e-setup").ClickAsync();
+        await Page.Locator("#e2e-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-confirm").ClickAsync(new() { Timeout = AppStartTimeoutMs });
+        await CloseFinishedDialogAsync(startUrl);
+    }
+//#endif
+
     /// <summary>
     /// Saves a screenshot to TestResults/Screenshots.
     /// </summary>
@@ -197,6 +237,24 @@ public class TestBase : PageTest
         var fileName = $"{TestContext.TestName}_{screenshotCounter:D2}_{name}.png";
         await Page.ScreenshotAsync(new() { Path = Path.Combine(ScreenshotDirectory, fileName) });
     }
+
+//#if (IncludeSync)
+    /// <summary>
+    /// Waits for the passphrase to be derived, which blocks the page for a while with the Release settings, closes the
+    /// dialog and goes back to the page it started on, in the app so the keys are kept.
+    /// </summary>
+    private async Task CloseFinishedDialogAsync(string startUrl)
+    {
+        await Expect(Page.Locator("#e2e-finished")).ToBeVisibleAsync(new() { Timeout = AppStartTimeoutMs });
+        await Page.Locator("#e2e-close").ClickAsync();
+        await Expect(Page.Locator("#e2e-banner")).ToHaveCountAsync(0);
+        if (Page.Url != startUrl)
+        {
+            await Page.GoBackAsync();
+            await Expect(Page).ToHaveURLAsync(new System.Text.RegularExpressions.Regex($"^{System.Text.RegularExpressions.Regex.Escape(startUrl)}$"));
+        }
+    }
+//#endif
 
     /// <summary>
     /// Waits until the app has started: it replaces the loading indicator in <c>index.html</c> when it first renders.

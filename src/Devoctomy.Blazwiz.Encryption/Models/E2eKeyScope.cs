@@ -1,16 +1,10 @@
 namespace Devoctomy.Blazwiz.Encryption.Models;
 
 /// <summary>
-/// A key scope: one keys document, one passphrase, one set of keys in memory and one lock state. The account's end to
-/// end encryption is <see cref="Account"/>.
+/// A key scope: one profile's keys document, passphrase, keys in memory and lock state.
 /// </summary>
 public sealed record E2eKeyScope
 {
-    /// <summary>
-    /// The id of <see cref="Account"/>.
-    /// </summary>
-    public const string AccountId = "account";
-
     /// <summary>
     /// The longest id allowed.
     /// </summary>
@@ -34,19 +28,9 @@ public sealed record E2eKeyScope
     }
 
     /// <summary>
-    /// Gets the account's scope, used by profiles configured with <c>UseEncryption()</c>.
-    /// </summary>
-    public static E2eKeyScope Account { get; } = new E2eKeyScope(AccountId);
-
-    /// <summary>
     /// Gets the id.
     /// </summary>
     public string Id { get; }
-
-    /// <summary>
-    /// Gets a value indicating whether this is the account's scope.
-    /// </summary>
-    public bool IsAccount => Id == AccountId;
 
     /// <inheritdoc/>
     public override string ToString() => Id;

@@ -9,7 +9,7 @@ namespace Devoctomy.Blazwiz.Sync.UnitTests.Encryption;
 
 public class LocalStorageE2eLocalKeyStoreTests
 {
-    private const string StorageKey = LocalStorageE2eLocalKeyStore.StorageKeyPrefix + "account_bob@example.com";
+    private const string StorageKey = LocalStorageE2eLocalKeyStore.StorageKeyPrefix + "s0_bob@example.com";
 
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
@@ -35,7 +35,7 @@ public class LocalStorageE2eLocalKeyStoreTests
         mockLocalStorage.Setup(x => x.GetObjectAsync<E2eLocalKeys>(StorageKey)).ReturnsAsync(keys);
 
         // Act & Assert
-        Assert.Same(keys, await CreateSut().GetAsync(E2eKeyScope.Account));
+        Assert.Same(keys, await CreateSut().GetAsync(new E2eKeyScope("s0")));
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class LocalStorageE2eLocalKeyStoreTests
         var keys = new E2eLocalKeys();
 
         // Act
-        await CreateSut().SaveAsync(E2eKeyScope.Account, keys);
+        await CreateSut().SaveAsync(new E2eKeyScope("s0"), keys);
 
         // Assert
         mockLocalStorage.Verify(x => x.SetObjectAsync(StorageKey, keys), Times.Once);
@@ -55,14 +55,14 @@ public class LocalStorageE2eLocalKeyStoreTests
     public async Task GivenNullKeys_WhenSaveAsync_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().SaveAsync(E2eKeyScope.Account, null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().SaveAsync(new E2eKeyScope("s0"), null!));
     }
 
     [Fact]
     public async Task GivenKeys_WhenDeleteAsync_ThenUsersEntryRemoved()
     {
         // Act
-        await CreateSut().DeleteAsync(E2eKeyScope.Account);
+        await CreateSut().DeleteAsync(new E2eKeyScope("s0"));
 
         // Assert
         mockLocalStorage.Verify(x => x.RemoveItemAsync(StorageKey), Times.Once);
@@ -75,7 +75,7 @@ public class LocalStorageE2eLocalKeyStoreTests
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync((string?)null);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().GetAsync(new E2eKeyScope("s0")));
     }
 
     [Fact]

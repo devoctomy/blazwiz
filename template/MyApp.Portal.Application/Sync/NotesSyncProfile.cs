@@ -6,11 +6,16 @@ namespace MyApp.Portal.Application.Sync;
 
 /// <summary>
 /// The notes sync profile: plain markdown files kept in IndexedDB, OPFS or a folder the user picks, and synced with
-/// <c>notes/</c> in the user's prefix, encrypted when end to end encryption is on. Found by
+/// <c>notes/</c> in the user's prefix, end to end encrypted with its own passphrase. Found by
 /// <c>AddProfilesFromAssemblyContaining</c> in <c>Program.cs</c>.
 /// </summary>
 public sealed class NotesSyncProfile : SyncProfileDefinition
 {
+    /// <summary>
+    /// The profile's id, which names its keys: fixed, so every sign in reaches the same keys.
+    /// </summary>
+    public const string KeyId = "3f2b8c1e-6d4a-4f7b-9c2e-8a1d5b7e9f40";
+
     /// <inheritdoc/>
     public override string Name => NoteService.ProfileName;
 
@@ -27,6 +32,6 @@ public sealed class NotesSyncProfile : SyncProfileDefinition
                 .AddLocalFolder()
                 .UseDefault(SyncStorageKind.IndexedDb))
             .UseRemote("notes/**/*.md", includeEmptyFolders: true)
-            .UseEncryption();
+            .UseKeyId(KeyId);
     }
 }

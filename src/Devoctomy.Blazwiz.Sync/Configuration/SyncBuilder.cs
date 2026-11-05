@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -102,7 +103,7 @@ public class SyncBuilder(SyncOptions options)
     /// <para>The section holds <c>ChangeDebounce</c>, <c>ConnectivityTimings</c> (<c>CacheFor</c>,
     /// <c>ProbeTimeout</c>, <c>RecheckBackoff</c>), <c>EventLog</c> (<c>Database</c>, <c>Store</c>, <c>MaxAge</c>,
     /// <c>MaxEventsPerUser</c>) and <c>Profiles</c>, each keyed by the profile name, with <c>Remote</c> (required),
-    /// <c>IncludeEmptyFolders</c>, <c>Encrypted</c>, <c>IndexStore</c> (<c>Database</c>, <c>Store</c>), and either
+    /// <c>IncludeEmptyFolders</c>, <c>Id</c> (required: a GUID), <c>IndexStore</c> (<c>Database</c>, <c>Store</c>), and either
     /// <c>FileStore</c> (<c>Database</c>, <c>Store</c>) or <c>Storages</c> keyed by <see cref="Models.SyncStorageKind"/>
     /// (<c>IndexedDb</c>: <c>Database</c>, <c>Store</c>; <c>Opfs</c>: <c>Root</c>, <c>MetadataDatabase</c>,
     /// <c>MetadataStore</c>; <c>LocalFolder</c>: <c>MetadataDatabase</c>, <c>MetadataStore</c>) with
@@ -158,6 +159,20 @@ public class SyncBuilder(SyncOptions options)
         }
 
         return UseConfiguration(section);
+    }
+
+    /// <summary>
+    /// Sets the security settings of the profiles users create: when they lock themselves, whether they can be
+    /// unlocked with the passkey, their passphrase rules and Argon2id costs.
+    /// </summary>
+    /// <param name="configure">Changes the settings, starting from the framework's defaults.</param>
+    /// <returns>The builder.</returns>
+    public SyncBuilder UseProfileDefaults(Action<E2eProfileSettings> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        configure(Options.ProfileDefaults);
+        return this;
     }
 
     /// <summary>
@@ -237,6 +252,16 @@ public class SyncBuilder(SyncOptions options)
         if (string.IsNullOrWhiteSpace(profile.RemotePattern))
         {
             throw new ArgumentException($"Sync profile '{name}' needs a remote pattern (UseRemote).", nameof(configure));
+        }
+
+        if (profile.KeyScope == null)
+        {
+            throw new ArgumentException($"Sync profile '{name}' needs an id for its keys (UseKeyId).", nameof(configure));
+        }
+
+        if (Options.Profiles.Any(p => p.KeyScope == profile.KeyScope))
+        {
+            throw new ArgumentException($"Sync profile '{name}' has the same id as another profile.", nameof(configure));
         }
 
         Options.Profiles.Add(profile);

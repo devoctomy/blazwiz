@@ -19,7 +19,7 @@ namespace Devoctomy.Blazwiz.UI.Sync.UnitTests.Services;
 public class SecretsManagerUserKeysStoreTests
 {
     private const string Sub = "11111111-2222-3333-4444-555555555555";
-    private const string SecretName = Sub + "/keys";
+    private const string SecretName = Sub + "/keys/s0";
 
     private static readonly string IdToken = new JsonWebTokenHandler().CreateToken($$"""{"sub":"{{Sub}}"}""");
 
@@ -55,7 +55,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync(new E2eKeyScope("s0")));
         mockCredentials.VerifyNoOtherCalls();
         mockFactory.VerifyNoOtherCalls();
     }
@@ -68,7 +68,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(new E2eKeyScope("s0")));
         mockCredentials.VerifyNoOtherCalls();
         mockFactory.VerifyNoOtherCalls();
     }
@@ -83,7 +83,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(new E2eKeyScope("s0")));
         mockCredentials.VerifyNoOtherCalls();
     }
 
@@ -95,7 +95,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(new E2eKeyScope("s0")));
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SetAsync(E2eKeyScope.Account, "keys"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SetAsync(new E2eKeyScope("s0"), "keys"));
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetAsync(new E2eKeyScope("s0")));
         mockFactory.VerifyNoOtherCalls();
     }
 
@@ -130,7 +130,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        var result = await sut.GetAsync(E2eKeyScope.Account);
+        var result = await sut.GetAsync(new E2eKeyScope("s0"));
 
         // Assert
         Assert.Equal("keys", result);
@@ -141,7 +141,7 @@ public class SecretsManagerUserKeysStoreTests
     public async Task GivenAnotherScope_WhenGetAsync_ThenReadsTheScopesOwnSecret()
     {
         // Arrange
-        mockClient.Setup(x => x.GetSecretValueAsync(It.Is<GetSecretValueRequest>(r => r.SecretId == SecretName + "/s1"), It.IsAny<CancellationToken>()))
+        mockClient.Setup(x => x.GetSecretValueAsync(It.Is<GetSecretValueRequest>(r => r.SecretId == Sub + "/keys/s1"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GetSecretValueResponse { SecretString = "scope keys" });
         var sut = CreateSut();
 
@@ -156,7 +156,7 @@ public class SecretsManagerUserKeysStoreTests
     public async Task GivenTheIndex_WhenGetIndexAsync_ThenReadsTheIndexSecret()
     {
         // Arrange
-        mockClient.Setup(x => x.GetSecretValueAsync(It.Is<GetSecretValueRequest>(r => r.SecretId == SecretName + "/index"), It.IsAny<CancellationToken>()))
+        mockClient.Setup(x => x.GetSecretValueAsync(It.Is<GetSecretValueRequest>(r => r.SecretId == Sub + "/keys/index"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GetSecretValueResponse { SecretString = "index" });
         var sut = CreateSut();
 
@@ -177,7 +177,7 @@ public class SecretsManagerUserKeysStoreTests
         await sut.SetIndexAsync("index");
 
         // Assert
-        mockClient.Verify(x => x.PutSecretValueAsync(It.Is<PutSecretValueRequest>(r => r.SecretId == SecretName + "/index" && r.SecretString == "index"), It.IsAny<CancellationToken>()), Times.Once);
+        mockClient.Verify(x => x.PutSecretValueAsync(It.Is<PutSecretValueRequest>(r => r.SecretId == Sub + "/keys/index" && r.SecretString == "index"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        Assert.Null(await sut.GetAsync(E2eKeyScope.Account));
+        Assert.Null(await sut.GetAsync(new E2eKeyScope("s0")));
     }
 
     [Fact]
@@ -210,7 +210,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        await sut.SetAsync(E2eKeyScope.Account, "keys");
+        await sut.SetAsync(new E2eKeyScope("s0"), "keys");
 
         // Assert
         mockClient.Verify(x => x.PutSecretValueAsync(It.Is<PutSecretValueRequest>(r => r.SecretId == SecretName && r.SecretString == "keys"), It.IsAny<CancellationToken>()), Times.Once);
@@ -226,7 +226,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        await sut.SetAsync(E2eKeyScope.Account, "keys");
+        await sut.SetAsync(new E2eKeyScope("s0"), "keys");
 
         // Assert
         mockClient.Verify(x => x.CreateSecretAsync(It.Is<CreateSecretRequest>(r => r.Name == SecretName && r.SecretString == "keys"), It.IsAny<CancellationToken>()), Times.Once);
@@ -244,7 +244,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        await sut.SetAsync(E2eKeyScope.Account, "keys");
+        await sut.SetAsync(new E2eKeyScope("s0"), "keys");
 
         // Assert
         mockClient.Verify(x => x.PutSecretValueAsync(It.Is<PutSecretValueRequest>(r => r.SecretId == SecretName && r.SecretString == "keys"), It.IsAny<CancellationToken>()), Times.Exactly(2));
@@ -257,7 +257,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetAsync(E2eKeyScope.Account, null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.SetAsync(new E2eKeyScope("s0"), null!));
     }
 
     [Fact]
@@ -267,7 +267,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        var created = await sut.TryCreateAsync(E2eKeyScope.Account, "keys");
+        var created = await sut.TryCreateAsync(new E2eKeyScope("s0"), "keys");
 
         // Assert
         Assert.True(created);
@@ -283,7 +283,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        var created = await sut.TryCreateAsync(E2eKeyScope.Account, "keys");
+        var created = await sut.TryCreateAsync(new E2eKeyScope("s0"), "keys");
 
         // Assert
         Assert.False(created);
@@ -297,7 +297,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.TryCreateAsync(E2eKeyScope.Account, null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.TryCreateAsync(new E2eKeyScope("s0"), null!));
     }
 
     [Fact]
@@ -308,7 +308,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.TryCreateAsync(E2eKeyScope.Account, "keys"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.TryCreateAsync(new E2eKeyScope("s0"), "keys"));
     }
 
     [Fact]
@@ -318,7 +318,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act
-        await sut.DeleteAsync(E2eKeyScope.Account);
+        await sut.DeleteAsync(new E2eKeyScope("s0"));
 
         // Assert
         mockClient.Verify(x => x.DeleteSecretAsync(It.Is<DeleteSecretRequest>(r => r.SecretId == SecretName && r.ForceDeleteWithoutRecovery == true), It.IsAny<CancellationToken>()), Times.Once);
@@ -333,7 +333,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await sut.DeleteAsync(E2eKeyScope.Account);
+        await sut.DeleteAsync(new E2eKeyScope("s0"));
     }
 
     [Fact]
@@ -344,7 +344,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<CognitoException>(() => sut.GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<CognitoException>(() => sut.GetAsync(new E2eKeyScope("s0")));
     }
 
     [Fact]
@@ -356,7 +356,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<HttpRequestException>(() => sut.GetAsync(new E2eKeyScope("s0")));
     }
 
     [Fact]
@@ -368,7 +368,7 @@ public class SecretsManagerUserKeysStoreTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<AmazonSecretsManagerException>(() => sut.GetAsync(E2eKeyScope.Account));
+        await Assert.ThrowsAsync<AmazonSecretsManagerException>(() => sut.GetAsync(new E2eKeyScope("s0")));
     }
 
     private SecretsManagerUserKeysStore CreateSut() =>

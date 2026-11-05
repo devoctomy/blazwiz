@@ -1,6 +1,7 @@
 using System.Text;
 using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Encryption;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.InMemory;
@@ -553,7 +554,7 @@ public class SyncEngineTests
     public async Task GivenEncryptedRemoteFile_WhenSyncAsync_ThenDownloadedAsIsAndIndexRecordsItsKey()
     {
         // Arrange
-        var encrypted = format.Encrypt(Bytes("secret"), "k_1", new byte[32]);
+        var encrypted = format.Encrypt(Bytes("secret"), "k_1", new byte[32], new E2eFileBinding("s1", "x"));
         remote.Seed(KeyA, encrypted, Later);
 
         // Act
@@ -570,7 +571,7 @@ public class SyncEngineTests
     public async Task GivenEncryptedLocalFile_WhenSyncAsync_ThenUploadedAsIsAndIndexKeepsItsKey()
     {
         // Arrange
-        var encrypted = format.Encrypt(Bytes("secret"), "k_1", new byte[32]);
+        var encrypted = format.Encrypt(Bytes("secret"), "k_1", new byte[32], new E2eFileBinding("s1", "x"));
         await files.WriteAsync(KeyA, encrypted, Later);
         await index.SaveAsync(new SyncIndexRecord { Profile = Profile, Owner = Owner, Key = KeyA, Dirty = true, Revision = 1 });
 

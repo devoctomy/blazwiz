@@ -7,9 +7,9 @@ using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 namespace Devoctomy.Blazwiz.UI.Sync.Services;
 
 /// <summary>
-/// Starts and stops sync with the session: connectivity before the shell shows, then storage recovery, encryption,
-/// the user's protected profiles, the folder check and the scheduler in the background; on sign out, stopping the
-/// scheduler and locking and removing the protected profiles.
+/// Starts and stops sync with the session: connectivity before the shell shows, then storage recovery, the user's
+/// profiles and their passphrase status, the folder check and the scheduler in the background; on sign out, stopping
+/// the scheduler and locking every profile.
 /// </summary>
 public class SyncSessionHandler(
     IConnectivityService connectivityService,
@@ -64,22 +64,13 @@ public class SyncSessionHandler(
 
         try
         {
-            // Unlocks with this device's keys, or holds back encrypted profiles until it can.
+            // Every profile is locked until the user unlocks it; those the user created are added as profiles.
+            await protectedProfiles.LoadAsync();
             await encryptionService.InitializeAsync();
         }
         catch (Exception)
         {
-            // The encryption status stays unknown, so encrypted profiles wait; it is tried again once online.
-        }
-
-        try
-        {
-            // Each protected profile syncs as a profile of its own, locked until the user unlocks it.
-            await protectedProfiles.LoadAsync();
-        }
-        catch (Exception)
-        {
-            // Not signed in with Cognito, or the index cannot be read: protected profiles are not available.
+            // The keys or the index cannot be read: the profiles stay locked, and their files keep syncing encrypted.
         }
 
         folderAccessMonitor.Start();

@@ -1,5 +1,4 @@
 using Devoctomy.Blazwiz.Sync.Configuration;
-using Devoctomy.Blazwiz.Sync.Encryption;
 
 namespace Devoctomy.Blazwiz.Sync.Interfaces;
 
@@ -58,7 +57,7 @@ public interface ISyncProfileRegistry
 
     /// <summary>
     /// Gets the profile's file store for app code: writes and deletes are tracked for sync, and files are encrypted
-    /// when the profile is.
+    /// with the profile's own keys.
     /// </summary>
     /// <param name="name">The profile name.</param>
     /// <returns>The file store.</returns>
@@ -88,11 +87,4 @@ public interface ISyncProfileRegistry
     /// <returns>The matcher.</returns>
     /// <exception cref="ArgumentException">There is no such profile.</exception>
     ISyncPathMatcher GetMatcher(string name);
-
-    /// <summary>
-    /// Gets the profiles encrypted with the account's keys (<c>UseEncryption</c>), as account encryption is turned on
-    /// and off.
-    /// </summary>
-    /// <returns>The profiles.</returns>
-    IReadOnlyList<EncryptedSyncProfile> GetAccountEncryptedProfiles();
 }

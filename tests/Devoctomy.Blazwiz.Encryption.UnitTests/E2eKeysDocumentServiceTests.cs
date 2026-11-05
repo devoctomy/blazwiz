@@ -38,7 +38,7 @@ public class E2eKeysDocumentServiceTests
         var reported = new List<E2eProgress>();
 
         // Act
-        using var keys = await sut.CreateAsync("correct horse", new Progress(reported));
+        using var keys = await sut.CreateAsync("correct horse", progress: new Progress(reported));
 
         // Assert
         var document = sut.Parse(sut.Serialize(keys.Document));
@@ -103,7 +103,6 @@ public class E2eKeysDocumentServiceTests
         sut.LoadFileKeys(ring, keys.Document, keys.MasterKey);
 
         // Assert
-        Assert.Equal(E2eWriteMode.Encrypt, ring.WriteMode);
         Assert.Equal(keys.FileKeyId, ring.ActiveKeyId);
         Assert.True(ring.TryGetFileKey(keys.FileKeyId, out var fileKey));
         Assert.Equal(keys.FileKey, fileKey);
@@ -149,7 +148,7 @@ public class E2eKeysDocumentServiceTests
     {
         // Arrange
         using var keys = await sut.CreateAsync("correct horse");
-        var ring = new E2eKeyRing(new InMemoryDerivedKeyStore(), E2eKeyScope.Account);
+        var ring = new E2eKeyRing(new InMemoryDerivedKeyStore(), new E2eKeyScope("s1"));
 
         // Act & Assert
         await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.CreateAsync(string.Empty));

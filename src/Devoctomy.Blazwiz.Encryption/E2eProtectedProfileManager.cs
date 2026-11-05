@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using Devoctomy.Blazwiz.Cryptography.Interfaces;
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
@@ -10,7 +12,7 @@ namespace Devoctomy.Blazwiz.Encryption;
 /// Implementation of <see cref="IE2eProtectedProfileManager"/>. Each protected profile's keys document is kept in the
 /// <see cref="IUserKeysStore"/> under its scope, with a copy on this device for offline unlocking; the profiles are
 /// listed in the <see cref="IE2eProfileIndexStore"/>, with a copy on this device for offline listing. A profile's key
-/// ring refuses writes whenever it is locked, so nothing is ever written to it in plaintext.
+/// ring holds no keys whenever it is locked, so its files can be neither read nor written.
 /// </summary>
 /// <param name="userKeysStore">Keeps each profile's keys document.</param>
 /// <param name="localKeyStore">Keeps this device's copy of each profile's keys document.</param>
@@ -19,6 +21,8 @@ namespace Devoctomy.Blazwiz.Encryption;
 /// <param name="keyRings">The key rings, one per profile.</param>
 /// <param name="keysDocuments">Creates and unwraps keys documents.</param>
 /// <param name="timeProvider">Dates new profiles.</param>
+/// <param name="derivedKeyStore">Holds this device's key encryption key, from the passkey PRF.</param>
+/// <param name="keyWrapService">Wraps the master key for device unlock.</param>
 public class E2eProtectedProfileManager(
     IUserKeysStore userKeysStore,
     IE2eLocalKeyStore localKeyStore,
@@ -26,7 +30,9 @@ public class E2eProtectedProfileManager(
     IE2eLocalProfileIndexStore localIndexStore,
     IE2eKeyRings keyRings,
     IE2eKeysDocumentService keysDocuments,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IDerivedKeyStore derivedKeyStore,
+    IKeyWrapService keyWrapService)
     : IE2eProtectedProfileManager
 {
     private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions();
@@ -38,6 +44,8 @@ public class E2eProtectedProfileManager(
     private readonly IE2eKeyRings keyRings = keyRings ?? throw new ArgumentNullException(nameof(keyRings));
     private readonly IE2eKeysDocumentService keysDocuments = keysDocuments ?? throw new ArgumentNullException(nameof(keysDocuments));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly IDerivedKeyStore derivedKeyStore = derivedKeyStore ?? throw new ArgumentNullException(nameof(derivedKeyStore));
+    private readonly IKeyWrapService keyWrapService = keyWrapService ?? throw new ArgumentNullException(nameof(keyWrapService));
     private readonly Lock gate = new Lock();
     private readonly HashSet<E2eKeyScope> unlocked = [];
 
@@ -63,19 +71,27 @@ public class E2eProtectedProfileManager(
     }
 
     /// <inheritdoc/>
-    public async Task<E2eKeyScope> CreateAsync(string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    public async Task<E2eKeyScope> CreateAsync(string passphrase, E2eProfileSettings settings, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
-        ArgumentException.ThrowIfNullOrEmpty(passphrase);
-
         var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
-        using var keys = await keysDocuments.CreateAsync(passphrase, progress, ct);
+        await CreateKeysAsync(scope, passphrase, settings, progress, ct);
+        return scope;
+    }
+
+    /// <inheritdoc/>
+    public async Task CreateKeysAsync(E2eKeyScope scope, string passphrase, E2eProfileSettings settings, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    {
+        CheckProtected(scope);
+        CheckPassphrase(passphrase, settings);
+
+        using var keys = await keysDocuments.CreateAsync(passphrase, settings.Argon2, progress, ct);
         var json = keysDocuments.Serialize(keys.Document);
 
         progress?.Report(new E2eProgress(E2eStep.SaveKeys, false));
         if (!await userKeysStore.TryCreateAsync(scope, json, ct))
         {
-            // A new GUID: only possible if something else wrote under it.
-            throw new InvalidOperationException($"A keys document already exists for the new protected profile {scope}.");
+            // Never replace a profile's keys: its files would be lost.
+            throw new InvalidOperationException($"Protected profile {scope} already has keys.");
         }
 
         var index = await ReadIndexAsync(ct);
@@ -88,7 +104,6 @@ public class E2eProtectedProfileManager(
         keyRings.Get(scope).Load(keys.MasterKey, new Dictionary<string, byte[]>(StringComparer.Ordinal) { [keys.FileKeyId] = keys.FileKey }, keys.FileKeyId);
         progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, true));
         SetUnlocked(scope, true);
-        return scope;
     }
 
     /// <inheritdoc/>
@@ -128,7 +143,106 @@ public class E2eProtectedProfileManager(
 
         if (reached)
         {
-            await localKeyStore.SaveAsync(scope, new E2eLocalKeys { CachedDocument = json });
+            await SaveCachedDocumentAsync(scope, json);
+        }
+
+        SetUnlocked(scope, true);
+    }
+
+    /// <inheritdoc/>
+    public async Task EnableDeviceUnlockAsync(E2eKeyScope scope)
+    {
+        CheckProtected(scope);
+        if (!keyRings.Get(scope).TryGetMasterKey(out var masterKey))
+        {
+            throw new E2eLockedException();
+        }
+
+        try
+        {
+            if (!derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
+            {
+                throw new InvalidOperationException("Unlocking with the passkey needs you to sign in with your passkey.");
+            }
+
+            try
+            {
+                var local = await localKeyStore.GetAsync(scope) ?? new E2eLocalKeys();
+                local.WrappedMasterKey = keyWrapService.Wrap(kek, masterKey);
+                await localKeyStore.SaveAsync(scope, local);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(kek);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(masterKey);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task DisableDeviceUnlockAsync(E2eKeyScope scope)
+    {
+        CheckProtected(scope);
+
+        var local = await localKeyStore.GetAsync(scope);
+        if (local != null && HasDeviceKey(local))
+        {
+            local.WrappedMasterKey = new WrappedKey();
+            await localKeyStore.SaveAsync(scope, local);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> CanUnlockWithDeviceAsync(E2eKeyScope scope)
+    {
+        CheckProtected(scope);
+
+        var local = await localKeyStore.GetAsync(scope);
+        if (local?.CachedDocument == null || !HasDeviceKey(local) || !derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
+        {
+            return false;
+        }
+
+        CryptographicOperations.ZeroMemory(kek);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task UnlockWithDeviceAsync(E2eKeyScope scope)
+    {
+        CheckProtected(scope);
+
+        var local = await localKeyStore.GetAsync(scope);
+        if (local?.CachedDocument == null || !HasDeviceKey(local) || !derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
+        {
+            throw new E2ePassphraseRequiredException();
+        }
+
+        byte[] masterKey;
+        try
+        {
+            masterKey = keyWrapService.Unwrap(kek, local.WrappedMasterKey);
+        }
+        catch (CryptographicException ex)
+        {
+            // Another passkey (e.g. registered again): the passphrase is needed.
+            throw new E2ePassphraseRequiredException(ex);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(kek);
+        }
+
+        try
+        {
+            keysDocuments.LoadFileKeys(keyRings.Get(scope), keysDocuments.Parse(local.CachedDocument), masterKey);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(masterKey);
         }
 
         SetUnlocked(scope, true);
@@ -150,7 +264,7 @@ public class E2eProtectedProfileManager(
     {
         CheckProtected(scope);
 
-        keyRings.Get(scope).Clear(E2eWriteMode.Refuse);
+        keyRings.Get(scope).Clear();
         SetUnlocked(scope, false);
     }
 
@@ -164,11 +278,11 @@ public class E2eProtectedProfileManager(
     }
 
     /// <inheritdoc/>
-    public async Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, CancellationToken ct = default)
+    public async Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, E2eProfileSettings settings, CancellationToken ct = default)
     {
         CheckProtected(scope);
         ArgumentException.ThrowIfNullOrEmpty(currentPassphrase);
-        ArgumentException.ThrowIfNullOrEmpty(newPassphrase);
+        CheckPassphrase(newPassphrase, settings);
 
         var json = await userKeysStore.GetAsync(scope, ct)
             ?? throw new E2eProfileNotFoundException(scope.Id);
@@ -176,7 +290,7 @@ public class E2eProtectedProfileManager(
         var masterKey = await keysDocuments.UnwrapMasterKeyAsync(document, currentPassphrase, ct);
         try
         {
-            await keysDocuments.RewrapMasterKeyAsync(document, masterKey, newPassphrase, ct);
+            await keysDocuments.RewrapMasterKeyAsync(document, masterKey, newPassphrase, settings.Argon2, ct);
         }
         finally
         {
@@ -185,7 +299,7 @@ public class E2eProtectedProfileManager(
 
         var updated = keysDocuments.Serialize(document);
         await userKeysStore.SetAsync(scope, updated, ct);
-        await localKeyStore.SaveAsync(scope, new E2eLocalKeys { CachedDocument = updated });
+        await SaveCachedDocumentAsync(scope, updated);
     }
 
     /// <inheritdoc/>
@@ -212,6 +326,18 @@ public class E2eProtectedProfileManager(
         }
     }
 
+    private static bool HasDeviceKey(E2eLocalKeys local) => !string.IsNullOrEmpty(local.WrappedMasterKey.Wrapped);
+
+    private static void CheckPassphrase(string passphrase, E2eProfileSettings settings)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(passphrase);
+        ArgumentNullException.ThrowIfNull(settings);
+        if (passphrase.Length < settings.MinimumPassphraseLength)
+        {
+            throw new E2ePassphraseTooShortException(settings.MinimumPassphraseLength);
+        }
+    }
+
     private static E2eProfileIndex ParseIndex(string json)
     {
         E2eProfileIndex? index;
@@ -235,6 +361,13 @@ public class E2eProtectedProfileManager(
         }
 
         return index;
+    }
+
+    private async Task SaveCachedDocumentAsync(E2eKeyScope scope, string json)
+    {
+        var local = await localKeyStore.GetAsync(scope) ?? new E2eLocalKeys();
+        local.CachedDocument = json;
+        await localKeyStore.SaveAsync(scope, local);
     }
 
     private async Task<E2eProfileIndex> ReadIndexAsync(CancellationToken ct)

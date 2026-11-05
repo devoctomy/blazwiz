@@ -2,7 +2,6 @@ using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Cryptography.Configuration;
 using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
-using Devoctomy.Blazwiz.Encryption.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -14,15 +13,15 @@ namespace Devoctomy.Blazwiz.Encryption.Extensions;
 public static class E2eEncryptionServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds end to end encryption key management (<see cref="IE2eKeyManager"/> for the account,
-    /// <see cref="IE2eProtectedProfileManager"/> for protected profiles) and the encrypted file format.
+    /// Adds end to end encryption key management (<see cref="IE2eProtectedProfileManager"/>, the keys of each profile) and
+    /// the encrypted file format.
     /// </summary>
     /// <remarks>
     /// The app also registers an <see cref="IUserKeysStore"/> (where the keys documents are kept), an
     /// <see cref="IE2eLocalKeyStore"/> (this device's copies), an <see cref="IE2eProfileIndexStore"/> and an
     /// <see cref="IE2eLocalProfileIndexStore"/> (the index of protected profiles), and derives the
-    /// <see cref="E2eKeyNames.KeyEncryptionKey"/> from the passkey PRF with <c>AddBlazwizPrfKeyDerivation</c>. Sync
-    /// profiles opt in with <c>UseEncryption</c>.
+    /// <see cref="E2eKeyNames.KeyEncryptionKey"/> from the passkey PRF with <c>AddBlazwizPrfKeyDerivation</c>, for unlocking a
+    /// profile with the passkey.
     /// </remarks>
     /// <param name="services">The service collection to add services to.</param>
     /// <param name="configure">Changes the Argon2id settings for new keys, or null for the build defaults.</param>
@@ -44,8 +43,6 @@ public static class E2eEncryptionServiceCollectionExtensions
         services.TryAddSingleton<IEncryptedFileFormat, EncryptedFileFormat>();
         services.TryAddSingleton<IE2eKeysDocumentService, E2eKeysDocumentService>();
         services.TryAddSingleton<IE2eKeyRings, E2eKeyRings>();
-        services.TryAddSingleton(sp => sp.GetRequiredService<IE2eKeyRings>().Get(E2eKeyScope.Account));
-        services.TryAddScoped<IE2eKeyManager, E2eKeyManager>();
         services.TryAddScoped<IE2eProtectedProfileManager, E2eProtectedProfileManager>();
 
         return services;

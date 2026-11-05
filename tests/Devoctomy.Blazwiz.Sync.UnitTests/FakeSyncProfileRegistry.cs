@@ -1,5 +1,4 @@
 using Devoctomy.Blazwiz.Sync.Configuration;
-using Devoctomy.Blazwiz.Sync.Encryption;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 
 namespace Devoctomy.Blazwiz.Sync.UnitTests;
@@ -12,7 +11,6 @@ internal sealed class FakeSyncProfileRegistry : ISyncProfileRegistry
     private readonly List<SyncProfileOptions> configured;
     private readonly List<SyncProfileOptions> added = [];
     private readonly Dictionary<string, SyncProfile> syncProfiles = new(StringComparer.Ordinal);
-    private readonly List<EncryptedSyncProfile> encrypted = [];
 
     private FakeSyncProfileRegistry(List<SyncProfileOptions> configured)
     {
@@ -36,13 +34,6 @@ internal sealed class FakeSyncProfileRegistry : ISyncProfileRegistry
             registry.syncProfiles[profile.Name] = profile;
         }
 
-        return registry;
-    }
-
-    public static FakeSyncProfileRegistry Encrypted(params EncryptedSyncProfile[] profiles)
-    {
-        var registry = new FakeSyncProfileRegistry(profiles.Select(p => new SyncProfileOptions { Name = p.Name, RemotePattern = "**/*", IsEncrypted = true }).ToList());
-        registry.encrypted.AddRange(profiles);
         return registry;
     }
 
@@ -85,6 +76,4 @@ internal sealed class FakeSyncProfileRegistry : ISyncProfileRegistry
     public ISyncIndexStore GetIndexStore(string name) => GetSyncProfile(name).IndexStore;
 
     public ISyncPathMatcher GetMatcher(string name) => GetSyncProfile(name).Matcher;
-
-    public IReadOnlyList<EncryptedSyncProfile> GetAccountEncryptedProfiles() => encrypted;
 }

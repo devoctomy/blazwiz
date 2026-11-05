@@ -45,7 +45,7 @@ public class E2eKeysDocumentService(
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     /// <inheritdoc/>
-    public async Task<E2eNewKeys> CreateAsync(string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    public async Task<E2eNewKeys> CreateAsync(string passphrase, Argon2idParameters? parameters = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(passphrase);
 
@@ -56,7 +56,7 @@ public class E2eKeysDocumentService(
         {
             progress?.Report(new E2eProgress(E2eStep.DeriveKey, false));
             var salt = RandomNumberGenerator.GetBytes(SaltLength);
-            var parameters = argon2Options.Parameters.Clone();
+            parameters = (parameters ?? argon2Options.Parameters).Clone();
             passphraseKey = await argon2.DeriveKeyAsync(passphrase, salt, parameters, ct);
             progress?.Report(new E2eProgress(E2eStep.DeriveKey, true));
 
@@ -162,14 +162,14 @@ public class E2eKeysDocumentService(
     }
 
     /// <inheritdoc/>
-    public async Task RewrapMasterKeyAsync(UserKeysDocument document, byte[] masterKey, string passphrase, CancellationToken ct = default)
+    public async Task RewrapMasterKeyAsync(UserKeysDocument document, byte[] masterKey, string passphrase, Argon2idParameters? parameters = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(masterKey);
         ArgumentException.ThrowIfNullOrEmpty(passphrase);
 
         var salt = RandomNumberGenerator.GetBytes(SaltLength);
-        var parameters = argon2Options.Parameters.Clone();
+        parameters = (parameters ?? argon2Options.Parameters).Clone();
         var passphraseKey = await argon2.DeriveKeyAsync(passphrase, salt, parameters, ct);
         try
         {

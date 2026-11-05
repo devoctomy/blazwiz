@@ -24,13 +24,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
 
     private static readonly E2eStep[] EnableSteps =
     [
-        E2eStep.Sync, E2eStep.GoOffline, E2eStep.CheckExistingKeys, E2eStep.CheckIndex, E2eStep.DeriveKey,
-        E2eStep.CreateKeys, E2eStep.SaveKeys, E2eStep.StoreDeviceKey, E2eStep.EncryptFiles, E2eStep.GoOnline,
-    ];
-
-    private static readonly E2eStep[] DisableSteps =
-    [
-        E2eStep.VerifyPassphrase, E2eStep.Sync, E2eStep.GoOffline, E2eStep.DecryptFiles, E2eStep.DeleteKeys, E2eStep.GoOnline,
+        E2eStep.DeriveKey, E2eStep.CreateKeys, E2eStep.SaveKeys, E2eStep.StoreDeviceKey,
     ];
 
     private readonly ISyncEncryptionService encryptionService;
@@ -93,7 +87,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
     /// <summary>
     /// Gets a value indicating whether this device can be set up.
     /// </summary>
-    public bool CanSetUp => !IsOffline && Status == E2eStatus.NeedsSetup && encryptionService.HasPasskeyKeys;
+    public bool CanSetUp => Status == E2eStatus.NeedsSetup;
 
     /// <summary>
     /// Gets a value indicating whether the passphrase can be changed, or encryption turned off.
@@ -190,7 +184,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
     // here simply means encryption is off on this device.
     private string OfflineStatusText => Status switch
     {
-        E2eStatus.Unknown or E2eStatus.Disabled or E2eStatus.Unavailable => text["Sync.E2e.Status.OffOnThisDevice"],
+        E2eStatus.Unknown or E2eStatus.Disabled => text["Sync.E2e.Status.OffOnThisDevice"],
         _ => OnlineStatusText,
     };
 
@@ -199,9 +193,6 @@ public partial class E2eSettingsViewModel : ViewModelBase
         E2eStatus.Unlocked => text["Sync.E2e.Status.Unlocked"],
         E2eStatus.Disabled => text["Sync.E2e.Status.Disabled"],
         E2eStatus.NeedsSetup => text["Sync.E2e.Status.NeedsSetup"],
-        E2eStatus.Blocked => text["Sync.E2e.Status.Blocked"],
-        E2eStatus.DisabledElsewhere => text["Sync.E2e.Status.DisabledElsewhere"],
-        E2eStatus.Unavailable => text["Sync.E2e.Status.Unavailable"],
         E2eStatus.Unsupported => text["Sync.E2e.Status.Unsupported"],
         _ => text["Sync.E2e.Status.Checking"],
     };
@@ -213,9 +204,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
     /// <returns>The description.</returns>
     public string GetStepLabel(E2eStep step) => step switch
     {
-        E2eStep.Sync or E2eStep.GoOffline or E2eStep.CheckExistingKeys or E2eStep.CheckIndex or E2eStep.VerifyPassphrase
-            or E2eStep.DeriveKey or E2eStep.CreateKeys or E2eStep.SaveKeys or E2eStep.StoreDeviceKey or E2eStep.EncryptFiles
-            or E2eStep.DecryptFiles or E2eStep.DeleteKeys or E2eStep.GoOnline => text["Sync.E2e.Step." + step],
+        E2eStep.DeriveKey or E2eStep.CreateKeys or E2eStep.SaveKeys or E2eStep.StoreDeviceKey => text["Sync.E2e.Step." + step],
         _ => step.ToString(),
     };
 
@@ -271,8 +260,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
             {
                 E2eDialogKind.Enable => EnableAsync(),
                 E2eDialogKind.SetUp => SetUpAsync(),
-                E2eDialogKind.ChangePassphrase => ChangePassphraseAsync(),
-                _ => DisableAsync(),
+                _ => ChangePassphraseAsync(),
             };
     }
 
@@ -317,19 +305,6 @@ public partial class E2eSettingsViewModel : ViewModelBase
         var value = Passphrase;
         ClearInputs();
         await RunStepsAsync(EnableSteps, reporter => encryptionService.EnableAsync(value, reporter));
-    }
-
-    private async Task DisableAsync()
-    {
-        if (string.IsNullOrEmpty(Passphrase))
-        {
-            DialogError = text["Sync.E2e.Error.PassphraseRequired"];
-            return;
-        }
-
-        var value = Passphrase;
-        ClearInputs();
-        await RunStepsAsync(DisableSteps, reporter => encryptionService.DisableAsync(value, reporter));
     }
 
     private async Task SetUpAsync()
@@ -434,7 +409,7 @@ public partial class E2eSettingsViewModel : ViewModelBase
     private void FailRunningStep()
     {
         var items = Steps.ToList();
-        var running = items.LastOrDefault(s => s.State == E2eStepState.Running && s.Step != E2eStep.GoOnline)
+        var running = items.LastOrDefault(s => s.State == E2eStepState.Running)
             ?? items.FirstOrDefault(s => s.State == E2eStepState.Pending);
         if (running != null)
         {

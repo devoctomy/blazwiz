@@ -12,9 +12,6 @@ public class FakeE2eLocalKeyStore : IE2eLocalKeyStore
 {
     private readonly Dictionary<string, string> json = new Dictionary<string, string>(StringComparer.Ordinal);
 
-    // The account scope's keys.
-    public E2eLocalKeys? Saved => Get(E2eKeyScope.Account);
-
     public E2eLocalKeys? Get(E2eKeyScope scope) =>
         json.TryGetValue(scope.Id, out var value) ? JsonSerializer.Deserialize<E2eLocalKeys>(value) : null;
 

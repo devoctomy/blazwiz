@@ -1,4 +1,12 @@
 #nullable enable
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Disable = 3 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IPasskeyUnlockService
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IPasskeyUnlockService.CanUnlockAsync() -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IPasskeyUnlockService.UnlockAsync() -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.PasskeyUnlockService
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.PasskeyUnlockService.CanUnlockAsync() -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.PasskeyUnlockService.PasskeyUnlockService(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService! webAuthnService) -> void
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.PasskeyUnlockService.UnlockAsync() -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 *REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.DeleteAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.GetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
@@ -11,3 +19,19 @@ Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.TryCreateAsync(De
 *REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.TryCreateAsync(string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.SyncSessionHandler(Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService! storageMigrationService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageChannel! storageChannel, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService! encryptionService, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! protectedProfiles, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor! folderAccessMonitor, Devoctomy.Blazwiz.Sync.Interfaces.IPersistentStorageService! persistentStorageService) -> void
 *REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.SyncSessionHandler(Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService! storageMigrationService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageChannel! storageChannel, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService! encryptionService, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncFolderAccessMonitor! folderAccessMonitor, Devoctomy.Blazwiz.Sync.Interfaces.IPersistentStorageService! persistentStorageService) -> void
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.CanResolve.get -> bool
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.CanUnlockWithPasskey.get -> bool
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.CloseResolveDialog() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.E2eBannerViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService! encryptionService, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text) -> void
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.E2eBannerViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncEncryptionService! encryptionService, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IPasskeyUnlockService! passkeyUnlockService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Error.get -> string?
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.IsResolveDialogOpen.get -> bool
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.IsWorking.get -> bool
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.OpenResolveDialogAsync() -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.ResolveAsync() -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.ResolveNeedsPassphrase.get -> bool
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.ResolvePassphrase.get -> string!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.ResolvePassphrase.set -> void
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.UnlockWithPasskeyAsync() -> System.Threading.Tasks.Task!
+*REMOVED*override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.Argon2idConfigurationSection = "Argon2id" -> string!

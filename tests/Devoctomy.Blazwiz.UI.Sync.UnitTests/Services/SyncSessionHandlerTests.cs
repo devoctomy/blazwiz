@@ -71,7 +71,7 @@ public class SyncSessionHandlerTests
         await CreateSut().OnSessionStartedAsync(session);
 
         // Assert
-        Assert.Equal(["channel", "recover", "encryption", "protected profiles", "watch folder", "check folder", "sync"], calls);
+        Assert.Equal(["channel", "recover", "protected profiles", "encryption", "watch folder", "check folder", "sync"], calls);
     }
 
     [Fact]

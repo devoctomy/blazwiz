@@ -14,9 +14,8 @@ namespace Devoctomy.Blazwiz.UI.Sync.Services;
 /// <summary>
 /// <see cref="IUserKeysStore"/> and <see cref="IE2eProfileIndexStore"/> calling Secrets Manager from the browser with
 /// the session's identity pool credentials. Each secret is named after the user pool sub, not the identity id, because
-/// identity ids contain ':', which secret names cannot: <c>&lt;sub&gt;/keys</c> for the account's key scope,
-/// <c>&lt;sub&gt;/keys/&lt;scope&gt;</c> for any other, and <c>&lt;sub&gt;/keys/index</c> for the index of protected
-/// profiles. The stack only lets each user reach the secrets matching their own sub (cloudformation/stack.yaml).
+/// identity ids contain ':', which secret names cannot: <c>&lt;sub&gt;/keys/&lt;scope&gt;</c> for each profile's keys,
+/// and <c>&lt;sub&gt;/keys/index</c> for the index of the user's profiles. The stack only lets each user reach the secrets matching their own sub (cloudformation/stack.yaml).
 /// </summary>
 public sealed class SecretsManagerUserKeysStore(
     IAuthenticationService authService,
@@ -87,7 +86,7 @@ public sealed class SecretsManagerUserKeysStore(
     {
         ArgumentNullException.ThrowIfNull(scope);
 
-        return scope.IsAccount ? "keys" : $"keys/{scope.Id}";
+        return $"keys/{scope.Id}";
     }
 
     private static string? GetSub(string? idToken)

@@ -1,9 +1,6 @@
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
-using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
-using Devoctomy.Blazwiz.Sync.Interfaces;
-using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Moq;
 
@@ -11,269 +8,74 @@ namespace Devoctomy.Blazwiz.UI.Sync.UnitTests.ViewModels;
 
 public class E2eBannerViewModelTests
 {
-    private readonly TestText testText = new();
-
     private readonly Mock<ISyncEncryptionService> mockEncryption = new();
-    private readonly Mock<IPasskeyUnlockService> mockPasskey = new();
-    private readonly Mock<ISyncScheduler> mockScheduler = new();
     private readonly Mock<INavigationService> mockNavigation = new();
-    private E2eStatus status = E2eStatus.Blocked;
-    private bool hasPasskeyKeys;
+    private readonly TestText testText = new();
+    private E2eStatus status = E2eStatus.Unknown;
 
     public E2eBannerViewModelTests()
     {
         mockEncryption.SetupGet(x => x.Status).Returns(() => status);
-        mockEncryption.SetupGet(x => x.HasPasskeyKeys).Returns(() => hasPasskeyKeys);
-        mockPasskey.Setup(x => x.CanUnlockAsync()).ReturnsAsync(true);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(null!, mockPasskey.Object, mockScheduler.Object, mockNavigation.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("passkeyUnlockService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, null!, mockScheduler.Object, mockNavigation.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, mockPasskey.Object, null!, mockNavigation.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, mockPasskey.Object, mockScheduler.Object, null!, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(null!, mockNavigation.Object, testText.Sync)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, null!, testText.Sync)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, mockNavigation.Object, null!)).ParamName);
     }
 
     [Theory]
-    [InlineData(E2eStatus.Blocked, true)]
     [InlineData(E2eStatus.NeedsSetup, true)]
-    [InlineData(E2eStatus.DisabledElsewhere, true)]
     [InlineData(E2eStatus.Unlocked, false)]
     [InlineData(E2eStatus.Disabled, false)]
     [InlineData(E2eStatus.Unsupported, false)]
     [InlineData(E2eStatus.Unknown, false)]
-    public void GivenStatus_WhenGettingIsVisible_ThenShownOnlyWhenTheUserIsNeeded(E2eStatus current, bool expected)
+    public void GivenStatus_WhenGettingVisibility_ThenShownOnlyWhileLocked(E2eStatus current, bool visible)
     {
         // Arrange
         status = current;
 
         // Act
-        var sut = CreateSut();
+        using var sut = CreateSut();
 
         // Assert
-        Assert.Equal(expected, sut.IsVisible);
-        Assert.Equal(expected, !string.IsNullOrEmpty(sut.Message));
+        Assert.Equal(visible, sut.IsVisible);
+        Assert.Equal(visible, sut.CanSetUp);
+        Assert.Equal(visible, sut.Message.Length > 0);
     }
 
     [Fact]
-    public async Task GivenBlockedWithSavedPasskey_WhenInitialized_ThenOffersPasskeyUnlockAndExplainsPrf()
+    public void GivenTheBanner_WhenOpenSettings_ThenNavigatesToSettings()
     {
         // Arrange
-        var sut = CreateSut();
-
-        // Act
-        await sut.OnInitializedAsync();
-
-        // Assert
-        Assert.True(sut.CanUnlockWithPasskey);
-        Assert.Contains("PRF", sut.Message);
-        Assert.False(sut.CanSetUp);
-    }
-
-    [Fact]
-    public async Task GivenUnlocks_WhenUnlockWithPasskey_ThenInitializesAndSyncs()
-    {
-        // Arrange
-        mockPasskey.Setup(x => x.UnlockAsync()).ReturnsAsync(true);
-        mockEncryption.Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>())).ReturnsAsync(E2eStatus.Unlocked);
-        var sut = CreateSut();
-
-        // Act
-        await sut.UnlockWithPasskeyAsync();
-
-        // Assert
-        mockEncryption.Verify(x => x.InitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
-        mockScheduler.Verify(x => x.SyncNowAsync(), Times.Once);
-        Assert.Null(sut.Error);
-    }
-
-    [Fact]
-    public async Task GivenUnlockedButNeedsSetup_WhenUnlockWithPasskey_ThenNoSync()
-    {
-        // Arrange
-        mockPasskey.Setup(x => x.UnlockAsync()).ReturnsAsync(true);
-        mockEncryption.Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>())).ReturnsAsync(E2eStatus.NeedsSetup);
-
-        // Act
-        await CreateSut().UnlockWithPasskeyAsync();
-
-        // Assert
-        mockScheduler.Verify(x => x.SyncNowAsync(), Times.Never);
-    }
-
-    [Fact]
-    public async Task GivenPasskeyNotUsed_WhenUnlockWithPasskey_ThenErrorAndNotInitialized()
-    {
-        // Arrange
-        mockPasskey.Setup(x => x.UnlockAsync()).ReturnsAsync(false);
-        var sut = CreateSut();
-
-        // Act
-        await sut.UnlockWithPasskeyAsync();
-
-        // Assert
-        Assert.NotNull(sut.Error);
-        mockEncryption.Verify(x => x.InitializeAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GivenNeedsSetupWithPasskeyKeys_WhenGettingActions_ThenOffersSetUpInSettings()
-    {
-        // Arrange
-        status = E2eStatus.NeedsSetup;
-        hasPasskeyKeys = true;
-        var sut = CreateSut();
-        await sut.OnInitializedAsync();
+        using var sut = CreateSut();
 
         // Act
         sut.OpenSettings();
 
         // Assert
-        Assert.True(sut.CanSetUp);
-        Assert.False(sut.CanUnlockWithPasskey);
         mockNavigation.Verify(x => x.NavigateTo("/settings"), Times.Once);
     }
 
     [Fact]
-    public async Task GivenDisabledElsewhere_WhenResolve_ThenServiceResolvesWithoutPassphraseAndDialogCloses()
+    public void GivenStatusChanges_WhenRaised_ThenVisibilityNotified()
     {
         // Arrange
-        status = E2eStatus.DisabledElsewhere;
-        var sut = CreateSut();
-        await sut.OpenResolveDialogAsync();
+        using var sut = CreateSut();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        status = E2eStatus.NeedsSetup;
 
         // Act
-        await sut.ResolveAsync();
+        mockEncryption.Raise(x => x.StatusChanged += null, mockEncryption.Object, E2eStatus.NeedsSetup);
 
         // Assert
-        Assert.True(sut.CanResolve);
-        Assert.False(sut.ResolveNeedsPassphrase);
-        mockEncryption.Verify(x => x.ResolveDisabledElsewhereAsync(null, It.IsAny<CancellationToken>()), Times.Once);
-        Assert.False(sut.IsResolveDialogOpen);
+        Assert.Contains(nameof(E2eBannerViewModel.IsVisible), changed);
+        Assert.Contains(nameof(E2eBannerViewModel.Message), changed);
     }
 
-    [Fact]
-    public async Task GivenPassphraseNeeded_WhenOpenResolveDialog_ThenAsksForItAndResolvesWithIt()
-    {
-        // Arrange
-        status = E2eStatus.DisabledElsewhere;
-        mockEncryption.Setup(x => x.ResolveNeedsPassphraseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        var sut = CreateSut();
-        await sut.OpenResolveDialogAsync();
-        sut.ResolvePassphrase = "my passphrase";
-
-        // Act
-        await sut.ResolveAsync();
-
-        // Assert
-        mockEncryption.Verify(x => x.ResolveDisabledElsewhereAsync("my passphrase", It.IsAny<CancellationToken>()), Times.Once);
-        Assert.Equal(string.Empty, sut.ResolvePassphrase);
-        Assert.False(sut.IsResolveDialogOpen);
-    }
-
-    [Fact]
-    public async Task GivenPassphraseNeededButEmpty_WhenResolve_ThenErrorAndNotResolved()
-    {
-        // Arrange
-        mockEncryption.Setup(x => x.ResolveNeedsPassphraseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        var sut = CreateSut();
-        await sut.OpenResolveDialogAsync();
-
-        // Act
-        await sut.ResolveAsync();
-
-        // Assert
-        Assert.Equal("Enter your passphrase.", sut.Error);
-        mockEncryption.Verify(x => x.ResolveDisabledElsewhereAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task GivenPassphraseRequiredOnResolve_WhenResolve_ThenAsksForItAndDialogStaysOpen()
-    {
-        // Arrange
-        mockEncryption.Setup(x => x.ResolveDisabledElsewhereAsync(null, It.IsAny<CancellationToken>())).ThrowsAsync(new E2ePassphraseRequiredException());
-        var sut = CreateSut();
-        await sut.OpenResolveDialogAsync();
-
-        // Act
-        await sut.ResolveAsync();
-
-        // Assert
-        Assert.True(sut.ResolveNeedsPassphrase);
-        Assert.NotNull(sut.Error);
-        Assert.True(sut.IsResolveDialogOpen);
-    }
-
-    [Fact]
-    public async Task GivenWrongPassphrase_WhenResolve_ThenErrorAndDialogStaysOpen()
-    {
-        // Arrange
-        mockEncryption.Setup(x => x.ResolveNeedsPassphraseAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        mockEncryption.Setup(x => x.ResolveDisabledElsewhereAsync("wrong", It.IsAny<CancellationToken>())).ThrowsAsync(new E2eWrongPassphraseException());
-        var sut = CreateSut();
-        await sut.OpenResolveDialogAsync();
-        sut.ResolvePassphrase = "wrong";
-
-        // Act
-        await sut.ResolveAsync();
-
-        // Assert
-        Assert.Equal("That passphrase is not correct. Try again.", sut.Error);
-        Assert.True(sut.IsResolveDialogOpen);
-    }
-
-    [Fact]
-    public async Task GivenCheckFails_WhenOpenResolveDialog_ThenOpensWithoutAskingForPassphrase()
-    {
-        // Arrange
-        mockEncryption.Setup(x => x.ResolveNeedsPassphraseAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new IOException("disk"));
-        var sut = CreateSut();
-
-        // Act
-        await sut.OpenResolveDialogAsync();
-
-        // Assert
-        Assert.True(sut.IsResolveDialogOpen);
-        Assert.False(sut.ResolveNeedsPassphrase);
-    }
-
-    [Fact]
-    public async Task GivenResolveFails_WhenResolve_ThenErrorAndDialogStaysOpen()
-    {
-        // Arrange
-        mockEncryption.Setup(x => x.ResolveDisabledElsewhereAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("no keys"));
-        var sut = CreateSut();
-        await sut.OpenResolveDialogAsync();
-
-        // Act
-        await sut.ResolveAsync();
-
-        // Assert
-        Assert.Equal("Something went wrong.", sut.Error);
-        Assert.True(sut.IsResolveDialogOpen);
-        sut.CloseResolveDialog();
-        Assert.False(sut.IsResolveDialogOpen);
-    }
-
-    [Fact]
-    public void GivenStatusChanges_WhenRaised_ThenVisibilityNotifiedUntilDisposed()
-    {
-        // Arrange
-        var sut = CreateSut();
-        var changed = 0;
-        sut.PropertyChanged += (_, e) => changed += e.PropertyName == nameof(E2eBannerViewModel.IsVisible) ? 1 : 0;
-
-        // Act
-        mockEncryption.Raise(x => x.StatusChanged += null, mockEncryption.Object, E2eStatus.Unlocked);
-        sut.Dispose();
-        mockEncryption.Raise(x => x.StatusChanged += null, mockEncryption.Object, E2eStatus.Blocked);
-
-        // Assert
-        Assert.Equal(1, changed);
-    }
-
-    private E2eBannerViewModel CreateSut() => new(mockEncryption.Object, mockPasskey.Object, mockScheduler.Object, mockNavigation.Object, testText.Sync, testText.Errors);
+    private E2eBannerViewModel CreateSut() => new(mockEncryption.Object, mockNavigation.Object, testText.Sync);
 }

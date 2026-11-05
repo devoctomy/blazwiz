@@ -24,13 +24,28 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   keys and invalid values stop the app at startup with an error naming the setting.
 
 ### Changed
-- End to end encryption keys belong to a key scope (`E2eKeyScope`), as the first step towards a separate passphrase
-  for each profile. `IUserKeysStore` and `IE2eLocalKeyStore` take the scope; apps that implement them must add it.
-  `IE2eKeyRings` gives each scope its key ring, and `IE2eKeyRing` is the account's. This device's copy of the keys is
-  now kept under `e2e_keys_account_<user>`, so each device asks for the passphrase once after updating.
+- Every sync profile is end to end encrypted with its own keys and passphrase, named by its id: `UseKeyId(<guid>)`
+  (or `Id` in configuration) replaces `UseEncryption()` and `Encrypted`, and is required. A profile is locked until its
+  passphrase is entered, and does not sync while locked. `UseProfileSettings` sets when it locks itself after being
+  idle, whether it can be unlocked with the passkey, its minimum passphrase length and Argon2id costs;
+  `UseProfileDefaults` sets them for profiles users create. Unlocking or locking a profile does so in every tab.
+- End to end encryption keys belong to a key scope (`E2eKeyScope`). `IUserKeysStore` and `IE2eLocalKeyStore` take the
+  scope; apps that implement them must add it. `IE2eKeyRings` gives each scope its key ring.
+- Encrypted files are bound to their profile and path, so a file cannot be moved to another path or profile and still
+  be read. Files encrypted by earlier builds cannot be read.
+- Without a Cognito user pool (local development), the keys are kept in the browser, so encryption works locally.
+- The sync module reads the Argon2id settings for new keys from the optional `Argon2id` configuration section. The
+  template's `appsettings.Development.json` lightens them for local development and the UI tests.
+- Settings sets or enters the passphrase of the profiles set up in code, and the banner points there while they are
+  locked. Encryption can no longer be turned off.
 - The template's sync profiles are classes (`NotesSyncProfile`, or `FilesSyncProfile` without the notes example),
   found by `AddProfilesFromAssemblyContaining` in `Program.cs`; `AddNotesProfile` is gone. Its other sync settings are
   in `MyApp.Portal/sync.json`, embedded in the app.
+
+### Removed
+- The account-wide passphrase and keys: `IE2eKeyManager`, `E2eWriteMode`, `E2eSyncGate`, `ISyncEncryptionSweeper`,
+  `E2eAlreadyEnabledException` (`E2e.AlreadyEnabled`) and the account key scope. Plain files are no longer synced or
+  read by encrypted profiles.
 
 ## 0.3.0
 

@@ -1,42 +1,93 @@
 #nullable enable
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.CanUnlockLocalCopyWithPasskeyAsync() -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.ChangePassphraseAsync(string! currentPassphrase, string! newPassphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 *REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.E2eKeyManager(Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore! userKeysStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eLocalKeyStore! localKeyStore, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! derivedKeyStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing! keyRing, Devoctomy.Blazwiz.Cryptography.Interfaces.IArgon2idKeyDerivationService! argon2, Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService! keyWrapService, Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions! argon2Options, System.TimeProvider! timeProvider) -> void
-Devoctomy.Blazwiz.Encryption.E2eKeyManager.E2eKeyManager(Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore! userKeysStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eLocalKeyStore! localKeyStore, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! derivedKeyStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing! keyRing, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService! keysDocuments, Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService! keyWrapService) -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.EnableAsync(string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.ForgetDeviceAsync() -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.HasKeyEncryptionKey.get -> bool
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.InitializeAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eStatus>!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.IsEnabledAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.RemoveAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.SetUpDeviceAsync(string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.Status.get -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.StatusChanged -> System.EventHandler<Devoctomy.Blazwiz.Encryption.Models.E2eStatus>?
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.UnlockLocalCopyAsync(string? passphrase = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyManager.VerifyPassphraseAsync(string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.E2eKeyRing.Clear() -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyRing.Clear(Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode mode) -> void
 *REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyRing.E2eKeyRing(Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
 Devoctomy.Blazwiz.Encryption.E2eKeyRing.E2eKeyRing(Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore, Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Encryption.E2eKeyRing.Scope.get -> Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyRing.SetWriteMode(Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode mode) -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.E2eKeyRing.WriteMode.get -> Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode
 Devoctomy.Blazwiz.Encryption.E2eKeyRings
 Devoctomy.Blazwiz.Encryption.E2eKeyRings.E2eKeyRings(Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
 Devoctomy.Blazwiz.Encryption.E2eKeyRings.Get(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing!
 Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService
-Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.CreateAsync(string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eNewKeys!>!
+Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.CreateAsync(string! passphrase, Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters? parameters = null, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eNewKeys!>!
 Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.E2eKeysDocumentService(Devoctomy.Blazwiz.Cryptography.Interfaces.IArgon2idKeyDerivationService! argon2, Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService! keyWrapService, Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions! argon2Options, System.TimeProvider! timeProvider) -> void
 Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.LoadFileKeys(Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing! keyRing, Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document, byte[]! masterKey) -> void
 Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.Parse(string! json) -> Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument!
-Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.RewrapMasterKeyAsync(Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document, byte[]! masterKey, string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.RewrapMasterKeyAsync(Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document, byte[]! masterKey, string! passphrase, Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters? parameters = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.Serialize(Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document) -> string!
 Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.UnwrapMasterKeyAsync(Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document, string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager
-Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.ChangePassphraseAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! currentPassphrase, string! newPassphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.CreateAsync(string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.CanUnlockWithDeviceAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.ChangePassphraseAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! currentPassphrase, string! newPassphrase, Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings! settings, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.CreateAsync(string! passphrase, Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings! settings, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.CreateKeysAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings! settings, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.E2eProtectedProfileManager(Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore! userKeysStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eLocalKeyStore! localKeyStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProfileIndexStore! indexStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eLocalProfileIndexStore! localIndexStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRings! keyRings, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService! keysDocuments, System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.DisableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.E2eProtectedProfileManager(Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore! userKeysStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eLocalKeyStore! localKeyStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProfileIndexStore! indexStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eLocalProfileIndexStore! localIndexStore, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRings! keyRings, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService! keysDocuments, System.TimeProvider! timeProvider, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! derivedKeyStore, Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService! keyWrapService) -> void
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.EnableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.GetProfilesAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry!>!>!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.IsUnlocked(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> bool
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.Lock(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.LockAll() -> void
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.LockStateChanged -> System.EventHandler<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>?
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.UnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.UnlockWithDeviceAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.Unlocked.get -> System.Collections.Generic.IReadOnlyCollection<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
+*REMOVED*Devoctomy.Blazwiz.Encryption.EncryptedFileFormat.Decrypt(System.ReadOnlySpan<byte> content, byte[]! key) -> byte[]!
+Devoctomy.Blazwiz.Encryption.EncryptedFileFormat.Decrypt(System.ReadOnlySpan<byte> content, byte[]! key, Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding! binding) -> byte[]!
+*REMOVED*Devoctomy.Blazwiz.Encryption.EncryptedFileFormat.Encrypt(System.ReadOnlySpan<byte> plaintext, string! keyId, byte[]! key) -> byte[]!
+Devoctomy.Blazwiz.Encryption.EncryptedFileFormat.Encrypt(System.ReadOnlySpan<byte> plaintext, string! keyId, byte[]! key, Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding! binding) -> byte[]!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Exceptions.E2eAlreadyEnabledException
+*REMOVED*Devoctomy.Blazwiz.Encryption.Exceptions.E2eAlreadyEnabledException.E2eAlreadyEnabledException() -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.Exceptions.E2eAlreadyEnabledException.E2eAlreadyEnabledException(System.Exception! innerException) -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.Exceptions.E2eAlreadyEnabledException.E2eAlreadyEnabledException(string! code, System.Exception! innerException, params object![]! arguments) -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.Exceptions.E2eAlreadyEnabledException.E2eAlreadyEnabledException(string! code, params object![]! arguments) -> void
+Devoctomy.Blazwiz.Encryption.Exceptions.E2ePassphraseTooShortException
+Devoctomy.Blazwiz.Encryption.Exceptions.E2ePassphraseTooShortException.E2ePassphraseTooShortException(int minimumLength) -> void
 Devoctomy.Blazwiz.Encryption.Exceptions.E2eProfileNotFoundException
 Devoctomy.Blazwiz.Encryption.Exceptions.E2eProfileNotFoundException.E2eProfileNotFoundException(string! profileId) -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.CanUnlockLocalCopyWithPasskeyAsync() -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.ChangePassphraseAsync(string! currentPassphrase, string! newPassphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.EnableAsync(string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.ForgetDeviceAsync() -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.HasKeyEncryptionKey.get -> bool
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.InitializeAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eStatus>!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.IsEnabledAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.RemoveAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.SetUpDeviceAsync(string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.Status.get -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.StatusChanged -> System.EventHandler<Devoctomy.Blazwiz.Encryption.Models.E2eStatus>?
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.UnlockLocalCopyAsync(string? passphrase = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyManager.VerifyPassphraseAsync(string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing.Clear() -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing.Clear(Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode mode) -> void
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing.Scope.get -> Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing.SetWriteMode(Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode mode) -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing.WriteMode.get -> Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRings
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRings.Get(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService
-Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService.CreateAsync(string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eNewKeys!>!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService.CreateAsync(string! passphrase, Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters? parameters = null, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eNewKeys!>!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService.LoadFileKeys(Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeyRing! keyRing, Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document, byte[]! masterKey) -> void
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService.Parse(string! json) -> Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument!
-Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService.RewrapMasterKeyAsync(Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document, byte[]! masterKey, string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService.RewrapMasterKeyAsync(Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document, byte[]! masterKey, string! passphrase, Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters? parameters = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService.Serialize(Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document) -> string!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eKeysDocumentService.UnwrapMasterKeyAsync(Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument! document, string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
 *REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IE2eLocalKeyStore.DeleteAsync() -> System.Threading.Tasks.Task!
@@ -52,16 +103,25 @@ Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProfileIndexStore
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProfileIndexStore.GetIndexAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProfileIndexStore.SetIndexAsync(string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager
-Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.ChangePassphraseAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! currentPassphrase, string! newPassphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.CreateAsync(string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.CanUnlockWithDeviceAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.ChangePassphraseAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! currentPassphrase, string! newPassphrase, Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings! settings, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.CreateAsync(string! passphrase, Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings! settings, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.CreateKeysAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings! settings, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.DisableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.EnableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.GetProfilesAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry!>!>!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.IsUnlocked(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> bool
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.Lock(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.LockAll() -> void
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.LockStateChanged -> System.EventHandler<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>?
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.UnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.UnlockWithDeviceAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.Unlocked.get -> System.Collections.Generic.IReadOnlyCollection<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IEncryptedFileFormat.Decrypt(System.ReadOnlySpan<byte> content, byte[]! key) -> byte[]!
+Devoctomy.Blazwiz.Encryption.Interfaces.IEncryptedFileFormat.Decrypt(System.ReadOnlySpan<byte> content, byte[]! key, Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding! binding) -> byte[]!
+*REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IEncryptedFileFormat.Encrypt(System.ReadOnlySpan<byte> plaintext, string! keyId, byte[]! key) -> byte[]!
+Devoctomy.Blazwiz.Encryption.Interfaces.IEncryptedFileFormat.Encrypt(System.ReadOnlySpan<byte> plaintext, string! keyId, byte[]! key, Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding! binding) -> byte[]!
 Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 *REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore.DeleteAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore.GetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
@@ -70,12 +130,17 @@ Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore.SetAsync(Devoctomy.Blazwi
 *REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore.SetAsync(string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore.TryCreateAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 *REMOVED*Devoctomy.Blazwiz.Encryption.Interfaces.IUserKeysStore.TryCreateAsync(string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding
+Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.<Clone>$() -> Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding!
+Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.E2eFileBinding(string! scopeId, string! path) -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.Equals(Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding? other) -> bool
+Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.Path.get -> string!
+Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.ScopeId.get -> string!
 Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope
 Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.<Clone>$() -> Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!
 Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.E2eKeyScope(string! id) -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.Equals(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope? other) -> bool
 Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.Id.get -> string!
-Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.IsAccount.get -> bool
 Devoctomy.Blazwiz.Encryption.Models.E2eNewKeys
 Devoctomy.Blazwiz.Encryption.Models.E2eNewKeys.Dispose() -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eNewKeys.Document.get -> Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument!
@@ -95,6 +160,46 @@ Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.Created.set -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.E2eProfileIndexEntry() -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.Id.get -> string!
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.Id.set -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.AllowDeviceUnlock.get -> bool
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.AllowDeviceUnlock.set -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.Argon2.get -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters?
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.Argon2.set -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.E2eProfileSettings() -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.IdleTimeout.get -> System.TimeSpan?
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.IdleTimeout.set -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.MinimumPassphraseLength.get -> int
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.MinimumPassphraseLength.set -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Blocked = 3 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Disabled = 2 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Disabled = 4 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.DisabledElsewhere = 7 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+Devoctomy.Blazwiz.Encryption.Models.E2eStatus.NeedsSetup = 3 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.NeedsSetup = 5 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Unavailable = 2 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Unlocked = 4 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Unlocked = 6 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.CheckExistingKeys = 2 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.CheckIndex = 3 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+Devoctomy.Blazwiz.Encryption.Models.E2eStep.CreateKeys = 1 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.CreateKeys = 6 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.DecryptFiles = 10 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.DeleteKeys = 11 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+Devoctomy.Blazwiz.Encryption.Models.E2eStep.DeriveKey = 0 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.DeriveKey = 5 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.EncryptFiles = 9 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.GoOffline = 1 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.GoOnline = 12 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+Devoctomy.Blazwiz.Encryption.Models.E2eStep.SaveKeys = 2 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.SaveKeys = 7 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+Devoctomy.Blazwiz.Encryption.Models.E2eStep.StoreDeviceKey = 3 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.StoreDeviceKey = 8 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.Sync = 0 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.VerifyPassphrase = 4 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode.Encrypt = 1 -> Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode.Plaintext = 0 -> Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode.Refuse = 2 -> Devoctomy.Blazwiz.Encryption.Models.E2eWriteMode
 *REMOVED*const Devoctomy.Blazwiz.Encryption.E2eKeyManager.KeyIdPrefix = "k_" -> string!
 *REMOVED*const Devoctomy.Blazwiz.Encryption.E2eKeyManager.SaltLength = 16 -> int
 *REMOVED*const Devoctomy.Blazwiz.Encryption.E2eKeyNames.FileKeyPrefix = "e2e-file:" -> string!
@@ -104,13 +209,18 @@ const Devoctomy.Blazwiz.Encryption.E2eKeyNames.MasterKeySuffix = ":master" -> st
 const Devoctomy.Blazwiz.Encryption.E2eKeyNames.ScopePrefix = "e2e:" -> string!
 const Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.KeyIdPrefix = "k_" -> string!
 const Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.SaltLength = 16 -> int
+*REMOVED*const Devoctomy.Blazwiz.Encryption.Exceptions.E2eErrorCodes.AlreadyEnabled = "E2e.AlreadyEnabled" -> string!
+const Devoctomy.Blazwiz.Encryption.Exceptions.E2eErrorCodes.PassphraseTooShort = "E2e.PassphraseTooShort" -> string!
 const Devoctomy.Blazwiz.Encryption.Exceptions.E2eErrorCodes.ProfileNotFound = "E2e.ProfileNotFound" -> string!
-const Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.AccountId = "account" -> string!
 const Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.MaxIdLength = 64 -> int
 const Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndex.CurrentVersion = 1 -> int
+override Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.Equals(object? obj) -> bool
+override Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.GetHashCode() -> int
+override Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.ToString() -> string!
 override Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.Equals(object? obj) -> bool
 override Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.GetHashCode() -> int
 override Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.ToString() -> string!
-static Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.Account.get -> Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!
+static Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.operator !=(Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding? left, Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding? right) -> bool
+static Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding.operator ==(Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding? left, Devoctomy.Blazwiz.Encryption.Models.E2eFileBinding? right) -> bool
 static Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.operator !=(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope? left, Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope? right) -> bool
 static Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope.operator ==(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope? left, Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope? right) -> bool

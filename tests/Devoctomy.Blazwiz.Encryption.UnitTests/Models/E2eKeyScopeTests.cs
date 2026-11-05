@@ -5,7 +5,6 @@ namespace Devoctomy.Blazwiz.Encryption.UnitTests.Models;
 public class E2eKeyScopeTests
 {
     [Theory]
-    [InlineData("account")]
     [InlineData("s1")]
     [InlineData("A-b_9")]
     [InlineData("0123456789012345678901234567890123456789012345678901234567890123")]
@@ -40,12 +39,10 @@ public class E2eKeyScopeTests
     }
 
     [Fact]
-    public void GivenTheAccountScope_WhenRead_ThenItIsTheAccount()
+    public void GivenTwoScopesWithTheSameId_WhenCompared_ThenEqual()
     {
         // Act & Assert
-        Assert.Equal(E2eKeyScope.AccountId, E2eKeyScope.Account.Id);
-        Assert.True(E2eKeyScope.Account.IsAccount);
-        Assert.False(new E2eKeyScope("s1").IsAccount);
-        Assert.Equal(E2eKeyScope.Account, new E2eKeyScope("account"));
+        Assert.Equal(new E2eKeyScope("s1"), new E2eKeyScope("s1"));
+        Assert.NotEqual(new E2eKeyScope("s1"), new E2eKeyScope("s2"));
     }
 }
