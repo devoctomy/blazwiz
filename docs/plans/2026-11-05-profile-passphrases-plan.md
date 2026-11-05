@@ -197,6 +197,9 @@ What the user sees, in the framework (`UI.Sync`, D5):
 | D8 | How is a protected profile named? | Only by its GUID, shown as a string. The user remembers what it represents. The notes sample has one configured profile, so it cannot be anything else |
 | D11 | How does Settings show the profiles, now that there is no account passphrase? | Two lists: the profiles set up in code, by display names from resources, and the profiles users create, by id. The current End to end encryption section is replaced |
 | D12 | What does the encryption banner do? | It shows only when a profile set up in code has no passphrase yet, and points to Settings to set one. Locked profiles are unlocked from the unlock panel or Settings |
+| D13 | What happens to the notes example once users create notebooks? | The notes profile (set up in code, fixed id) is the default notebook: it needs its passphrase set before it can be used, and tests use its fixed id |
+| D14 | How is a notebook named? | For now, a name the user gives it, kept encrypted inside the notebook: shown once it is unlocked, its id while it is locked. To be revisited after testing |
+| D15 | Where do notebooks appear? | A Notebooks page lists them, with New notebook; opening one shows its pages in the tree and editor the Files page uses, behind the unlock panel |
 
 ## Work
 
@@ -263,9 +266,9 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 
 ### Phase 6: notebooks in the notes demo
 
-- [ ] The user creates notebooks: each is a protected profile with its own passphrase and keys.
-- [ ] Notes are pages in a notebook.
-- [ ] Template tests (unit and UI) for user created profiles, through notebooks.
+- [x] The user creates notebooks: each is a protected profile with its own passphrase and keys.
+- [x] Notes are pages in a notebook.
+- [x] Template tests (unit and UI) for user created profiles, through notebooks.
 
 ## Out of scope
 

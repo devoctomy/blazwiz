@@ -1,0 +1,80 @@
+@page "/notebooks"
+@inherits MvvmComponentBase<NotebooksViewModel>
+
+<PageHeader Title="Notebooks" Icon="bi-journals" Subtitle="Each notebook has its own passphrase. Its pages are encrypted with its own keys.">
+    <button type="button" class="btn btn-primary" id="new-notebook-button" @onclick="() => ViewModel.ShowCreateDialogCommand.Execute(null)">
+        <i class="bi bi-journal-plus me-1"></i>New notebook
+    </button>
+</PageHeader>
+
+<div class="panel">
+    @if (ViewModel.IsLoading)
+    {
+        <div class="text-body-secondary">
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Loading your notebooks...
+        </div>
+    }
+    else
+    {
+        <ul class="list-unstyled mb-0" id="notebooks">
+            @foreach (var notebook in ViewModel.Notebooks)
+            {
+                <li class="notebook d-flex flex-wrap align-items-center gap-2 py-2" data-notebook="@notebook.Name">
+                    <i class="bi @(notebook.IsUnlocked ? "bi-journal-text text-success" : "bi-lock-fill text-body-secondary")"></i>
+                    <span class="notebook-title @(notebook.IsUnlocked || notebook.IsDefault ? null : "font-monospace small")">@notebook.Title</span>
+                    <span class="notebook-state text-body-secondary small flex-grow-1">@NotebooksViewModel.GetStateText(notebook)</span>
+                    <button type="button" class="btn btn-outline-primary btn-sm notebook-open" @onclick="() => ViewModel.OpenCommand.Execute(notebook.Name)">Open</button>
+                </li>
+            }
+        </ul>
+        <p class="panel-text small mt-3 mb-0">
+            <i class="bi bi-info-circle me-1"></i>A locked notebook shows its id until it is unlocked. Lock, change the passphrase of, or delete notebooks in Settings.
+        </p>
+    }
+</div>
+
+@if (ViewModel.IsCreateDialogOpen)
+{
+    <ModalDialog Id="notebook-dialog" Title="New notebook" Icon="bi-journal-plus" OnClose="() => ViewModel.CloseCreateDialogCommand.Execute(null)">
+        <ChildContent>
+            <form id="notebook-form" @onsubmit="() => ViewModel.CreateCommand.ExecuteAsync(null)" @onsubmit:preventDefault>
+                <div class="alert alert-warning" role="alert">
+                    <i class="bi bi-exclamation-triangle me-1"></i><strong>There is no passphrase recovery. If you forget it, nobody can read this notebook, including us.</strong>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="notebook-title">Name</label>
+                    <input type="text" class="form-control" id="notebook-title" autocomplete="off" disabled="@ViewModel.IsWorking"
+                           @bind="ViewModel.Title" @bind:event="oninput" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="notebook-passphrase">Passphrase</label>
+                    <input type="password" class="form-control" id="notebook-passphrase" autocomplete="new-password" disabled="@ViewModel.IsWorking"
+                           @bind="ViewModel.Passphrase" @bind:event="oninput" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="notebook-confirm-passphrase">Enter the passphrase again</label>
+                    <input type="password" class="form-control" id="notebook-confirm-passphrase" autocomplete="new-password" disabled="@ViewModel.IsWorking"
+                           @bind="ViewModel.ConfirmPassphrase" @bind:event="oninput" />
+                </div>
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="notebook-acknowledge" disabled="@ViewModel.IsWorking" @bind="ViewModel.AcknowledgedNoRecovery" />
+                    <label class="form-check-label" for="notebook-acknowledge">I understand that if I forget this passphrase, this notebook cannot be recovered.</label>
+                </div>
+            </form>
+            @if (!string.IsNullOrEmpty(ViewModel.DialogError))
+            {
+                <div class="text-danger mt-3" id="notebook-error">@ViewModel.DialogError</div>
+            }
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" disabled="@ViewModel.IsWorking" @onclick="() => ViewModel.CloseCreateDialogCommand.Execute(null)">Cancel</button>
+            <button type="submit" form="notebook-form" class="btn btn-primary" id="notebook-create" disabled="@ViewModel.IsWorking">
+                @if (ViewModel.IsWorking)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                Create notebook
+            </button>
+        </Footer>
+    </ModalDialog>
+}

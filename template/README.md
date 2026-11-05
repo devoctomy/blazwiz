@@ -110,12 +110,17 @@ no longer need it.
 
 ### Notes
 
-The **Files** page and note editor are an example of using the sync module: markdown notes, organised into folders,
-kept in the browser for the signed in user and synced to their own prefix in the data bucket.
+The **Notebooks** page, its pages and the note editor are an example of using the sync module: notebooks of
+markdown pages, organised into folders, kept in the browser for the signed in user and synced to their own prefix in
+the data bucket.
 
-- **Storage**: notes are `.md` files and folders are paths (`notes/Work/Ideas.md`), kept by the `notes` sync
-  profile's file store (`Sync/NotesSyncProfile.cs`), which encrypts them. `NoteService` asks for it with
-  `[FromKeyedServices("notes")] ISyncFileStore`, so every change is tracked for sync automatically.
+- **Notebooks**: each notebook is a sync profile with its own passphrase and keys. The default notebook is the `notes`
+  profile, set up in code (`Sync/NotesSyncProfile.cs`), whose passphrase is set the first time. Every other notebook
+  is a protected profile the user creates (`NotebookService`), with its pages under `profiles/<id>/` and its name kept
+  encrypted inside it, so a locked notebook is shown by its id.
+- **Storage**: pages are `.md` files and folders are paths (`notes/Work/Ideas.md`), kept by the notebook's file store,
+  which encrypts them. `NoteServiceFactory` creates a `NoteService` for each notebook over its store, so every change
+  is tracked for sync automatically.
 - **Wording**: the sync module says "files"; `NotesText.resx` overrides its text to say "notes".
   `NotesTextTests` checks every override still names framework text after an upgrade.
 - **Editor**: the toolbar's formatting (`MarkdownFormatService`) toggles, like a word processor. The

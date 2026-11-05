@@ -6,6 +6,8 @@ namespace MyApp.Portal.Application.UnitTests.Services;
 
 public class NoteTreeServiceTests
 {
+    private const string Root = "notes/";
+
     private readonly NoteTreeService sut = new();
 
     // Work/          (folder)
@@ -145,7 +147,7 @@ public class NoteTreeServiceTests
         };
 
         // Act
-        var result = sut.BuildEntries(files, "bob").ToDictionary(e => e.Id);
+        var result = sut.BuildEntries(Root, files, "bob").ToDictionary(e => e.Id);
 
         // Assert
         Assert.Equal(["notes/Empty/", "notes/Top.md", "notes/Work/", "notes/Work/Meetings/", "notes/Work/Meetings/Agenda.md"], result.Keys.Order(StringComparer.Ordinal));
@@ -168,7 +170,7 @@ public class NoteTreeServiceTests
     public void GivenParentAndName_WhenGetChildKey_ThenKeyIsPath(string? parent, string name, bool isFolder, string expected)
     {
         // Act & Assert
-        Assert.Equal(expected, sut.GetChildKey(parent, name, isFolder));
+        Assert.Equal(expected, sut.GetChildKey(Root, parent, name, isFolder));
     }
 
     [Theory]
@@ -180,15 +182,15 @@ public class NoteTreeServiceTests
     {
         // Act & Assert
         Assert.Equal(name, sut.GetName(key));
-        Assert.Equal(parent, sut.GetParentKey(key));
+        Assert.Equal(parent, sut.GetParentKey(Root, key));
     }
 
     [Fact]
     public void GivenKey_WhenGetFolderNames_ThenOutermostFirst()
     {
         // Act & Assert
-        Assert.Equal(["Work", "Meetings"], sut.GetFolderNames("notes/Work/Meetings/Agenda.md"));
-        Assert.Empty(sut.GetFolderNames("notes/Top.md"));
+        Assert.Equal(["Work", "Meetings"], sut.GetFolderNames(Root, "notes/Work/Meetings/Agenda.md"));
+        Assert.Empty(sut.GetFolderNames(Root, "notes/Top.md"));
     }
 
     [Theory]
@@ -201,7 +203,7 @@ public class NoteTreeServiceTests
     public void GivenKey_WhenIsNoteKey_ThenOnlyMarkdownUnderTheRoot(string key, bool expected)
     {
         // Act & Assert
-        Assert.Equal(expected, sut.IsNoteKey(key));
+        Assert.Equal(expected, sut.IsNoteKey(Root, key));
     }
 
     private static NoteEntry Folder(string id, string name, string? parentId) =>

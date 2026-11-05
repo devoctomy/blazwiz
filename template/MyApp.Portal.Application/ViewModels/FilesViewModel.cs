@@ -4,6 +4,7 @@ using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -38,9 +39,9 @@ public partial class FilesViewModel : ViewModelBase
     /// </summary>
     public const string StorageErrorMessage = "Your notes could not be read or saved in this browser's storage.";
 
-    private static readonly E2eKeyScope NotesScope = new E2eKeyScope(NotesSyncProfile.KeyId);
-
-    private readonly INoteService noteService;
+    private readonly INotebookService notebookService;
+    private readonly INoteServiceFactory noteServiceFactory;
+    private readonly ISyncProtectedProfileService profiles;
     private readonly INavigationService navigationService;
     private readonly INoteNameService noteNameService;
     private readonly INoteTreeService noteTreeService;
@@ -64,19 +65,27 @@ public partial class FilesViewModel : ViewModelBase
     private string? draggedId;
     private string? dropTargetId;
     private DateTimeOffset? lastSyncedAt;
+    private Notebook? notebook;
+    private INoteService? noteService;
+    private bool isNotebookMissing;
+    private string? requestedNotebook;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FilesViewModel"/> class.
     /// </summary>
-    /// <param name="noteService">The note service.</param>
+    /// <param name="notebookService">The user's notebooks.</param>
+    /// <param name="noteServiceFactory">Creates the note service of the notebook shown.</param>
+    /// <param name="profiles">Says when the user's notebooks are loaded, created or deleted.</param>
     /// <param name="navigationService">The navigation service.</param>
     /// <param name="noteNameService">The note name service.</param>
     /// <param name="noteTreeService">The note tree service.</param>
     /// <param name="syncService">The sync service, to refresh when a sync changes the notes.</param>
-    /// <param name="manager">Says whether the notes are unlocked, and when that changes.</param>
+    /// <param name="manager">Says whether the notebook is unlocked, and when that changes.</param>
     /// <param name="errorText">Describes the framework's errors (storage, encryption) for the user.</param>
     public FilesViewModel(
-        INoteService noteService,
+        INotebookService notebookService,
+        INoteServiceFactory noteServiceFactory,
+        ISyncProtectedProfileService profiles,
         INavigationService navigationService,
         INoteNameService noteNameService,
         INoteTreeService noteTreeService,
@@ -84,7 +93,9 @@ public partial class FilesViewModel : ViewModelBase
         IE2eProtectedProfileManager manager,
         IErrorText errorText)
     {
-        this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
+        this.notebookService = notebookService ?? throw new ArgumentNullException(nameof(notebookService));
+        this.noteServiceFactory = noteServiceFactory ?? throw new ArgumentNullException(nameof(noteServiceFactory));
+        this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         this.noteNameService = noteNameService ?? throw new ArgumentNullException(nameof(noteNameService));
         this.noteTreeService = noteTreeService ?? throw new ArgumentNullException(nameof(noteTreeService));
@@ -95,13 +106,32 @@ public partial class FilesViewModel : ViewModelBase
         this.syncService.FilesChanged += OnFilesChanged;
         this.syncService.StatusChanged += OnSyncStatusChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
+        this.profiles.ProfilesChanged += OnProfilesChanged;
     }
 
     /// <summary>
-    /// Gets a value indicating whether the notes are unlocked. While they are locked, the page shows the unlock panel
-    /// in their place.
+    /// Gets the notebook shown, or null until it is opened.
     /// </summary>
-    public bool IsUnlocked => manager.IsUnlocked(NotesScope);
+    public Notebook? Notebook
+    {
+        get => notebook;
+        private set => SetProperty(ref notebook, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the notebook asked for does not exist (once the user's notebooks are loaded).
+    /// </summary>
+    public bool IsNotebookMissing
+    {
+        get => isNotebookMissing;
+        private set => SetProperty(ref isNotebookMissing, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the notebook is unlocked. While it is locked, the page shows the unlock panel in
+    /// place of its pages.
+    /// </summary>
+    public bool IsUnlocked => Notebook is { } open && manager.IsUnlocked(new E2eKeyScope(open.Id));
 
     /// <summary>
     /// Gets the file extension given to every note, shown next to the name box.
@@ -263,9 +293,25 @@ public partial class FilesViewModel : ViewModelBase
         private set => SetProperty(ref dropTargetId, value);
     }
 
-    /// <inheritdoc/>
-    public override async Task OnInitializedAsync()
+    private INoteService Notes => noteService ?? throw new InvalidOperationException("No notebook is open.");
+
+    /// <summary>
+    /// Opens a notebook, and loads its pages if it is unlocked.
+    /// </summary>
+    /// <param name="name">The notebook's sync profile name, or null for the default notebook.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    public async Task OpenNotebookAsync(string? name)
     {
+        IsLoading = true;
+        requestedNotebook = name;
+        Notebook = await notebookService.FindAsync(name);
+        IsNotebookMissing = Notebook == null && profiles.IsLoaded;
+        noteService = Notebook == null ? null : noteServiceFactory.Create(Notebook);
+        Entries = [];
+        SelectedFolderId = null;
+        expandedFolderIds.Clear();
+        RefreshTree();
+        OnPropertyChanged(nameof(IsUnlocked));
         if (IsUnlocked)
         {
             await RunAsync(ReloadAsync);
@@ -327,7 +373,7 @@ public partial class FilesViewModel : ViewModelBase
     [RelayCommand]
     public void OpenNote(string noteId)
     {
-        navigationService.NavigateTo(NoteEditorViewModel.GetEditUrl(noteId));
+        navigationService.NavigateTo(NoteEditorViewModel.GetEditUrl(Notebook?.Name, noteId));
     }
 
     /// <summary>
@@ -423,10 +469,10 @@ public partial class FilesViewModel : ViewModelBase
             switch (ActiveDialog)
             {
                 case FilesDialogKind.NewNote:
-                    openNoteId = (await noteService.CreateNoteAsync(DialogName, SelectedFolderId)).Id;
+                    openNoteId = (await Notes.CreateNoteAsync(DialogName, SelectedFolderId)).Id;
                     break;
                 case FilesDialogKind.NewFolder:
-                    var folder = await noteService.CreateFolderAsync(DialogName, SelectedFolderId);
+                    var folder = await Notes.CreateFolderAsync(DialogName, SelectedFolderId);
                     if (SelectedFolderId != null)
                     {
                         expandedFolderIds.Add(SelectedFolderId);
@@ -435,7 +481,7 @@ public partial class FilesViewModel : ViewModelBase
                     SelectedFolderId = folder.Id;
                     break;
                 case FilesDialogKind.Rename when DialogEntry != null:
-                    await noteService.RenameAsync(DialogEntry.Id, DialogName);
+                    await Notes.RenameAsync(DialogEntry.Id, DialogName);
                     break;
                 case FilesDialogKind.Move when DialogEntry != null:
                     await MoveEntryAsync(DialogEntry.Id, MoveTargetId);
@@ -537,6 +583,7 @@ public partial class FilesViewModel : ViewModelBase
             syncService.FilesChanged -= OnFilesChanged;
             syncService.StatusChanged -= OnSyncStatusChanged;
             manager.LockStateChanged -= OnLockStateChanged;
+            profiles.ProfilesChanged -= OnProfilesChanged;
         }
 
         base.Dispose(disposing);
@@ -565,7 +612,7 @@ public partial class FilesViewModel : ViewModelBase
     private async Task MoveEntryAsync(string entryId, string targetId)
     {
         var parentId = targetId == TopLevelId ? null : targetId;
-        await noteService.MoveAsync(entryId, parentId);
+        await Notes.MoveAsync(entryId, parentId);
         if (parentId != null)
         {
             expandedFolderIds.Add(parentId);
@@ -575,7 +622,7 @@ public partial class FilesViewModel : ViewModelBase
     private async Task DeleteEntryAsync(NoteEntry entry)
     {
         var removedIds = entry.IsFolder ? noteTreeService.GetDescendantIds(Entries, entry.Id).Append(entry.Id).ToHashSet() : [entry.Id];
-        await noteService.DeleteAsync(entry.Id);
+        await Notes.DeleteAsync(entry.Id);
         if (SelectedFolderId != null && removedIds.Contains(SelectedFolderId))
         {
             SelectedFolderId = null;
@@ -592,7 +639,7 @@ public partial class FilesViewModel : ViewModelBase
 
     private async Task ReloadAsync()
     {
-        Entries = await noteService.GetEntriesAsync();
+        Entries = await Notes.GetEntriesAsync();
         expandedFolderIds.RemoveWhere(id => !Entries.Any(e => e.Id == id));
         if (SelectedFolderId != null && !Entries.Any(e => e.Id == SelectedFolderId))
         {
@@ -610,7 +657,7 @@ public partial class FilesViewModel : ViewModelBase
 
     private async void OnFilesChanged(object? sender, SyncFilesChangedEventArgs e)
     {
-        if (e.Profile == NoteService.ProfileName && !IsBusy)
+        if (e.Profile == Notebook?.Name && !IsBusy)
         {
             await ReloadSafelyAsync();
         }
@@ -631,15 +678,33 @@ public partial class FilesViewModel : ViewModelBase
 
     private async void OnLockStateChanged(object? sender, E2eKeyScope scope)
     {
-        if (scope != NotesScope)
+        if (Notebook == null || scope.Id != Notebook.Id)
         {
             return;
         }
 
+        // Its name can be read once it is unlocked.
+        Notebook = await notebookService.FindAsync(Notebook.Name) ?? Notebook;
         OnPropertyChanged(nameof(IsUnlocked));
         if (IsUnlocked && !IsBusy)
         {
             await ReloadSafelyAsync();
+        }
+    }
+
+    private async void OnProfilesChanged(object? sender, EventArgs e)
+    {
+        // Loaded after the page opened, or this notebook was deleted.
+        if (!IsBusy && (Notebook == null || await notebookService.FindAsync(Notebook.Name) == null))
+        {
+            try
+            {
+                await OpenNotebookAsync(requestedNotebook);
+            }
+            catch (Exception)
+            {
+                // A background refresh must not crash the page; opening the notebook again loads it.
+            }
         }
     }
 

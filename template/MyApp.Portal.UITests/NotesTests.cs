@@ -160,7 +160,7 @@ public class NotesTests : TestBase
     public async Task GivenNoPassphrase_WhenOpeningFiles_ThenThePanelPointsToSettings()
     {
         await LoginAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
 
         await Expect(Page.Locator("#e2e-unlock-message")).ToHaveTextAsync("Notes needs a passphrase before it can be used. Set one in Settings.");
         await Expect(Page.Locator("#new-note-button")).ToHaveCountAsync(0);
@@ -177,7 +177,7 @@ public class NotesTests : TestBase
         await Page.Locator("#e2e-lock-indicator").ClickAsync();
         await Page.Locator("#e2e-lock-menu-lock-all").ClickAsync();
 
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
         await Expect(Page.Locator("#e2e-unlock-message")).ToHaveTextAsync("Notes is locked. Enter its passphrase to use it.");
         await ScreenshotAsync("Locked");
         await UnlockAsync();
@@ -192,8 +192,7 @@ public class NotesTests : TestBase
     {
         await LoginAsync();
         await SetPassphraseAsync();
-        await Page.Locator("#nav-files").ClickAsync();
-        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Files");
+        await OpenNotesAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
     }
 }

@@ -1,7 +1,6 @@
 using System.Text;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
 using Devoctomy.Blazwiz.Sync.Interfaces;
-using Microsoft.Extensions.DependencyInjection;
 using MyApp.Portal.Application.Exceptions;
 using MyApp.Portal.Application.Services.Interfaces;
 using MyApp.Portal.Models.Notes;
@@ -9,13 +8,23 @@ using MyApp.Portal.Models.Notes;
 namespace MyApp.Portal.Application.Services;
 
 /// <summary>
-/// Notes are plain markdown files in the <c>notes</c> sync profile's file store, and folders are paths, so a note's id
-/// is its key (e.g. <c>notes/Work/Ideas.md</c>). S3 has no rename, so renaming or moving writes the new keys and then
-/// deletes the old ones.
+/// A notebook's pages: markdown files under its root in its sync profile's file store, and folders are paths, so a
+/// note's id is its key (e.g. <c>notes/Work/Ideas.md</c>). S3 has no rename, so renaming or moving writes the new keys
+/// and then deletes the old ones. Created for a notebook by <see cref="NoteServiceFactory"/>.
 /// </summary>
+/// <param name="notebook">The notebook.</param>
+/// <param name="fileStore">The notebook's file store.</param>
+/// <param name="authService">The signed in user.</param>
+/// <param name="stateStore">Whether the welcome note was created.</param>
+/// <param name="syncService">Whether a sync has run, before the welcome note is created.</param>
+/// <param name="connectivityService">Whether a sync can run.</param>
+/// <param name="noteNameService">Note names.</param>
+/// <param name="noteTreeService">Keys and the tree of folders and notes.</param>
+/// <param name="timeProvider">The clock.</param>
 public class NoteService(
+    Notebook notebook,
+    ISyncFileStore fileStore,
     IAuthenticationService authService,
-    [FromKeyedServices(NoteService.ProfileName)] ISyncFileStore fileStore,
     INotesStateStore stateStore,
     ISyncService syncService,
     IConnectivityService connectivityService,
@@ -25,9 +34,14 @@ public class NoteService(
     : INoteService
 {
     /// <summary>
-    /// The sync profile holding the notes.
+    /// The sync profile holding the default notebook.
     /// </summary>
     public const string ProfileName = "notes";
+
+    /// <summary>
+    /// The key every page and folder of the default notebook is under.
+    /// </summary>
+    public const string DefaultRoot = "notes/";
 
     /// <summary>
     /// The name of the note created for new users.
@@ -39,6 +53,7 @@ public class NoteService(
     /// </summary>
     public const string WelcomeNoteResourceName = "WelcomeNote.md";
 
+    private readonly Notebook notebook = notebook ?? throw new ArgumentNullException(nameof(notebook));
     private readonly IAuthenticationService authService = authService ?? throw new ArgumentNullException(nameof(authService));
     private readonly ISyncFileStore fileStore = fileStore ?? throw new ArgumentNullException(nameof(fileStore));
     private readonly INotesStateStore stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
@@ -67,7 +82,7 @@ public class NoteService(
         var entries = await LoadEntriesAsync(owner);
 
         var state = await stateStore.GetAsync(owner);
-        if (state?.WelcomeNoteCreated == true || !await CanCreateWelcomeNoteAsync())
+        if (!notebook.IsDefault || state?.WelcomeNoteCreated == true || !await CanCreateWelcomeNoteAsync())
         {
             return entries;
         }
@@ -76,7 +91,7 @@ public class NoteService(
         // does not bring it back from a new one.
         if (entries.Count == 0)
         {
-            await fileStore.WriteAsync(noteTreeService.GetChildKey(null, WelcomeNoteName, false), Encoding.UTF8.GetBytes(ReadWelcomeNote()));
+            await fileStore.WriteAsync(noteTreeService.GetChildKey(notebook.Root, null, WelcomeNoteName, false), Encoding.UTF8.GetBytes(ReadWelcomeNote()));
             entries = await LoadEntriesAsync(owner);
         }
 
@@ -93,7 +108,7 @@ public class NoteService(
         EnsureFolderExists(entries, parentId);
         EnsureNameIsFree(entries, parentId, folderName, null);
 
-        var key = noteTreeService.GetChildKey(parentId, folderName, true);
+        var key = noteTreeService.GetChildKey(notebook.Root, parentId, folderName, true);
         await fileStore.CreateFolderAsync(key);
         return CreateEntry(owner, key, NoteEntryKind.Folder);
     }
@@ -109,7 +124,7 @@ public class NoteService(
         EnsureFolderExists(entries, parentId);
         EnsureNameIsFree(entries, parentId, noteName, null);
 
-        var key = noteTreeService.GetChildKey(parentId, noteName, false);
+        var key = noteTreeService.GetChildKey(notebook.Root, parentId, noteName, false);
         await fileStore.WriteAsync(key, Encoding.UTF8.GetBytes(content));
         return CreateEntry(owner, key, NoteEntryKind.Note);
     }
@@ -127,7 +142,7 @@ public class NoteService(
         }
 
         EnsureNameIsFree(entries, entry.ParentId, newName, entry.Id);
-        var newKey = noteTreeService.GetChildKey(entry.ParentId, newName, entry.IsFolder);
+        var newKey = noteTreeService.GetChildKey(notebook.Root, entry.ParentId, newName, entry.IsFolder);
         await MoveKeysAsync(entry, newKey);
         return CreateEntry(owner, newKey, entry.Kind);
     }
@@ -150,7 +165,7 @@ public class NoteService(
         }
 
         EnsureNameIsFree(entries, parentId, entry.Name, entry.Id);
-        var newKey = noteTreeService.GetChildKey(parentId, entry.Name, entry.IsFolder);
+        var newKey = noteTreeService.GetChildKey(notebook.Root, parentId, entry.Name, entry.IsFolder);
         await MoveKeysAsync(entry, newKey);
         return CreateEntry(owner, newKey, entry.Kind);
     }
@@ -171,7 +186,7 @@ public class NoteService(
     public async Task<NoteDocument?> GetNoteAsync(string id)
     {
         var owner = await GetOwnerAsync();
-        if (!noteTreeService.IsNoteKey(id))
+        if (!noteTreeService.IsNoteKey(notebook.Root, id))
         {
             return null;
         }
@@ -189,7 +204,7 @@ public class NoteService(
         {
             Entry = entry,
             Content = Encoding.UTF8.GetString(file.Content),
-            FolderPath = noteTreeService.GetFolderNames(id),
+            FolderPath = noteTreeService.GetFolderNames(notebook.Root, id),
         };
     }
 
@@ -199,7 +214,7 @@ public class NoteService(
         ArgumentNullException.ThrowIfNull(content);
 
         var owner = await GetOwnerAsync();
-        if (!noteTreeService.IsNoteKey(id))
+        if (!noteTreeService.IsNoteKey(notebook.Root, id))
         {
             throw new NotesException("Folders cannot be edited.");
         }
@@ -245,7 +260,7 @@ public class NoteService(
 
     private async Task<IReadOnlyList<NoteEntry>> LoadEntriesAsync(string owner)
     {
-        return noteTreeService.BuildEntries(await fileStore.ListAsync(), owner);
+        return noteTreeService.BuildEntries(notebook.Root, await fileStore.ListAsync(), owner);
     }
 
     private async Task<IReadOnlyList<string>> GetKeysUnderAsync(NoteEntry entry)
@@ -285,7 +300,7 @@ public class NoteService(
             Owner = owner,
             Kind = kind,
             Name = noteTreeService.GetName(key),
-            ParentId = noteTreeService.GetParentKey(key),
+            ParentId = noteTreeService.GetParentKey(notebook.Root, key),
             CreatedAt = now,
             ModifiedAt = now,
         };

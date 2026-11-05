@@ -46,6 +46,7 @@ public class NotesServiceCollectionExtensionsTests
         services.AddAppServices();
         services.AddScoped<FilesViewModel>();
         services.AddScoped<NoteEditorViewModel>();
+        services.AddScoped<NotebooksViewModel>();
 
         // Assert
         Assert.Same(services, result);
@@ -53,13 +54,15 @@ public class NotesServiceCollectionExtensionsTests
         await using var scope = provider.CreateAsyncScope();
         Assert.Equal([NoteService.ProfileName], scope.ServiceProvider.GetRequiredService<ISyncService>().Profiles);
         Assert.IsType<IndexedDbNotesStateStore>(scope.ServiceProvider.GetRequiredService<INotesStateStore>());
-        Assert.IsType<NoteService>(scope.ServiceProvider.GetRequiredService<INoteService>());
+        Assert.IsType<NoteServiceFactory>(scope.ServiceProvider.GetRequiredService<INoteServiceFactory>());
+        Assert.IsType<NotebookService>(scope.ServiceProvider.GetRequiredService<INotebookService>());
         Assert.IsType<NoteNameService>(scope.ServiceProvider.GetRequiredService<INoteNameService>());
         Assert.IsType<NoteTreeService>(scope.ServiceProvider.GetRequiredService<INoteTreeService>());
         Assert.IsType<MarkdownRenderer>(scope.ServiceProvider.GetRequiredService<IMarkdownRenderer>());
         Assert.IsType<MarkdownFormatService>(scope.ServiceProvider.GetRequiredService<IMarkdownFormatService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<FilesViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<NoteEditorViewModel>());
-        Assert.Contains(scope.ServiceProvider.GetServices<NavigationItem>(), i => i.Href == "files");
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<NotebooksViewModel>());
+        Assert.Contains(scope.ServiceProvider.GetServices<NavigationItem>(), i => i.Href == "notebooks");
     }
 }

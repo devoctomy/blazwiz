@@ -30,7 +30,7 @@ public class SyncTests : TestBase
     {
         await LoginAsync();
         await SetPassphraseAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
 
         // The welcome note is a local change waiting to sync.
@@ -199,7 +199,7 @@ public class SyncTests : TestBase
     {
         await LoginAsync();
         await SetPassphraseAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
         await Page.Locator("#new-note-button").ClickAsync();
         await Page.Locator("#dialog-name").FillAsync("Moving");
@@ -226,7 +226,7 @@ public class SyncTests : TestBase
         // Still in OPFS, and still readable, after a reload.
         await ReloadAsync();
         await Expect(Page.Locator("#storage-option-opfs")).ToHaveClassAsync(new Regex("active"));
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
         await UnlockAsync();
         await Row("Moving.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("kept in OPFS");
@@ -240,7 +240,7 @@ public class SyncTests : TestBase
         await Expect(Page.Locator("#storage-option-indexeddb")).ToHaveClassAsync(new Regex("active"));
         Assert.AreEqual(0, (await ListOpfsFilesAsync()).Count);
         await ReloadAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
         await UnlockAsync();
         await Row("Moving.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("kept in OPFS");
@@ -269,7 +269,7 @@ public class SyncTests : TestBase
         await StubFolderPickerAsync();
         await LoginAsync();
         await SetPassphraseAsync();
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
         await Expect(Row("Welcome.md")).ToBeVisibleAsync();
         await Page.Locator("#new-note-button").ClickAsync();
         await Page.Locator("#dialog-name").FillAsync("In a folder");
@@ -302,7 +302,7 @@ public class SyncTests : TestBase
         await Page.Locator("#folder-reconnect-button").ClickAsync();
         await Expect(Page.Locator("#folder-access-banner")).ToHaveCountAsync(0);
         Assert.IsTrue(await Page.EvaluateAsync<bool>("() => window.notReloaded === true"));
-        await Page.Locator("#nav-files").ClickAsync();
+        await OpenNotesAsync();
         await UnlockAsync();
         await Row("In a folder.md").Locator(".file-name").ClickAsync();
         await Expect(Page.Locator("#note-editor")).ToHaveValueAsync("visible on disk");

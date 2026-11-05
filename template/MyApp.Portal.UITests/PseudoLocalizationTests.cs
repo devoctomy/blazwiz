@@ -16,7 +16,7 @@ public class PseudoLocalizationTests : TestBase
     private static readonly string[] UserText = [Username, "Bob Hoskins", "BH"];
 
     // The app's own sidebar items: app text, not the framework's.
-    private const string AppContent = "#nav-dashboard, #nav-showcase, #nav-files";
+    private const string AppContent = "#nav-dashboard, #nav-showcase, #nav-notebooks";
 
     // Filled in as the settings files are served. They are fetched at the same time, so the handlers run on different
     // threads: lock while adding or reading.

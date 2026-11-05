@@ -244,6 +244,19 @@ public class TestBase : PageTest
         await Expect(Page.Locator("#e2e-unlock-panel")).ToHaveCountAsync(0);
     }
 
+//#if (IncludeNotes)
+    /// <summary>
+    /// Opens the pages of the default notebook (the notes profile) from the Notebooks page.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    protected async Task OpenNotesAsync()
+    {
+        await Page.Locator("#nav-notebooks").ClickAsync();
+        await Page.Locator("#notebooks .notebook[data-notebook='notes'] .notebook-open").ClickAsync();
+        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Notes");
+    }
+
+//#endif
     /// <summary>
     /// Goes back to a page, in the app (so the keys are kept), if the test has moved on from it.
     /// </summary>

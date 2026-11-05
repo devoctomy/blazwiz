@@ -49,6 +49,9 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   profile set up in code has no passphrase yet.
 - Deleting a protected profile finds its files in S3 before deleting its keys, and stops with nothing deleted if S3
   cannot be reached.
+- The template's notes example has notebooks: the notes profile is the default notebook, and users create more,
+  each a protected profile with its own passphrase, its name kept encrypted inside it. A Notebooks page lists them
+  (the sidebar's Files item is now Notebooks); the Files page and editor show the notebook named in the URL.
 - A protected profile deleted on another device is forgotten on this one when the profiles are next loaded: its keys
   (`IE2eProtectedProfileManager.ForgetAsync`), its files and its sync index here are deleted too.
 - The AWS base stack lets each user manage their secrets under `<sub>/keys/` (each profile's keys and the index) in

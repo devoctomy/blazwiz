@@ -80,7 +80,7 @@ dotnet pack templatepack -c Release # the template package
 | `--tests` | `true` | Include the unit and UI test projects. |
 | `--showcase` | `true` | Include the Showcase page of themed building blocks. |
 | `--sync` | `true` | Include the sync module (`Devoctomy.Blazwiz.UI.Sync`). |
-| `--notes` | `true` | Include the notes example (Files page and markdown editor). Needs the sync module: left out with `--sync false`. |
+| `--notes` | `true` | Include the notes example (notebooks of markdown pages, each with its own passphrase). Needs the sync module: left out with `--sync false`. |
 | `--no-restore` | `false` | Don't restore the app's packages after creating it. |
 
 The command-line names are set in `template/.template.config/dotnetcli.host.json`; `template.json` and the

@@ -5,7 +5,7 @@
 
 <NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" ConfirmExternalNavigation="@ViewModel.IsDirty" />
 
-<E2eUnlockPanel Profile="@NoteService.ProfileName">
+<E2eUnlockPanel Profile="@(ViewModel.Notebook?.Name ?? NoteService.ProfileName)">
     @if (ViewModel.IsLoading)
     {
         <PageHeader Title="Loading note" Icon="bi-file-earmark-text" />
@@ -20,7 +20,7 @@
             <p class="panel-text">
                 @(ViewModel.ErrorMessage ?? "This note does not exist. It may have been deleted.")
             </p>
-            <a class="btn btn-primary" href="@NoteEditorViewModel.FilesUrl"><i class="bi bi-arrow-left me-1"></i>Back to files</a>
+            <a class="btn btn-primary" href="@ViewModel.FilesPageUrl"><i class="bi bi-arrow-left me-1"></i>Back to files</a>
         </div>
     }
     else

@@ -4,6 +4,7 @@ using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -40,13 +41,18 @@ public partial class NoteEditorViewModel : ViewModelBase
     public const string NoteQueryParameter = "note";
 
     /// <summary>
+    /// The query parameter naming the note's notebook (its sync profile); without it, the default notebook.
+    /// </summary>
+    public const string NotebookQueryParameter = "notebook";
+
+    /// <summary>
     /// The message shown when the open note was deleted on another device.
     /// </summary>
     public const string RemoteDeletedMessage = "This note was deleted on another device.";
 
-    private static readonly E2eKeyScope NotesScope = new E2eKeyScope(NotesSyncProfile.KeyId);
-
-    private readonly INoteService noteService;
+    private readonly INotebookService notebookService;
+    private readonly INoteServiceFactory noteServiceFactory;
+    private readonly ISyncProtectedProfileService profiles;
     private readonly IMarkdownRenderer markdownRenderer;
     private readonly IMarkdownFormatService markdownFormatService;
     private readonly INoteEditorInteropService editorInteropService;
@@ -56,6 +62,9 @@ public partial class NoteEditorViewModel : ViewModelBase
     private readonly IErrorText errorText;
 
     private string? loadedNoteId;
+    private string? loadedNotebook;
+    private Notebook? notebook;
+    private INoteService? noteService;
     private NoteEntry? note;
     private IReadOnlyList<string> folderPath = [];
     private string content = string.Empty;
@@ -76,16 +85,20 @@ public partial class NoteEditorViewModel : ViewModelBase
     /// <summary>
     /// Initializes a new instance of the <see cref="NoteEditorViewModel"/> class.
     /// </summary>
-    /// <param name="noteService">The note service.</param>
+    /// <param name="notebookService">The user's notebooks.</param>
+    /// <param name="noteServiceFactory">Creates the note service of the note's notebook.</param>
+    /// <param name="profiles">Says when the user's notebooks are loaded.</param>
     /// <param name="markdownRenderer">The markdown renderer, for the preview.</param>
     /// <param name="markdownFormatService">Works out the edits made by the formatting buttons.</param>
     /// <param name="editorInteropService">Access to the editor's text and selection in the browser.</param>
     /// <param name="navigationService">The navigation service.</param>
     /// <param name="syncService">The sync service, to notice when a sync changes the open note.</param>
-    /// <param name="manager">Says whether the notes are unlocked, and when that changes.</param>
+    /// <param name="manager">Says whether the note's notebook is unlocked, and when that changes.</param>
     /// <param name="errorText">Describes the framework's errors (storage, encryption) for the user.</param>
     public NoteEditorViewModel(
-        INoteService noteService,
+        INotebookService notebookService,
+        INoteServiceFactory noteServiceFactory,
+        ISyncProtectedProfileService profiles,
         IMarkdownRenderer markdownRenderer,
         IMarkdownFormatService markdownFormatService,
         INoteEditorInteropService editorInteropService,
@@ -94,7 +107,9 @@ public partial class NoteEditorViewModel : ViewModelBase
         IE2eProtectedProfileManager manager,
         IErrorText errorText)
     {
-        this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
+        this.notebookService = notebookService ?? throw new ArgumentNullException(nameof(notebookService));
+        this.noteServiceFactory = noteServiceFactory ?? throw new ArgumentNullException(nameof(noteServiceFactory));
+        this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         this.markdownRenderer = markdownRenderer ?? throw new ArgumentNullException(nameof(markdownRenderer));
         this.markdownFormatService = markdownFormatService ?? throw new ArgumentNullException(nameof(markdownFormatService));
         this.editorInteropService = editorInteropService ?? throw new ArgumentNullException(nameof(editorInteropService));
@@ -104,13 +119,28 @@ public partial class NoteEditorViewModel : ViewModelBase
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.syncService.FilesChanged += OnFilesChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
+        this.profiles.ProfilesChanged += OnProfilesChanged;
     }
 
     /// <summary>
-    /// Gets a value indicating whether the notes are unlocked. While they are locked, the page shows the unlock panel
-    /// in place of the editor, and keeps any unsaved edits.
+    /// Gets the note's notebook, or null until it is loaded.
     /// </summary>
-    public bool IsUnlocked => manager.IsUnlocked(NotesScope);
+    public Notebook? Notebook
+    {
+        get => notebook;
+        private set => SetProperty(ref notebook, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the note's notebook is unlocked. While it is locked, the page shows the unlock
+    /// panel in place of the editor, and keeps any unsaved edits.
+    /// </summary>
+    public bool IsUnlocked => Notebook is { } open && manager.IsUnlocked(new E2eKeyScope(open.Id));
+
+    /// <summary>
+    /// Gets the URL of the files page of the note's notebook.
+    /// </summary>
+    public string FilesPageUrl => GetFilesUrl(Notebook?.Name);
 
     /// <summary>
     /// Gets the note being edited, or null until it has loaded.
@@ -241,38 +271,62 @@ public partial class NoteEditorViewModel : ViewModelBase
         private set => SetProperty(ref isRemoteDeleted, value);
     }
 
+    private INoteService Notes => noteService ?? throw new InvalidOperationException("No notebook is open.");
+
+    /// <summary>
+    /// Gets the URL of the files page of a notebook.
+    /// </summary>
+    /// <param name="notebookName">The notebook's sync profile name, or null for the default notebook.</param>
+    /// <returns>The relative URL.</returns>
+    public static string GetFilesUrl(string? notebookName)
+    {
+        return notebookName == null || notebookName == NoteService.ProfileName
+            ? FilesUrl
+            : $"{FilesUrl}?{NotebookQueryParameter}={Uri.EscapeDataString(notebookName)}";
+    }
+
     /// <summary>
     /// Gets the URL of the editor for a note.
     /// </summary>
+    /// <param name="notebookName">The note's notebook (its sync profile name), or null for the default notebook.</param>
     /// <param name="noteId">The note id (its key, e.g. <c>notes/Work/Ideas.md</c>).</param>
     /// <returns>The relative URL.</returns>
-    public static string GetEditUrl(string noteId)
+    public static string GetEditUrl(string? notebookName, string noteId)
     {
         ArgumentNullException.ThrowIfNull(noteId);
 
-        return $"{FilesUrl}/edit?{NoteQueryParameter}={Uri.EscapeDataString(noteId)}";
+        var notebookQuery = notebookName == null || notebookName == NoteService.ProfileName
+            ? string.Empty
+            : $"{NotebookQueryParameter}={Uri.EscapeDataString(notebookName)}&";
+        return $"{FilesUrl}/edit?{notebookQuery}{NoteQueryParameter}={Uri.EscapeDataString(noteId)}";
     }
 
     /// <summary>
     /// Loads a note, unless it is already loaded.
     /// </summary>
+    /// <param name="notebookName">The note's notebook (its sync profile name), or null for the default notebook.</param>
     /// <param name="noteId">The note id.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    public async Task LoadAsync(string noteId)
+    public async Task LoadAsync(string? notebookName, string noteId)
     {
-        if (noteId == loadedNoteId)
+        if (noteId == loadedNoteId && notebookName == loadedNotebook)
         {
             return;
         }
 
         loadedNoteId = noteId;
+        loadedNotebook = notebookName;
         IsLoading = true;
         IsNotFound = false;
         ErrorMessage = null;
         LastSavedAt = null;
         try
         {
-            var document = await noteService.GetNoteAsync(noteId);
+            Notebook = await notebookService.FindAsync(notebookName);
+            noteService = Notebook == null ? null : noteServiceFactory.Create(Notebook);
+            OnPropertyChanged(nameof(IsUnlocked));
+            OnPropertyChanged(nameof(FilesPageUrl));
+            var document = noteService == null ? null : await noteService.GetNoteAsync(noteId);
             if (document == null)
             {
                 Note = null;
@@ -347,7 +401,7 @@ public partial class NoteEditorViewModel : ViewModelBase
     [RelayCommand]
     public void Close()
     {
-        navigationService.NavigateTo(FilesUrl);
+        navigationService.NavigateTo(FilesPageUrl);
     }
 
     /// <summary>
@@ -433,7 +487,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         if (IsRemoteDeleted)
         {
             leaveConfirmed = true;
-            navigationService.NavigateTo(FilesUrl);
+            navigationService.NavigateTo(FilesPageUrl);
             return;
         }
 
@@ -447,6 +501,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         {
             syncService.FilesChanged -= OnFilesChanged;
             manager.LockStateChanged -= OnLockStateChanged;
+            profiles.ProfilesChanged -= OnProfilesChanged;
         }
 
         base.Dispose(disposing);
@@ -454,7 +509,7 @@ public partial class NoteEditorViewModel : ViewModelBase
 
     private async void OnLockStateChanged(object? sender, E2eKeyScope scope)
     {
-        if (scope != NotesScope)
+        if (Notebook == null || scope.Id != Notebook.Id)
         {
             return;
         }
@@ -466,7 +521,24 @@ public partial class NoteEditorViewModel : ViewModelBase
             loadedNoteId = null;
             try
             {
-                await LoadAsync(noteId);
+                await LoadAsync(loadedNotebook, noteId);
+            }
+            catch (Exception)
+            {
+                // A background load must not crash the page; opening the note again loads it.
+            }
+        }
+    }
+
+    private async void OnProfilesChanged(object? sender, EventArgs e)
+    {
+        if (Notebook == null && loadedNoteId is { } noteId)
+        {
+            // The notebooks were not loaded yet when the page opened.
+            loadedNoteId = null;
+            try
+            {
+                await LoadAsync(loadedNotebook, noteId);
             }
             catch (Exception)
             {
@@ -478,14 +550,14 @@ public partial class NoteEditorViewModel : ViewModelBase
     private async void OnFilesChanged(object? sender, SyncFilesChangedEventArgs e)
     {
         var note = Note;
-        if (e.Profile != NoteService.ProfileName || note == null || !e.Keys.Contains(note.Id))
+        if (e.Profile != Notebook?.Name || note == null || !e.Keys.Contains(note.Id))
         {
             return;
         }
 
         try
         {
-            var document = await noteService.GetNoteAsync(note.Id);
+            var document = await Notes.GetNoteAsync(note.Id);
             if (IsDirty)
             {
                 IsRemoteDeleted = document == null;
@@ -511,7 +583,7 @@ public partial class NoteEditorViewModel : ViewModelBase
 
         try
         {
-            ApplyDocument(await noteService.GetNoteAsync(Note.Id));
+            ApplyDocument(await Notes.GetNoteAsync(Note.Id));
         }
         catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
@@ -545,7 +617,7 @@ public partial class NoteEditorViewModel : ViewModelBase
     {
         leaveConfirmed = true;
         IsLeaveDialogOpen = false;
-        var location = pendingLocation ?? FilesUrl;
+        var location = pendingLocation ?? FilesPageUrl;
         pendingLocation = null;
         navigationService.NavigateTo(location);
     }
@@ -562,7 +634,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         var contentToSave = Content;
         try
         {
-            Note = await noteService.SaveNoteAsync(Note.Id, contentToSave);
+            Note = await Notes.SaveNoteAsync(Note.Id, contentToSave);
             savedContent = contentToSave;
             LastSavedAt = Note.ModifiedAt;
             OnPropertyChanged(nameof(IsDirty));

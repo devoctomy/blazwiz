@@ -17,6 +17,12 @@ public partial class NoteEditor : MvvmComponentBase<NoteEditorViewModel>
     private bool shortcutsAttached;
 
     /// <summary>
+    /// Gets or sets the note's notebook (its sync profile name), or null for the default notebook.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = NoteEditorViewModel.NotebookQueryParameter)]
+    public string? NotebookName { get; set; }
+
+    /// <summary>
     /// Gets or sets the id of the note to edit (its key), from the <c>note</c> query string parameter. A query string,
     /// because a path ending in <c>.md</c> would be treated as a file by static hosting and not reach the app.
     /// </summary>
@@ -47,7 +53,7 @@ public partial class NoteEditor : MvvmComponentBase<NoteEditorViewModel>
     protected override async Task OnParametersSetAsync()
     {
         await base.OnParametersSetAsync();
-        await ViewModel.LoadAsync(NoteId ?? string.Empty);
+        await ViewModel.LoadAsync(NotebookName, NoteId ?? string.Empty);
     }
 
     /// <inheritdoc/>
