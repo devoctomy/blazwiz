@@ -1,0 +1,47 @@
+@inherits MvvmComponentBase<E2eUnlockPanelViewModel>
+@inject IStringLocalizer<SyncUiText> SyncText
+
+@if (ViewModel.IsUnlocked)
+{
+    @ChildContent
+}
+else
+{
+    <div class="panel e2e-unlock-panel text-center" id="e2e-unlock-panel" data-profile="@Profile">
+        <i class="bi bi-shield-lock display-6 text-body-secondary"></i>
+        <p class="mt-2" id="e2e-unlock-message">@ViewModel.Message</p>
+        @if (ViewModel.IsLocked)
+        {
+            <form class="e2e-unlock-form mx-auto" id="e2e-unlock-form" @onsubmit="() => ViewModel.UnlockCommand.ExecuteAsync(null)" @onsubmit:preventDefault>
+                <label class="visually-hidden" for="e2e-unlock-passphrase">@SyncText["Sync.E2e.Passphrase"]</label>
+                <input type="password" class="form-control mb-2" id="e2e-unlock-passphrase" autocomplete="current-password"
+                       placeholder="@SyncText["Sync.E2e.Passphrase"]" disabled="@ViewModel.IsWorking"
+                       @bind="ViewModel.Passphrase" @bind:event="oninput" />
+                <button type="submit" class="btn btn-primary w-100" id="e2e-unlock-button" disabled="@ViewModel.IsWorking">
+                    @if (ViewModel.IsWorking)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    }
+                    @SyncText["Sync.E2e.Unlock"]
+                </button>
+                @if (ViewModel.Profile?.CanUnlockWithDevice == true)
+                {
+                    <button type="button" class="btn btn-outline-primary w-100 mt-2" id="e2e-unlock-passkey-button" disabled="@ViewModel.IsWorking"
+                            @onclick="() => ViewModel.UnlockWithDeviceCommand.ExecuteAsync(null)">
+                        <i class="bi bi-fingerprint me-1"></i>@SyncText["Sync.E2e.UnlockWithPasskey"]
+                    </button>
+                }
+            </form>
+        }
+        else if (ViewModel.NeedsPassphrase)
+        {
+            <button type="button" class="btn btn-primary" id="e2e-unlock-settings" @onclick="() => ViewModel.OpenSettingsCommand.Execute(null)">
+                <i class="bi bi-key me-1"></i>@SyncText["Sync.E2e.SetPassphrase"]
+            </button>
+        }
+        @if (!string.IsNullOrEmpty(ViewModel.Error))
+        {
+            <div class="text-danger mt-2" id="e2e-unlock-error">@ViewModel.Error</div>
+        }
+    </div>
+}

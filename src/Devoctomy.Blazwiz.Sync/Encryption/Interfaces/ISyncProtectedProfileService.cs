@@ -1,4 +1,5 @@
 using Devoctomy.Blazwiz.Encryption.Models;
+using Devoctomy.Blazwiz.Sync.Models;
 
 namespace Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 
@@ -10,6 +11,22 @@ namespace Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 /// </summary>
 public interface ISyncProtectedProfileService
 {
+    /// <summary>
+    /// Raised when <see cref="Profiles"/> changes: loaded, a profile created, set up or deleted, or unloaded.
+    /// </summary>
+    event EventHandler? ProfilesChanged;
+
+    /// <summary>
+    /// Gets a value indicating whether the user's profiles are loaded. False until <see cref="LoadAsync"/> succeeds,
+    /// and after <see cref="Unload"/>.
+    /// </summary>
+    bool IsLoaded { get; }
+
+    /// <summary>
+    /// Gets the user's profiles: those set up in code, in the order they were added, then those the user created.
+    /// </summary>
+    IReadOnlyList<SyncProtectedProfile> Profiles { get; }
+
     /// <summary>
     /// Adds the user's protected profiles as sync profiles, from their index (or this device's copy of it), and
     /// removes any deleted elsewhere. Called when the session starts.
@@ -26,14 +43,6 @@ public interface ISyncProtectedProfileService
     /// <param name="ct">A cancellation token.</param>
     /// <returns>The new profile's scope; its id is the sync profile's name.</returns>
     Task<E2eKeyScope> CreateAsync(string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
-
-    /// <summary>
-    /// Gets whether a profile has its keys yet: a profile set up in code has none until the user sets its passphrase.
-    /// </summary>
-    /// <param name="scope">The profile's scope.</param>
-    /// <param name="ct">A cancellation token.</param>
-    /// <returns>True when the profile has its keys.</returns>
-    Task<bool> IsSetUpAsync(E2eKeyScope scope, CancellationToken ct = default);
 
     /// <summary>
     /// Sets the passphrase of a profile set up in code the first time, creating its keys with its settings. It is
@@ -57,8 +66,10 @@ public interface ISyncProtectedProfileService
     Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes a protected profile: its keys first, so nothing left behind can be decrypted, then its files in S3 and
-    /// on this device, under its sync lock, and then the sync profile.
+    /// Deletes a protected profile, under its sync lock: finds its files in S3 (and stops, with nothing deleted, if S3
+    /// cannot be reached), then deletes its keys, so nothing left behind can be decrypted, then its files in S3 and on
+    /// this device, and then the sync profile. Without a sync target in the session (local development) there are no
+    /// files in S3 to delete.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>
     /// <param name="ct">A cancellation token.</param>

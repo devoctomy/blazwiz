@@ -77,6 +77,17 @@ public class SyncProfileOptions
     public E2eProfileSettings Settings { get; set; } = new E2eProfileSettings();
 
     /// <summary>
+    /// Gets or sets the key of the profile's display name in <see cref="DisplayTextResource"/>, or null to show its
+    /// name.
+    /// </summary>
+    public string? DisplayText { get; set; }
+
+    /// <summary>
+    /// Gets or sets the class the display name's resources are named after (e.g. the app's own resources).
+    /// </summary>
+    public Type? DisplayTextResource { get; set; }
+
+    /// <summary>
     /// Gets a value indicating whether the user can switch the storage the files are kept in.
     /// </summary>
     public bool IsSwitchable => FileStores.Count > 0;

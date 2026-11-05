@@ -129,8 +129,11 @@
   <data name="Sync.E2e.Acknowledge" xml:space="preserve">
     <value>I understand that if I forget this passphrase, my encrypted files cannot be recovered.</value>
   </data>
-  <data name="Sync.E2e.Banner.NeedsSetup" xml:space="preserve">
-    <value>Your files are end to end encrypted. Set up this device with your passphrase to read and sync them.</value>
+  <data name="Sync.E2e.AppProfiles" xml:space="preserve">
+    <value>Encrypted by this app</value>
+  </data>
+  <data name="Sync.E2e.Banner.NeedsPassphrase" xml:space="preserve">
+    <value>{0} needs a passphrase before it can be used.</value>
   </data>
   <data name="Sync.E2e.ChangePassphrase" xml:space="preserve">
     <value>Change passphrase</value>
@@ -138,35 +141,53 @@
   <data name="Sync.E2e.ConfirmPassphrase" xml:space="preserve">
     <value>Enter the new passphrase again</value>
   </data>
+  <data name="Sync.E2e.CreatedProfiles" xml:space="preserve">
+    <value>Your protected profiles</value>
+  </data>
   <data name="Sync.E2e.CurrentPassphrase" xml:space="preserve">
     <value>Current passphrase</value>
   </data>
+  <data name="Sync.E2e.Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Sync.E2e.DeleteConfirmation" xml:space="preserve">
+    <value>Type {0} to confirm</value>
+  </data>
   <data name="Sync.E2e.Dialog.ChangePassphrase.Text" xml:space="preserve">
-    <value>Your files and other devices are not affected. Use the new passphrase when you next set up a device.</value>
+    <value>Changes the passphrase of {0}. Its files and other devices are not affected; use the new passphrase from now on.</value>
   </data>
-  <data name="Sync.E2e.Dialog.Deriving" xml:space="preserve">
-    <value>Deriving your passphrase key… this can take a few seconds.</value>
+  <data name="Sync.E2e.Dialog.Create.Text" xml:space="preserve">
+    <value>A new protected profile, with its own passphrase and keys. It is known only by its id.</value>
   </data>
-  <data name="Sync.E2e.Dialog.Enable" xml:space="preserve">
-    <value>Enable end to end encryption</value>
+  <data name="Sync.E2e.Dialog.Created" xml:space="preserve">
+    <value>Created {0}</value>
   </data>
-  <data name="Sync.E2e.Dialog.Enable.Text" xml:space="preserve">
-    <value>Your files will be encrypted on this device before they are synced. Other devices need this passphrase once to be set up.</value>
+  <data name="Sync.E2e.Dialog.Delete" xml:space="preserve">
+    <value>Delete protected profile</value>
   </data>
-  <data name="Sync.E2e.Dialog.Enabled" xml:space="preserve">
-    <value>E2E Encryption Enabled</value>
+  <data name="Sync.E2e.Dialog.Delete.Text" xml:space="preserve">
+    <value>This deletes {0} and its files on every device, and its keys, so they can never be decrypted. It cannot be undone.</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Deleted" xml:space="preserve">
+    <value>Deleted</value>
   </data>
   <data name="Sync.E2e.Dialog.PassphraseChanged" xml:space="preserve">
     <value>Passphrase changed</value>
   </data>
-  <data name="Sync.E2e.Dialog.SetUp.Text" xml:space="preserve">
-    <value>Enter the passphrase you chose when you turned encryption on. It is only needed once on this device; after that your passkey unlocks it.</value>
+  <data name="Sync.E2e.Dialog.PassphraseSet" xml:space="preserve">
+    <value>Passphrase set</value>
   </data>
-  <data name="Sync.E2e.Dialog.SetUpDone" xml:space="preserve">
-    <value>This device is set up</value>
+  <data name="Sync.E2e.Dialog.SetPassphrase.Text" xml:space="preserve">
+    <value>Choose the passphrase that protects {0}. You need it to unlock {0} on each device.</value>
   </data>
-  <data name="Sync.E2e.Enable" xml:space="preserve">
-    <value>Enable encryption</value>
+  <data name="Sync.E2e.Dialog.Unlock.Text" xml:space="preserve">
+    <value>Enter the passphrase of {0}.</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Unlocked" xml:space="preserve">
+    <value>Unlocked</value>
+  </data>
+  <data name="Sync.E2e.Dialog.Working" xml:space="preserve">
+    <value>Please wait…</value>
   </data>
   <data name="Sync.E2e.Error.AcknowledgeNoRecovery" xml:space="preserve">
     <value>Confirm you understand there is no passphrase recovery.</value>
@@ -174,59 +195,74 @@
   <data name="Sync.E2e.Error.CurrentPassphraseRequired" xml:space="preserve">
     <value>Enter your current passphrase.</value>
   </data>
+  <data name="Sync.E2e.Error.DeleteConfirmationDiffers" xml:space="preserve">
+    <value>Type the id exactly to confirm.</value>
+  </data>
   <data name="Sync.E2e.Error.PassphraseRequired" xml:space="preserve">
     <value>Enter your passphrase.</value>
   </data>
   <data name="Sync.E2e.Error.PassphrasesDiffer" xml:space="preserve">
     <value>The passphrases do not match.</value>
   </data>
-  <data name="Sync.E2e.Error.PassphraseTooShort" xml:space="preserve">
-    <value>Use a passphrase of at least {0} characters.</value>
-  </data>
   <data name="Sync.E2e.Error.WrongPassphrase" xml:space="preserve">
     <value>That passphrase is not correct. Try again.</value>
+  </data>
+  <data name="Sync.E2e.Indicator.Unlocked.One" xml:space="preserve">
+    <value>1 unlocked</value>
+  </data>
+  <data name="Sync.E2e.Indicator.Unlocked.Other" xml:space="preserve">
+    <value>{0} unlocked</value>
+  </data>
+  <data name="Sync.E2e.Lock" xml:space="preserve">
+    <value>Lock</value>
+  </data>
+  <data name="Sync.E2e.LockAll" xml:space="preserve">
+    <value>Lock all</value>
+  </data>
+  <data name="Sync.E2e.New" xml:space="preserve">
+    <value>New protected profile</value>
   </data>
   <data name="Sync.E2e.NewPassphrase" xml:space="preserve">
     <value>New passphrase</value>
   </data>
+  <data name="Sync.E2e.NoCreatedProfiles" xml:space="preserve">
+    <value>You have no protected profiles.</value>
+  </data>
   <data name="Sync.E2e.NoRecoveryWarning" xml:space="preserve">
     <value>There is no passphrase recovery. If you forget your passphrase, nobody can decrypt your files, including us.</value>
+  </data>
+  <data name="Sync.E2e.Offline" xml:space="preserve">
+    <value>You're offline. Profiles can be unlocked and locked, but passphrases can't be set or changed, and profiles can't be created or deleted, until you sign in online.</value>
+  </data>
+  <data name="Sync.E2e.Panel.Locked" xml:space="preserve">
+    <value>{0} is locked. Enter its passphrase to use it.</value>
+  </data>
+  <data name="Sync.E2e.Panel.NeedsPassphrase" xml:space="preserve">
+    <value>{0} needs a passphrase before it can be used. Set one in Settings.</value>
   </data>
   <data name="Sync.E2e.Passphrase" xml:space="preserve">
     <value>Passphrase</value>
   </data>
-  <data name="Sync.E2e.SetUp" xml:space="preserve">
-    <value>Set up</value>
+  <data name="Sync.E2e.SetPassphrase" xml:space="preserve">
+    <value>Set passphrase</value>
   </data>
-  <data name="Sync.E2e.SetUpDevice" xml:space="preserve">
-    <value>Set up this device</value>
+  <data name="Sync.E2e.State.Locked" xml:space="preserve">
+    <value>Locked</value>
+  </data>
+  <data name="Sync.E2e.State.NotSetUp" xml:space="preserve">
+    <value>No passphrase yet</value>
+  </data>
+  <data name="Sync.E2e.State.Unlocked" xml:space="preserve">
+    <value>Unlocked</value>
   </data>
   <data name="Sync.E2e.Status.Checking" xml:space="preserve">
     <value>Checking…</value>
   </data>
-  <data name="Sync.E2e.Status.Disabled" xml:space="preserve">
-    <value>Off.</value>
-  </data>
-  <data name="Sync.E2e.Status.NeedsSetup" xml:space="preserve">
-    <value>On, but this device has not been set up yet. Enter your passphrase to read and sync your files here.</value>
-  </data>
-  <data name="Sync.E2e.Status.Offline" xml:space="preserve">
-    <value>{0} You're offline, so this is this device's own state, and encryption can't be changed until you sign in online.</value>
-  </data>
-  <data name="Sync.E2e.Status.OffOnThisDevice" xml:space="preserve">
-    <value>Off on this device.</value>
-  </data>
-  <data name="Sync.E2e.Status.Unlocked" xml:space="preserve">
-    <value>On. Your files are encrypted on this device before they are synced.</value>
-  </data>
-  <data name="Sync.E2e.Status.Unsupported" xml:space="preserve">
-    <value>Not available with this sign in.</value>
-  </data>
   <data name="Sync.E2e.Step.CreateKeys" xml:space="preserve">
-    <value>Create your master key and file key</value>
+    <value>Create the master key and file key</value>
   </data>
   <data name="Sync.E2e.Step.DeriveKey" xml:space="preserve">
-    <value>Derive your passphrase key (Argon2id)</value>
+    <value>Derive the passphrase key (Argon2id)</value>
   </data>
   <data name="Sync.E2e.Step.Done" xml:space="preserve">
     <value>Done</value>
@@ -241,19 +277,28 @@
     <value>Running</value>
   </data>
   <data name="Sync.E2e.Step.SaveKeys" xml:space="preserve">
-    <value>Save your keys to your account</value>
+    <value>Save the keys to your account</value>
   </data>
   <data name="Sync.E2e.Step.StoreDeviceKey" xml:space="preserve">
-    <value>Secure this device with your passkey</value>
+    <value>Keep a copy on this device</value>
   </data>
   <data name="Sync.E2e.Step.Waiting" xml:space="preserve">
     <value>Waiting</value>
   </data>
   <data name="Sync.E2e.Text" xml:space="preserve">
-    <value>Encrypts your files on this device with a key only you hold, so they are synced and stored encrypted. It needs your passkey and a passphrase of your own.</value>
+    <value>Your files are encrypted on this device, with keys only you hold, before they are synced. Each set of files has its own passphrase.</value>
   </data>
   <data name="Sync.E2e.Title" xml:space="preserve">
     <value>End to end encryption</value>
+  </data>
+  <data name="Sync.E2e.Unlock" xml:space="preserve">
+    <value>Unlock</value>
+  </data>
+  <data name="Sync.E2e.UnlockWithPasskey" xml:space="preserve">
+    <value>Unlock with passkey</value>
+  </data>
+  <data name="Sync.E2e.UsePasskey" xml:space="preserve">
+    <value>Use passkey on this device</value>
   </data>
   <data name="Sync.Folder.Banner" xml:space="preserve">
     <value>Your files are kept in the folder {0}. Allow access to it again to use them and sync.</value>
@@ -518,6 +563,9 @@
   </data>
   <data name="Sync.PendingChanges" xml:space="preserve">
     <value>Pending changes</value>
+  </data>
+  <data name="Sync.Profile.Files" xml:space="preserve">
+    <value>Files</value>
   </data>
   <data name="Sync.Settings.Connection" xml:space="preserve">
     <value>Connection</value>

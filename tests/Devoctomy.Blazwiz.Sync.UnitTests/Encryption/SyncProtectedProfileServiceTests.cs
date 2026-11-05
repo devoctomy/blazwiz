@@ -3,6 +3,7 @@ using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Encryption;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 using Moq;
@@ -95,17 +96,21 @@ public class SyncProtectedProfileServiceTests
         // Arrange
         var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
         mockManager.Setup(x => x.CreateAsync("pass", options.ProfileDefaults, null, It.IsAny<CancellationToken>())).ReturnsAsync(scope);
+        var sut = CreateSut();
+        var raised = 0;
+        sut.ProfilesChanged += (_, _) => raised++;
 
         // Act
-        var result = await CreateSut().CreateAsync("pass");
+        var result = await sut.CreateAsync("pass");
 
         // Assert
         Assert.Equal(scope, result);
         Assert.Equal(scope, registry.Find(scope.Id)!.KeyScope);
+        Assert.Equal(1, raised);
     }
 
     [Fact]
-    public async Task GivenAProtectedProfile_WhenDeleted_ThenKeysGoFirstThenItsFilesUnderItsLockThenTheProfile()
+    public async Task GivenAProtectedProfile_WhenDeleted_ThenUnderItsLockItsKeysGoThenItsFilesThenTheProfile()
     {
         // Arrange
         var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
@@ -129,14 +134,47 @@ public class SyncProtectedProfileServiceTests
         mockResolver.Setup(x => x.GetStore(scope.Id, SyncStorageKind.IndexedDb)).Returns(indexedDb.Object);
         mockResolver.Setup(x => x.GetStore(scope.Id, SyncStorageKind.Opfs)).Returns(opfs.Object);
 
+        var raised = 0;
+        sut.ProfilesChanged += (_, _) => raised++;
+
         // Act
         await sut.DeleteAsync(scope);
 
         // Assert
         Assert.Equal(
-            ["delete keys", "lock sync-" + scope.Id, $"delete remote profiles/{scope.Id}/a", "delete index", "delete indexeddb", "delete opfs", "release"],
+            ["lock sync-" + scope.Id, "delete keys", $"delete remote profiles/{scope.Id}/a", "delete index", "delete indexeddb", "delete opfs", "release"],
             calls);
         mockResolver.Verify(x => x.GetStore(scope.Id, SyncStorageKind.LocalFolder), Times.Never);
+        Assert.Null(registry.Find(scope.Id));
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    public async Task GivenS3CannotBeReached_WhenDeleted_ThenThrowsAndNothingIsDeleted()
+    {
+        // Arrange
+        var (sut, scope, remote) = await CreateDeletableProfileAsync();
+        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new SyncNetworkException(SyncErrorCodes.RemoteUnreachable));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<SyncNetworkException>(() => sut.DeleteAsync(scope));
+        mockManager.Verify(x => x.DeleteAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.NotNull(registry.Find(scope.Id));
+    }
+
+    [Fact]
+    public async Task GivenNoSyncTarget_WhenDeleted_ThenItsKeysAndLocalFilesAreDeleted()
+    {
+        // Arrange
+        var (sut, scope, remote) = await CreateDeletableProfileAsync();
+        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException(SyncErrorCodes.RemoteNoCredentials));
+
+        // Act
+        await sut.DeleteAsync(scope);
+
+        // Assert
+        mockManager.Verify(x => x.DeleteAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
+        remote.Verify(x => x.DeleteAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Null(registry.Find(scope.Id));
     }
 
@@ -300,15 +338,75 @@ public class SyncProtectedProfileServiceTests
     }
 
     [Fact]
-    public async Task GivenTheIndex_WhenIsSetUp_ThenTrueOnlyForProfilesInIt()
+    public async Task GivenTheIndex_WhenLoaded_ThenProfilesListThoseInCodeThenThoseCreatedWithWhetherEachIsSetUp()
+    {
+        // Arrange
+        var created = Guid.NewGuid().ToString("D");
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = created }]);
+        var sut = CreateSut();
+        var raised = 0;
+        sut.ProfilesChanged += (_, _) => raised++;
+
+        // Act
+        var before = sut.Profiles;
+        await sut.LoadAsync();
+
+        // Assert
+        Assert.Empty(before);
+        Assert.True(sut.IsLoaded);
+        Assert.Equal(1, raised);
+        Assert.Collection(
+            sut.Profiles,
+            p =>
+            {
+                Assert.Equal("notes", p.Name);
+                Assert.Equal(notes, p.Scope);
+                Assert.False(p.IsCreatedByUser);
+                Assert.False(p.IsSetUp);
+            },
+            p =>
+            {
+                Assert.Equal(created, p.Name);
+                Assert.True(p.IsCreatedByUser);
+                Assert.True(p.IsSetUp);
+            });
+    }
+
+    [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenItsPassphraseIsSet_ThenItIsSetUpAndProfilesChangedIsRaised()
+    {
+        // Arrange
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+        var raised = 0;
+        sut.ProfilesChanged += (_, _) => raised++;
+
+        // Act
+        await sut.SetUpAsync(notes, "correct horse battery");
+
+        // Assert
+        Assert.True(Assert.Single(sut.Profiles).IsSetUp);
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    public async Task GivenLoaded_WhenUnloaded_ThenNoProfilesAndProfilesChangedIsRaised()
     {
         // Arrange
         mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = notes.Id }]);
         var sut = CreateSut();
+        await sut.LoadAsync();
+        var raised = 0;
+        sut.ProfilesChanged += (_, _) => raised++;
 
-        // Act & Assert
-        Assert.True(await sut.IsSetUpAsync(notes));
-        Assert.False(await sut.IsSetUpAsync(new E2eKeyScope(Guid.NewGuid().ToString("D"))));
+        // Act
+        sut.Unload();
+
+        // Assert
+        Assert.False(sut.IsLoaded);
+        Assert.Empty(sut.Profiles);
+        Assert.Equal(1, raised);
     }
 
     [Fact]
@@ -325,6 +423,22 @@ public class SyncProtectedProfileServiceTests
         store.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new SyncFileInfo { Key = key }]);
         store.Setup(x => x.DeleteAsync(key, It.IsAny<CancellationToken>())).Callback(() => calls.Add("delete " + label)).Returns(Task.CompletedTask);
         return store;
+    }
+
+    private async Task<(SyncProtectedProfileService Sut, E2eKeyScope Scope, Mock<ISyncRemoteStore> Remote)> CreateDeletableProfileAsync()
+    {
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.CreateAsync("pass", options.ProfileDefaults, null, It.IsAny<CancellationToken>())).ReturnsAsync(scope);
+        var sut = CreateSut();
+        await sut.CreateAsync("pass");
+        var remote = new Mock<ISyncRemoteStore>();
+        var index = new Mock<ISyncIndexStore>();
+        index.Setup(x => x.GetAllAsync(scope.Id, "bob", It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        registry.SetSyncProfile(new SyncProfile(scope.Id, Mock.Of<ISyncFileStore>(), index.Object, remote.Object, Mock.Of<ISyncPathMatcher>()));
+        mockResolver.Setup(x => x.GetStateAsync(scope.Id)).ReturnsAsync(new SyncStorageState { Kind = SyncStorageKind.IndexedDb });
+        mockResolver.Setup(x => x.GetKinds(scope.Id)).Returns([SyncStorageKind.IndexedDb]);
+        mockResolver.Setup(x => x.GetStore(scope.Id, SyncStorageKind.IndexedDb)).Returns(StoreWith("profiles/a", "indexeddb").Object);
+        return (sut, scope, remote);
     }
 
     private SyncProtectedProfileService CreateSut() => new(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object);

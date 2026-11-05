@@ -103,7 +103,8 @@ public class SyncModuleServiceCollectionExtensionsTests
         Assert.IsType<E2eProtectedProfileManager>(scope.ServiceProvider.GetRequiredService<IE2eProtectedProfileManager>());
         Assert.IsType<EncryptingSyncFileStore>(scope.ServiceProvider.GetRequiredKeyedService<ISyncFileStore>(Profile));
         Assert.IsType<LocalStorageE2eLocalKeyStore>(scope.ServiceProvider.GetRequiredService<IE2eLocalKeyStore>());
-        Assert.IsType<SyncEncryptionService>(scope.ServiceProvider.GetRequiredService<ISyncEncryptionService>());
+        Assert.IsType<E2eProfilePresenter>(scope.ServiceProvider.GetRequiredService<IE2eProfilePresenter>());
+        Assert.IsType<SyncProfileDisplayNames>(scope.ServiceProvider.GetRequiredService<ISyncProfileDisplayNames>());
         Assert.Empty(scope.ServiceProvider.GetServices<ISyncGate>());
         Assert.Equal([Profile], scope.ServiceProvider.GetRequiredService<ISyncService>().Profiles);
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<SyncViewModel>());

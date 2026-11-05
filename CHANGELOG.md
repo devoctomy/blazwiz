@@ -9,6 +9,13 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 ## Unreleased
 
 ### Added
+- Profiles can have a display name from resources: `UseDisplayText(key, resourceType)`, shown by Settings and the
+  Sync page's profile filter (`ISyncProfileDisplayNames`).
+- `E2eUnlockPanel`: wrap a page's content of a profile in it, and while the profile is locked it shows a passphrase
+  form (and the passkey, where allowed) in its place. The template's Files and note editor pages use it.
+- A lock indicator beside the sync status pill: how many profiles are unlocked, with Lock all.
+- `ISyncProtectedProfileService.Profiles`, `IsLoaded` and `ProfilesChanged`: the user's profiles, and whether each has
+  a passphrase yet.
 - Sync profiles can be classes deriving from `SyncProfileDefinition`, added with `AddProfile<TProfile>()` or found in
   an assembly with `AddProfilesFromAssemblyContaining<T>()`.
 - Protected profiles, each with its own passphrase and keys (`IE2eProtectedProfileManager`): create, list, unlock
@@ -36,8 +43,12 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 - Without a Cognito user pool (local development), the keys are kept in the browser, so encryption works locally.
 - The sync module reads the Argon2id settings for new keys from the optional `Argon2id` configuration section. The
   template's `appsettings.Development.json` lightens them for local development and the UI tests.
-- Settings sets or enters the passphrase of the profiles set up in code, and the banner points there while they are
-  locked. Encryption can no longer be turned off.
+- Settings lists the profiles set up in code, by display name, and the protected profiles the user created, by id:
+  set a first passphrase, create, unlock (with the passkey too, where allowed), lock, lock all, change the passphrase
+  and delete (confirmed by typing the id). Encryption can no longer be turned off. The banner shows only while a
+  profile set up in code has no passphrase yet.
+- Deleting a protected profile finds its files in S3 before deleting its keys, and stops with nothing deleted if S3
+  cannot be reached.
 - The AWS base stack lets each user manage their secrets under `<sub>/keys/` (each profile's keys and the index) in
   place of the single `<sub>/keys` secret; redeploy with `deploy.ps1`. `test-auth.ps1` checks them.
 - The template's sync profiles are classes (`NotesSyncProfile`, or `FilesSyncProfile` without the notes example),
@@ -46,8 +57,10 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ### Removed
 - The account-wide passphrase and keys: `IE2eKeyManager`, `E2eWriteMode`, `E2eSyncGate`, `ISyncEncryptionSweeper`,
-  `E2eAlreadyEnabledException` (`E2e.AlreadyEnabled`) and the account key scope. Plain files are no longer synced or
+  `ISyncEncryptionService`, `E2eStatus`, `E2eSettingsViewModel`, `E2eAlreadyEnabledException` (`E2e.AlreadyEnabled`)
+  and the account key scope. Plain files are no longer synced or
   read by encrypted profiles.
+- The template's per-note lock icons (`NoteEntry.EncryptionKeyId`): locked notes are not shown at all.
 
 ## 0.3.0
 

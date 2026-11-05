@@ -1,5 +1,6 @@
 using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Models;
+using Devoctomy.Blazwiz.UI.Sync.Text;
 
 namespace MyApp.Portal.Sync;
 
@@ -32,6 +33,7 @@ public sealed class FilesSyncProfile : SyncProfileDefinition
                 .AddLocalFolder()
                 .UseDefault(SyncStorageKind.IndexedDb))
             .UseRemote("files/**/*")
-            .UseKeyId(KeyId);
+            .UseKeyId(KeyId)
+            .UseDisplayText("Sync.Profile.Files", typeof(SyncUiText));
     }
 }

@@ -55,8 +55,12 @@ public partial class NoteEditor : MvvmComponentBase<NoteEditorViewModel>
     {
         await base.OnAfterRenderAsync(firstRender);
 
-        // The editor only exists once the note has loaded.
-        if (!shortcutsAttached && ViewModel.Note != null)
+        // The editor only exists once the note has loaded, and while the notes are unlocked.
+        if (!ViewModel.IsUnlocked)
+        {
+            shortcutsAttached = false;
+        }
+        else if (!shortcutsAttached && ViewModel.Note != null)
         {
             shortcutsAttached = true;
             selfReference = DotNetObjectReference.Create(this);

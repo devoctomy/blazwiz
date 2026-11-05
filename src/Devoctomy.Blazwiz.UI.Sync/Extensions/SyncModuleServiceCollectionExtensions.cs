@@ -76,6 +76,8 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddSingleton<ISyncEventPresenter, SyncEventPresenter>();
         services.AddSingleton<ISyncStatusPresenter, SyncStatusPresenter>();
         services.AddScoped<ISyncFolderAccessMonitor, SyncFolderAccessMonitor>();
+        services.AddScoped<ISyncProfileDisplayNames, SyncProfileDisplayNames>();
+        services.AddScoped<IE2eProfilePresenter, E2eProfilePresenter>();
         services.AddSessionLifecycleHandler<SyncSessionHandler>();
         services.AddErrorText<SyncUiText>();
 
@@ -96,7 +98,6 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddScoped<IE2eLockChannel, E2eLockChannel>();
         services.AddScoped<IE2eIdleLock, E2eIdleLock>();
         services.AddScoped<ISyncProtectedProfileService, SyncProtectedProfileService>();
-        services.AddScoped<ISyncEncryptionService, SyncEncryptionService>();
 
         services.AddBlazwizSync(configure);
 

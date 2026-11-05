@@ -45,11 +45,6 @@ public class NoteEntry
     public DateTimeOffset ModifiedAt { get; set; }
 
     /// <summary>
-    /// Gets or sets the id of the key the note is end to end encrypted with, or null when it is not encrypted.
-    /// </summary>
-    public string? EncryptionKeyId { get; set; }
-
-    /// <summary>
     /// Gets a value indicating whether the entry is a folder.
     /// </summary>
     [JsonIgnore]

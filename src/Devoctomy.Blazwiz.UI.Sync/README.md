@@ -35,6 +35,18 @@ ones suit local development and UI tests):
 }
 ```
 
+Settings lists the profiles set up in code, by their display names (`UseDisplayText(key, resourceType)` on the
+profile, or its name), and the protected profiles the user creates, by id, each with its own passphrase. A banner
+shows while a profile set up in code has no passphrase yet, and a lock indicator beside the sync pill shows how many
+are unlocked, with Lock all. Wrap a page's content of a profile in `E2eUnlockPanel`, and while the profile is locked
+it asks for the passphrase in its place:
+
+```razor
+<E2eUnlockPanel Profile="photos">
+    ...
+</E2eUnlockPanel>
+```
+
 Its text comes from resources (`SyncUiText`), so apps can reword and translate it.
 
 ## Versions

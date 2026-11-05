@@ -34,7 +34,6 @@ public class NoteTreeService
             else if (IsNoteKey(file.Key))
             {
                 var entry = CreateEntry(file.Key, owner, NoteEntryKind.Note, file.ModifiedAt);
-                entry.EncryptionKeyId = file.EncryptionKeyId;
                 entries[file.Key] = entry;
                 var parent = GetParentKey(file.Key);
                 if (parent != null)

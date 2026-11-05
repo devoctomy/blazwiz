@@ -2,8 +2,8 @@ using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
+using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
-using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -12,6 +12,7 @@ using Microsoft.JSInterop;
 using MyApp.Portal.Application.Exceptions;
 using MyApp.Portal.Application.Services;
 using MyApp.Portal.Application.Services.Interfaces;
+using MyApp.Portal.Application.Sync;
 using MyApp.Portal.Models.Notes;
 
 namespace MyApp.Portal.Application.ViewModels;
@@ -37,12 +38,14 @@ public partial class FilesViewModel : ViewModelBase
     /// </summary>
     public const string StorageErrorMessage = "Your notes could not be read or saved in this browser's storage.";
 
+    private static readonly E2eKeyScope NotesScope = new E2eKeyScope(NotesSyncProfile.KeyId);
+
     private readonly INoteService noteService;
     private readonly INavigationService navigationService;
     private readonly INoteNameService noteNameService;
     private readonly INoteTreeService noteTreeService;
     private readonly ISyncService syncService;
-    private readonly ISyncEncryptionService encryptionService;
+    private readonly IE2eProtectedProfileManager manager;
     private readonly HashSet<string> expandedFolderIds = [];
     private readonly IErrorText errorText;
 
@@ -70,7 +73,7 @@ public partial class FilesViewModel : ViewModelBase
     /// <param name="noteNameService">The note name service.</param>
     /// <param name="noteTreeService">The note tree service.</param>
     /// <param name="syncService">The sync service, to refresh when a sync changes the notes.</param>
-    /// <param name="encryptionService">Says whether encrypted notes can be decrypted on this device.</param>
+    /// <param name="manager">Says whether the notes are unlocked, and when that changes.</param>
     /// <param name="errorText">Describes the framework's errors (storage, encryption) for the user.</param>
     public FilesViewModel(
         INoteService noteService,
@@ -78,7 +81,7 @@ public partial class FilesViewModel : ViewModelBase
         INoteNameService noteNameService,
         INoteTreeService noteTreeService,
         ISyncService syncService,
-        ISyncEncryptionService encryptionService,
+        IE2eProtectedProfileManager manager,
         IErrorText errorText)
     {
         this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
@@ -86,13 +89,19 @@ public partial class FilesViewModel : ViewModelBase
         this.noteNameService = noteNameService ?? throw new ArgumentNullException(nameof(noteNameService));
         this.noteTreeService = noteTreeService ?? throw new ArgumentNullException(nameof(noteTreeService));
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
-        this.encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
+        this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         lastSyncedAt = syncService.Status.LastSyncedAt;
         this.syncService.FilesChanged += OnFilesChanged;
         this.syncService.StatusChanged += OnSyncStatusChanged;
-        this.encryptionService.StatusChanged += OnEncryptionStatusChanged;
+        this.manager.LockStateChanged += OnLockStateChanged;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the notes are unlocked. While they are locked, the page shows the unlock panel
+    /// in their place.
+    /// </summary>
+    public bool IsUnlocked => manager.IsUnlocked(NotesScope);
 
     /// <summary>
     /// Gets the file extension given to every note, shown next to the name box.
@@ -257,7 +266,11 @@ public partial class FilesViewModel : ViewModelBase
     /// <inheritdoc/>
     public override async Task OnInitializedAsync()
     {
-        await RunAsync(ReloadAsync);
+        if (IsUnlocked)
+        {
+            await RunAsync(ReloadAsync);
+        }
+
         IsLoading = false;
     }
 
@@ -516,18 +529,6 @@ public partial class FilesViewModel : ViewModelBase
         ErrorMessage = null;
     }
 
-    /// <summary>
-    /// Gets whether a note is end to end encrypted, and if so whether this device can decrypt it, for its lock.
-    /// </summary>
-    /// <param name="entry">The note.</param>
-    /// <returns>Null when not encrypted; true when it can be decrypted here (green lock); false when not (red lock).</returns>
-    public bool? CanDecrypt(NoteEntry entry)
-    {
-        ArgumentNullException.ThrowIfNull(entry);
-
-        return entry.EncryptionKeyId == null ? null : encryptionService.CanDecrypt(entry.EncryptionKeyId);
-    }
-
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
@@ -535,7 +536,7 @@ public partial class FilesViewModel : ViewModelBase
         {
             syncService.FilesChanged -= OnFilesChanged;
             syncService.StatusChanged -= OnSyncStatusChanged;
-            encryptionService.StatusChanged -= OnEncryptionStatusChanged;
+            manager.LockStateChanged -= OnLockStateChanged;
         }
 
         base.Dispose(disposing);
@@ -628,10 +629,15 @@ public partial class FilesViewModel : ViewModelBase
         }
     }
 
-    private async void OnEncryptionStatusChanged(object? sender, E2eStatus status)
+    private async void OnLockStateChanged(object? sender, E2eKeyScope scope)
     {
-        // The locks change colour, and notes may now be readable or newly encrypted.
-        if (!IsBusy)
+        if (scope != NotesScope)
+        {
+            return;
+        }
+
+        OnPropertyChanged(nameof(IsUnlocked));
+        if (IsUnlocked && !IsBusy)
         {
             await ReloadSafelyAsync();
         }

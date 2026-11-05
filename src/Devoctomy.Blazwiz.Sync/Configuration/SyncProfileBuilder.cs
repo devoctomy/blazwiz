@@ -53,6 +53,23 @@ public class SyncProfileBuilder(SyncProfileOptions options)
     }
 
     /// <summary>
+    /// Sets the name the profile is shown by, from resources so it can be reworded and translated. Without it, the
+    /// profile is shown by its name.
+    /// </summary>
+    /// <param name="key">The display name's key in the resources.</param>
+    /// <param name="resource">The class the resources are named after, e.g. the app's own resources.</param>
+    /// <returns>The builder.</returns>
+    public SyncProfileBuilder UseDisplayText(string key, Type resource)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(resource);
+
+        Options.DisplayText = key;
+        Options.DisplayTextResource = resource;
+        return this;
+    }
+
+    /// <summary>
     /// Sets the profile's security settings: when it locks itself, whether it can be unlocked with the passkey, its
     /// passphrase rules and Argon2id costs.
     /// </summary>

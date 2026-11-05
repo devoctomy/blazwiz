@@ -1,6 +1,8 @@
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Sync.Models;
+using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Moq;
 
@@ -8,74 +10,92 @@ namespace Devoctomy.Blazwiz.UI.Sync.UnitTests.ViewModels;
 
 public class E2eBannerViewModelTests
 {
-    private readonly Mock<ISyncEncryptionService> mockEncryption = new();
+    private readonly Mock<ISyncProtectedProfileService> mockProfiles = new();
+    private readonly Mock<ISyncProfileDisplayNames> mockDisplayNames = new();
     private readonly Mock<INavigationService> mockNavigation = new();
     private readonly TestText testText = new();
-    private E2eStatus status = E2eStatus.Unknown;
+    private readonly List<SyncProtectedProfile> profiles = [];
 
     public E2eBannerViewModelTests()
     {
-        mockEncryption.SetupGet(x => x.Status).Returns(() => status);
+        mockProfiles.SetupGet(x => x.Profiles).Returns(() => profiles);
+        mockDisplayNames.Setup(x => x.GetDisplayName(It.IsAny<string>())).Returns((string name) => name == "notes" ? "Notes" : name);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(null!, mockNavigation.Object, testText.Sync)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, null!, testText.Sync)).ParamName);
-        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockEncryption.Object, mockNavigation.Object, null!)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(null!, mockDisplayNames.Object, mockNavigation.Object, testText.Sync)).ParamName);
+        Assert.Equal("displayNames", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockProfiles.Object, null!, mockNavigation.Object, testText.Sync)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockProfiles.Object, mockDisplayNames.Object, null!, testText.Sync)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eBannerViewModel(mockProfiles.Object, mockDisplayNames.Object, mockNavigation.Object, null!)).ParamName);
     }
 
-    [Theory]
-    [InlineData(E2eStatus.NeedsSetup, true)]
-    [InlineData(E2eStatus.Unlocked, false)]
-    [InlineData(E2eStatus.Disabled, false)]
-    [InlineData(E2eStatus.Unsupported, false)]
-    [InlineData(E2eStatus.Unknown, false)]
-    public void GivenStatus_WhenGettingVisibility_ThenShownOnlyWhileLocked(E2eStatus current, bool visible)
+    [Fact]
+    public void GivenAProfileInCodeWithoutAPassphrase_WhenShown_ThenTheBannerNamesIt()
     {
         // Arrange
-        status = current;
+        profiles.Add(Profile("notes", isSetUp: false));
 
         // Act
         using var sut = CreateSut();
 
         // Assert
-        Assert.Equal(visible, sut.IsVisible);
-        Assert.Equal(visible, sut.CanSetUp);
-        Assert.Equal(visible, sut.Message.Length > 0);
+        Assert.True(sut.IsVisible);
+        Assert.Equal("Notes needs a passphrase before it can be used.", sut.Message);
     }
 
     [Fact]
-    public void GivenTheBanner_WhenOpenSettings_ThenNavigatesToSettings()
+    public void GivenProfilesSetUpOrCreatedByTheUser_WhenShown_ThenNoBanner()
     {
         // Arrange
-        using var sut = CreateSut();
+        profiles.Add(Profile("notes", isSetUp: true));
+        profiles.Add(Profile(Guid.NewGuid().ToString("D"), isSetUp: true, isCreatedByUser: true));
 
         // Act
-        sut.OpenSettings();
+        using var sut = CreateSut();
+
+        // Assert
+        Assert.False(sut.IsVisible);
+        Assert.Empty(sut.Message);
+    }
+
+    [Fact]
+    public void GivenTheBanner_WhenAPassphraseIsSet_ThenItIsHidden()
+    {
+        // Arrange
+        profiles.Add(Profile("notes", isSetUp: false));
+        using var sut = CreateSut();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        profiles[0].IsSetUp = true;
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+
+        // Assert
+        Assert.False(sut.IsVisible);
+        Assert.Contains(nameof(E2eBannerViewModel.IsVisible), changed);
+    }
+
+    [Fact]
+    public void GivenTheBanner_WhenOpenSettings_ThenSettingsAreOpened()
+    {
+        // Act
+        CreateSut().OpenSettingsCommand.Execute(null);
 
         // Assert
         mockNavigation.Verify(x => x.NavigateTo("/settings"), Times.Once);
     }
 
-    [Fact]
-    public void GivenStatusChanges_WhenRaised_ThenVisibilityNotified()
+    private static SyncProtectedProfile Profile(string name, bool isSetUp, bool isCreatedByUser = false) => new()
     {
-        // Arrange
-        using var sut = CreateSut();
-        var changed = new List<string?>();
-        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
-        status = E2eStatus.NeedsSetup;
+        Name = name,
+        Scope = new E2eKeyScope(Guid.NewGuid().ToString("D")),
+        IsSetUp = isSetUp,
+        IsCreatedByUser = isCreatedByUser,
+    };
 
-        // Act
-        mockEncryption.Raise(x => x.StatusChanged += null, mockEncryption.Object, E2eStatus.NeedsSetup);
-
-        // Assert
-        Assert.Contains(nameof(E2eBannerViewModel.IsVisible), changed);
-        Assert.Contains(nameof(E2eBannerViewModel.Message), changed);
-    }
-
-    private E2eBannerViewModel CreateSut() => new(mockEncryption.Object, mockNavigation.Object, testText.Sync);
+    private E2eBannerViewModel CreateSut() => new(mockProfiles.Object, mockDisplayNames.Object, mockNavigation.Object, testText.Sync);
 }

@@ -195,6 +195,8 @@ What the user sees, in the framework (`UI.Sync`, D5):
 | D9 | Where do the settings of profiles users create come from? | Defaults the developer sets in code |
 | D10 | What id does a profile set up in code have? | One set in code; the developer chooses a fixed id or a newly generated one. The notes example has a fixed id, so it can be tested. Profiles users create get new GUIDs |
 | D8 | How is a protected profile named? | Only by its GUID, shown as a string. The user remembers what it represents. The notes sample has one configured profile, so it cannot be anything else |
+| D11 | How does Settings show the profiles, now that there is no account passphrase? | Two lists: the profiles set up in code, by display names from resources, and the profiles users create, by id. The current End to end encryption section is replaced |
+| D12 | What does the encryption banner do? | It shows only when a profile set up in code has no passphrase yet, and points to Settings to set one. Locked profiles are unlocked from the unlock panel or Settings |
 
 ## Work
 
@@ -230,7 +232,7 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 - [x] Lock in every tab over a broadcast channel (R6); lock all from a session lifecycle handler on sign out.
 - [x] Profiles set up in code (like notes) are protected profiles: each has an id set in code, its own passphrase and
       keys, and the user sets its passphrase the first time (R16, D10).
-- [ ] Remove the account-wide passphrase: `E2eKeyManager`, the sweeps, the gate, and its Settings section and banner
+- [x] Remove the account-wide passphrase: `E2eKeyManager`, the sweeps, the gate, and its Settings section and banner
       (R16).
 
 ### Phase 3: AWS
@@ -241,12 +243,13 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 
 ### Phase 4: UI (D5, see "UI" above)
 
-- [ ] Profile display names from resources (MP6), and the account section listing the profiles it protects.
-- [ ] Unlock panel component, in place of a locked scope's content (R4, R14).
-- [ ] Settings list of protected profiles by id, including those needing their passphrase on this device (D5).
-- [ ] Create, change passphrase and delete dialogs, with the no recovery acknowledgement (R9, R11).
-- [ ] Lock indicator beside the sync pill, with Lock all (R5).
-- [ ] Sync page labels protected profiles by id (D8).
+- [x] Profile display names from resources (MP6), and the account section listing the profiles it protects.
+  - Done differently: there is no account section (R16); Settings has two lists instead (D11).
+- [x] Unlock panel component, in place of a locked scope's content (R4, R14).
+- [x] Settings list of protected profiles by id, including those needing their passphrase on this device (D5).
+- [x] Create, change passphrase and delete dialogs, with the no recovery acknowledgement (R9, R11).
+- [x] Lock indicator beside the sync pill, with Lock all (R5).
+- [x] Sync page labels protected profiles by id (D8).
 
 ### Phase 5: proving it
 
@@ -256,6 +259,12 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 - [ ] The template's demo shows only notes (D5).
 - [ ] Docs: package READMEs, `CHANGELOG.md`, the sync diagrams (`docs/diagrams/sync.md`, `sync-framework.md`).
 - [ ] Upgrade test: `./templatepack/test-template.ps1 -UpgradeFrom latest` (public API and the base stack change).
+
+### Phase 6: notebooks in the notes demo
+
+- [ ] The user creates notebooks: each is a protected profile with its own passphrase and keys.
+- [ ] Notes are pages in a notebook.
+- [ ] Template tests (unit and UI) for user created profiles, through notebooks.
 
 ## Out of scope
 

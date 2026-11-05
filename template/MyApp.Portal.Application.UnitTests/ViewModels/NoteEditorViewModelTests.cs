@@ -1,4 +1,7 @@
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Exceptions;
+using Devoctomy.Blazwiz.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -8,6 +11,7 @@ using Microsoft.JSInterop;
 using Moq;
 using MyApp.Portal.Application.Exceptions;
 using MyApp.Portal.Application.Services.Interfaces;
+using MyApp.Portal.Application.Sync;
 using MyApp.Portal.Application.ViewModels;
 using MyApp.Portal.Models.Notes;
 
@@ -25,6 +29,8 @@ public class NoteEditorViewModelTests
     private readonly Mock<INoteEditorInteropService> mockEditor = new();
     private readonly Mock<INavigationService> mockNavigation = new();
     private readonly Mock<ISyncService> mockSync = new();
+    private readonly Mock<IE2eProtectedProfileManager> mockManager = new();
+    private readonly E2eKeyScope notesScope = new(NotesSyncProfile.KeyId);
     private readonly NoteEntry note = new() { Id = "n1", Name = "todo.md", Kind = NoteEntryKind.Note };
 
     public NoteEditorViewModelTests()
@@ -42,11 +48,11 @@ public class NoteEditorViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
-        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
-        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
-        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object, testText.Errors)).ParamName);
+        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -360,7 +366,8 @@ public class NoteEditorViewModelTests
     public void GivenNullSyncService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!, testText.Errors)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, null!, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -490,8 +497,48 @@ public class NoteEditorViewModelTests
     {
         mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", [key]));
     }
-
-    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors);
+
+    [Fact]
+    public async Task GivenANoteThatCouldNotBeReadWhileLocked_WhenNotesUnlock_ThenItIsLoaded()
+    {
+        // Arrange
+        mockNotes.SetupSequence(x => x.GetNoteAsync("n1"))
+            .ThrowsAsync(new E2eLockedException())
+            .ReturnsAsync(new NoteDocument { Entry = note, Content = "saved", FolderPath = ["Work"] });
+        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (sut.Note == null && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+
+        // Assert
+        Assert.Equal(note, sut.Note);
+        Assert.Equal("saved", sut.Content);
+    }
+
+    [Fact]
+    public async Task GivenALoadedNote_WhenNotesLockAndUnlock_ThenUnsavedEditsAreKept()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "unsaved";
+        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+
+        // Assert
+        Assert.True(sut.IsUnlocked);
+        Assert.Equal("unsaved", sut.Content);
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
+    }
+
+    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors);
 
     private async Task<NoteEditorViewModel> CreateLoadedSutAsync()
     {

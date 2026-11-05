@@ -151,4 +151,25 @@ public class SyncBuilderTests
         Assert.Equal(TimeSpan.FromMinutes(15), notes.IdleTimeout);
         Assert.Throws<ArgumentNullException>(() => new SyncBuilder(options).UseProfileDefaults(null!));
     }
+
+    [Fact]
+    public void GivenADisplayText_WhenAddingAProfile_ThenItsKeyAndResourcesAreKept()
+    {
+        // Act
+        new SyncBuilder(options)
+            .AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*.md").UseDisplayText("Profile.Notes", typeof(SyncBuilderTests)));
+
+        // Assert
+        var notes = Assert.Single(options.Profiles);
+        Assert.Equal("Profile.Notes", notes.DisplayText);
+        Assert.Equal(typeof(SyncBuilderTests), notes.DisplayTextResource);
+    }
+
+    [Fact]
+    public void GivenNoDisplayTextOrResources_WhenUseDisplayText_ThenThrows()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new SyncBuilder(options).AddProfile("notes", p => p.UseDisplayText(" ", typeof(SyncBuilderTests))));
+        Assert.Throws<ArgumentNullException>(() => new SyncBuilder(options).AddProfile("notes", p => p.UseDisplayText("Profile.Notes", null!)));
+    }
 }

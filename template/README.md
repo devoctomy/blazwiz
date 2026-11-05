@@ -129,8 +129,9 @@ kept in the browser for the signed in user and synced to their own prefix in the
 Every sync profile is encrypted end to end with its own keys and its own passphrase, so files on the device and in S3
 can only be read once the user has entered it. A profile's id (`UseKeyId`, a GUID) names its keys, kept in the user's
 own Secrets Manager secrets, or in the browser when no user pool is configured (local development). Until its
-passphrase is set or entered the profile is locked: Settings asks for it, and a banner says so. There is no recovery:
-a forgotten passphrase loses the profile's files. Syncing without encryption is not supported.
+passphrase is set or entered the profile is locked: a banner points to Settings to set a first passphrase, and a
+page wrapping the profile's content in `E2eUnlockPanel` asks for it there. There is no recovery: a forgotten
+passphrase loses the profile's files. Syncing without encryption is not supported.
 
 <!--#endif-->
 ### Add a service

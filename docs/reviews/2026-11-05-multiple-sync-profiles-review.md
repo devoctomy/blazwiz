@@ -148,7 +148,7 @@ profile" section to `Sync/README.md`.
 
 ### MP6 (Low). Profile names are shown as identifiers
 
-- [ ] Fixed
+- [x] Fixed
 
 The log page's profile filter shows the raw name (`SyncView.razor:71`), e.g. `notes`, and so would any per-profile
 storage row (MP2 option 2). That breaks the rule that visible text comes from resources, and

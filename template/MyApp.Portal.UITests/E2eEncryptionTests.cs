@@ -2,52 +2,120 @@ namespace MyApp.Portal.UITests;
 
 /// <summary>
 /// The UI tests use the placeholder sign-in with no AWS, so the keys are kept in the browser and there is no passkey
-/// PRF. Keeping them in Secrets Manager is tested on a deployed portal.
+/// PRF. Keeping them in Secrets Manager, and unlocking with the passkey, are tested on a deployed portal.
 /// </summary>
 [TestClass]
 public class E2eEncryptionTests : TestBase
 {
     [TestMethod]
-    public async Task GivenNoPassphrase_WhenOpeningSettings_ThenEncryptionIsOfferedAndNoBannerShown()
+    public async Task GivenNoPassphrase_WhenSignedIn_ThenTheBannerAndSettingsAskForOne()
     {
         await LoginAsync();
-        await Page.Locator("#nav-settings").ClickAsync();
 
-        await Expect(Page.Locator("#e2e-section")).ToBeVisibleAsync();
-        await Expect(Page.Locator("#e2e-status")).ToContainTextAsync("Off.");
-        await Expect(Page.Locator("#e2e-enable")).ToBeVisibleAsync();
-        await Expect(Page.Locator("#e2e-change")).ToHaveCountAsync(0);
-        await Expect(Page.Locator("#e2e-banner")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#e2e-banner-text")).ToContainTextAsync("needs a passphrase before it can be used.");
+        await Page.Locator("#e2e-banner-settings").ClickAsync();
+        await Expect(Page.Locator("#e2e-app-profiles .e2e-profile-state").First).ToHaveTextAsync("No passphrase yet");
+        await Expect(Page.Locator("#e2e-no-created")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#e2e-lock-indicator")).ToHaveCountAsync(0);
         await ScreenshotAsync("EncryptionSection");
     }
 
     [TestMethod]
-    public async Task GivenNoPassphrase_WhenSet_ThenEncryptionIsOnAndThePassphraseCanBeChanged()
+    public async Task GivenNoPassphrase_WhenSet_ThenUnlockedWithTheLockIndicatorAndNoBanner()
     {
         await LoginAsync();
 
         await SetPassphraseAsync();
 
+        await Expect(Page.Locator("#e2e-banner")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#e2e-lock-indicator")).ToContainTextAsync("1 unlocked");
         await Page.Locator("#nav-settings").ClickAsync();
-        await Expect(Page.Locator("#e2e-status")).ToContainTextAsync("On.");
-        await Expect(Page.Locator("#e2e-enable")).ToHaveCountAsync(0);
-        await Expect(Page.Locator("#e2e-change")).ToBeVisibleAsync();
-        await ScreenshotAsync("EncryptionOn");
+        await Expect(Page.Locator("#e2e-app-profiles .e2e-profile-state").First).ToHaveTextAsync("Unlocked");
+        await Expect(Page.Locator("#e2e-app-profiles .e2e-change").First).ToBeVisibleAsync();
+        await ScreenshotAsync("Unlocked");
     }
 
     [TestMethod]
-    public async Task GivenAPassphrase_WhenReloaded_ThenTheBannerAsksForItAndItUnlocks()
+    public async Task GivenUnlocked_WhenLockAllFromTheIndicator_ThenLockedUntilItsPassphraseIsEntered()
+    {
+        await LoginAsync();
+        await SetPassphraseAsync();
+
+        await Page.Locator("#e2e-lock-indicator").ClickAsync();
+        await Page.Locator("#e2e-lock-menu-lock-all").ClickAsync();
+
+        await Expect(Page.Locator("#e2e-lock-indicator")).ToHaveCountAsync(0);
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Expect(Page.Locator("#e2e-app-profiles .e2e-profile-state").First).ToHaveTextAsync("Locked");
+        await Page.Locator("#e2e-app-profiles .e2e-unlock").First.ClickAsync();
+        await Page.Locator("#e2e-passphrase").FillAsync("not the passphrase");
+        await Page.Locator("#e2e-confirm").ClickAsync();
+        await Expect(Page.Locator("#e2e-error")).ToHaveTextAsync("That passphrase is not correct. Try again.");
+        await Page.Locator("#e2e-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-confirm").ClickAsync();
+        await CloseFinishedDialogAsync();
+        await Expect(Page.Locator("#e2e-app-profiles .e2e-profile-state").First).ToHaveTextAsync("Unlocked");
+    }
+
+    [TestMethod]
+    public async Task GivenAPassphrase_WhenReloaded_ThenLockedWithNoBanner()
     {
         await LoginAsync();
         await SetPassphraseAsync();
 
         await ReloadAsync();
 
-        await Expect(Page.Locator("#e2e-banner")).ToBeVisibleAsync();
-        await ScreenshotAsync("Locked");
-        await UnlockAsync();
+        await Expect(Page.Locator("#e2e-banner")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#e2e-lock-indicator")).ToHaveCountAsync(0);
         await Page.Locator("#nav-settings").ClickAsync();
-        await Expect(Page.Locator("#e2e-status")).ToContainTextAsync("On.");
+        await Expect(Page.Locator("#e2e-app-profiles .e2e-profile-state").First).ToHaveTextAsync("Locked");
+    }
+
+    [TestMethod]
+    public async Task GivenNoProtectedProfiles_WhenOneIsCreated_ThenItIsListedByIdAndCanBeDeleted()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+
+        await Page.Locator("#e2e-new").ClickAsync();
+        await EnterNewPassphraseAsync();
+        await Expect(Page.Locator("#e2e-finished")).ToContainTextAsync("Created ");
+        await ScreenshotAsync("Created");
+        await CloseFinishedDialogAsync();
+
+        var profile = Page.Locator("#e2e-created-profiles .e2e-profile");
+        await Expect(profile).ToHaveCountAsync(1);
+        var id = await profile.GetAttributeAsync("data-profile");
+        Assert.IsTrue(Guid.TryParseExact(id, "D", out _), $"'{id}' is not a GUID");
+        await Expect(profile.Locator(".e2e-profile-name")).ToHaveTextAsync(id!);
+        await Expect(profile.Locator(".e2e-profile-state")).ToHaveTextAsync("Unlocked");
+        await Expect(Page.Locator("#e2e-lock-indicator")).ToContainTextAsync("1 unlocked");
+
+        await profile.Locator(".e2e-delete").ClickAsync();
+        await Page.Locator("#e2e-delete-confirmation").FillAsync("not the id");
+        await Page.Locator("#e2e-confirm").ClickAsync();
+        await Expect(Page.Locator("#e2e-error")).ToHaveTextAsync("Type the id exactly to confirm.");
+        await Page.Locator("#e2e-delete-confirmation").FillAsync(id!);
+        await Page.Locator("#e2e-confirm").ClickAsync();
+        await CloseFinishedDialogAsync();
+        await Expect(Page.Locator("#e2e-no-created")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#e2e-lock-indicator")).ToHaveCountAsync(0);
+    }
+
+    [TestMethod]
+    public async Task GivenAProtectedProfile_WhenReloaded_ThenItIsStillListedAndLocked()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#e2e-new").ClickAsync();
+        await EnterNewPassphraseAsync();
+        await CloseFinishedDialogAsync();
+
+        await ReloadAsync();
+
+        var profile = Page.Locator("#e2e-created-profiles .e2e-profile");
+        await Expect(profile).ToHaveCountAsync(1);
+        await Expect(profile.Locator(".e2e-profile-state")).ToHaveTextAsync("Locked");
     }
 
     [TestMethod]

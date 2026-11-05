@@ -2,6 +2,7 @@ using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 
@@ -39,7 +40,30 @@ public class SyncProtectedProfileService(
     private readonly IE2eLockChannel lockChannel = lockChannel ?? throw new ArgumentNullException(nameof(lockChannel));
     private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IE2eIdleLock idleLock = idleLock ?? throw new ArgumentNullException(nameof(idleLock));
+    private readonly HashSet<E2eKeyScope> setUp = [];
     private bool listening;
+
+    /// <inheritdoc/>
+    public event EventHandler? ProfilesChanged;
+
+    /// <inheritdoc/>
+    public bool IsLoaded { get; private set; }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<SyncProtectedProfile> Profiles => IsLoaded
+        ? registry.Profiles
+            .Where(p => p.KeyScope != null)
+            .Select(p => new SyncProtectedProfile
+            {
+                Name = p.Name,
+                Scope = p.KeyScope!,
+                IsCreatedByUser = IsCreatedByUser(p),
+                IsSetUp = setUp.Contains(p.KeyScope!),
+                Settings = p.Settings,
+            })
+            .OrderBy(p => p.IsCreatedByUser)
+            .ToList()
+        : [];
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<E2eKeyScope>> LoadAsync(CancellationToken ct = default)
@@ -66,6 +90,10 @@ public class SyncProtectedProfileService(
             registry.Add(CreateOptions(scope, options.ProfileDefaults));
         }
 
+        setUp.Clear();
+        setUp.UnionWith(scopes);
+        IsLoaded = true;
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
         return scopes;
     }
 
@@ -74,22 +102,18 @@ public class SyncProtectedProfileService(
     {
         var scope = await manager.CreateAsync(passphrase, options.ProfileDefaults, progress, ct);
         registry.Add(CreateOptions(scope, options.ProfileDefaults));
+        setUp.Add(scope);
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
         return scope;
     }
 
     /// <inheritdoc/>
-    public async Task<bool> IsSetUpAsync(E2eKeyScope scope, CancellationToken ct = default)
-    {
-        ArgumentNullException.ThrowIfNull(scope);
-
-        return (await manager.GetProfilesAsync(ct)).Any(p => p.Id == scope.Id);
-    }
-
-    /// <inheritdoc/>
-    public Task SetUpAsync(E2eKeyScope scope, string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    public async Task SetUpAsync(E2eKeyScope scope, string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
         var profile = FindProfile(scope) ?? throw new ArgumentException($"There is no profile '{scope}'.", nameof(scope));
-        return manager.CreateKeysAsync(scope, passphrase, profile.Settings, progress, ct);
+        await manager.CreateKeysAsync(scope, passphrase, profile.Settings, progress, ct);
+        setUp.Add(scope);
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc/>
@@ -106,13 +130,17 @@ public class SyncProtectedProfileService(
         var profile = CreatedProfiles().FirstOrDefault(p => p.KeyScope == scope)
             ?? throw new ArgumentException($"There is no profile '{scope}' created by the user; profiles set up in code are not deleted.", nameof(scope));
 
-        // The keys go first: whatever happens to the files after this, they can no longer be decrypted.
-        await manager.DeleteAsync(scope, ct);
-
         await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
         {
+            // Its files in S3 are found before anything is deleted, so a profile is never left without keys but with
+            // files it could not reach.
             var syncProfile = registry.GetSyncProfile(profile.Name);
-            foreach (var remote in await syncProfile.RemoteStore.ListAsync(ct))
+            var remoteFiles = await ListRemoteAsync(syncProfile, ct);
+
+            // Then the keys: whatever happens to the files after this, they can no longer be decrypted.
+            await manager.DeleteAsync(scope, ct);
+
+            foreach (var remote in remoteFiles)
             {
                 await syncProfile.RemoteStore.DeleteAsync(remote.Key, ifMatch: null, ct);
             }
@@ -138,6 +166,8 @@ public class SyncProtectedProfileService(
         }
 
         registry.Remove(profile.Name);
+        setUp.Remove(scope);
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc/>
@@ -161,6 +191,23 @@ public class SyncProtectedProfileService(
         foreach (var profile in CreatedProfiles().ToList())
         {
             registry.Remove(profile.Name);
+        }
+
+        setUp.Clear();
+        IsLoaded = false;
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static async Task<IReadOnlyList<RemoteObjectInfo>> ListRemoteAsync(SyncProfile syncProfile, CancellationToken ct)
+    {
+        try
+        {
+            return await syncProfile.RemoteStore.ListAsync(ct);
+        }
+        catch (SyncAccessDeniedException ex) when (ex.Code == SyncErrorCodes.RemoteNoCredentials)
+        {
+            // No sync target in this session (e.g. local development without Cognito): nothing was synced from it.
+            return [];
         }
     }
 
@@ -191,8 +238,9 @@ public class SyncProtectedProfileService(
     }
 
     // The profiles users created: every profile except those set up in code.
-    private IEnumerable<SyncProfileOptions> CreatedProfiles() =>
-        registry.Profiles.Where(p => !options.Profiles.Any(c => c.Name == p.Name));
+    private IEnumerable<SyncProfileOptions> CreatedProfiles() => registry.Profiles.Where(IsCreatedByUser);
+
+    private bool IsCreatedByUser(SyncProfileOptions profile) => !options.Profiles.Any(c => c.Name == profile.Name);
 
     private void CheckDeviceUnlockAllowed(E2eKeyScope scope)
     {

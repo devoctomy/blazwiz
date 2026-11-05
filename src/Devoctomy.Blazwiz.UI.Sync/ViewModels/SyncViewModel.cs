@@ -33,6 +33,7 @@ public partial class SyncViewModel : ViewModelBase
     private readonly ISyncService syncService;
     private readonly IConnectivityService connectivityService;
     private readonly ISyncScheduler syncScheduler;
+    private readonly ISyncProfileDisplayNames displayNames;
     private readonly TimeProvider timeProvider;
     private readonly IStringLocalizer<SyncUiText> text;
     private readonly HashSet<string> expandedRows = [];
@@ -57,6 +58,7 @@ public partial class SyncViewModel : ViewModelBase
     /// <param name="syncService">The sync service.</param>
     /// <param name="connectivityService">The connectivity service.</param>
     /// <param name="syncScheduler">The sync scheduler.</param>
+    /// <param name="displayNames">The names profiles are shown by.</param>
     /// <param name="timeProvider">The clock, time zone and timers.</param>
     /// <param name="text">The sync UI's text.</param>
     public SyncViewModel(
@@ -66,6 +68,7 @@ public partial class SyncViewModel : ViewModelBase
         ISyncService syncService,
         IConnectivityService connectivityService,
         ISyncScheduler syncScheduler,
+        ISyncProfileDisplayNames displayNames,
         TimeProvider timeProvider,
         IStringLocalizer<SyncUiText> text)
     {
@@ -75,6 +78,7 @@ public partial class SyncViewModel : ViewModelBase
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
         this.syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
+        this.displayNames = displayNames ?? throw new ArgumentNullException(nameof(displayNames));
         this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         this.text = text ?? throw new ArgumentNullException(nameof(text));
 
@@ -182,6 +186,13 @@ public partial class SyncViewModel : ViewModelBase
         get => isClearDialogOpen;
         private set => SetProperty(ref isClearDialogOpen, value);
     }
+
+    /// <summary>
+    /// Gets the name a profile is shown by: its display name, or its id for a profile the user created.
+    /// </summary>
+    /// <param name="profile">The profile's name.</param>
+    /// <returns>The name to show.</returns>
+    public string GetProfileDisplayName(string profile) => displayNames.GetDisplayName(profile);
 
     /// <inheritdoc/>
     public override async Task OnInitializedAsync()

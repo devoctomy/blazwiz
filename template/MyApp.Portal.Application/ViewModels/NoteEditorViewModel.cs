@@ -2,6 +2,8 @@ using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
+using Devoctomy.Blazwiz.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -10,6 +12,7 @@ using Microsoft.JSInterop;
 using MyApp.Portal.Application.Exceptions;
 using MyApp.Portal.Application.Services;
 using MyApp.Portal.Application.Services.Interfaces;
+using MyApp.Portal.Application.Sync;
 using MyApp.Portal.Models.Notes;
 
 namespace MyApp.Portal.Application.ViewModels;
@@ -41,12 +44,15 @@ public partial class NoteEditorViewModel : ViewModelBase
     /// </summary>
     public const string RemoteDeletedMessage = "This note was deleted on another device.";
 
+    private static readonly E2eKeyScope NotesScope = new E2eKeyScope(NotesSyncProfile.KeyId);
+
     private readonly INoteService noteService;
     private readonly IMarkdownRenderer markdownRenderer;
     private readonly IMarkdownFormatService markdownFormatService;
     private readonly INoteEditorInteropService editorInteropService;
     private readonly INavigationService navigationService;
     private readonly ISyncService syncService;
+    private readonly IE2eProtectedProfileManager manager;
     private readonly IErrorText errorText;
 
     private string? loadedNoteId;
@@ -76,6 +82,7 @@ public partial class NoteEditorViewModel : ViewModelBase
     /// <param name="editorInteropService">Access to the editor's text and selection in the browser.</param>
     /// <param name="navigationService">The navigation service.</param>
     /// <param name="syncService">The sync service, to notice when a sync changes the open note.</param>
+    /// <param name="manager">Says whether the notes are unlocked, and when that changes.</param>
     /// <param name="errorText">Describes the framework's errors (storage, encryption) for the user.</param>
     public NoteEditorViewModel(
         INoteService noteService,
@@ -84,6 +91,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         INoteEditorInteropService editorInteropService,
         INavigationService navigationService,
         ISyncService syncService,
+        IE2eProtectedProfileManager manager,
         IErrorText errorText)
     {
         this.noteService = noteService ?? throw new ArgumentNullException(nameof(noteService));
@@ -92,9 +100,17 @@ public partial class NoteEditorViewModel : ViewModelBase
         this.editorInteropService = editorInteropService ?? throw new ArgumentNullException(nameof(editorInteropService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
+        this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.syncService.FilesChanged += OnFilesChanged;
+        this.manager.LockStateChanged += OnLockStateChanged;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the notes are unlocked. While they are locked, the page shows the unlock panel
+    /// in place of the editor, and keeps any unsaved edits.
+    /// </summary>
+    public bool IsUnlocked => manager.IsUnlocked(NotesScope);
 
     /// <summary>
     /// Gets the note being edited, or null until it has loaded.
@@ -430,9 +446,33 @@ public partial class NoteEditorViewModel : ViewModelBase
         if (disposing)
         {
             syncService.FilesChanged -= OnFilesChanged;
+            manager.LockStateChanged -= OnLockStateChanged;
         }
 
         base.Dispose(disposing);
+    }
+
+    private async void OnLockStateChanged(object? sender, E2eKeyScope scope)
+    {
+        if (scope != NotesScope)
+        {
+            return;
+        }
+
+        OnPropertyChanged(nameof(IsUnlocked));
+        if (IsUnlocked && Note == null && loadedNoteId is { } noteId)
+        {
+            // It could not be read while locked: load it now.
+            loadedNoteId = null;
+            try
+            {
+                await LoadAsync(noteId);
+            }
+            catch (Exception)
+            {
+                // A background load must not crash the page; opening the note again loads it.
+            }
+        }
     }
 
     private async void OnFilesChanged(object? sender, SyncFilesChangedEventArgs e)

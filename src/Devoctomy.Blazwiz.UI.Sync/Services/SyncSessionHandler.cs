@@ -16,7 +16,6 @@ public class SyncSessionHandler(
     ISyncScheduler syncScheduler,
     ISyncStorageMigrationService storageMigrationService,
     ISyncStorageChannel storageChannel,
-    ISyncEncryptionService encryptionService,
     ISyncProtectedProfileService protectedProfiles,
     ISyncFolderAccessMonitor folderAccessMonitor,
     IPersistentStorageService persistentStorageService)
@@ -26,7 +25,6 @@ public class SyncSessionHandler(
     private readonly ISyncScheduler syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
     private readonly ISyncStorageMigrationService storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
     private readonly ISyncStorageChannel storageChannel = storageChannel ?? throw new ArgumentNullException(nameof(storageChannel));
-    private readonly ISyncEncryptionService encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
     private readonly ISyncProtectedProfileService protectedProfiles = protectedProfiles ?? throw new ArgumentNullException(nameof(protectedProfiles));
     private readonly ISyncFolderAccessMonitor folderAccessMonitor = folderAccessMonitor ?? throw new ArgumentNullException(nameof(folderAccessMonitor));
     private readonly IPersistentStorageService persistentStorageService = persistentStorageService ?? throw new ArgumentNullException(nameof(persistentStorageService));
@@ -66,7 +64,6 @@ public class SyncSessionHandler(
         {
             // Every profile is locked until the user unlocks it; those the user created are added as profiles.
             await protectedProfiles.LoadAsync();
-            await encryptionService.InitializeAsync();
         }
         catch (Exception)
         {

@@ -3,15 +3,12 @@
 
 @if (ViewModel.IsVisible)
 {
-    <div class="alert alert-danger d-flex flex-wrap align-items-center gap-3" role="alert" id="e2e-banner">
+    <div class="alert alert-warning d-flex flex-wrap align-items-center gap-3" role="alert" id="e2e-banner">
         <i class="bi bi-shield-lock fs-5"></i>
         <span class="flex-grow-1" id="e2e-banner-text">@ViewModel.Message</span>
-        @if (ViewModel.CanSetUp)
-        {
-            <button type="button" class="btn btn-danger btn-sm" id="e2e-setup-button"
-                    @onclick="() => ViewModel.OpenSettingsCommand.Execute(null)">
-                <i class="bi bi-key me-1"></i>@SyncText["Sync.E2e.SetUpDevice"]
-            </button>
-        }
+        <button type="button" class="btn btn-warning btn-sm" id="e2e-banner-settings"
+                @onclick="() => ViewModel.OpenSettingsCommand.Execute(null)">
+            <i class="bi bi-key me-1"></i>@SyncText["Sync.E2e.SetPassphrase"]
+        </button>
     </div>
 }

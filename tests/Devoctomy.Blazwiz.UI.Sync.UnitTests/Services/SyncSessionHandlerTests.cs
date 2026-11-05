@@ -1,5 +1,4 @@
 using Devoctomy.Blazwiz.Auth.Models;
-using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.Services;
@@ -14,7 +13,6 @@ public class SyncSessionHandlerTests
     private readonly Mock<ISyncScheduler> mockScheduler = new();
     private readonly Mock<ISyncStorageMigrationService> mockStorageMigration = new();
     private readonly Mock<ISyncStorageChannel> mockStorageChannel = new();
-    private readonly Mock<ISyncEncryptionService> mockEncryption = new();
     private readonly Mock<ISyncProtectedProfileService> mockProtected = new();
     private readonly Mock<ISyncFolderAccessMonitor> mockFolderAccess = new();
     private readonly Mock<IPersistentStorageService> mockPersistentStorage = new();
@@ -24,14 +22,13 @@ public class SyncSessionHandlerTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(null!, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, mockEncryption.Object, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
-        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, null!, mockStorageMigration.Object, mockStorageChannel.Object, mockEncryption.Object, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
-        Assert.Equal("storageMigrationService", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, null!, mockStorageChannel.Object, mockEncryption.Object, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
-        Assert.Equal("storageChannel", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, null!, mockEncryption.Object, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
-        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, null!, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
-        Assert.Equal("protectedProfiles", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, mockEncryption.Object, null!, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
-        Assert.Equal("folderAccessMonitor", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, mockEncryption.Object, mockProtected.Object, null!, mockPersistentStorage.Object)).ParamName);
-        Assert.Equal("persistentStorageService", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, mockEncryption.Object, mockProtected.Object, mockFolderAccess.Object, null!)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(null!, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
+        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, null!, mockStorageMigration.Object, mockStorageChannel.Object, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
+        Assert.Equal("storageMigrationService", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, null!, mockStorageChannel.Object, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
+        Assert.Equal("storageChannel", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, null!, mockProtected.Object, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
+        Assert.Equal("protectedProfiles", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, null!, mockFolderAccess.Object, mockPersistentStorage.Object)).ParamName);
+        Assert.Equal("folderAccessMonitor", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, mockProtected.Object, null!, mockPersistentStorage.Object)).ParamName);
+        Assert.Equal("persistentStorageService", Assert.Throws<ArgumentNullException>(() => new SyncSessionHandler(mockConnectivity.Object, mockScheduler.Object, mockStorageMigration.Object, mockStorageChannel.Object, mockProtected.Object, mockFolderAccess.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -61,7 +58,6 @@ public class SyncSessionHandlerTests
         var calls = new List<string>();
         mockStorageChannel.Setup(x => x.StartAsync()).Callback(() => calls.Add("channel")).Returns(Task.CompletedTask);
         mockStorageMigration.Setup(x => x.RecoverAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("recover")).Returns(Task.CompletedTask);
-        mockEncryption.Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("encryption")).ReturnsAsync(E2eStatus.Unlocked);
         mockProtected.Setup(x => x.LoadAsync(It.IsAny<CancellationToken>())).Callback(() => calls.Add("protected profiles")).ReturnsAsync([]);
         mockFolderAccess.Setup(x => x.Start()).Callback(() => calls.Add("watch folder"));
         mockFolderAccess.Setup(x => x.CheckAsync()).Callback(() => calls.Add("check folder")).ReturnsAsync(false);
@@ -71,7 +67,7 @@ public class SyncSessionHandlerTests
         await CreateSut().OnSessionStartedAsync(session);
 
         // Assert
-        Assert.Equal(["channel", "recover", "protected profiles", "encryption", "watch folder", "check folder", "sync"], calls);
+        Assert.Equal(["channel", "recover", "protected profiles", "watch folder", "check folder", "sync"], calls);
     }
 
     [Fact]
@@ -79,19 +75,6 @@ public class SyncSessionHandlerTests
     {
         // Arrange
         mockStorageMigration.Setup(x => x.RecoverAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("boom"));
-
-        // Act
-        await CreateSut().OnSessionStartedAsync(session);
-
-        // Assert
-        mockScheduler.Verify(x => x.StartAsync(), Times.Once);
-    }
-
-    [Fact]
-    public async Task GivenEncryptionFailsToInitialize_WhenOnSessionStarted_ThenSyncStillStarts()
-    {
-        // Arrange
-        mockEncryption.Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidDataException("bad keys"));
 
         // Act
         await CreateSut().OnSessionStartedAsync(session);
@@ -157,7 +140,6 @@ public class SyncSessionHandlerTests
         mockScheduler.Object,
         mockStorageMigration.Object,
         mockStorageChannel.Object,
-        mockEncryption.Object,
         mockProtected.Object,
         mockFolderAccess.Object,
         mockPersistentStorage.Object);

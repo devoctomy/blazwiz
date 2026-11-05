@@ -170,15 +170,15 @@ Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.IdleTimeout.get -> System
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.IdleTimeout.set -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.MinimumPassphraseLength.get -> int
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.MinimumPassphraseLength.set -> void
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus
 *REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Blocked = 3 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
-Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Disabled = 2 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
 *REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Disabled = 4 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
 *REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.DisabledElsewhere = 7 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
-Devoctomy.Blazwiz.Encryption.Models.E2eStatus.NeedsSetup = 3 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
 *REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.NeedsSetup = 5 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
 *REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Unavailable = 2 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
-Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Unlocked = 4 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Unknown = 0 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
 *REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Unlocked = 6 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
+*REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStatus.Unsupported = 1 -> Devoctomy.Blazwiz.Encryption.Models.E2eStatus
 *REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.CheckExistingKeys = 2 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
 *REMOVED*Devoctomy.Blazwiz.Encryption.Models.E2eStep.CheckIndex = 3 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep
 Devoctomy.Blazwiz.Encryption.Models.E2eStep.CreateKeys = 1 -> Devoctomy.Blazwiz.Encryption.Models.E2eStep

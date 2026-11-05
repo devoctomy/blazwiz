@@ -1,5 +1,6 @@
 using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Models;
+using Devoctomy.Blazwiz.UI.Sync.Text;
 using MyApp.Portal.Application.Services;
 
 namespace MyApp.Portal.Application.Sync;
@@ -32,6 +33,7 @@ public sealed class NotesSyncProfile : SyncProfileDefinition
                 .AddLocalFolder()
                 .UseDefault(SyncStorageKind.IndexedDb))
             .UseRemote("notes/**/*.md", includeEmptyFolders: true)
-            .UseKeyId(KeyId);
+            .UseKeyId(KeyId)
+            .UseDisplayText("Sync.Profile.Files", typeof(SyncUiText));
     }
 }
