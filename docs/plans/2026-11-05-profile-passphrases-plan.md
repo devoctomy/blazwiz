@@ -235,8 +235,8 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 
 ### Phase 3: AWS
 
-- [ ] Base stack IAM policy allows `<sub>/keys/*` (D2, D3), with the stack's own tests.
-- [ ] `test-auth.ps1` checks a user can create, read and delete a profile secret and the index, and cannot touch
+- [x] Base stack IAM policy allows `<sub>/keys/*` (D2, D3), with the stack's own tests.
+- [x] `test-auth.ps1` checks a user can create, read and delete a profile secret and the index, and cannot touch
       another user's.
 
 ### Phase 4: UI (D5, see "UI" above)

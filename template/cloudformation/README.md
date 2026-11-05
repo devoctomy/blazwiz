@@ -11,7 +11,7 @@ The infrastructure is in two stacks:
 | Script | What it does |
 | --- | --- |
 | `deploy.ps1` | Creates or updates the base stack, then the app's stack, publishes the portal to S3, invalidates CloudFront and sets up a test user in Cognito. |
-| `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials and per-user S3 access. |
+| `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials, per-user S3 access and per-user keys secrets. |
 | `remove.ps1` | Deletes the app's stack, then empties both buckets and deletes the base stack. |
 | `app.yaml` | The app's own CloudFormation template. |
 | `base-stack.ps1` | Finds the base stack and its scripts. |
@@ -189,7 +189,7 @@ The policy below covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and noth
 
 Notes:
 
-- **You don't need permissions for some calls.** `sts:GetCallerIdentity` is always allowed. The Cognito sign-in calls in `test-auth.ps1` (`initiate-auth`, `get-id`, `get-credentials-for-identity`) are public APIs. The S3 checks in that script run as the signed-in test user, not as you.
+- **You don't need permissions for some calls.** `sts:GetCallerIdentity` is always allowed. The Cognito sign-in calls in `test-auth.ps1` (`initiate-auth`, `get-id`, `get-credentials-for-identity`) are public APIs. The S3 and Secrets Manager checks in that script run as the signed-in test user, not as you.
 - **`IamPassRoleToIdentityPool` has no `iam:PassedToService` condition.** A condition of `cognito-identity.amazonaws.com` doesn't match when the role is attached to the identity pool, and the deploy fails at `IdentityPoolRoleAttachment`. It is limited by the `myapp-*` role name instead.
 - **`CustomDomainCertificate`** is only needed when you pass `-CustomDomainName` / `-CertificateArn`. You can drop it otherwise.
 - **IAM is the sensitive part.** The template creates an IAM role, so this identity can create and edit any role whose name starts with `myapp-`. In principle that lets it create a more powerful role for itself. For throwaway testing that is usually fine. For stronger isolation, use a dedicated sandbox account, or add a permissions boundary condition (`iam:PermissionsBoundary`) to `CreateRole` / `PutRolePolicy`.

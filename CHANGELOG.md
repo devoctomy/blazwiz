@@ -38,6 +38,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   template's `appsettings.Development.json` lightens them for local development and the UI tests.
 - Settings sets or enters the passphrase of the profiles set up in code, and the banner points there while they are
   locked. Encryption can no longer be turned off.
+- The AWS base stack lets each user manage their secrets under `<sub>/keys/` (each profile's keys and the index) in
+  place of the single `<sub>/keys` secret; redeploy with `deploy.ps1`. `test-auth.ps1` checks them.
 - The template's sync profiles are classes (`NotesSyncProfile`, or `FilesSyncProfile` without the notes example),
   found by `AddProfilesFromAssemblyContaining` in `Program.cs`; `AddNotesProfile` is gone. Its other sync settings are
   in `MyApp.Portal/sync.json`, embedded in the app.
