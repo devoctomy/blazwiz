@@ -12,13 +12,13 @@ public class SyncFolderService(
     IFolderAccessClient folderClient,
     ISyncUserContext userContext,
     ISyncStorageResolver resolver,
-    SyncOptions options)
+    ISyncProfileRegistry registry)
     : ISyncFolderService
 {
     private readonly IFolderAccessClient folderClient = folderClient ?? throw new ArgumentNullException(nameof(folderClient));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly ISyncStorageResolver resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
-    private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly ISyncProfileRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
 
     /// <inheritdoc/>
     public Task<bool> IsSupportedAsync()
@@ -41,7 +41,7 @@ public class SyncFolderService(
     /// <inheritdoc/>
     public async Task<bool> NeedsReconnectAsync()
     {
-        foreach (var profile in options.Profiles.Where(p => resolver.IsSwitchable(p.Name)))
+        foreach (var profile in registry.Profiles.Where(p => resolver.IsSwitchable(p.Name)))
         {
             if ((await resolver.GetStateAsync(profile.Name)).Kind == SyncStorageKind.LocalFolder)
             {

@@ -7,6 +7,16 @@ namespace Devoctomy.Blazwiz.Sync.Configuration;
 public static class SyncDefaults
 {
     /// <summary>
+    /// The configuration section read by <see cref="SyncBuilder.UseEmbeddedConfiguration"/>.
+    /// </summary>
+    public const string ConfigurationSection = "Sync";
+
+    /// <summary>
+    /// The folder, in the user's prefix, holding a folder per protected profile, named by its id.
+    /// </summary>
+    public const string ProtectedProfilesFolder = "profiles";
+
+    /// <summary>
     /// The IndexedDB database holding the sync index and the log, unless configured otherwise.
     /// </summary>
     public const string IndexDatabase = "sync";
@@ -52,4 +62,9 @@ public static class SyncDefaults
     /// The BroadcastChannel the app's tabs use to tell each other about storage moves.
     /// </summary>
     public const string StorageChannelName = "sync-storage";
+
+    /// <summary>
+    /// The BroadcastChannel the app's tabs use to lock a protected profile in every tab.
+    /// </summary>
+    public const string LockChannelName = "e2e-lock";
 }

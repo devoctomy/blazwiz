@@ -41,22 +41,24 @@ public interface INoteTreeService
     IReadOnlyList<FileTreeItem> BuildVisibleItems(IEnumerable<NoteEntry> entries, IReadOnlySet<string> expandedFolderIds);
 
     /// <summary>
-    /// Builds the folders and notes from the files under the notes root: markdown files become notes, folder markers
-    /// become folders, and folders that only exist in a file's path are added too.
+    /// Builds the folders and notes from the files under a notebook's root: markdown files become notes, folder
+    /// markers become folders, and folders that only exist in a file's path are added too.
     /// </summary>
-    /// <param name="files">The files in the notes file store.</param>
+    /// <param name="root">The notebook's root key, e.g. <c>notes/</c>.</param>
+    /// <param name="files">The files in the notebook's file store.</param>
     /// <param name="owner">The user the entries belong to.</param>
     /// <returns>The entries, in no particular order.</returns>
-    IReadOnlyList<NoteEntry> BuildEntries(IEnumerable<SyncFileInfo> files, string owner);
+    IReadOnlyList<NoteEntry> BuildEntries(string root, IEnumerable<SyncFileInfo> files, string owner);
 
     /// <summary>
     /// Gets the key of a note or folder inside a folder, e.g. <c>notes/Work/Ideas.md</c> or <c>notes/Work/Meetings/</c>.
     /// </summary>
+    /// <param name="root">The notebook's root key, e.g. <c>notes/</c>.</param>
     /// <param name="parentKey">The folder key, or null for the top level.</param>
     /// <param name="name">The note or folder name.</param>
     /// <param name="isFolder">True for a folder (the key ends with <c>/</c>).</param>
     /// <returns>The key.</returns>
-    string GetChildKey(string? parentKey, string name, bool isFolder);
+    string GetChildKey(string root, string? parentKey, string name, bool isFolder);
 
     /// <summary>
     /// Gets the name of a note or folder from its key.
@@ -68,23 +70,26 @@ public interface INoteTreeService
     /// <summary>
     /// Gets the key of the folder containing a note or folder.
     /// </summary>
+    /// <param name="root">The notebook's root key, e.g. <c>notes/</c>.</param>
     /// <param name="key">The key.</param>
     /// <returns>The folder key, or null at the top level.</returns>
-    string? GetParentKey(string key);
+    string? GetParentKey(string root, string key);
 
     /// <summary>
     /// Gets the names of the folders in a key's path, outermost first.
     /// </summary>
+    /// <param name="root">The notebook's root key, e.g. <c>notes/</c>.</param>
     /// <param name="key">The key.</param>
     /// <returns>The folder names. Empty at the top level.</returns>
-    IReadOnlyList<string> GetFolderNames(string key);
+    IReadOnlyList<string> GetFolderNames(string root, string key);
 
     /// <summary>
-    /// Checks whether a key is a note under the notes root.
+    /// Checks whether a key is a note under a notebook's root.
     /// </summary>
+    /// <param name="root">The notebook's root key, e.g. <c>notes/</c>.</param>
     /// <param name="key">The key.</param>
     /// <returns>True for a markdown file under the root.</returns>
-    bool IsNoteKey(string key);
+    bool IsNoteKey(string root, string key);
 
     /// <summary>
     /// Builds the list of folders an entry can be moved into: the top level and every folder except the entry and its descendants.

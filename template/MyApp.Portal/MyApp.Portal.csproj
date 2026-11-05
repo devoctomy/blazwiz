@@ -38,4 +38,10 @@
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+<!--#if (IncludeSync)-->
+  <ItemGroup>
+    <EmbeddedResource Include="sync.json" LogicalName="sync.json" />
+    <Content Remove="sync.json" />
+  </ItemGroup>
+<!--#endif-->
 </Project>

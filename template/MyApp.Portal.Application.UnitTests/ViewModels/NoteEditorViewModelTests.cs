@@ -1,4 +1,8 @@
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Exceptions;
+using Devoctomy.Blazwiz.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Encryption.Models;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -8,6 +12,7 @@ using Microsoft.JSInterop;
 using Moq;
 using MyApp.Portal.Application.Exceptions;
 using MyApp.Portal.Application.Services.Interfaces;
+using MyApp.Portal.Application.Sync;
 using MyApp.Portal.Application.ViewModels;
 using MyApp.Portal.Models.Notes;
 
@@ -25,11 +30,19 @@ public class NoteEditorViewModelTests
     private readonly Mock<INoteEditorInteropService> mockEditor = new();
     private readonly Mock<INavigationService> mockNavigation = new();
     private readonly Mock<ISyncService> mockSync = new();
+    private readonly Mock<IE2eProtectedProfileManager> mockManager = new();
+    private readonly Mock<INotebookService> mockNotebooks = new();
+    private readonly Mock<INoteServiceFactory> mockFactory = new();
+    private readonly Mock<ISyncProtectedProfileService> mockProfiles = new();
+    private readonly Notebook notes = new() { Name = "notes", Id = NotesSyncProfile.KeyId, Root = "notes/", Title = "Notes", IsDefault = true, HasPassphrase = true };
+    private readonly E2eKeyScope notesScope = new(NotesSyncProfile.KeyId);
     private readonly NoteEntry note = new() { Id = "n1", Name = "todo.md", Kind = NoteEntryKind.Note };
 
     public NoteEditorViewModelTests()
     {
         mockRenderer.Setup(x => x.ToHtml(It.IsAny<string?>())).Returns<string?>(md => $"<p>{md}</p>");
+        mockNotebooks.Setup(x => x.FindAsync(It.IsAny<string?>())).ReturnsAsync((string? name) => name is null or "notes" ? notes : null);
+        mockFactory.Setup(x => x.Create(notes)).Returns(mockNotes.Object);
         mockNotes.Setup(x => x.GetNoteAsync("n1")).ReturnsAsync(new NoteDocument { Entry = note, Content = "saved", FolderPath = ["Work"] });
         mockNotes.Setup(x => x.SaveNoteAsync("n1", It.IsAny<string>())).ReturnsAsync(() =>
         {
@@ -42,18 +55,20 @@ public class NoteEditorViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
-        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
-        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
-        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object, testText.Errors)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object, testText.Errors)).ParamName);
+        Assert.Equal("notebookService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("noteServiceFactory", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, null!, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
     }
 
     [Fact]
     public void GivenNoteId_WhenGetEditUrl_ThenIdIsEscaped()
     {
         // Act & Assert
-        Assert.Equal("files/edit?note=a%2Fb", NoteEditorViewModel.GetEditUrl("a/b"));
+        Assert.Equal("files/edit?note=a%2Fb", NoteEditorViewModel.GetEditUrl(null, "a/b"));
     }
 
     [Fact]
@@ -63,7 +78,7 @@ public class NoteEditorViewModelTests
         var sut = CreateSut();
 
         // Act
-        await sut.LoadAsync("n1");
+        await sut.LoadAsync(null, "n1");
 
         // Assert
         Assert.False(sut.IsLoading);
@@ -79,15 +94,82 @@ public class NoteEditorViewModelTests
     {
         // Arrange
         var sut = CreateSut();
-        await sut.LoadAsync("n1");
+        await sut.LoadAsync(null, "n1");
         sut.Content = "edited";
 
         // Act
-        await sut.LoadAsync("n1");
+        await sut.LoadAsync(null, "n1");
 
         // Assert
         Assert.Equal("edited", sut.Content);
         mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
+    }
+
+    [Fact]
+    public void GivenACreatedNotebook_WhenGettingItsUrls_ThenTheyNameIt()
+    {
+        // Act & Assert
+        Assert.Equal("files?notebook=nb1", NoteEditorViewModel.GetFilesUrl("nb1"));
+        Assert.Equal("files", NoteEditorViewModel.GetFilesUrl("notes"));
+        Assert.Equal("files", NoteEditorViewModel.GetFilesUrl(null));
+        Assert.Equal("files/edit?notebook=nb1&note=profiles%2Fnb1%2Fa.md", NoteEditorViewModel.GetEditUrl("nb1", "profiles/nb1/a.md"));
+    }
+
+    [Fact]
+    public async Task GivenAnUnknownNotebook_WhenLoadAsync_ThenIsNotFound()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        await sut.LoadAsync("gone", "n1");
+
+        // Assert
+        Assert.Null(sut.Note);
+        Assert.Null(sut.Notebook);
+        mockNotes.Verify(x => x.GetNoteAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenTheNotebooksNotLoadedYet_WhenTheyLoad_ThenTheNoteIsLoaded()
+    {
+        // Arrange
+        Notebook? found = null;
+        mockNotebooks.Setup(x => x.FindAsync(null)).ReturnsAsync(() => found);
+        var sut = CreateSut();
+        await sut.LoadAsync(null, "n1");
+
+        // Act
+        found = notes;
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (sut.Note == null && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+
+        // Assert
+        Assert.Equal(note, sut.Note);
+    }
+
+    [Fact]
+    public async Task GivenANoteOfACreatedNotebook_WhenClosed_ThenBackToThatNotebook()
+    {
+        // Arrange
+        var notebook = new Notebook { Name = "nb1", Id = Guid.NewGuid().ToString("D"), Root = "profiles/nb1/", Title = "Work", HasPassphrase = true };
+        var pages = new Mock<INoteService>();
+        pages.Setup(x => x.GetNoteAsync("profiles/nb1/a.md")).ReturnsAsync(new NoteDocument { Entry = new NoteEntry { Id = "profiles/nb1/a.md", Name = "a.md" }, Content = "page" });
+        mockNotebooks.Setup(x => x.FindAsync("nb1")).ReturnsAsync(notebook);
+        mockFactory.Setup(x => x.Create(notebook)).Returns(pages.Object);
+        var sut = CreateSut();
+        await sut.LoadAsync("nb1", "profiles/nb1/a.md");
+
+        // Act
+        sut.CloseCommand.Execute(null);
+
+        // Assert
+        Assert.Equal("page", sut.Content);
+        mockNavigation.Verify(x => x.NavigateTo("files?notebook=nb1"), Times.Once);
     }
 
     [Fact]
@@ -97,7 +179,7 @@ public class NoteEditorViewModelTests
         var sut = CreateSut();
 
         // Act
-        await sut.LoadAsync("missing");
+        await sut.LoadAsync(null, "missing");
 
         // Assert
         Assert.True(sut.IsNotFound);
@@ -113,7 +195,7 @@ public class NoteEditorViewModelTests
         var sut = CreateSut();
 
         // Act
-        await sut.LoadAsync("n1");
+        await sut.LoadAsync(null, "n1");
 
         // Assert
         Assert.Equal(FilesViewModel.StorageErrorMessage, sut.ErrorMessage);
@@ -128,7 +210,7 @@ public class NoteEditorViewModelTests
         var sut = CreateSut();
 
         // Act
-        await sut.LoadAsync("n1");
+        await sut.LoadAsync(null, "n1");
 
         // Assert
         Assert.Equal("Allow access to the folder 'Notes' to use your files.", sut.ErrorMessage);
@@ -360,15 +442,16 @@ public class NoteEditorViewModelTests
     public void GivenNullSyncService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!, testText.Errors)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, null!, testText.Errors)).ParamName);
     }
 
     [Fact]
     public void GivenNoteKey_WhenGetEditUrl_ThenKeyIsEscapedInTheQueryString()
     {
         // Act & Assert
-        Assert.Equal("files/edit?note=notes%2FWork%2FMy%20Ideas.md", NoteEditorViewModel.GetEditUrl("notes/Work/My Ideas.md"));
-        Assert.Throws<ArgumentNullException>(() => NoteEditorViewModel.GetEditUrl(null!));
+        Assert.Equal("files/edit?note=notes%2FWork%2FMy%20Ideas.md", NoteEditorViewModel.GetEditUrl(null, "notes/Work/My Ideas.md"));
+        Assert.Throws<ArgumentNullException>(() => NoteEditorViewModel.GetEditUrl(null, null!));
     }
 
     [Fact]
@@ -490,13 +573,53 @@ public class NoteEditorViewModelTests
     {
         mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", [key]));
     }
-
-    private NoteEditorViewModel CreateSut() => new(mockNotes.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, testText.Errors);
+
+    [Fact]
+    public async Task GivenANoteThatCouldNotBeReadWhileLocked_WhenNotesUnlock_ThenItIsLoaded()
+    {
+        // Arrange
+        mockNotes.SetupSequence(x => x.GetNoteAsync("n1"))
+            .ThrowsAsync(new E2eLockedException())
+            .ReturnsAsync(new NoteDocument { Entry = note, Content = "saved", FolderPath = ["Work"] });
+        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (sut.Note == null && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+
+        // Assert
+        Assert.Equal(note, sut.Note);
+        Assert.Equal("saved", sut.Content);
+    }
+
+    [Fact]
+    public async Task GivenALoadedNote_WhenNotesLockAndUnlock_ThenUnsavedEditsAreKept()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "unsaved";
+        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+
+        // Assert
+        Assert.True(sut.IsUnlocked);
+        Assert.Equal("unsaved", sut.Content);
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
+    }
+
+    private NoteEditorViewModel CreateSut() => new(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors);
 
     private async Task<NoteEditorViewModel> CreateLoadedSutAsync()
     {
         var sut = CreateSut();
-        await sut.LoadAsync("n1");
+        await sut.LoadAsync(null, "n1");
         return sut;
     }
 }

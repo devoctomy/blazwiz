@@ -86,7 +86,9 @@ hasher and so on by registering its own first.
 | | `UseIndexedDbFileStore(db, store)` / `UseFileStore<T>()` | Where the files are kept |
 | | `UseFileStores(s => s.AddIndexedDb(...).AddOpfs(...).AddLocalFolder().UseDefault(...))` | Lets the user pick the storage on each device and move between them |
 | | `UseIndexedDbIndexStore(db, store)` / `UseIndexStore<T>()` | Where the sync index is kept |
-| | `UseEncryption()` | End-to-end encryption, which also needs `AddBlazwizE2eEncryption()` |
+| | `UseKeyId(id)` | **Required.** The profile's id (a GUID), naming its own keys and passphrase. Every profile is end-to-end encrypted, which needs `AddBlazwizE2eEncryption()` |
+| | `UseProfileSettings(s => ...)` | When it locks itself, passkey unlock, passphrase rules, Argon2id costs |
+| | `UseDisplayText(key, resourceType)` | The name it is shown by, from resources |
 
 For comparison, notes uses most of the options:
 
@@ -103,7 +105,7 @@ services.AddBlazwizSync(sync => sync
             .AddLocalFolder()
             .UseDefault(SyncStorageKind.IndexedDb))
         .UseRemote("notes/**/*.md", includeEmptyFolders: true)
-        .UseEncryption()));
+        .UseKeyId("3f2b8c1e-6d4a-4f7b-9c2e-8a1d5b7e9f40")));
 ```
 
 ## 1. What one profile is made of
@@ -113,7 +115,7 @@ services.AddBlazwizSync(sync => sync
 ```mermaid
 flowchart LR
     App["App code<br/>[FromKeyedServices(&quot;todos&quot;)] ISyncFileStore"]
-    Enc["EncryptingSyncFileStore<br/>(only with UseEncryption)"]
+    Enc["EncryptingSyncFileStore<br/>(the profile's own keys)"]
     Track["TrackingSyncFileStore<br/>marks the index, asks for a sync"]
     Store["File store<br/>IndexedDB (default), OPFS, folder,<br/>switchable, or your own"]
     Index[("Sync index<br/>IndexedDB todos_index")]

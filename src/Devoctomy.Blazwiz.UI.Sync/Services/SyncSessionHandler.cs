@@ -7,15 +7,16 @@ using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 namespace Devoctomy.Blazwiz.UI.Sync.Services;
 
 /// <summary>
-/// Starts and stops sync with the session: connectivity before the shell shows, then storage recovery, encryption,
-/// the folder check and the scheduler in the background, and stopping the scheduler on sign out.
+/// Starts and stops sync with the session: connectivity before the shell shows, then storage recovery, the user's
+/// profiles and their passphrase status, the folder check and the scheduler in the background; on sign out, stopping
+/// the scheduler and locking every profile.
 /// </summary>
 public class SyncSessionHandler(
     IConnectivityService connectivityService,
     ISyncScheduler syncScheduler,
     ISyncStorageMigrationService storageMigrationService,
     ISyncStorageChannel storageChannel,
-    ISyncEncryptionService encryptionService,
+    ISyncProtectedProfileService protectedProfiles,
     ISyncFolderAccessMonitor folderAccessMonitor,
     IPersistentStorageService persistentStorageService)
     : ISessionLifecycleHandler
@@ -24,7 +25,7 @@ public class SyncSessionHandler(
     private readonly ISyncScheduler syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
     private readonly ISyncStorageMigrationService storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
     private readonly ISyncStorageChannel storageChannel = storageChannel ?? throw new ArgumentNullException(nameof(storageChannel));
-    private readonly ISyncEncryptionService encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
+    private readonly ISyncProtectedProfileService protectedProfiles = protectedProfiles ?? throw new ArgumentNullException(nameof(protectedProfiles));
     private readonly ISyncFolderAccessMonitor folderAccessMonitor = folderAccessMonitor ?? throw new ArgumentNullException(nameof(folderAccessMonitor));
     private readonly IPersistentStorageService persistentStorageService = persistentStorageService ?? throw new ArgumentNullException(nameof(persistentStorageService));
 
@@ -61,12 +62,12 @@ public class SyncSessionHandler(
 
         try
         {
-            // Unlocks with this device's keys, or holds back encrypted profiles until it can.
-            await encryptionService.InitializeAsync();
+            // Every profile is locked until the user unlocks it; those the user created are added as profiles.
+            await protectedProfiles.LoadAsync();
         }
         catch (Exception)
         {
-            // The encryption status stays unknown, so encrypted profiles wait; it is tried again once online.
+            // The keys or the index cannot be read: the profiles stay locked, and their files keep syncing encrypted.
         }
 
         folderAccessMonitor.Start();
@@ -92,5 +93,8 @@ public class SyncSessionHandler(
         // Stop syncing first. Local data stays, partitioned by user.
         folderAccessMonitor.Stop();
         await syncScheduler.StopAsync();
+
+        // Their keys are wiped now, not when the sign-in page next loads.
+        protectedProfiles.Unload();
     }
 }

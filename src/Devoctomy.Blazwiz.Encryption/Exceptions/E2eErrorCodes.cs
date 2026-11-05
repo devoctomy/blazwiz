@@ -7,11 +7,6 @@ namespace Devoctomy.Blazwiz.Encryption.Exceptions;
 public static class E2eErrorCodes
 {
     /// <summary>
-    /// Encryption was already turned on from another device.
-    /// </summary>
-    public const string AlreadyEnabled = "E2e.AlreadyEnabled";
-
-    /// <summary>
     /// This device's keys are not unlocked.
     /// </summary>
     public const string Locked = "E2e.Locked";
@@ -30,6 +25,16 @@ public static class E2eErrorCodes
     /// The passkey cannot unlock this device's keys; the passphrase is needed.
     /// </summary>
     public const string PassphraseRequired = "E2e.PassphraseRequired";
+
+    /// <summary>
+    /// The signed in user has no protected profile with the given id ({0}).
+    /// </summary>
+    public const string ProfileNotFound = "E2e.ProfileNotFound";
+
+    /// <summary>
+    /// The new passphrase is shorter than the profile allows ({0}: the minimum length).
+    /// </summary>
+    public const string PassphraseTooShort = "E2e.PassphraseTooShort";
 
     /// <summary>
     /// The passphrase is not correct.

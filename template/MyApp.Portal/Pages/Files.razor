@@ -2,132 +2,141 @@
 @inherits MvvmComponentBase<FilesViewModel>
 @using MyApp.Portal.Models.Notes
 
-<PageHeader Title="Files" Icon="bi-journal-text" Subtitle="Your notes, stored in this browser and synced to your cloud storage.">
-    <button type="button" class="btn btn-outline-primary" id="new-folder-button" @onclick="() => ViewModel.ShowNewFolderDialogCommand.Execute(null)">
-        <i class="bi bi-folder-plus me-1"></i>New folder
-    </button>
-    <button type="button" class="btn btn-primary" id="new-note-button" @onclick="() => ViewModel.ShowNewNoteDialogCommand.Execute(null)">
-        <i class="bi bi-file-earmark-plus me-1"></i>New note
-    </button>
+<PageHeader Title="@(ViewModel.Notebook?.Title ?? "Notebook")" Icon="bi-journal-text" Subtitle="Pages in this notebook, stored in this browser and synced to your cloud storage.">
+    @if (ViewModel.IsUnlocked)
+    {
+        <button type="button" class="btn btn-outline-secondary" id="lock-notebook-button" @onclick="() => ViewModel.LockCommand.Execute(null)">
+            <i class="bi bi-lock me-1"></i>Lock
+        </button>
+        <button type="button" class="btn btn-outline-primary" id="new-folder-button" @onclick="() => ViewModel.ShowNewFolderDialogCommand.Execute(null)">
+            <i class="bi bi-folder-plus me-1"></i>New folder
+        </button>
+        <button type="button" class="btn btn-primary" id="new-note-button" @onclick="() => ViewModel.ShowNewNoteDialogCommand.Execute(null)">
+            <i class="bi bi-file-earmark-plus me-1"></i>New note
+        </button>
+    }
 </PageHeader>
 
-@if (ViewModel.ErrorMessage != null)
+@if (ViewModel.IsNotebookMissing)
 {
-    <div class="alert alert-danger alert-dismissible" role="alert" id="files-error">
-        <i class="bi bi-exclamation-triangle me-2"></i>@ViewModel.ErrorMessage
-        <button type="button" class="btn-close" aria-label="Close" @onclick="() => ViewModel.DismissErrorCommand.Execute(null)"></button>
+    <div class="panel" id="notebook-not-found">
+        <p class="panel-text">This notebook does not exist. It may have been deleted.</p>
+        <a class="btn btn-primary" href="notebooks"><i class="bi bi-arrow-left me-1"></i>Back to notebooks</a>
     </div>
 }
+else if (ViewModel.Notebook != null)
+{
+    <E2eUnlockPanel Profile="@ViewModel.Notebook.Name">
+        @if (ViewModel.ErrorMessage != null)
+        {
+            <div class="alert alert-danger alert-dismissible" role="alert" id="files-error">
+                <i class="bi bi-exclamation-triangle me-2"></i>@ViewModel.ErrorMessage
+                <button type="button" class="btn-close" aria-label="Close" @onclick="() => ViewModel.DismissErrorCommand.Execute(null)"></button>
+            </div>
+        }
 
-<div class="panel files-panel @(ViewModel.DraggedId != null ? "is-dragging" : null)">
-    <div class="files-root @(ViewModel.SelectedFolderId == null ? "selected" : null) @(ViewModel.DropTargetId == FilesViewModel.TopLevelId ? "drop-target" : null)"
-         id="files-root"
-         @onclick="() => ViewModel.SelectTopLevelCommand.Execute(null)"
-         @ondragenter="() => ViewModel.DragEnterCommand.Execute(FilesViewModel.TopLevelId)"
-         @ondragover:preventDefault
-         @ondrop="() => ViewModel.DropCommand.ExecuteAsync(FilesViewModel.TopLevelId)"
-         @ondrop:preventDefault>
-        <i class="bi bi-journals files-root-icon"></i>
-        <span class="files-root-name">@FilesViewModel.TopLevelName</span>
-        <span class="files-root-hint d-none d-sm-inline">
-            New notes go in <strong id="selected-folder-name">@ViewModel.SelectedFolderName</strong>
-        </span>
-    </div>
+        <div class="panel files-panel @(ViewModel.DraggedId != null ? "is-dragging" : null)">
+            <div class="files-root @(ViewModel.SelectedFolderId == null ? "selected" : null) @(ViewModel.DropTargetId == FilesViewModel.TopLevelId ? "drop-target" : null)"
+                 id="files-root"
+                 @onclick="() => ViewModel.SelectTopLevelCommand.Execute(null)"
+                 @ondragenter="() => ViewModel.DragEnterCommand.Execute(FilesViewModel.TopLevelId)"
+                 @ondragover:preventDefault
+                 @ondrop="() => ViewModel.DropCommand.ExecuteAsync(FilesViewModel.TopLevelId)"
+                 @ondrop:preventDefault>
+                <i class="bi bi-journals files-root-icon"></i>
+                <span class="files-root-name">@FilesViewModel.TopLevelName</span>
+                <span class="files-root-hint d-none d-sm-inline">
+                    New notes go in <strong id="selected-folder-name">@ViewModel.SelectedFolderName</strong>
+                </span>
+            </div>
 
-    @if (ViewModel.IsLoading)
-    {
-        <div class="files-empty">
-            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Loading your notes...
-        </div>
-    }
-    else if (ViewModel.VisibleItems.Count == 0)
-    {
-        <div class="files-empty" id="files-empty">
-            <i class="bi bi-journal-plus"></i>
-            <p>You have no notes yet.</p>
-            <button type="button" class="btn btn-primary btn-sm" @onclick="() => ViewModel.ShowNewNoteDialogCommand.Execute(null)">Create a note</button>
-        </div>
-    }
-    else
-    {
-        <ul class="file-tree" id="file-tree">
-            @foreach (var item in ViewModel.VisibleItems)
+            @if (ViewModel.IsLoading)
             {
-                var entry = item.Entry;
-                var dropId = entry.IsFolder ? entry.Id : entry.ParentId ?? FilesViewModel.TopLevelId;
-                <li @key="entry.Id"
-                    class="file-row @(entry.IsFolder ? "is-folder" : "is-note") @(entry.IsFolder && ViewModel.SelectedFolderId == entry.Id ? "selected" : null) @(entry.IsFolder && ViewModel.DropTargetId == entry.Id ? "drop-target" : null) @(ViewModel.DraggedId == entry.Id ? "is-dragged" : null)"
-                    style="--depth: @item.Depth"
-                    draggable="true"
-                    data-drag-id="@entry.Id"
-                    data-name="@entry.Name"
-                    @ondragstart="() => ViewModel.StartDragCommand.Execute(entry.Id)"
-                    @ondragend="() => ViewModel.EndDragCommand.Execute(null)"
-                    @ondragenter="() => ViewModel.DragEnterCommand.Execute(dropId)"
-                    @ondragover:preventDefault
-                    @ondrop="() => ViewModel.DropCommand.ExecuteAsync(dropId)"
-                    @ondrop:preventDefault>
-                    @if (entry.IsFolder)
-                    {
-                        <button type="button" class="file-toggle" title="@(item.IsExpanded ? "Collapse" : "Expand")"
-                                aria-expanded="@item.IsExpanded.ToString().ToLowerInvariant()"
-                                @onclick="() => ViewModel.ToggleFolderCommand.Execute(entry.Id)">
-                            <i class="bi @(item.IsExpanded ? "bi-chevron-down" : "bi-chevron-right")"></i>
-                        </button>
-                        <button type="button" class="file-name" @onclick="() => ViewModel.SelectFolderCommand.Execute(entry.Id)">
-                            <i class="bi @(item.IsExpanded ? "bi-folder2-open" : "bi-folder") file-icon"></i>
-                            <span class="file-label">@entry.Name</span>
-                            <span class="file-count">@item.ChildCount</span>
-                        </button>
-                    }
-                    else
-                    {
-                        <span class="file-toggle-spacer"></span>
-                        <button type="button" class="file-name" title="Edit @entry.Name" @onclick="() => ViewModel.OpenNoteCommand.Execute(entry.Id)">
-                            @switch (ViewModel.CanDecrypt(entry))
-                            {
-                                case true:
-                                    <i class="bi bi-lock-fill file-lock text-success" title="End to end encrypted" aria-label="End to end encrypted"></i>
-                                    break;
-                                case false:
-                                    <i class="bi bi-lock-fill file-lock text-danger" title="End to end encrypted: set up encryption on this device to open it" aria-label="End to end encrypted, locked on this device"></i>
-                                    break;
-                            }
-                            <i class="bi bi-file-earmark-text file-icon"></i>
-                            <span class="file-label">@entry.Name</span>
-                        </button>
-                    }
-                    <span class="file-meta d-none d-md-inline">@entry.ModifiedAt.ToLocalTime().ToString("g")</span>
-                    <span class="file-actions">
-                        @if (!entry.IsFolder)
-                        {
-                            <button type="button" class="icon-btn icon-btn-sm file-action-edit" title="Edit" aria-label="Edit @entry.Name"
-                                    @onclick="() => ViewModel.OpenNoteCommand.Execute(entry.Id)">
-                                <i class="bi bi-pencil-square"></i>
-                            </button>
-                        }
-                        <button type="button" class="icon-btn icon-btn-sm file-action-rename" title="Rename" aria-label="Rename @entry.Name"
-                                @onclick="() => ViewModel.ShowRenameDialogCommand.Execute(entry.Id)">
-                            <i class="bi bi-input-cursor-text"></i>
-                        </button>
-                        <button type="button" class="icon-btn icon-btn-sm file-action-move" title="Move to..." aria-label="Move @entry.Name"
-                                @onclick="() => ViewModel.ShowMoveDialogCommand.Execute(entry.Id)">
-                            <i class="bi bi-folder-symlink"></i>
-                        </button>
-                        <button type="button" class="icon-btn icon-btn-sm file-action-delete" title="Delete" aria-label="Delete @entry.Name"
-                                @onclick="() => ViewModel.ShowDeleteDialogCommand.Execute(entry.Id)">
-                            <i class="bi bi-trash3"></i>
-                        </button>
-                    </span>
-                </li>
+                <div class="files-empty">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>Loading your notes...
+                </div>
             }
-        </ul>
-    }
-</div>
+            else if (ViewModel.VisibleItems.Count == 0)
+            {
+                <div class="files-empty" id="files-empty">
+                    <i class="bi bi-journal-plus"></i>
+                    <p>You have no notes yet.</p>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="() => ViewModel.ShowNewNoteDialogCommand.Execute(null)">Create a note</button>
+                </div>
+            }
+            else
+            {
+                <ul class="file-tree" id="file-tree">
+                    @foreach (var item in ViewModel.VisibleItems)
+                    {
+                        var entry = item.Entry;
+                        var dropId = entry.IsFolder ? entry.Id : entry.ParentId ?? FilesViewModel.TopLevelId;
+                        <li @key="entry.Id"
+                            class="file-row @(entry.IsFolder ? "is-folder" : "is-note") @(entry.IsFolder && ViewModel.SelectedFolderId == entry.Id ? "selected" : null) @(entry.IsFolder && ViewModel.DropTargetId == entry.Id ? "drop-target" : null) @(ViewModel.DraggedId == entry.Id ? "is-dragged" : null)"
+                            style="--depth: @item.Depth"
+                            draggable="true"
+                            data-drag-id="@entry.Id"
+                            data-name="@entry.Name"
+                            @ondragstart="() => ViewModel.StartDragCommand.Execute(entry.Id)"
+                            @ondragend="() => ViewModel.EndDragCommand.Execute(null)"
+                            @ondragenter="() => ViewModel.DragEnterCommand.Execute(dropId)"
+                            @ondragover:preventDefault
+                            @ondrop="() => ViewModel.DropCommand.ExecuteAsync(dropId)"
+                            @ondrop:preventDefault>
+                            @if (entry.IsFolder)
+                            {
+                                <button type="button" class="file-toggle" title="@(item.IsExpanded ? "Collapse" : "Expand")"
+                                        aria-expanded="@item.IsExpanded.ToString().ToLowerInvariant()"
+                                        @onclick="() => ViewModel.ToggleFolderCommand.Execute(entry.Id)">
+                                    <i class="bi @(item.IsExpanded ? "bi-chevron-down" : "bi-chevron-right")"></i>
+                                </button>
+                                <button type="button" class="file-name" @onclick="() => ViewModel.SelectFolderCommand.Execute(entry.Id)">
+                                    <i class="bi @(item.IsExpanded ? "bi-folder2-open" : "bi-folder") file-icon"></i>
+                                    <span class="file-label">@entry.Name</span>
+                                    <span class="file-count">@item.ChildCount</span>
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="file-toggle-spacer"></span>
+                                <button type="button" class="file-name" title="Edit @entry.Name" @onclick="() => ViewModel.OpenNoteCommand.Execute(entry.Id)">
+                                    <i class="bi bi-file-earmark-text file-icon"></i>
+                                    <span class="file-label">@entry.Name</span>
+                                </button>
+                            }
+                            <span class="file-meta d-none d-md-inline">@entry.ModifiedAt.ToLocalTime().ToString("g")</span>
+                            <span class="file-actions">
+                                @if (!entry.IsFolder)
+                                {
+                                    <button type="button" class="icon-btn icon-btn-sm file-action-edit" title="Edit" aria-label="Edit @entry.Name"
+                                            @onclick="() => ViewModel.OpenNoteCommand.Execute(entry.Id)">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                }
+                                <button type="button" class="icon-btn icon-btn-sm file-action-rename" title="Rename" aria-label="Rename @entry.Name"
+                                        @onclick="() => ViewModel.ShowRenameDialogCommand.Execute(entry.Id)">
+                                    <i class="bi bi-input-cursor-text"></i>
+                                </button>
+                                <button type="button" class="icon-btn icon-btn-sm file-action-move" title="Move to..." aria-label="Move @entry.Name"
+                                        @onclick="() => ViewModel.ShowMoveDialogCommand.Execute(entry.Id)">
+                                    <i class="bi bi-folder-symlink"></i>
+                                </button>
+                                <button type="button" class="icon-btn icon-btn-sm file-action-delete" title="Delete" aria-label="Delete @entry.Name"
+                                        @onclick="() => ViewModel.ShowDeleteDialogCommand.Execute(entry.Id)">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </span>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
 
-<p class="files-tip d-none d-md-block">
-    <i class="bi bi-info-circle me-1"></i>Drag notes and folders onto a folder to move them, or onto <em>@FilesViewModel.TopLevelName</em> to move them to the top level.
-</p>
+        <p class="files-tip d-none d-md-block">
+            <i class="bi bi-info-circle me-1"></i>Drag notes and folders onto a folder to move them, or onto <em>@FilesViewModel.TopLevelName</em> to move them to the top level.
+        </p>
+    </E2eUnlockPanel>
+}
 
 @switch (ViewModel.ActiveDialog)
 {

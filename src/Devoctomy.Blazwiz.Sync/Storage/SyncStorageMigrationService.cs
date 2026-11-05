@@ -16,7 +16,7 @@ namespace Devoctomy.Blazwiz.Sync.Storage;
 /// sync index is not touched, so nothing is uploaded or downloaded again afterwards.
 /// </remarks>
 public class SyncStorageMigrationService(
-    SyncOptions options,
+    ISyncProfileRegistry registry,
     ISyncStorageResolver resolver,
     ISyncStorageStateStore stateStore,
     ISyncScheduler scheduler,
@@ -26,7 +26,7 @@ public class SyncStorageMigrationService(
     IConnectivityService connectivityService)
     : ISyncStorageMigrationService
 {
-    private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly ISyncProfileRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly ISyncStorageResolver resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
     private readonly ISyncStorageStateStore stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
     private readonly ISyncScheduler scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
@@ -199,7 +199,7 @@ public class SyncStorageMigrationService(
 
     private IEnumerable<string> GetSwitchableProfiles()
     {
-        return options.Profiles.Select(p => p.Name).Where(resolver.IsSwitchable);
+        return registry.Profiles.Select(p => p.Name).Where(resolver.IsSwitchable);
     }
 
     private Task SaveAsync(SyncStorageState state, SyncStorageKind kind, SyncStorageKind? from = null, SyncStorageKind? to = null, SyncStorageMigrationPhase? phase = null)

@@ -1,5 +1,7 @@
 using Blazing.Mvvm;
 using Devoctomy.Blazwiz.Auth.Cognito.Extensions;
+using Devoctomy.Blazwiz.Auth.Cognito.Models;
+using Devoctomy.Blazwiz.Auth.Cognito.Services;
 using Devoctomy.Blazwiz.Auth.Extensions;
 using Devoctomy.Blazwiz.Cryptography.Extensions;
 using Devoctomy.Blazwiz.Encryption;
@@ -8,6 +10,7 @@ using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Connectivity;
 using Devoctomy.Blazwiz.Sync.Encryption;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Extensions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Storage;
@@ -39,6 +42,11 @@ public static class SyncModuleServiceCollectionExtensions
     public const string ConfigurationSection = "AwsS3";
 
     /// <summary>
+    /// The configuration section holding the Argon2id settings for new keys, if not the build's defaults.
+    /// </summary>
+    public const string Argon2idConfigurationSection = "Argon2id";
+
+    /// <summary>
     /// Adds sync and end to end encryption, starts and stops sync with the session, and adds the module's UI: the Sync
     /// page, the status pill, banners and overlay, its Settings sections and its sign-in option. Signs in with Cognito
     /// (<c>AddBlazwizCognito</c>), whose credentials reach the data bucket and the user's keys. Call after
@@ -68,17 +76,29 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddSingleton<ISyncEventPresenter, SyncEventPresenter>();
         services.AddSingleton<ISyncStatusPresenter, SyncStatusPresenter>();
         services.AddScoped<ISyncFolderAccessMonitor, SyncFolderAccessMonitor>();
+        services.AddScoped<ISyncProfileDisplayNames, SyncProfileDisplayNames>();
+        services.AddScoped<IE2eProfilePresenter, E2eProfilePresenter>();
         services.AddSessionLifecycleHandler<SyncSessionHandler>();
         services.AddErrorText<SyncUiText>();
 
-        // End to end encryption: the user's keys in their own Secrets Manager secret (<user pool sub>/keys), and this
+        // End to end encryption: the user's keys in their own Secrets Manager secrets (<user pool sub>/keys, and
+        // <user pool sub>/keys/<id> for each protected profile, listed in <user pool sub>/keys/index), and this
         // device's copy of the master key wrapped by a key derived from the passkey PRF.
         services.AddSingleton<ISecretsManagerClientFactory, SecretsManagerClientFactory>();
-        services.AddScoped<IUserKeysStore, SecretsManagerUserKeysStore>();
+
+        // Without Cognito (local development) there is no Secrets Manager: the keys are kept in the browser instead.
+        services.AddScoped<SecretsManagerUserKeysStore>();
+        services.AddScoped<LocalStorageUserKeysStore>();
+        services.AddScoped<IUserKeysStore>(sp => UsesSecretsManager(sp) ? sp.GetRequiredService<SecretsManagerUserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
+        services.AddScoped<IE2eProfileIndexStore>(sp => UsesSecretsManager(sp) ? sp.GetRequiredService<SecretsManagerUserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
         services.AddBlazwizPrfKeyDerivation(prf => prf.AddKey(E2eKeyNames.KeyEncryptionKey));
-        services.AddBlazwizE2eEncryption();
+        services.AddBlazwizE2eEncryption(argon2 => configuration.GetSection(Argon2idConfigurationSection).Bind(argon2.Parameters));
         services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
-        services.AddScoped<IPasskeyUnlockService, PasskeyUnlockService>();
+        services.AddScoped<IE2eLocalProfileIndexStore, LocalStorageE2eLocalProfileIndexStore>();
+        services.AddScoped<IE2eProfileLabelStore, LocalStorageE2eProfileLabelStore>();
+        services.AddScoped<IE2eLockChannel, E2eLockChannel>();
+        services.AddScoped<IE2eIdleLock, E2eIdleLock>();
+        services.AddScoped<ISyncProtectedProfileService, SyncProtectedProfileService>();
 
         services.AddBlazwizSync(configure);
 
@@ -113,4 +133,7 @@ public static class SyncModuleServiceCollectionExtensions
         });
         return services;
     }
+
+    private static bool UsesSecretsManager(IServiceProvider services) =>
+        CognitoAuthenticationService.IsConfigured(services.GetService<AwsCognitoConfig>());
 }

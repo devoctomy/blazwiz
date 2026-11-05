@@ -9,37 +9,32 @@ public class NoteTreeService
     : INoteTreeService
 {
     /// <summary>
-    /// The key every note and folder is under, relative to the user's root.
-    /// </summary>
-    public const string RootKey = "notes/";
-
-    /// <summary>
     /// The file extension of notes.
     /// </summary>
     public const string NoteExtension = ".md";
 
     /// <inheritdoc/>
-    public IReadOnlyList<NoteEntry> BuildEntries(IEnumerable<SyncFileInfo> files, string owner)
+    public IReadOnlyList<NoteEntry> BuildEntries(string root, IEnumerable<SyncFileInfo> files, string owner)
     {
+        ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(owner);
 
         var entries = new Dictionary<string, NoteEntry>(StringComparer.Ordinal);
-        foreach (var file in files.Where(f => f.Key.StartsWith(RootKey, StringComparison.Ordinal) && f.Key.Length > RootKey.Length))
+        foreach (var file in files.Where(f => f.Key.StartsWith(root, StringComparison.Ordinal) && f.Key.Length > root.Length))
         {
             if (file.IsFolder)
             {
-                AddFolders(entries, file.Key, owner, file.ModifiedAt);
+                AddFolders(root, entries, file.Key, owner, file.ModifiedAt);
             }
-            else if (IsNoteKey(file.Key))
+            else if (IsNoteKey(root, file.Key))
             {
-                var entry = CreateEntry(file.Key, owner, NoteEntryKind.Note, file.ModifiedAt);
-                entry.EncryptionKeyId = file.EncryptionKeyId;
+                var entry = CreateEntry(root, file.Key, owner, NoteEntryKind.Note, file.ModifiedAt);
                 entries[file.Key] = entry;
-                var parent = GetParentKey(file.Key);
+                var parent = GetParentKey(root, file.Key);
                 if (parent != null)
                 {
-                    AddFolders(entries, parent, owner, file.ModifiedAt);
+                    AddFolders(root, entries, parent, owner, file.ModifiedAt);
                 }
             }
         }
@@ -48,11 +43,12 @@ public class NoteTreeService
     }
 
     /// <inheritdoc/>
-    public string GetChildKey(string? parentKey, string name, bool isFolder)
+    public string GetChildKey(string root, string? parentKey, string name, bool isFolder)
     {
+        ArgumentNullException.ThrowIfNull(root);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        return (parentKey ?? RootKey) + name + (isFolder ? "/" : string.Empty);
+        return (parentKey ?? root) + name + (isFolder ? "/" : string.Empty);
     }
 
     /// <inheritdoc/>
@@ -66,34 +62,38 @@ public class NoteTreeService
     }
 
     /// <inheritdoc/>
-    public string? GetParentKey(string key)
+    public string? GetParentKey(string root, string key)
     {
+        ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(key);
 
         var path = key.TrimEnd('/');
         var parentLength = path.LastIndexOf('/') + 1;
         var parent = path[..parentLength];
-        return parent.Length <= RootKey.Length ? null : parent;
+        return parent.Length <= root.Length ? null : parent;
     }
 
     /// <inheritdoc/>
-    public IReadOnlyList<string> GetFolderNames(string key)
+    public IReadOnlyList<string> GetFolderNames(string root, string key)
     {
+        ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(key);
 
-        var parent = GetParentKey(key);
+        var parent = GetParentKey(root, key);
         return parent == null
             ? []
-            : parent[RootKey.Length..].TrimEnd('/').Split('/');
+            : parent[root.Length..].TrimEnd('/').Split('/');
     }
 
     /// <inheritdoc/>
-    public bool IsNoteKey(string key)
+    public bool IsNoteKey(string root, string key)
     {
+        ArgumentNullException.ThrowIfNull(root);
+
         return key != null
-            && key.StartsWith(RootKey, StringComparison.Ordinal)
+            && key.StartsWith(root, StringComparison.Ordinal)
             && key.EndsWith(NoteExtension, StringComparison.OrdinalIgnoreCase)
-            && key.Length > RootKey.Length + NoteExtension.Length;
+            && key.Length > root.Length + NoteExtension.Length;
     }
 
     /// <inheritdoc/>
@@ -178,7 +178,7 @@ public class NoteTreeService
         return options;
     }
 
-    private void AddFolders(Dictionary<string, NoteEntry> entries, string folderKey, string owner, DateTimeOffset modifiedAt)
+    private void AddFolders(string root, Dictionary<string, NoteEntry> entries, string folderKey, string owner, DateTimeOffset modifiedAt)
     {
         string? key = folderKey;
         while (key != null)
@@ -193,14 +193,14 @@ public class NoteTreeService
             }
             else
             {
-                entries[key] = CreateEntry(key, owner, NoteEntryKind.Folder, modifiedAt);
+                entries[key] = CreateEntry(root, key, owner, NoteEntryKind.Folder, modifiedAt);
             }
 
-            key = GetParentKey(key);
+            key = GetParentKey(root, key);
         }
     }
 
-    private NoteEntry CreateEntry(string key, string owner, NoteEntryKind kind, DateTimeOffset modifiedAt)
+    private NoteEntry CreateEntry(string root, string key, string owner, NoteEntryKind kind, DateTimeOffset modifiedAt)
     {
         return new NoteEntry
         {
@@ -208,7 +208,7 @@ public class NoteTreeService
             Owner = owner,
             Kind = kind,
             Name = GetName(key),
-            ParentId = GetParentKey(key),
+            ParentId = GetParentKey(root, key),
             CreatedAt = modifiedAt,
             ModifiedAt = modifiedAt,
         };

@@ -225,22 +225,22 @@ sequenceDiagram
     KM->>Keys: GetAsync()
     Keys->>SM: GetSecretValue "{sub}/keys"
     SM-->>Keys: keys.json (master key wrapped by passphrase, file keys wrapped by master key)
-    KM->>LS: GET blazwiz_e2e_keys_{user}
+    KM->>LS: GET blazwiz_e2e_keys_account_{user}
     LS-->>KM: {wrappedMasterKey (wrapped by e2e-kek), cachedDocument}
     KM->>DKS: TryGetKey("e2e-kek")
 
     alt Key present but this device has no keys (or they were wrapped by another passkey)
         DKS-->>KM: kek copy
         KM->>Ring: Clear(Refuse)
-        Note over KM: Status NeedsSetup: the user enters the passphrase in Settings, which unwraps the master key and saves blazwiz_e2e_keys_{user}
+        Note over KM: Status NeedsSetup: the user enters the passphrase in Settings, which unwraps the master key and saves blazwiz_e2e_keys_account_{user}
     else Key present and this device is set up
         DKS-->>KM: kek copy
         KM->>KM: Unwrap master key with kek, unwrap each file key with master key
         KM->>Ring: Load(masterKey, fileKeys, activeKeyId)
-        Ring->>DKS: SetKey("e2e-master"), SetKey("e2e-file:{id}") for each
+        Ring->>DKS: SetKey("e2e:account:master"), SetKey("e2e:account:file:{id}") for each
         KM->>KM: Zero kek, master key and file key copies
         opt keys.json changed since last time
-            KM->>LS: SET blazwiz_e2e_keys_{user} (new cachedDocument)
+            KM->>LS: SET blazwiz_e2e_keys_account_{user} (new cachedDocument)
         end
         Note over KM: Status Unlocked, writes are encrypted
     else Key missing (e.g. after a reload, or signed in with a typed password)

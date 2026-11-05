@@ -27,10 +27,10 @@ public class SyncFolderServiceTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("folderClient", Assert.Throws<ArgumentNullException>(() => new SyncFolderService(null!, mockUser.Object, mockResolver.Object, options)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncFolderService(mockFolder.Object, null!, mockResolver.Object, options)).ParamName);
-        Assert.Equal("resolver", Assert.Throws<ArgumentNullException>(() => new SyncFolderService(mockFolder.Object, mockUser.Object, null!, options)).ParamName);
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncFolderService(mockFolder.Object, mockUser.Object, mockResolver.Object, null!)).ParamName);
+        Assert.Equal("folderClient", Assert.Throws<ArgumentNullException>(() => new SyncFolderService(null!, mockUser.Object, mockResolver.Object, FakeSyncProfileRegistry.Of(options))).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncFolderService(mockFolder.Object, null!, mockResolver.Object, FakeSyncProfileRegistry.Of(options))).ParamName);
+        Assert.Equal("resolver", Assert.Throws<ArgumentNullException>(() => new SyncFolderService(mockFolder.Object, mockUser.Object, null!, FakeSyncProfileRegistry.Of(options))).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncFolderService(mockFolder.Object, mockUser.Object, mockResolver.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -82,5 +82,5 @@ public class SyncFolderServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().PickAsync());
     }
 
-    private SyncFolderService CreateSut() => new(mockFolder.Object, mockUser.Object, mockResolver.Object, options);
+    private SyncFolderService CreateSut() => new(mockFolder.Object, mockUser.Object, mockResolver.Object, FakeSyncProfileRegistry.Of(options));
 }

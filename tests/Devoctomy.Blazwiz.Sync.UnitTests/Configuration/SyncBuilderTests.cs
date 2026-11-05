@@ -82,7 +82,7 @@ public class SyncBuilderTests
     public void GivenProfile_WhenAddProfile_ThenAddedWithDefaultsFromItsName()
     {
         // Act
-        new SyncBuilder(options).AddProfile("notes", p => p.UseRemote("/notes/**/*.md", includeEmptyFolders: true));
+        new SyncBuilder(options).AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("/notes/**/*.md", includeEmptyFolders: true));
 
         // Assert
         var profile = Assert.Single(options.Profiles);
@@ -106,10 +106,10 @@ public class SyncBuilderTests
     public void GivenDuplicateProfile_WhenAddProfile_ThenThrows()
     {
         // Arrange
-        var sut = new SyncBuilder(options).AddProfile("notes", p => p.UseRemote("notes/*.md"));
+        var sut = new SyncBuilder(options).AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/*.md"));
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => sut.AddProfile("notes", p => p.UseRemote("notes/*.md")));
+        Assert.Throws<ArgumentException>(() => sut.AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/*.md")));
     }
 
     private sealed class FakeEventLog : Devoctomy.Blazwiz.Sync.Interfaces.ISyncEventLog
@@ -129,5 +129,47 @@ public class SyncBuilderTests
         public Task ClearAsync() => Task.CompletedTask;
 
         public Task PruneAsync() => Task.CompletedTask;
+    }
+
+    [Fact]
+    public void GivenSettings_WhenSetForProfilesUsersCreateAndForAProfileInCode_ThenEachIsKept()
+    {
+        // Act
+        new SyncBuilder(options)
+            .UseProfileDefaults(s => s.IdleTimeout = TimeSpan.FromMinutes(2))
+            .AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*.md").UseProfileSettings(s =>
+            {
+                s.AllowDeviceUnlock = true;
+                s.MinimumPassphraseLength = 16;
+            }));
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(2), options.ProfileDefaults.IdleTimeout);
+        var notes = Assert.Single(options.Profiles).Settings;
+        Assert.True(notes.AllowDeviceUnlock);
+        Assert.Equal(16, notes.MinimumPassphraseLength);
+        Assert.Equal(TimeSpan.FromMinutes(15), notes.IdleTimeout);
+        Assert.Throws<ArgumentNullException>(() => new SyncBuilder(options).UseProfileDefaults(null!));
+    }
+
+    [Fact]
+    public void GivenADisplayText_WhenAddingAProfile_ThenItsKeyAndResourcesAreKept()
+    {
+        // Act
+        new SyncBuilder(options)
+            .AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*.md").UseDisplayText("Profile.Notes", typeof(SyncBuilderTests)));
+
+        // Assert
+        var notes = Assert.Single(options.Profiles);
+        Assert.Equal("Profile.Notes", notes.DisplayText);
+        Assert.Equal(typeof(SyncBuilderTests), notes.DisplayTextResource);
+    }
+
+    [Fact]
+    public void GivenNoDisplayTextOrResources_WhenUseDisplayText_ThenThrows()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => new SyncBuilder(options).AddProfile("notes", p => p.UseDisplayText(" ", typeof(SyncBuilderTests))));
+        Assert.Throws<ArgumentNullException>(() => new SyncBuilder(options).AddProfile("notes", p => p.UseDisplayText("Profile.Notes", null!)));
     }
 }

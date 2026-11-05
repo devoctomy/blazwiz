@@ -12,7 +12,9 @@
   },
   "preferNameDirectory": true,
   "guids": [
-    "a78e68c7-90e0-4f90-aa3d-73f7b2c9f2c8"
+    "a78e68c7-90e0-4f90-aa3d-73f7b2c9f2c8",
+    "3f2b8c1e-6d4a-4f7b-9c2e-8a1d5b7e9f40",
+    "7c9e2a4b-1f3d-4e8a-b6c5-2d9f0e1a3b57"
   ],
   "symbols": {
     "Title": {
@@ -57,7 +59,7 @@
       "datatype": "bool",
       "defaultValue": "true",
       "displayName": "Notes example",
-      "description": "Include the notes example: the Files page and a markdown note editor, synced by the sync module. Needs --sync: with --sync false it is left out."
+      "description": "Include the notes example: notebooks of markdown pages, each with its own passphrase, and an editor, synced by the sync module. Needs --sync: with --sync false it is left out."
     },
     "skipRestore": {
       "type": "parameter",
@@ -204,7 +206,15 @@
           "condition": "(!IncludeSync)",
           "exclude": [
             "MyApp.Portal.UITests/SyncTests.cs",
-            "MyApp.Portal.UITests/E2eEncryptionTests.cs"
+            "MyApp.Portal.UITests/E2eEncryptionTests.cs",
+            "MyApp.Portal/sync.json",
+            "MyApp.Portal/Sync/FilesSyncProfile.cs"
+          ]
+        },
+        {
+          "condition": "(IncludeNotes)",
+          "exclude": [
+            "MyApp.Portal/Sync/FilesSyncProfile.cs"
           ]
         },
         {
@@ -219,22 +229,31 @@
             "MyApp.Portal.Application/Services/MarkdownRenderer.cs",
             "MyApp.Portal.Application/Services/NoteNameService.cs",
             "MyApp.Portal.Application/Services/NoteService.cs",
+            "MyApp.Portal.Application/Services/NoteServiceFactory.cs",
+            "MyApp.Portal.Application/Services/NotebookService.cs",
+            "MyApp.Portal.Application/Services/NotebookLabelHandler.cs",
             "MyApp.Portal.Application/Services/NoteTreeService.cs",
+            "MyApp.Portal.Application/Sync/NotesSyncProfile.cs",
             "MyApp.Portal.Application/Services/Interfaces/IMarkdownFormatService.cs",
             "MyApp.Portal.Application/Services/Interfaces/IMarkdownRenderer.cs",
             "MyApp.Portal.Application/Services/Interfaces/INoteEditorInteropService.cs",
             "MyApp.Portal.Application/Services/Interfaces/INoteNameService.cs",
             "MyApp.Portal.Application/Services/Interfaces/INoteService.cs",
+            "MyApp.Portal.Application/Services/Interfaces/INoteServiceFactory.cs",
+            "MyApp.Portal.Application/Services/Interfaces/INotebookService.cs",
             "MyApp.Portal.Application/Services/Interfaces/INoteTreeService.cs",
             "MyApp.Portal.Application/Services/Interfaces/INotesStateStore.cs",
             "MyApp.Portal.Application/Text/NotesText.cs",
             "MyApp.Portal.Application/Text/NotesText.resx",
             "MyApp.Portal.Application/ViewModels/FilesViewModel.cs",
             "MyApp.Portal.Application/ViewModels/NoteEditorViewModel.cs",
+            "MyApp.Portal.Application/ViewModels/NotebooksViewModel.cs",
             "MyApp.Portal/Pages/Files.razor",
             "MyApp.Portal/Pages/Files.razor.cs",
             "MyApp.Portal/Pages/NoteEditor.razor",
             "MyApp.Portal/Pages/NoteEditor.razor.cs",
+            "MyApp.Portal/Pages/Notebooks.razor",
+            "MyApp.Portal/Pages/Notebooks.razor.cs",
             "MyApp.Portal/Services/NoteEditorInteropService.cs",
             "MyApp.Portal/wwwroot/css/notes.css",
             "MyApp.Portal/wwwroot/js/notes.js",
@@ -244,10 +263,16 @@
             "MyApp.Portal.Application.UnitTests/Services/MarkdownRendererTests.cs",
             "MyApp.Portal.Application.UnitTests/Services/NoteNameServiceTests.cs",
             "MyApp.Portal.Application.UnitTests/Services/NoteServiceTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/NoteServiceFactoryTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/NotebookServiceTests.cs",
+            "MyApp.Portal.Application.UnitTests/Services/NotebookLabelHandlerTests.cs",
             "MyApp.Portal.Application.UnitTests/Services/NoteTreeServiceTests.cs",
+            "MyApp.Portal.Application.UnitTests/Sync/NotesSyncProfileTests.cs",
             "MyApp.Portal.Application.UnitTests/Text/NotesTextTests.cs",
             "MyApp.Portal.Application.UnitTests/ViewModels/FilesViewModelTests.cs",
             "MyApp.Portal.Application.UnitTests/ViewModels/NoteEditorViewModelTests.cs",
+            "MyApp.Portal.Application.UnitTests/ViewModels/NotebooksViewModelTests.cs",
+            "MyApp.Portal.UITests/NotebooksTests.cs",
             "MyApp.Portal.UITests/NotesTests.cs"
           ]
         }

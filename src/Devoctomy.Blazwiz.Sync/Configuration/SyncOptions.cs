@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 
 namespace Devoctomy.Blazwiz.Sync.Configuration;
@@ -41,6 +42,11 @@ public class SyncOptions
     /// Gets or sets a factory for a custom log, or null for IndexedDB.
     /// </summary>
     public Func<IServiceProvider, ISyncEventLog>? EventLogFactory { get; set; }
+
+    /// <summary>
+    /// Gets or sets the security settings of the profiles users create.
+    /// </summary>
+    public E2eProfileSettings ProfileDefaults { get; set; } = new E2eProfileSettings();
 
     /// <summary>
     /// Gets the profiles.

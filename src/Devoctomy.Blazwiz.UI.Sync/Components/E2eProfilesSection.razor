@@ -1,0 +1,224 @@
+@inherits MvvmComponentBase<E2eProfilesViewModel>
+@using Devoctomy.Blazwiz.UI.Sync.Models
+@inject IStringLocalizer<UiText> Text
+@inject IStringLocalizer<SyncUiText> SyncText
+
+<div class="mt-4" id="e2e-section">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+        <h3 class="h6 mb-0 flex-grow-1"><i class="bi bi-shield-lock me-1"></i>@SyncText["Sync.E2e.Title"]</h3>
+        @if (ViewModel.CanLockAll)
+        {
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="e2e-lock-all" @onclick="() => ViewModel.LockAllCommand.Execute(null)">
+                <i class="bi bi-lock me-1"></i>@SyncText["Sync.E2e.LockAll"]
+            </button>
+        }
+    </div>
+    <p class="panel-text mb-2">@SyncText["Sync.E2e.Text"]</p>
+    @if (!ViewModel.IsLoaded)
+    {
+        <p class="mb-2" id="e2e-status">@SyncText["Sync.E2e.Status.Checking"]</p>
+    }
+    else
+    {
+        @if (ViewModel.IsOffline)
+        {
+            <p class="text-body-secondary small mb-2" id="e2e-offline">@SyncText["Sync.E2e.Offline"]</p>
+        }
+        @if (ViewModel.AppProfiles.Count > 0)
+        {
+            <h4 class="h6 small text-body-secondary mt-3 mb-1">@SyncText["Sync.E2e.AppProfiles"]</h4>
+            <ul class="list-unstyled mb-0" id="e2e-app-profiles">
+                @foreach (var row in ViewModel.AppProfiles)
+                {
+                    @ProfileRow(row)
+                }
+            </ul>
+        }
+        <div class="d-flex flex-wrap align-items-center gap-2 mt-3 mb-1">
+            <h4 class="h6 small text-body-secondary mb-0 flex-grow-1">@SyncText["Sync.E2e.CreatedProfiles"]</h4>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="e2e-new" disabled="@ViewModel.IsOffline"
+                    @onclick="() => ViewModel.OpenCreateCommand.Execute(null)">
+                <i class="bi bi-plus-lg me-1"></i>@SyncText["Sync.E2e.New"]
+            </button>
+        </div>
+        @if (ViewModel.CreatedProfiles.Count == 0)
+        {
+            <p class="text-body-secondary small mb-0" id="e2e-no-created">@SyncText["Sync.E2e.NoCreatedProfiles"]</p>
+        }
+        else
+        {
+            <ul class="list-unstyled mb-0" id="e2e-created-profiles">
+                @foreach (var row in ViewModel.CreatedProfiles)
+                {
+                    @ProfileRow(row)
+                }
+            </ul>
+        }
+        @if (!string.IsNullOrEmpty(ViewModel.Error))
+        {
+            <div class="text-danger mt-2" id="e2e-section-error">@ViewModel.Error</div>
+        }
+    }
+</div>
+
+@if (ViewModel.ActiveDialog is E2eDialogKind dialog)
+{
+    <ModalDialog Id="e2e-dialog" Title="@ViewModel.DialogTitle" Icon="bi-shield-lock" OnClose="() => ViewModel.CloseDialogCommand.Execute(null)">
+        <ChildContent>
+            @if (ViewModel.IsEditing)
+            {
+                <form id="e2e-form" @onsubmit="() => ViewModel.ConfirmDialogCommand.ExecuteAsync(null)" @onsubmit:preventDefault>
+                    <p>@ViewModel.DialogText</p>
+                    @if (ViewModel.AsksForNewPassphrase)
+                    {
+                        <div class="alert alert-warning" role="alert" id="e2e-no-recovery">
+                            <i class="bi bi-exclamation-triangle me-1"></i><strong>@ViewModel.NoRecoveryWarning</strong>
+                        </div>
+                    }
+                    @if (dialog == E2eDialogKind.Delete)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label" for="e2e-delete-confirmation">@SyncText["Sync.E2e.DeleteConfirmation", ViewModel.DialogProfile?.Id ?? string.Empty]</label>
+                            <input type="text" class="form-control" id="e2e-delete-confirmation" autocomplete="off"
+                                   @bind="ViewModel.DeleteConfirmation" @bind:event="oninput" />
+                        </div>
+                    }
+                    else
+                    {
+                        @if (dialog == E2eDialogKind.ChangePassphrase)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label" for="e2e-current-passphrase">@SyncText["Sync.E2e.CurrentPassphrase"]</label>
+                                <input type="password" class="form-control" id="e2e-current-passphrase" autocomplete="current-password"
+                                       @bind="ViewModel.CurrentPassphrase" @bind:event="oninput" />
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <label class="form-label" for="e2e-passphrase">@(ViewModel.AsksForNewPassphrase ? SyncText["Sync.E2e.NewPassphrase"] : SyncText["Sync.E2e.Passphrase"])</label>
+                            <input type="password" class="form-control" id="e2e-passphrase"
+                                   autocomplete="@(ViewModel.AsksForNewPassphrase ? "new-password" : "current-password")"
+                                   @bind="ViewModel.Passphrase" @bind:event="oninput" />
+                        </div>
+                    }
+                    @if (ViewModel.AsksForNewPassphrase)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label" for="e2e-confirm-passphrase">@SyncText["Sync.E2e.ConfirmPassphrase"]</label>
+                            <input type="password" class="form-control" id="e2e-confirm-passphrase" autocomplete="new-password"
+                                   @bind="ViewModel.ConfirmPassphrase" @bind:event="oninput" />
+                        </div>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="e2e-acknowledge" @bind="ViewModel.AcknowledgedNoRecovery" />
+                            <label class="form-check-label" for="e2e-acknowledge">@SyncText["Sync.E2e.Acknowledge"]</label>
+                        </div>
+                    }
+                </form>
+            }
+            else if (ViewModel.Steps.Count > 0)
+            {
+                <ul class="list-unstyled e2e-steps mb-0" id="e2e-steps">
+                    @foreach (var step in ViewModel.Steps)
+                    {
+                        <li class="d-flex align-items-center gap-2 py-1 e2e-step-@step.State.ToString().ToLowerInvariant()">
+                            @switch (step.State)
+                            {
+                                case E2eStepState.Done:
+                                    <i class="bi bi-check-circle-fill text-success" aria-label="@SyncText["Sync.E2e.Step.Done"]"></i>
+                                    break;
+                                case E2eStepState.Running:
+                                    <span class="spinner-border spinner-border-sm text-primary" role="status" aria-label="@SyncText["Sync.E2e.Step.Running"]"></span>
+                                    break;
+                                case E2eStepState.Failed:
+                                    <i class="bi bi-x-circle-fill text-danger" aria-label="@SyncText["Sync.E2e.Step.Failed"]"></i>
+                                    break;
+                                default:
+                                    <i class="bi bi-circle text-body-secondary" aria-label="@SyncText["Sync.E2e.Step.Waiting"]"></i>
+                                    break;
+                            }
+                            <span>@step.Label</span>
+                            @if (step.Detail != null)
+                            {
+                                <span class="text-body-secondary small ms-auto">@step.Detail</span>
+                            }
+                        </li>
+                    }
+                </ul>
+                @if (ViewModel.IsFinished)
+                {
+                    @Finished()
+                }
+            }
+            else if (ViewModel.IsWorking)
+            {
+                <p class="mb-0" id="e2e-working">
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>@SyncText["Sync.E2e.Dialog.Working"]
+                </p>
+            }
+            else if (ViewModel.IsFinished)
+            {
+                @Finished()
+            }
+            @if (!string.IsNullOrEmpty(ViewModel.DialogError))
+            {
+                <div class="text-danger mt-3" id="e2e-error">@ViewModel.DialogError</div>
+            }
+        </ChildContent>
+        <Footer>
+            @if (ViewModel.IsEditing)
+            {
+                <button type="button" class="btn btn-secondary" @onclick="() => ViewModel.CloseDialogCommand.Execute(null)">@Text["Common.Cancel"]</button>
+                <button type="submit" form="e2e-form" class="btn @(dialog == E2eDialogKind.Delete ? "btn-danger" : "btn-primary")" id="e2e-confirm">@ViewModel.DialogTitle</button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-primary" id="e2e-close" disabled="@ViewModel.IsWorking"
+                        @onclick="() => ViewModel.CloseDialogCommand.Execute(null)">@Text["Common.Close"]</button>
+            }
+        </Footer>
+    </ModalDialog>
+}
+
+@code {
+    private RenderFragment ProfileRow(E2eProfileRow row) => @<li class="e2e-profile d-flex flex-wrap align-items-center gap-2 py-2" data-profile="@row.Name">
+        <i class="bi @(row.State == E2eProfileState.Unlocked ? "bi-unlock text-success" : row.State == E2eProfileState.Locked ? "bi-lock-fill text-body-secondary" : "bi-exclamation-circle text-warning")"></i>
+        <span class="e2e-profile-name @(row.IsCreatedByUser ? "font-monospace small" : null)">@row.DisplayName</span>
+        <span class="e2e-profile-state text-body-secondary small flex-grow-1">@ViewModel.GetStateText(row)</span>
+        @switch (row.State)
+        {
+            case E2eProfileState.NotSetUp:
+                <button type="button" class="btn btn-primary btn-sm e2e-set-passphrase" disabled="@ViewModel.IsOffline"
+                        @onclick="() => ViewModel.OpenSetPassphraseCommand.Execute(row.Name)">@SyncText["Sync.E2e.SetPassphrase"]</button>
+                break;
+            case E2eProfileState.Locked:
+                @if (row.CanUnlockWithDevice)
+                {
+                    <button type="button" class="btn btn-outline-primary btn-sm e2e-unlock-passkey"
+                            @onclick="() => ViewModel.UnlockWithDeviceCommand.ExecuteAsync(row.Name)"><i class="bi bi-fingerprint me-1"></i>@SyncText["Sync.E2e.UnlockWithPasskey"]</button>
+                }
+                <button type="button" class="btn btn-primary btn-sm e2e-unlock"
+                        @onclick="() => ViewModel.OpenUnlockCommand.Execute(row.Name)">@SyncText["Sync.E2e.Unlock"]</button>
+                break;
+            default:
+                @if (row.AllowDeviceUnlock && !row.CanUnlockWithDevice)
+                {
+                    <button type="button" class="btn btn-outline-secondary btn-sm e2e-use-passkey"
+                            @onclick="() => ViewModel.EnableDeviceUnlockCommand.ExecuteAsync(row.Name)"><i class="bi bi-fingerprint me-1"></i>@SyncText["Sync.E2e.UsePasskey"]</button>
+                }
+                <button type="button" class="btn btn-outline-secondary btn-sm e2e-change" disabled="@ViewModel.IsOffline"
+                        @onclick="() => ViewModel.OpenChangePassphraseCommand.Execute(row.Name)">@SyncText["Sync.E2e.ChangePassphrase"]</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm e2e-lock"
+                        @onclick="() => ViewModel.LockCommand.Execute(row.Name)"><i class="bi bi-lock me-1"></i>@SyncText["Sync.E2e.Lock"]</button>
+                break;
+        }
+        @if (row.IsCreatedByUser)
+        {
+            <button type="button" class="btn btn-outline-danger btn-sm e2e-delete" disabled="@ViewModel.IsOffline"
+                    @onclick="() => ViewModel.OpenDeleteCommand.Execute(row.Name)"><i class="bi bi-trash me-1"></i>@SyncText["Sync.E2e.Delete"]</button>
+        }
+    </li>;
+
+    private RenderFragment Finished() => @<div class="text-center mt-4" id="e2e-finished">
+        <i class="bi bi-shield-lock-fill text-success display-4"></i>
+        <p class="h5 mt-2 mb-0">@ViewModel.FinishedText</p>
+    </div>;
+}

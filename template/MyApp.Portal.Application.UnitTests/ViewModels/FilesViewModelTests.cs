@@ -1,5 +1,6 @@
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
+using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Exceptions;
@@ -11,6 +12,7 @@ using Microsoft.JSInterop;
 using Moq;
 using MyApp.Portal.Application.Exceptions;
 using MyApp.Portal.Application.Services.Interfaces;
+using MyApp.Portal.Application.Sync;
 using MyApp.Portal.Application.ViewModels;
 using MyApp.Portal.Models.Notes;
 
@@ -25,7 +27,13 @@ public class FilesViewModelTests
     private readonly Mock<INoteNameService> mockNames = new();
     private readonly Mock<INoteTreeService> mockTree = new();
     private readonly Mock<ISyncService> mockSync = new();
-    private readonly Mock<ISyncEncryptionService> mockEncryption = new();
+    private readonly Mock<IE2eProtectedProfileManager> mockManager = new();
+    private readonly Mock<INotebookService> mockNotebooks = new();
+    private readonly Mock<INoteServiceFactory> mockFactory = new();
+    private readonly Mock<ISyncProtectedProfileService> mockProfiles = new();
+    private readonly Notebook notes = new() { Name = "notes", Id = NotesSyncProfile.KeyId, Root = "notes/", Title = "Notes", IsDefault = true, HasPassphrase = true };
+    private readonly E2eKeyScope notesScope = new(NotesSyncProfile.KeyId);
+    private bool unlocked = true;
     private HashSet<string> lastExpandedFolderIds = [];
     private List<NoteEntry> entries =
     [
@@ -39,6 +47,9 @@ public class FilesViewModelTests
     {
         mockNotes.Setup(x => x.GetEntriesAsync()).ReturnsAsync(() => entries);
         mockSync.SetupGet(x => x.Status).Returns(new SyncStatus());
+        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(() => unlocked);
+        mockNotebooks.Setup(x => x.FindAsync(It.IsAny<string?>())).ReturnsAsync((string? name) => name is null or "notes" ? notes : null);
+        mockFactory.Setup(x => x.Create(notes)).Returns(mockNotes.Object);
 
         // The tree service decides which rows are visible; here every entry is returned, flagged as expanded when the
         // view model asked for it, and the expanded folders are captured so tests can check what was asked for.
@@ -56,10 +67,12 @@ public class FilesViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("noteService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(null!, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockEncryption.Object, testText.Errors)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, null!, mockNames.Object, mockTree.Object, mockSync.Object, mockEncryption.Object, testText.Errors)).ParamName);
-        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, null!, mockTree.Object, mockSync.Object, mockEncryption.Object, testText.Errors)).ParamName);
-        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, null!, mockSync.Object, mockEncryption.Object, testText.Errors)).ParamName);
+        Assert.Equal("notebookService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(null!, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("noteServiceFactory", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, null!, mockProfiles.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, null!, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, null!, mockNames.Object, mockTree.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("noteNameService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, null!, mockTree.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("noteTreeService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, mockNames.Object, null!, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -83,7 +96,7 @@ public class FilesViewModelTests
         Assert.True(sut.IsLoading);
 
         // Act
-        await sut.OnInitializedAsync();
+        await sut.OpenNotebookAsync(null);
 
         // Assert
         Assert.False(sut.IsLoading);
@@ -102,7 +115,7 @@ public class FilesViewModelTests
         var sut = CreateSut();
 
         // Act
-        await sut.OnInitializedAsync();
+        await sut.OpenNotebookAsync(null);
 
         // Assert
         Assert.Equal(testText.Errors.Describe(exception), sut.ErrorMessage);
@@ -123,7 +136,7 @@ public class FilesViewModelTests
         var sut = CreateSut();
 
         // Act
-        await sut.OnInitializedAsync();
+        await sut.OpenNotebookAsync(null);
 
         // Assert
         Assert.Equal(FilesViewModel.StorageErrorMessage, sut.ErrorMessage);
@@ -441,11 +454,11 @@ public class FilesViewModelTests
     }
 
     [Fact]
-    public void GivenNullSyncService_WhenConstructing_ThenThrowsArgumentNullException()
+    public void GivenNullSyncServiceOrManager_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, null!, mockEncryption.Object, testText.Errors)).ParamName);
-        Assert.Equal("encryptionService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, null!, testText.Errors)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, null!, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, null!, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -516,33 +529,117 @@ public class FilesViewModelTests
     }
 
     [Fact]
-    public void GivenEntries_WhenCanDecrypt_ThenNullForPlainAndKeyRingAnswerForEncrypted()
+    public async Task GivenAnUnknownNotebook_WhenOpened_ThenItIsMissingAndNothingIsLoaded()
     {
         // Arrange
-        mockEncryption.Setup(x => x.CanDecrypt("k_1")).Returns(true);
-        mockEncryption.Setup(x => x.CanDecrypt("k_2")).Returns(false);
+        mockProfiles.SetupGet(x => x.IsLoaded).Returns(true);
         var sut = CreateSut();
 
-        // Act & Assert
-        Assert.Null(sut.CanDecrypt(Note("plain", "plain.md", null)));
-        Assert.True(sut.CanDecrypt(new NoteEntry { Id = "a", EncryptionKeyId = "k_1" }));
-        Assert.False(sut.CanDecrypt(new NoteEntry { Id = "b", EncryptionKeyId = "k_2" }));
+        // Act
+        await sut.OpenNotebookAsync("gone");
+
+        // Assert
+        Assert.True(sut.IsNotebookMissing);
+        Assert.Null(sut.Notebook);
+        Assert.False(sut.IsUnlocked);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Never);
     }
 
     [Fact]
-    public async Task GivenLoaded_WhenEncryptionStatusChanges_ThenEntriesReload()
+    public async Task GivenAnOpenNotebook_WhenLocked_ThenItIsLockedAndTheNotebooksPageIsShown()
     {
         // Arrange
         var sut = await CreateLoadedSutAsync();
-        mockNotes.Invocations.Clear();
 
         // Act
-        mockEncryption.Raise(x => x.StatusChanged += null, mockEncryption.Object, E2eStatus.Unlocked);
+        sut.LockCommand.Execute(null);
 
         // Assert
+        mockManager.Verify(x => x.Lock(notesScope), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("notebooks"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTheNotebooksNotLoadedYet_WhenTheyLoad_ThenTheNotebookOpens()
+    {
+        // Arrange
+        Notebook? found = null;
+        mockNotebooks.Setup(x => x.FindAsync(null)).ReturnsAsync(() => found);
+        var sut = CreateSut();
+        await sut.OpenNotebookAsync(null);
+        var missingBeforeLoad = sut.IsNotebookMissing;
+
+        // Act
+        found = notes;
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+        await WaitForAsync(() => sut.Entries.Count > 0);
+
+        // Assert
+        Assert.False(missingBeforeLoad);
+        Assert.Equal(notes, sut.Notebook);
+        Assert.NotEmpty(sut.Entries);
+    }
+
+    [Fact]
+    public async Task GivenACreatedNotebook_WhenANoteIsOpened_ThenTheEditorIsOpenedInThatNotebook()
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        var notebook = new Notebook { Name = id, Id = id, Root = $"profiles/{id}/", Title = "Work", HasPassphrase = true };
+        var pages = new Mock<INoteService>();
+        pages.Setup(x => x.GetEntriesAsync()).ReturnsAsync([Note($"profiles/{id}/plan.md", "plan.md", null)]);
+        mockNotebooks.Setup(x => x.FindAsync(id)).ReturnsAsync(notebook);
+        mockFactory.Setup(x => x.Create(notebook)).Returns(pages.Object);
+        mockManager.Setup(x => x.IsUnlocked(new E2eKeyScope(id))).Returns(true);
+        var sut = CreateSut();
+        await sut.OpenNotebookAsync(id);
+
+        // Act
+        sut.OpenNoteCommand.Execute($"profiles/{id}/plan.md");
+
+        // Assert
+        Assert.Equal("Work", sut.Notebook!.Title);
+        Assert.Single(sut.Entries);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Never);
+        mockNavigation.Verify(x => x.NavigateTo($"files/edit?notebook={id}&note=profiles%2F{id}%2Fplan.md"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNotesLocked_WhenInitialized_ThenNothingIsLoaded()
+    {
+        // Arrange
+        unlocked = false;
+        var sut = CreateSut();
+
+        // Act
+        await sut.OpenNotebookAsync(null);
+
+        // Assert
+        Assert.False(sut.IsUnlocked);
+        Assert.Null(sut.ErrorMessage);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNotesLocked_WhenUnlocked_ThenEntriesLoad()
+    {
+        // Arrange
+        unlocked = false;
+        var sut = await CreateLoadedSutAsync();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, new E2eKeyScope(Guid.NewGuid().ToString("D")));
+        unlocked = true;
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+        await WaitForAsync(() => sut.VisibleItems.Count > 0);
+
+        // Assert
+        Assert.Contains(nameof(FilesViewModel.IsUnlocked), changed);
         mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
         sut.Dispose();
-        mockEncryption.Raise(x => x.StatusChanged += null, mockEncryption.Object, E2eStatus.Disabled);
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
         mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
     }
 
@@ -554,7 +651,7 @@ public class FilesViewModelTests
         var sut = CreateSut();
 
         // Act
-        await sut.OnInitializedAsync();
+        await sut.OpenNotebookAsync(null);
 
         // Assert
         Assert.Equal("End to end encryption is locked on this device.", sut.ErrorMessage);
@@ -566,12 +663,12 @@ public class FilesViewModelTests
     private static NoteEntry Note(string id, string name, string? parentId) =>
         new() { Id = id, Name = name, ParentId = parentId, Kind = NoteEntryKind.Note };
 
-    private FilesViewModel CreateSut() => new(mockNotes.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockEncryption.Object, testText.Errors);
+    private FilesViewModel CreateSut() => new(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockManager.Object, testText.Errors);
 
     private async Task<FilesViewModel> CreateLoadedSutAsync()
     {
         var sut = CreateSut();
-        await sut.OnInitializedAsync();
+        await sut.OpenNotebookAsync(null);
         return sut;
     }
 }

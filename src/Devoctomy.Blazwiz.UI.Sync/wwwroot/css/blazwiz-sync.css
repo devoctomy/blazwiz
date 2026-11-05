@@ -28,6 +28,27 @@
     gap: 0.5rem;
 }
 
+.sync-pill-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+/* Lock indicator, beside the status pill */
+.e2e-lock-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.e2e-lock-menu { width: auto; }
+
+/* Unlock panel, in place of a locked profile's content */
+.e2e-unlock-panel { padding: 2rem 1rem; }
+
+.e2e-unlock-form { max-width: 20rem; }
+
 .sync-pill {
     display: inline-flex;
     align-items: center;

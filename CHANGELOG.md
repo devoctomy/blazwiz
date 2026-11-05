@@ -8,6 +8,76 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.4.0
+
+### Added
+- Profiles can have a display name from resources: `UseDisplayText(key, resourceType)`, shown by Settings and the
+  Sync page's profile filter (`ISyncProfileDisplayNames`).
+- `E2eUnlockPanel`: wrap a page's content of a profile in it, and while the profile is locked it shows a passphrase
+  form (and the passkey, where allowed) in its place. The template's Files and note editor pages use it.
+- A lock indicator beside the sync status pill: how many profiles are unlocked, with Lock all.
+- `ISyncProtectedProfileService.Profiles`, `IsLoaded` and `ProfilesChanged`: the user's profiles, and whether each has
+  a passphrase yet.
+- Labels for protected profiles, kept only on the device and never synced: `ISyncProtectedProfileService.SetLabelAsync`,
+  stored by `IE2eProfileLabelStore` (local storage). Settings, the unlock panel and the Sync page's profile filter show
+  a profile by its label in place of its id. A label is removed when its profile is deleted, on this device or another.
+  The template labels each notebook with its name whenever it is unlocked, so a notebook shows its id on a device until
+  it has been unlocked there.
+- The template's notebook page has a Lock button: it locks the notebook and goes back to the Notebooks page.
+- Sync profiles can be classes deriving from `SyncProfileDefinition`, added with `AddProfile<TProfile>()` or found in
+  an assembly with `AddProfilesFromAssemblyContaining<T>()`.
+- Protected profiles, each with its own passphrase and keys (`IE2eProtectedProfileManager`): create, list, unlock
+  (offline from this device's copy too), lock, lock all, change the passphrase and delete. Each is identified only by
+  a GUID, with its keys in its own secret (`<sub>/keys/<id>`) and the user's profiles listed in an index secret
+  (`<sub>/keys/index`). Each syncs as a sync profile of its own (`profiles/<id>/` in the user's prefix, its own
+  local storage), added when the session starts, created and deleted with `ISyncProtectedProfileService`, and locked
+  and removed when the user signs out. A locked one keeps syncing its encrypted files.
+- Sync profiles can be added and removed while the app runs (`ISyncProfileRegistry`); configured profiles are still
+  reached as keyed services.
+- Sync settings and profiles can be set in configuration as well as in code: `UseEmbeddedConfiguration` reads the
+  `Sync` section of a JSON file embedded in the app, and `UseConfiguration` reads any configuration section. Unknown
+  keys and invalid values stop the app at startup with an error naming the setting.
+
+### Changed
+- Every sync profile is end to end encrypted with its own keys and passphrase, named by its id: `UseKeyId(<guid>)`
+  (or `Id` in configuration) replaces `UseEncryption()` and `Encrypted`, and is required. A profile is locked until its
+  passphrase is entered, and does not sync while locked. `UseProfileSettings` sets when it locks itself after being
+  idle, whether it can be unlocked with the passkey, its minimum passphrase length and Argon2id costs;
+  `UseProfileDefaults` sets them for profiles users create. Unlocking or locking a profile does so in every tab.
+- End to end encryption keys belong to a key scope (`E2eKeyScope`). `IUserKeysStore` and `IE2eLocalKeyStore` take the
+  scope; apps that implement them must add it. `IE2eKeyRings` gives each scope its key ring.
+- Encrypted files are bound to their profile and path, so a file cannot be moved to another path or profile and still
+  be read. Files encrypted by earlier builds cannot be read.
+- Without a Cognito user pool (local development), the keys are kept in the browser, so encryption works locally.
+- The sync module reads the Argon2id settings for new keys from the optional `Argon2id` configuration section. The
+  template's `appsettings.Development.json` lightens them for local development and the UI tests.
+- Settings lists the profiles set up in code, by display name, and the protected profiles the user created, by id:
+  set a first passphrase, create, unlock (with the passkey too, where allowed), lock, lock all, change the passphrase
+  and delete (confirmed by typing the id). Encryption can no longer be turned off. The banner shows only while a
+  profile set up in code has no passphrase yet.
+- Deleting a protected profile finds its files in S3 before deleting its keys, and stops with nothing deleted if S3
+  cannot be reached.
+- The template's notes example has notebooks: the notes profile is the default notebook, and users create more,
+  each a protected profile with its own passphrase, its name kept encrypted inside it. A Notebooks page lists them
+  (the sidebar's Files item is now Notebooks); the Files page and editor show the notebook named in the URL.
+- A protected profile deleted on another device is forgotten on this one when the profiles are next loaded: its keys
+  (`IE2eProtectedProfileManager.ForgetAsync`), its files and its sync index here are deleted too.
+- The AWS base stack lets each user manage their secrets under `<sub>/keys/` (each profile's keys and the index) in
+  place of the single `<sub>/keys` secret; redeploy with `deploy.ps1`. `test-auth.ps1` checks them.
+- The template's sync profiles are classes (`NotesSyncProfile`, or `FilesSyncProfile` without the notes example),
+  found by `AddProfilesFromAssemblyContaining` in `Program.cs`; `AddNotesProfile` is gone. Its other sync settings are
+  in `MyApp.Portal/sync.json`, embedded in the app.
+
+### Removed
+- The account-wide passphrase and keys: `IE2eKeyManager`, `E2eWriteMode`, `E2eSyncGate`, `ISyncEncryptionSweeper`,
+  `ISyncEncryptionService`, `E2eStatus`, `E2eSettingsViewModel`, `E2eAlreadyEnabledException` (`E2e.AlreadyEnabled`)
+  and the account key scope. Plain files are no longer synced or read by encrypted profiles.
+- The template's per-note lock icons (`NoteEntry.EncryptionKeyId`): locked notes are not shown at all.
+
+### Fixed
+- In development builds, the update banner's Update button did nothing: the template's development service worker
+  now takes over when asked, as the published one does.
+
 ## 0.3.0
 
 ### Changed

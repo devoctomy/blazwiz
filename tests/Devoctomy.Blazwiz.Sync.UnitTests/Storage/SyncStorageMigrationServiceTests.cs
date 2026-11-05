@@ -61,14 +61,14 @@ public class SyncStorageMigrationServiceTests
         var resolver = CreateResolver();
 
         // Act & Assert
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(null!, resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
-        Assert.Equal("resolver", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, null!, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
-        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, null!, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
-        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, null!, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
-        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, null!, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, null!, mockConnectivity.Object)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, null!)).ParamName);
-        Assert.Equal("channel", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(options, resolver, stateStore, mockScheduler.Object, mockLock.Object, null!, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(null!, resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("resolver", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(FakeSyncProfileRegistry.Of(options), null!, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(FakeSyncProfileRegistry.Of(options), resolver, null!, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(FakeSyncProfileRegistry.Of(options), resolver, stateStore, null!, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(FakeSyncProfileRegistry.Of(options), resolver, stateStore, mockScheduler.Object, null!, mockChannel.Object, mockSync.Object, mockConnectivity.Object)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(FakeSyncProfileRegistry.Of(options), resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, null!, mockConnectivity.Object)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(FakeSyncProfileRegistry.Of(options), resolver, stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, null!)).ParamName);
+        Assert.Equal("channel", Assert.Throws<ArgumentNullException>(() => new SyncStorageMigrationService(FakeSyncProfileRegistry.Of(options), resolver, stateStore, mockScheduler.Object, mockLock.Object, null!, mockSync.Object, mockConnectivity.Object)).ParamName);
     }
 
     [Fact]
@@ -388,9 +388,9 @@ public class SyncStorageMigrationServiceTests
         Assert.Empty(calls);
     }
 
-    private SyncStorageResolver CreateResolver() => new(Mock.Of<IServiceProvider>(), options, stateStore, mockUser.Object, mockOpfs.Object, mockFolderClient.Object);
+    private SyncStorageResolver CreateResolver() => new(Mock.Of<IServiceProvider>(), FakeSyncProfileRegistry.Of(options), stateStore, mockUser.Object, mockOpfs.Object, mockFolderClient.Object);
 
-    private SyncStorageMigrationService CreateSut() => new(options, CreateResolver(), stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object);
+    private SyncStorageMigrationService CreateSut() => new(FakeSyncProfileRegistry.Of(options), CreateResolver(), stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object);
 
     private sealed class FakeStateStore : ISyncStorageStateStore
     {

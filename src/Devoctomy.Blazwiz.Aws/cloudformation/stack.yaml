@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   blazwiz base stack - static Blazor WebAssembly PWA hosted on private S3 behind CloudFront, with a Cognito
   user pool for sign-in and an identity pool that gives signed-in users temporary AWS credentials,
-  scoped to their own prefix in a private data bucket and their own '<sub>/keys' secret.
+  scoped to their own prefix in a private data bucket and their own '<sub>/keys/*' secrets.
 
 Parameters:
   AppName:
@@ -346,9 +346,9 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              # Only the secret named <user pool sub>/keys. Secrets Manager appends a random
-              # 6 character suffix to every secret ARN, hence '-??????'.
-              - Sid: ManageOwnKeysSecret
+              # Only secrets under <user pool sub>/keys/: each profile's keys, and the index of them.
+              # Secrets Manager appends a random 6 character suffix to every secret ARN, hence '-??????'.
+              - Sid: ManageOwnKeysSecrets
                 Effect: Allow
                 Action:
                   - secretsmanager:CreateSecret
@@ -358,7 +358,7 @@ Resources:
                   - secretsmanager:UpdateSecret
                   - secretsmanager:DeleteSecret
                   - secretsmanager:RestoreSecret
-                Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${!aws:PrincipalTag/userSub}/keys-??????'
+                Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${!aws:PrincipalTag/userSub}/keys/*-??????'
       Tags:
         - Key: app
           Value: !Ref AppName

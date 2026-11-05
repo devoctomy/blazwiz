@@ -13,6 +13,7 @@ using Moq;
 using MyApp.Portal.Application.Extensions;
 using MyApp.Portal.Application.Services;
 using MyApp.Portal.Application.Services.Interfaces;
+using MyApp.Portal.Application.Sync;
 using MyApp.Portal.Application.ViewModels;
 
 namespace MyApp.Portal.Application.UnitTests.Extensions;
@@ -20,11 +21,10 @@ namespace MyApp.Portal.Application.UnitTests.Extensions;
 public class NotesServiceCollectionExtensionsTests
 {
     [Fact]
-    public void GivenNullArguments_WhenAdding_ThenThrowsArgumentNullException()
+    public void GivenNullServices_WhenAdding_ThenThrowsArgumentNullException()
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => NotesServiceCollectionExtensions.AddNotes(null!));
-        Assert.Throws<ArgumentNullException>(() => NotesServiceCollectionExtensions.AddNotesProfile(null!));
     }
 
     [Fact]
@@ -41,11 +41,12 @@ public class NotesServiceCollectionExtensionsTests
         services.AddBlazwizUi(configuration);
 
         // Act
-        services.AddBlazwizSyncModule(configuration, sync => sync.AddNotesProfile());
+        services.AddBlazwizSyncModule(configuration, sync => sync.AddProfilesFromAssemblyContaining<NotesSyncProfile>());
         var result = services.AddNotes();
         services.AddAppServices();
         services.AddScoped<FilesViewModel>();
         services.AddScoped<NoteEditorViewModel>();
+        services.AddScoped<NotebooksViewModel>();
 
         // Assert
         Assert.Same(services, result);
@@ -53,13 +54,15 @@ public class NotesServiceCollectionExtensionsTests
         await using var scope = provider.CreateAsyncScope();
         Assert.Equal([NoteService.ProfileName], scope.ServiceProvider.GetRequiredService<ISyncService>().Profiles);
         Assert.IsType<IndexedDbNotesStateStore>(scope.ServiceProvider.GetRequiredService<INotesStateStore>());
-        Assert.IsType<NoteService>(scope.ServiceProvider.GetRequiredService<INoteService>());
+        Assert.IsType<NoteServiceFactory>(scope.ServiceProvider.GetRequiredService<INoteServiceFactory>());
+        Assert.IsType<NotebookService>(scope.ServiceProvider.GetRequiredService<INotebookService>());
         Assert.IsType<NoteNameService>(scope.ServiceProvider.GetRequiredService<INoteNameService>());
         Assert.IsType<NoteTreeService>(scope.ServiceProvider.GetRequiredService<INoteTreeService>());
         Assert.IsType<MarkdownRenderer>(scope.ServiceProvider.GetRequiredService<IMarkdownRenderer>());
         Assert.IsType<MarkdownFormatService>(scope.ServiceProvider.GetRequiredService<IMarkdownFormatService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<FilesViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<NoteEditorViewModel>());
-        Assert.Contains(scope.ServiceProvider.GetServices<NavigationItem>(), i => i.Href == "files");
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<NotebooksViewModel>());
+        Assert.Contains(scope.ServiceProvider.GetServices<NavigationItem>(), i => i.Href == "notebooks");
     }
 }

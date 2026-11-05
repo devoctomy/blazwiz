@@ -13,13 +13,15 @@ namespace Devoctomy.Blazwiz.Encryption.Extensions;
 public static class E2eEncryptionServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds end to end encryption key management (<see cref="IE2eKeyManager"/>) and the encrypted file format.
+    /// Adds end to end encryption key management (<see cref="IE2eProtectedProfileManager"/>, the keys of each profile) and
+    /// the encrypted file format.
     /// </summary>
     /// <remarks>
-    /// The app also registers an <see cref="IUserKeysStore"/> (where keys.json is kept), an
-    /// <see cref="IE2eLocalKeyStore"/> (this device's wrapped master key), and derives the
-    /// <see cref="E2eKeyNames.KeyEncryptionKey"/> from the passkey PRF with <c>AddBlazwizPrfKeyDerivation</c>. Sync
-    /// profiles opt in with <c>UseEncryption</c>.
+    /// The app also registers an <see cref="IUserKeysStore"/> (where the keys documents are kept), an
+    /// <see cref="IE2eLocalKeyStore"/> (this device's copies), an <see cref="IE2eProfileIndexStore"/> and an
+    /// <see cref="IE2eLocalProfileIndexStore"/> (the index of protected profiles), and derives the
+    /// <see cref="E2eKeyNames.KeyEncryptionKey"/> from the passkey PRF with <c>AddBlazwizPrfKeyDerivation</c>, for unlocking a
+    /// profile with the passkey.
     /// </remarks>
     /// <param name="services">The service collection to add services to.</param>
     /// <param name="configure">Changes the Argon2id settings for new keys, or null for the build defaults.</param>
@@ -39,8 +41,9 @@ public static class E2eEncryptionServiceCollectionExtensions
         services.TryAddSingleton<IArgon2idKeyDerivationService, BouncyCastleArgon2idKeyDerivationService>();
         services.TryAddSingleton<IDerivedKeyStore, InMemoryDerivedKeyStore>();
         services.TryAddSingleton<IEncryptedFileFormat, EncryptedFileFormat>();
-        services.TryAddSingleton<IE2eKeyRing, E2eKeyRing>();
-        services.TryAddScoped<IE2eKeyManager, E2eKeyManager>();
+        services.TryAddSingleton<IE2eKeysDocumentService, E2eKeysDocumentService>();
+        services.TryAddSingleton<IE2eKeyRings, E2eKeyRings>();
+        services.TryAddScoped<IE2eProtectedProfileManager, E2eProtectedProfileManager>();
 
         return services;
     }

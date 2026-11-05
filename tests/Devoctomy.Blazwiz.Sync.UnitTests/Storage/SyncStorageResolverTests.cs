@@ -34,12 +34,12 @@ public class SyncStorageResolverTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("services", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(null!, options, mockStateStore.Object, mockUser.Object, mockOpfs.Object, mockFolderClient.Object)).ParamName);
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, null!, mockStateStore.Object, mockUser.Object, mockOpfs.Object, mockFolderClient.Object)).ParamName);
-        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, options, null!, mockUser.Object, mockOpfs.Object, mockFolderClient.Object)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, options, mockStateStore.Object, null!, mockOpfs.Object, mockFolderClient.Object)).ParamName);
-        Assert.Equal("folderClient", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, options, mockStateStore.Object, mockUser.Object, mockOpfs.Object, null!)).ParamName);
-        Assert.Equal("opfsClient", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, options, mockStateStore.Object, mockUser.Object, null!, mockFolderClient.Object)).ParamName);
+        Assert.Equal("services", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(null!, FakeSyncProfileRegistry.Of(options), mockStateStore.Object, mockUser.Object, mockOpfs.Object, mockFolderClient.Object)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, null!, mockStateStore.Object, mockUser.Object, mockOpfs.Object, mockFolderClient.Object)).ParamName);
+        Assert.Equal("stateStore", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, FakeSyncProfileRegistry.Of(options), null!, mockUser.Object, mockOpfs.Object, mockFolderClient.Object)).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, FakeSyncProfileRegistry.Of(options), mockStateStore.Object, null!, mockOpfs.Object, mockFolderClient.Object)).ParamName);
+        Assert.Equal("folderClient", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, FakeSyncProfileRegistry.Of(options), mockStateStore.Object, mockUser.Object, mockOpfs.Object, null!)).ParamName);
+        Assert.Equal("opfsClient", Assert.Throws<ArgumentNullException>(() => new SyncStorageResolver(mockServices.Object, FakeSyncProfileRegistry.Of(options), mockStateStore.Object, mockUser.Object, null!, mockFolderClient.Object)).ParamName);
     }
 
     [Fact]
@@ -144,5 +144,5 @@ public class SyncStorageResolverTests
         Assert.False(await sut.IsSupportedAsync((SyncStorageKind)99));
     }
 
-    private SyncStorageResolver CreateSut() => new(mockServices.Object, options, mockStateStore.Object, mockUser.Object, mockOpfs.Object, mockFolderClient.Object);
+    private SyncStorageResolver CreateSut() => new(mockServices.Object, FakeSyncProfileRegistry.Of(options), mockStateStore.Object, mockUser.Object, mockOpfs.Object, mockFolderClient.Object);
 }

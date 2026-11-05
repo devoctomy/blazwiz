@@ -33,7 +33,7 @@
     {
       "id": "Notes",
       "name": { "text": "Notes example" },
-      "description": { "text": "The Files page and a markdown note editor, synced by the sync module. Needs the sync module: left out without it." },
+      "description": { "text": "Notebooks of markdown pages, each with its own passphrase, and an editor, synced by the sync module. Needs the sync module: left out without it." },
       "isVisible": true
     }
   ]

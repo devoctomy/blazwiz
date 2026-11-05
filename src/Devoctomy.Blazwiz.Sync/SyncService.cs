@@ -10,7 +10,7 @@ namespace Devoctomy.Blazwiz.Sync;
 /// refreshed once, then the pass fails. A profile is skipped while an <see cref="ISyncGate"/> holds it back.
 /// </summary>
 public class SyncService(
-    IEnumerable<SyncProfile> profiles,
+    ISyncProfileRegistry registry,
     ISyncEngine engine,
     IS3SyncTargetProvider targetProvider,
     IConnectivityService connectivityService,
@@ -20,7 +20,7 @@ public class SyncService(
     IEnumerable<ISyncGate> gates)
     : ISyncService
 {
-    private readonly IReadOnlyList<SyncProfile> profiles = (profiles ?? throw new ArgumentNullException(nameof(profiles))).ToList();
+    private readonly ISyncProfileRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly ISyncEngine engine = engine ?? throw new ArgumentNullException(nameof(engine));
     private readonly IS3SyncTargetProvider targetProvider = targetProvider ?? throw new ArgumentNullException(nameof(targetProvider));
     private readonly IConnectivityService connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
@@ -41,14 +41,14 @@ public class SyncService(
     public SyncStatus Status => status.Clone();
 
     /// <inheritdoc/>
-    public IReadOnlyList<string> Profiles => profiles.Select(p => p.Name).ToList();
+    public IReadOnlyList<string> Profiles => registry.Profiles.Select(p => p.Name).ToList();
 
     /// <inheritdoc/>
     public async Task<SyncResult> SyncAsync(string? profile = null, bool verify = false, CancellationToken ct = default)
     {
         var selected = profile == null
-            ? profiles
-            : [profiles.FirstOrDefault(p => p.Name == profile) ?? throw new ArgumentException($"There is no sync profile called '{profile}'.", nameof(profile))];
+            ? registry.Profiles.Select(p => registry.GetSyncProfile(p.Name)).ToList()
+            : [registry.Find(profile) is not null ? registry.GetSyncProfile(profile) : throw new ArgumentException($"There is no sync profile called '{profile}'.", nameof(profile))];
 
         var total = new SyncResult { Profile = profile };
         UpdateStatus(s => s.State = SyncState.Syncing);
@@ -170,7 +170,7 @@ public class SyncService(
             }
 
             var count = 0;
-            foreach (var profile in profiles)
+            foreach (var profile in registry.Profiles.Select(p => registry.GetSyncProfile(p.Name)))
             {
                 var records = await profile.IndexStore.GetAllAsync(profile.Name, owner);
                 count += records.Count(r => r.IsPending && profile.Matcher.IsMatch(r.Key));

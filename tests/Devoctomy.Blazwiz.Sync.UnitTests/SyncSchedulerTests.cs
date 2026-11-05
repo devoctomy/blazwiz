@@ -15,12 +15,14 @@ public class SyncSchedulerTests
     private readonly Mock<IBrowserNetworkStatus> mockBrowser = new();
     private readonly Mock<ISyncLockService> mockLocks = new();
     private readonly SyncOptions options = new();
+    private readonly FakeSyncProfileRegistry registry;
     private readonly FakeTimeProvider time = new();
     private readonly List<string> calls = [];
     private ConnectivityStatus connectivity = new() { IsOnline = true };
 
     public SyncSchedulerTests()
     {
+        registry = FakeSyncProfileRegistry.Of(options);
         mockSync.SetupGet(x => x.Profiles).Returns(["notes", "photos"]);
         mockSync.Setup(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .Callback<string?, bool, CancellationToken>((p, v, _) => calls.Add($"sync {p} verify={v}"))
@@ -35,12 +37,13 @@ public class SyncSchedulerTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(null!, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, options, time)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, null!, mockBrowser.Object, mockLocks.Object, options, time)).ParamName);
-        Assert.Equal("browserNetworkStatus", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, mockConnectivity.Object, null!, mockLocks.Object, options, time)).ParamName);
-        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, mockConnectivity.Object, mockBrowser.Object, null!, options, time)).ParamName);
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, null!, time)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, options, null!)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(null!, registry, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, options, time)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, null!, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, options, time)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, registry, null!, mockBrowser.Object, mockLocks.Object, options, time)).ParamName);
+        Assert.Equal("browserNetworkStatus", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, registry, mockConnectivity.Object, null!, mockLocks.Object, options, time)).ParamName);
+        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, registry, mockConnectivity.Object, mockBrowser.Object, null!, options, time)).ParamName);
+        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, registry, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, null!, time)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncScheduler(mockSync.Object, registry, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, options, null!)).ParamName);
     }
 
     [Fact]
@@ -300,6 +303,58 @@ public class SyncSchedulerTests
     }
 
     [Fact]
+    public async Task GivenStarted_WhenAProfileIsAdded_ThenItIsVerifiedAndThenSyncsOnRequest()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        calls.Clear();
+
+        // Act
+        registry.Add(new SyncProfileOptions { Name = "files", RemotePattern = "files/**/*" });
+        await WaitForAsync(() => calls.Contains("release"));
+
+        // Assert
+        Assert.Equal(["lock sync-files", "sync files verify=True", "release"], calls);
+    }
+
+    [Fact]
+    public async Task GivenStarted_WhenAnAddedProfileIsRemoved_ThenRequestsForItAreIgnored()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        registry.Add(new SyncProfileOptions { Name = "files", RemotePattern = "files/**/*" });
+        await WaitForAsync(() => calls.Contains("sync files verify=True"));
+        calls.Clear();
+
+        // Act
+        registry.Remove("files");
+        sut.RequestSync("files");
+        await sut.SyncNowAsync();
+
+        // Assert
+        Assert.DoesNotContain(calls, c => c.Contains("files"));
+    }
+
+    [Fact]
+    public async Task GivenStopped_WhenAProfileIsAdded_ThenNothingRuns()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        await sut.StopAsync();
+        calls.Clear();
+
+        // Act
+        registry.Add(new SyncProfileOptions { Name = "files", RemotePattern = "files/**/*" });
+        await Task.Delay(20);
+
+        // Assert
+        Assert.Empty(calls);
+    }
+
+    [Fact]
     public void GivenUnknownProfile_WhenRequestSync_ThenIgnored()
     {
         // Arrange
@@ -320,7 +375,7 @@ public class SyncSchedulerTests
     }
 
     private SyncScheduler CreateSut() =>
-        new(mockSync.Object, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, options, time);
+        new(mockSync.Object, registry, mockConnectivity.Object, mockBrowser.Object, mockLocks.Object, options, time);
 
     private sealed class Releaser(List<string> calls) : IAsyncDisposable
     {
