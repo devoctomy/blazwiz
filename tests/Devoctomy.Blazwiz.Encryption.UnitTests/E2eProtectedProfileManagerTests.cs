@@ -303,6 +303,25 @@ public class E2eProtectedProfileManagerTests
     }
 
     [Fact]
+    public async Task GivenAProfileDeletedOnAnotherDevice_WhenForgotten_ThenThisDevicesCopyIsGoneAndItIsLocked()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var other = new Device(this);
+        await other.Manager.UnlockAsync(scope, Passphrase);
+        await device.Manager.DeleteAsync(scope);
+
+        // Act
+        await other.Manager.ForgetAsync(scope);
+
+        // Assert
+        Assert.Null(other.LocalKeys.Get(scope));
+        Assert.False(other.Manager.IsUnlocked(scope));
+        Assert.Null(other.Rings.Get(scope).ActiveKeyId);
+        await Assert.ThrowsAsync<ArgumentException>(() => other.Manager.ForgetAsync(new E2eKeyScope("notes")));
+    }
+
+    [Fact]
     public async Task GivenAShortPassphrase_WhenCreatedOrChanged_ThenThrowsTooShortAndNothingIsWritten()
     {
         // Arrange

@@ -71,7 +71,7 @@ public class SyncProtectedProfileServiceTests
     }
 
     [Fact]
-    public async Task GivenAProfileDeletedElsewhere_WhenLoadedAgain_ThenItIsLockedAndRemoved()
+    public async Task GivenAProfileDeletedElsewhere_WhenLoadedAgain_ThenThisDevicesKeysFilesAndIndexAreDeletedAndItIsRemoved()
     {
         // Arrange
         var kept = Guid.NewGuid().ToString("D");
@@ -79,6 +79,14 @@ public class SyncProtectedProfileServiceTests
         mockManager.SetupSequence(x => x.GetProfilesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync([new E2eProfileIndexEntry { Id = kept }, new E2eProfileIndexEntry { Id = deleted }])
             .ReturnsAsync([new E2eProfileIndexEntry { Id = kept }]);
+        mockManager.Setup(x => x.ForgetAsync(new E2eKeyScope(deleted))).Callback(() => calls.Add("forget keys")).Returns(Task.CompletedTask);
+        var index = new Mock<ISyncIndexStore>();
+        index.Setup(x => x.GetAllAsync(deleted, "bob", It.IsAny<CancellationToken>())).ReturnsAsync([new SyncIndexRecord { Key = $"profiles/{deleted}/a" }]);
+        index.Setup(x => x.DeleteAsync(deleted, "bob", It.IsAny<string>(), It.IsAny<CancellationToken>())).Callback(() => calls.Add("delete index")).Returns(Task.CompletedTask);
+        registry.SetSyncProfile(new SyncProfile(deleted, Mock.Of<ISyncFileStore>(), index.Object, Mock.Of<ISyncRemoteStore>(), Mock.Of<ISyncPathMatcher>()));
+        mockResolver.Setup(x => x.GetStateAsync(deleted)).ReturnsAsync(new SyncStorageState { Kind = SyncStorageKind.IndexedDb });
+        mockResolver.Setup(x => x.GetKinds(deleted)).Returns([SyncStorageKind.IndexedDb]);
+        mockResolver.Setup(x => x.GetStore(deleted, SyncStorageKind.IndexedDb)).Returns(StoreWith($"profiles/{deleted}/a", "indexeddb").Object);
         var sut = CreateSut();
         await sut.LoadAsync();
 
@@ -87,7 +95,7 @@ public class SyncProtectedProfileServiceTests
 
         // Assert
         Assert.Equal(["notes", kept], registry.Profiles.Select(p => p.Name));
-        mockManager.Verify(x => x.Lock(new E2eKeyScope(deleted)), Times.Once);
+        Assert.Equal(["forget keys", "lock sync-" + deleted, "delete index", "delete indexeddb", "release"], calls);
     }
 
     [Fact]

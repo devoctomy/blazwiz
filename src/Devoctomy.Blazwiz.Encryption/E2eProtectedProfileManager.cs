@@ -317,6 +317,15 @@ public class E2eProtectedProfileManager(
         }
     }
 
+    /// <inheritdoc/>
+    public Task ForgetAsync(E2eKeyScope scope)
+    {
+        CheckProtected(scope);
+
+        Lock(scope);
+        return localKeyStore.DeleteAsync(scope);
+    }
+
     private static void CheckProtected(E2eKeyScope scope)
     {
         ArgumentNullException.ThrowIfNull(scope);

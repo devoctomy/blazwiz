@@ -80,8 +80,13 @@ public class SyncProtectedProfileService(
         var scopes = (await manager.GetProfilesAsync(ct)).Select(p => new E2eKeyScope(p.Id)).ToList();
         foreach (var gone in CreatedProfiles().Where(p => !scopes.Contains(p.KeyScope!)).ToList())
         {
-            // Deleted on another device.
-            manager.Lock(gone.KeyScope!);
+            // Deleted on another device: nothing of it is kept here either.
+            await manager.ForgetAsync(gone.KeyScope!);
+            await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + gone.Name, ct))
+            {
+                await DeleteLocalFilesAsync(gone.Name, ct);
+            }
+
             registry.Remove(gone.Name);
         }
 
@@ -145,24 +150,7 @@ public class SyncProtectedProfileService(
                 await syncProfile.RemoteStore.DeleteAsync(remote.Key, ifMatch: null, ct);
             }
 
-            var owner = await userContext.GetUserIdAsync()
-                ?? throw new InvalidOperationException("Sign in to delete a protected profile.");
-            foreach (var record in await syncProfile.IndexStore.GetAllAsync(profile.Name, owner, ct))
-            {
-                await syncProfile.IndexStore.DeleteAsync(profile.Name, owner, record.Key, ct);
-            }
-
-            // The storage in use, and IndexedDB and OPFS whichever is in use (the picked folder is only reachable
-            // while it is the storage in use).
-            var current = (await storageResolver.GetStateAsync(profile.Name)).Kind;
-            foreach (var kind in storageResolver.GetKinds(profile.Name).Where(k => k == current || k != SyncStorageKind.LocalFolder))
-            {
-                var store = storageResolver.GetStore(profile.Name, kind);
-                foreach (var file in await store.ListAsync(ct))
-                {
-                    await store.DeleteAsync(file.Key, ct);
-                }
-            }
+            await DeleteLocalFilesAsync(profile.Name, ct);
         }
 
         registry.Remove(profile.Name);
@@ -228,6 +216,29 @@ public class SyncProtectedProfileService(
             .AddLocalFolder()
             .UseDefault(SyncStorageKind.IndexedDb);
         return profile;
+    }
+
+    private async Task DeleteLocalFilesAsync(string name, CancellationToken ct)
+    {
+        var owner = await userContext.GetUserIdAsync()
+            ?? throw new InvalidOperationException("Sign in to delete a protected profile.");
+        var indexStore = registry.GetIndexStore(name);
+        foreach (var record in await indexStore.GetAllAsync(name, owner, ct))
+        {
+            await indexStore.DeleteAsync(name, owner, record.Key, ct);
+        }
+
+        // The storage in use, and IndexedDB and OPFS whichever is in use (the picked folder is only reachable while it
+        // is the storage in use).
+        var current = (await storageResolver.GetStateAsync(name)).Kind;
+        foreach (var kind in storageResolver.GetKinds(name).Where(k => k == current || k != SyncStorageKind.LocalFolder))
+        {
+            var store = storageResolver.GetStore(name, kind);
+            foreach (var file in await store.ListAsync(ct))
+            {
+                await store.DeleteAsync(file.Key, ct);
+            }
+        }
     }
 
     private SyncProfileOptions? FindProfile(E2eKeyScope scope)

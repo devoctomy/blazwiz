@@ -253,12 +253,13 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 
 ### Phase 5: proving it
 
-- [ ] Integration scenarios: two scopes on two devices; a locked scope receives and sends changes; a file moved
+- [x] Integration scenarios: two scopes on two devices; a locked scope receives and sends changes; a file moved
       between scopes or paths fails to decrypt; deleting a scope leaves nothing decryptable; passphrase change on one
       device while another is unlocked.
-- [ ] The template's demo shows only notes (D5).
-- [ ] Docs: package READMEs, `CHANGELOG.md`, the sync diagrams (`docs/diagrams/sync.md`, `sync-framework.md`).
-- [ ] Upgrade test: `./templatepack/test-template.ps1 -UpgradeFrom latest` (public API and the base stack change).
+- [x] The template's demo shows only notes (D5).
+- [x] Docs: package READMEs, `CHANGELOG.md`, the sync diagrams (`docs/diagrams/sync.md`, `sync-framework.md`).
+- [x] Upgrade test: `./templatepack/test-template.ps1 -UpgradeFrom latest` (public API and the base stack change).
+  - The app from 0.3.0 fails to build only on the deliberate API breaks (`ISyncEncryptionService`, `E2eStatus`).
 
 ### Phase 6: notebooks in the notes demo
 

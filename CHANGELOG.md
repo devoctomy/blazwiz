@@ -49,6 +49,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   profile set up in code has no passphrase yet.
 - Deleting a protected profile finds its files in S3 before deleting its keys, and stops with nothing deleted if S3
   cannot be reached.
+- A protected profile deleted on another device is forgotten on this one when the profiles are next loaded: its keys
+  (`IE2eProtectedProfileManager.ForgetAsync`), its files and its sync index here are deleted too.
 - The AWS base stack lets each user manage their secrets under `<sub>/keys/` (each profile's keys and the index) in
   place of the single `<sub>/keys` secret; redeploy with `deploy.ps1`. `test-auth.ps1` checks them.
 - The template's sync profiles are classes (`NotesSyncProfile`, or `FilesSyncProfile` without the notes example),

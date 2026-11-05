@@ -142,4 +142,11 @@ public interface IE2eProtectedProfileManager
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task DeleteAsync(E2eKeyScope scope, CancellationToken ct = default);
+
+    /// <summary>
+    /// Forgets a protected profile deleted on another device: locks it and deletes this device's copy of its keys.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task ForgetAsync(E2eKeyScope scope);
 }
