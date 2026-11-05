@@ -8,7 +8,8 @@ namespace Devoctomy.Blazwiz.UI.Sync.Services;
 
 /// <summary>
 /// Starts and stops sync with the session: connectivity before the shell shows, then storage recovery, encryption,
-/// the folder check and the scheduler in the background, and stopping the scheduler on sign out.
+/// the user's protected profiles, the folder check and the scheduler in the background; on sign out, stopping the
+/// scheduler and locking and removing the protected profiles.
 /// </summary>
 public class SyncSessionHandler(
     IConnectivityService connectivityService,
@@ -16,6 +17,7 @@ public class SyncSessionHandler(
     ISyncStorageMigrationService storageMigrationService,
     ISyncStorageChannel storageChannel,
     ISyncEncryptionService encryptionService,
+    ISyncProtectedProfileService protectedProfiles,
     ISyncFolderAccessMonitor folderAccessMonitor,
     IPersistentStorageService persistentStorageService)
     : ISessionLifecycleHandler
@@ -25,6 +27,7 @@ public class SyncSessionHandler(
     private readonly ISyncStorageMigrationService storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
     private readonly ISyncStorageChannel storageChannel = storageChannel ?? throw new ArgumentNullException(nameof(storageChannel));
     private readonly ISyncEncryptionService encryptionService = encryptionService ?? throw new ArgumentNullException(nameof(encryptionService));
+    private readonly ISyncProtectedProfileService protectedProfiles = protectedProfiles ?? throw new ArgumentNullException(nameof(protectedProfiles));
     private readonly ISyncFolderAccessMonitor folderAccessMonitor = folderAccessMonitor ?? throw new ArgumentNullException(nameof(folderAccessMonitor));
     private readonly IPersistentStorageService persistentStorageService = persistentStorageService ?? throw new ArgumentNullException(nameof(persistentStorageService));
 
@@ -69,6 +72,16 @@ public class SyncSessionHandler(
             // The encryption status stays unknown, so encrypted profiles wait; it is tried again once online.
         }
 
+        try
+        {
+            // Each protected profile syncs as a profile of its own, locked until the user unlocks it.
+            await protectedProfiles.LoadAsync();
+        }
+        catch (Exception)
+        {
+            // Not signed in with Cognito, or the index cannot be read: protected profiles are not available.
+        }
+
         folderAccessMonitor.Start();
         if (await folderAccessMonitor.CheckAsync())
         {
@@ -92,5 +105,8 @@ public class SyncSessionHandler(
         // Stop syncing first. Local data stays, partitioned by user.
         folderAccessMonitor.Stop();
         await syncScheduler.StopAsync();
+
+        // Their keys are wiped now, not when the sign-in page next loads.
+        protectedProfiles.Unload();
     }
 }

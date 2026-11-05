@@ -14,7 +14,11 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 - Protected profiles, each with its own passphrase and keys (`IE2eProtectedProfileManager`): create, list, unlock
   (offline from this device's copy too), lock, lock all, change the passphrase and delete. Each is identified only by
   a GUID, with its keys in its own secret (`<sub>/keys/<id>`) and the user's profiles listed in an index secret
-  (`<sub>/keys/index`). Not yet connected to sync.
+  (`<sub>/keys/index`). Each syncs as a sync profile of its own (`profiles/<id>/` in the user's prefix, its own
+  local storage), added when the session starts, created and deleted with `ISyncProtectedProfileService`, and locked
+  and removed when the user signs out. A locked one keeps syncing its encrypted files.
+- Sync profiles can be added and removed while the app runs (`ISyncProfileRegistry`); configured profiles are still
+  reached as keyed services.
 - Sync settings and profiles can be set in configuration as well as in code: `UseEmbeddedConfiguration` reads the
   `Sync` section of a JSON file embedded in the app, and `UseConfiguration` reads any configuration section. Unknown
   keys and invalid values stop the app at startup with an error naming the setting.

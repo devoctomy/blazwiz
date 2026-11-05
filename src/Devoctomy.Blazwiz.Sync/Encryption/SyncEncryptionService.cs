@@ -19,7 +19,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
     private readonly IE2eKeyManager keyManager;
     private readonly IE2eKeyRing keyRing;
     private readonly ISyncEncryptionSweeper sweeper;
-    private readonly IReadOnlyList<EncryptedSyncProfile> profiles;
+    private readonly ISyncProfileRegistry registry;
     private readonly ISyncService syncService;
     private readonly ISyncScheduler scheduler;
     private readonly IConnectivityService connectivityService;
@@ -34,7 +34,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
     /// <param name="keyManager">Manages the keys.</param>
     /// <param name="keyRing">The unlocked keys.</param>
     /// <param name="sweeper">Encrypts and decrypts the files.</param>
-    /// <param name="profiles">The encrypted profiles.</param>
+    /// <param name="registry">The profiles; those encrypted with the account's keys are encrypted and decrypted.</param>
     /// <param name="syncService">Runs the passes.</param>
     /// <param name="scheduler">Asks for passes once encryption allows them.</param>
     /// <param name="connectivityService">Turns sync off while files change, and whether the app is online.</param>
@@ -44,7 +44,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
         IE2eKeyManager keyManager,
         IE2eKeyRing keyRing,
         ISyncEncryptionSweeper sweeper,
-        IEnumerable<EncryptedSyncProfile> profiles,
+        ISyncProfileRegistry registry,
         ISyncService syncService,
         ISyncScheduler scheduler,
         IConnectivityService connectivityService,
@@ -54,7 +54,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
         this.keyManager = keyManager ?? throw new ArgumentNullException(nameof(keyManager));
         this.keyRing = keyRing ?? throw new ArgumentNullException(nameof(keyRing));
         this.sweeper = sweeper ?? throw new ArgumentNullException(nameof(sweeper));
-        this.profiles = (profiles ?? throw new ArgumentNullException(nameof(profiles))).ToList();
+        this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         this.scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
@@ -287,7 +287,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
             return;
         }
 
-        foreach (var profile in profiles)
+        foreach (var profile in registry.GetAccountEncryptedProfiles())
         {
             await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
             {
@@ -327,7 +327,7 @@ public sealed class SyncEncryptionService : ISyncEncryptionService, IDisposable
     {
         try
         {
-            if (profiles.Any(p => p.Name == e.Profile))
+            if (registry.GetAccountEncryptedProfiles().Any(p => p.Name == e.Profile))
             {
                 await EncryptArrivalsAsync(e.Profile, CancellationToken.None);
             }

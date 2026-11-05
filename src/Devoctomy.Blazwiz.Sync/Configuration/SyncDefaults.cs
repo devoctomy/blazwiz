@@ -12,6 +12,11 @@ public static class SyncDefaults
     public const string ConfigurationSection = "Sync";
 
     /// <summary>
+    /// The folder, in the user's prefix, holding a folder per protected profile, named by its id.
+    /// </summary>
+    public const string ProtectedProfilesFolder = "profiles";
+
+    /// <summary>
     /// The IndexedDB database holding the sync index and the log, unless configured otherwise.
     /// </summary>
     public const string IndexDatabase = "sync";

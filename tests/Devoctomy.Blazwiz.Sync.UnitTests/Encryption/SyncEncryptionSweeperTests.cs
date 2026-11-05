@@ -33,15 +33,15 @@ public class SyncEncryptionSweeperTests
         files = new InMemorySyncFileStore(mockUser.Object, clock.Object);
         var tracking = new TrackingSyncFileStore(Profile, files, index, mockUser.Object, Mock.Of<ISyncScheduler>(), clock.Object, format);
         appStore = new EncryptingSyncFileStore(tracking, ring, format);
-        sut = new SyncEncryptionSweeper([new EncryptedSyncProfile(Profile, appStore, index)], mockUser.Object);
+        sut = new SyncEncryptionSweeper(FakeSyncProfileRegistry.Encrypted(new EncryptedSyncProfile(Profile, appStore, index)), mockUser.Object);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionSweeper(null!, mockUser.Object)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionSweeper([], null!)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionSweeper(null!, mockUser.Object)).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionSweeper(FakeSyncProfileRegistry.Encrypted(), null!)).ParamName);
     }
 
     [Fact]

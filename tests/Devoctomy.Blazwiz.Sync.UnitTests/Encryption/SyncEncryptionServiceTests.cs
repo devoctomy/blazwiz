@@ -77,15 +77,15 @@ public class SyncEncryptionServiceTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("keyManager", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(null!, mockRing.Object, mockSweeper.Object, [profile], mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("keyRing", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, null!, mockSweeper.Object, [profile], mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("sweeper", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, null!, [profile], mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, null!, mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, [profile], null!, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, [profile], mockSync.Object, null!, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, [profile], mockSync.Object, mockScheduler.Object, null!, mockLock.Object, mockChannel.Object)).ParamName);
-        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, [profile], mockSync.Object, mockScheduler.Object, mockConnectivity.Object, null!, mockChannel.Object)).ParamName);
-        Assert.Equal("channel", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, [profile], mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, null!)).ParamName);
+        Assert.Equal("keyManager", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(null!, mockRing.Object, mockSweeper.Object, FakeSyncProfileRegistry.Encrypted(profile), mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
+        Assert.Equal("keyRing", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, null!, mockSweeper.Object, FakeSyncProfileRegistry.Encrypted(profile), mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
+        Assert.Equal("sweeper", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, null!, FakeSyncProfileRegistry.Encrypted(profile), mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, null!, mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, FakeSyncProfileRegistry.Encrypted(profile), null!, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
+        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, FakeSyncProfileRegistry.Encrypted(profile), mockSync.Object, null!, mockConnectivity.Object, mockLock.Object, mockChannel.Object)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, FakeSyncProfileRegistry.Encrypted(profile), mockSync.Object, mockScheduler.Object, null!, mockLock.Object, mockChannel.Object)).ParamName);
+        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, FakeSyncProfileRegistry.Encrypted(profile), mockSync.Object, mockScheduler.Object, mockConnectivity.Object, null!, mockChannel.Object)).ParamName);
+        Assert.Equal("channel", Assert.Throws<ArgumentNullException>(() => new SyncEncryptionService(mockKeys.Object, mockRing.Object, mockSweeper.Object, FakeSyncProfileRegistry.Encrypted(profile), mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -472,7 +472,7 @@ public class SyncEncryptionServiceTests
     }
 
     private SyncEncryptionService CreateSut() =>
-        new(mockKeys.Object, mockRing.Object, mockSweeper.Object, [profile], mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object);
+        new(mockKeys.Object, mockRing.Object, mockSweeper.Object, FakeSyncProfileRegistry.Encrypted(profile), mockSync.Object, mockScheduler.Object, mockConnectivity.Object, mockLock.Object, mockChannel.Object);
 
     private sealed class ListProgress(List<E2eProgress> reported) : IProgress<E2eProgress>
     {

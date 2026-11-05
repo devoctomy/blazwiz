@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 
@@ -69,6 +70,17 @@ public class SyncProfileOptions
     /// <c>AddBlazwizE2eEncryption</c>.
     /// </summary>
     public bool IsEncrypted { get; set; }
+
+    /// <summary>
+    /// Gets or sets the key scope of a protected profile (one with its own passphrase), or null. A protected profile is
+    /// always encrypted with its own keys, and <see cref="IsEncrypted"/> (the account's keys) does not apply to it.
+    /// </summary>
+    public E2eKeyScope? KeyScope { get; set; }
+
+    /// <summary>
+    /// Gets a value indicating whether this is a protected profile (<see cref="KeyScope"/> is set).
+    /// </summary>
+    public bool IsProtected => KeyScope != null;
 
     /// <summary>
     /// Gets a value indicating whether the user can switch the storage the files are kept in.

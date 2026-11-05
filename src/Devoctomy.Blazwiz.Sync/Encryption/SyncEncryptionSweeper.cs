@@ -9,11 +9,11 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// Implementation of <see cref="ISyncEncryptionSweeper"/>. One sweep runs at a time.
 /// </summary>
 public sealed class SyncEncryptionSweeper(
-    IEnumerable<EncryptedSyncProfile> profiles,
+    ISyncProfileRegistry registry,
     ISyncUserContext userContext)
     : ISyncEncryptionSweeper, IDisposable
 {
-    private readonly IReadOnlyList<EncryptedSyncProfile> profiles = (profiles ?? throw new ArgumentNullException(nameof(profiles))).ToList();
+    private readonly ISyncProfileRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly SemaphoreSlim gate = new SemaphoreSlim(1, 1);
 
@@ -22,7 +22,7 @@ public sealed class SyncEncryptionSweeper(
     {
         var owner = await GetOwnerAsync();
         var count = 0;
-        foreach (var profile in profiles)
+        foreach (var profile in registry.GetAccountEncryptedProfiles())
         {
             count += (await profile.IndexStore.GetAllAsync(profile.Name, owner, ct)).Count(r => r.Encrypted && !r.Deleted);
         }
@@ -35,7 +35,7 @@ public sealed class SyncEncryptionSweeper(
     {
         var owner = await GetOwnerAsync();
         var count = 0;
-        foreach (var profile in profiles)
+        foreach (var profile in registry.GetAccountEncryptedProfiles())
         {
             count += (await profile.IndexStore.GetAllAsync(profile.Name, owner, ct)).Count(r => r.Encrypted && r.Dirty && !r.Deleted);
         }
@@ -57,7 +57,7 @@ public sealed class SyncEncryptionSweeper(
         if (pendingOnly)
         {
             var owner = await GetOwnerAsync();
-            foreach (var profile in profiles)
+            foreach (var profile in registry.GetAccountEncryptedProfiles())
             {
                 foreach (var record in await profile.IndexStore.GetAllAsync(profile.Name, owner, ct))
                 {
@@ -91,7 +91,7 @@ public sealed class SyncEncryptionSweeper(
         try
         {
             var work = new List<(EncryptedSyncProfile Profile, string Key)>();
-            foreach (var profile in profiles)
+            foreach (var profile in registry.GetAccountEncryptedProfiles())
             {
                 foreach (var file in await profile.FileStore.ListAsync(ct))
                 {

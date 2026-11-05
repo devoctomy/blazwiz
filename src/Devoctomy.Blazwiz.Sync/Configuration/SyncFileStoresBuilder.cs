@@ -78,7 +78,7 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
             sp.GetRequiredService<TimeProvider>(),
-            sp.GetRequiredKeyedService<ISyncPathMatcher>(name),
+            sp.GetRequiredService<ISyncProfileRegistry>().GetMatcher(name),
             description));
     }
 

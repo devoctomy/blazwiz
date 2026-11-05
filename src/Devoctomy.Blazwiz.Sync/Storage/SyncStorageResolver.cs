@@ -10,7 +10,7 @@ namespace Devoctomy.Blazwiz.Sync.Storage;
 /// </summary>
 public class SyncStorageResolver(
     IServiceProvider services,
-    SyncOptions options,
+    ISyncProfileRegistry registry,
     ISyncStorageStateStore stateStore,
     ISyncUserContext userContext,
     IOpfsClient opfsClient,
@@ -18,7 +18,7 @@ public class SyncStorageResolver(
     : ISyncStorageResolver
 {
     private readonly IServiceProvider services = services ?? throw new ArgumentNullException(nameof(services));
-    private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly ISyncProfileRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly ISyncStorageStateStore stateStore = stateStore ?? throw new ArgumentNullException(nameof(stateStore));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
     private readonly IOpfsClient opfsClient = opfsClient ?? throw new ArgumentNullException(nameof(opfsClient));
@@ -83,6 +83,6 @@ public class SyncStorageResolver(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(profile);
 
-        return options.Profiles.FirstOrDefault(p => p.Name == profile);
+        return registry.Find(profile);
     }
 }

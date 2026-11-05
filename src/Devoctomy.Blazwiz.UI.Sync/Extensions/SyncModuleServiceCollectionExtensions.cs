@@ -8,6 +8,7 @@ using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Connectivity;
 using Devoctomy.Blazwiz.Sync.Encryption;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Extensions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Storage;
@@ -82,6 +83,7 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddBlazwizE2eEncryption();
         services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
         services.AddScoped<IE2eLocalProfileIndexStore, LocalStorageE2eLocalProfileIndexStore>();
+        services.AddScoped<ISyncProtectedProfileService, SyncProtectedProfileService>();
         services.AddScoped<IPasskeyUnlockService, PasskeyUnlockService>();
 
         services.AddBlazwizSync(configure);

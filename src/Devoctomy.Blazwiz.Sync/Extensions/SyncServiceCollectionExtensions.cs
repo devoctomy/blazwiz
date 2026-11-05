@@ -79,9 +79,11 @@ public static class SyncServiceCollectionExtensions
             options,
             IndexedDbSyncEventLog.DescribeStore(options.EventLogDatabase, options.EventLogStore)));
 
+        // Every profile's stores come from the registry, so profiles added while the app runs work the same way.
+        services.TryAddScoped<ISyncProfileRegistry>(sp => new SyncProfileRegistry(sp, options));
         foreach (var profile in options.Profiles)
         {
-            AddProfile(services, profile);
+            AddProfile(services, profile.Name);
         }
 
         if (options.Profiles.Any(p => p.IsEncrypted))
@@ -95,59 +97,13 @@ public static class SyncServiceCollectionExtensions
         return services;
     }
 
-    private static void AddProfile(IServiceCollection services, SyncProfileOptions profile)
+    private static void AddProfile(IServiceCollection services, string name)
     {
-        var name = profile.Name;
+        // App code gets a configured profile's stores as keyed services, e.g. [FromKeyedServices("notes")].
         var untrackedKey = name + SyncDefaults.UntrackedFileStoreKeySuffix;
-
-        services.AddKeyedSingleton<ISyncPathMatcher>(name, (_, _) => new GlobSyncPathMatcher(profile.RemotePattern, profile.IncludeEmptyFolders));
-
-        services.AddKeyedScoped<ISyncIndexStore>(name, (sp, _) => profile.IndexStoreFactory?.Invoke(sp) ?? new IndexedDbSyncIndexStore(
-            sp.GetRequiredService<IIndexedDbClient>(),
-            IndexedDbSyncIndexStore.DescribeStore(profile.IndexDatabase, profile.ResolvedIndexStoreName)));
-
-        services.AddKeyedScoped<ISyncFileStore>(untrackedKey, (sp, _) => profile.IsSwitchable
-            ? new SwitchableSyncFileStore(name, sp.GetRequiredService<ISyncStorageResolver>())
-            : profile.FileStoreFactory?.Invoke(sp) ?? new IndexedDbSyncFileStore(
-                sp.GetRequiredService<IIndexedDbClient>(),
-                sp.GetRequiredService<ISyncUserContext>(),
-                sp.GetRequiredService<TimeProvider>(),
-                IndexedDbSyncFileStore.DescribeStore(profile.FileDatabase, profile.ResolvedFileStoreName)));
-
-        services.AddKeyedScoped<ISyncFileStore>(name, (sp, _) =>
-        {
-            ISyncFileStore store = new TrackingSyncFileStore(
-                name,
-                sp.GetRequiredKeyedService<ISyncFileStore>(untrackedKey),
-                sp.GetRequiredKeyedService<ISyncIndexStore>(name),
-                sp.GetRequiredService<ISyncUserContext>(),
-                sp.GetRequiredService<ISyncScheduler>(),
-                sp.GetRequiredService<TimeProvider>(),
-                sp.GetRequiredService<IEncryptedFileFormat>());
-
-            // App code reads and writes plaintext; the store holds (and syncs) ciphertext once encryption is on.
-            return profile.IsEncrypted
-                ? new EncryptingSyncFileStore(store, sp.GetRequiredService<IE2eKeyRing>(), sp.GetRequiredService<IEncryptedFileFormat>())
-                : store;
-        });
-
-        if (profile.IsEncrypted)
-        {
-            services.AddScoped(sp => new EncryptedSyncProfile(
-                name,
-                sp.GetRequiredKeyedService<ISyncFileStore>(name),
-                sp.GetRequiredKeyedService<ISyncIndexStore>(name)));
-        }
-
-        services.AddKeyedScoped<ISyncRemoteStore>(name, (sp, _) => new S3SyncRemoteStore(
-            sp.GetRequiredService<IS3SyncTargetProvider>(),
-            sp.GetRequiredKeyedService<ISyncPathMatcher>(name)));
-
-        services.AddScoped(sp => new SyncProfile(
-            name,
-            sp.GetRequiredKeyedService<ISyncFileStore>(untrackedKey),
-            sp.GetRequiredKeyedService<ISyncIndexStore>(name),
-            sp.GetRequiredKeyedService<ISyncRemoteStore>(name),
-            sp.GetRequiredKeyedService<ISyncPathMatcher>(name)));
+        services.AddKeyedScoped<ISyncPathMatcher>(name, (sp, _) => sp.GetRequiredService<ISyncProfileRegistry>().GetMatcher(name));
+        services.AddKeyedScoped<ISyncIndexStore>(name, (sp, _) => sp.GetRequiredService<ISyncProfileRegistry>().GetIndexStore(name));
+        services.AddKeyedScoped<ISyncFileStore>(untrackedKey, (sp, _) => sp.GetRequiredService<ISyncProfileRegistry>().GetUntrackedFileStore(name));
+        services.AddKeyedScoped<ISyncFileStore>(name, (sp, _) => sp.GetRequiredService<ISyncProfileRegistry>().GetFileStore(name));
     }
 }

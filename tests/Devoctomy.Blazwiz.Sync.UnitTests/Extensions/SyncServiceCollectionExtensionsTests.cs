@@ -76,11 +76,11 @@ public class SyncServiceCollectionExtensionsTests
         Assert.Equal(("files", "notes"), (untracked.Store.Database, untracked.Store.Name));
 
         Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
-        Assert.IsType<S3SyncRemoteStore>(sp.GetRequiredKeyedService<ISyncRemoteStore>("notes"));
+        Assert.IsType<S3SyncRemoteStore>(sp.GetRequiredService<ISyncProfileRegistry>().GetSyncProfile("notes").RemoteStore);
         var matcher = sp.GetRequiredKeyedService<ISyncPathMatcher>("notes");
         Assert.True(matcher.IsMatch("notes/Work/"));
 
-        var profile = Assert.Single(sp.GetServices<SyncProfile>());
+        var profile = sp.GetRequiredService<ISyncProfileRegistry>().GetSyncProfile(Assert.Single(sp.GetRequiredService<ISyncProfileRegistry>().Profiles).Name);
         Assert.Equal("notes", profile.Name);
         Assert.Same(untracked, profile.FileStore);
         Assert.Same(index, profile.IndexStore);
@@ -131,7 +131,7 @@ public class SyncServiceCollectionExtensionsTests
 
         // Assert
         var untracked = Assert.IsType<SwitchableSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
-        Assert.Same(untracked, Assert.Single(sp.GetServices<SyncProfile>()).FileStore);
+        Assert.Same(untracked, sp.GetRequiredService<ISyncProfileRegistry>().GetSyncProfile("notes").FileStore);
         Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
 
         var indexedDb = Assert.IsType<IndexedDbSyncFileStore>(resolver.GetStore("notes", SyncStorageKind.IndexedDb));
@@ -179,7 +179,7 @@ public class SyncServiceCollectionExtensionsTests
         Assert.IsType<InMemorySyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes" + SyncDefaults.UntrackedFileStoreKeySuffix));
         Assert.IsType<InMemorySyncIndexStore>(sp.GetRequiredKeyedService<ISyncIndexStore>("photos"));
         Assert.IsType<IndexedDbSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("photos" + SyncDefaults.UntrackedFileStoreKeySuffix));
-        Assert.Equal(["notes", "photos"], sp.GetServices<SyncProfile>().Select(p => p.Name));
+        Assert.Equal(["notes", "photos"], sp.GetRequiredService<ISyncProfileRegistry>().Profiles.Select(p => p.Name));
     }
 
     [Fact]
@@ -218,7 +218,7 @@ public class SyncServiceCollectionExtensionsTests
         // Assert
         Assert.IsType<EncryptingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("notes"));
         Assert.IsType<TrackingSyncFileStore>(sp.GetRequiredKeyedService<ISyncFileStore>("photos"));
-        Assert.Equal("notes", Assert.Single(sp.GetServices<EncryptedSyncProfile>()).Name);
+        Assert.Equal("notes", Assert.Single(sp.GetRequiredService<ISyncProfileRegistry>().GetAccountEncryptedProfiles()).Name);
         Assert.IsType<E2eSyncGate>(Assert.Single(sp.GetServices<ISyncGate>()));
         Assert.IsType<SyncEncryptionSweeper>(sp.GetRequiredService<ISyncEncryptionSweeper>());
         Assert.IsType<SyncEncryptionService>(sp.GetRequiredService<ISyncEncryptionService>());

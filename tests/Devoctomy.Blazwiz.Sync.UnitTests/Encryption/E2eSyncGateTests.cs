@@ -27,8 +27,8 @@ public class E2eSyncGateTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("keyManager", Assert.Throws<ArgumentNullException>(() => new E2eSyncGate(null!, options)).ParamName);
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new E2eSyncGate(mockKeys.Object, null!)).ParamName);
+        Assert.Equal("keyManager", Assert.Throws<ArgumentNullException>(() => new E2eSyncGate(null!, FakeSyncProfileRegistry.Of(options))).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new E2eSyncGate(mockKeys.Object, null!)).ParamName);
     }
 
     [Theory]
@@ -41,10 +41,27 @@ public class E2eSyncGateTests
     {
         // Arrange
         mockKeys.SetupGet(x => x.Status).Returns(status);
-        var sut = new E2eSyncGate(mockKeys.Object, options);
+        var sut = new E2eSyncGate(mockKeys.Object, FakeSyncProfileRegistry.Of(options));
 
         // Act & Assert
         Assert.Equal(expected, await sut.CanSyncAsync("notes"));
+        mockKeys.Verify(x => x.InitializeAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(E2eStatus.Blocked)]
+    [InlineData(E2eStatus.NeedsSetup)]
+    [InlineData(E2eStatus.Unknown)]
+    public async Task GivenAProtectedProfile_WhenCanSyncAsync_ThenNeverHeldBackByAccountEncryption(E2eStatus status)
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        options.Profiles.Add(new SyncProfileOptions { Name = id, RemotePattern = "profiles/" + id + "/**/*", KeyScope = new E2eKeyScope(id) });
+        mockKeys.SetupGet(x => x.Status).Returns(status);
+        var sut = new E2eSyncGate(mockKeys.Object, FakeSyncProfileRegistry.Of(options));
+
+        // Act & Assert
+        Assert.True(await sut.CanSyncAsync(id));
         mockKeys.Verify(x => x.InitializeAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -64,7 +81,7 @@ public class E2eSyncGateTests
         using var cts = new CancellationTokenSource();
         mockKeys.SetupGet(x => x.Status).Returns(status);
         mockKeys.Setup(x => x.InitializeAsync(cts.Token)).ReturnsAsync(rechecked);
-        var sut = new E2eSyncGate(mockKeys.Object, options);
+        var sut = new E2eSyncGate(mockKeys.Object, FakeSyncProfileRegistry.Of(options));
 
         // Act & Assert
         Assert.Equal(expected, await sut.CanSyncAsync("notes", cts.Token));
@@ -77,7 +94,7 @@ public class E2eSyncGateTests
         // Arrange
         mockKeys.SetupGet(x => x.Status).Returns(E2eStatus.Disabled);
         mockKeys.Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidDataException("corrupt"));
-        var sut = new E2eSyncGate(mockKeys.Object, options);
+        var sut = new E2eSyncGate(mockKeys.Object, FakeSyncProfileRegistry.Of(options));
 
         // Act & Assert
         Assert.False(await sut.CanSyncAsync("notes"));
@@ -89,7 +106,7 @@ public class E2eSyncGateTests
         // Arrange
         mockKeys.SetupGet(x => x.Status).Returns(E2eStatus.Disabled);
         mockKeys.Setup(x => x.InitializeAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
-        var sut = new E2eSyncGate(mockKeys.Object, options);
+        var sut = new E2eSyncGate(mockKeys.Object, FakeSyncProfileRegistry.Of(options));
 
         // Act & Assert
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.CanSyncAsync("notes"));
@@ -103,7 +120,7 @@ public class E2eSyncGateTests
     {
         // Arrange
         mockKeys.SetupGet(x => x.Status).Returns(status);
-        var sut = new E2eSyncGate(mockKeys.Object, options);
+        var sut = new E2eSyncGate(mockKeys.Object, FakeSyncProfileRegistry.Of(options));
 
         // Act & Assert
         Assert.True(await sut.CanSyncAsync("photos"));
@@ -147,7 +164,7 @@ public class E2eSyncGateTests
             var keyWrap = new AeadKeyWrapService(new BouncyCastleAesGcmAeadCipher());
             var documents = new E2eKeysDocumentService(new BouncyCastleArgon2idKeyDerivationService(), keyWrap, argon2Options, clock.Object);
             Manager = new E2eKeyManager(userKeys, new FakeE2eLocalKeyStore(), derived, Ring, documents, keyWrap);
-            Gate = new E2eSyncGate(Manager, options);
+            Gate = new E2eSyncGate(Manager, FakeSyncProfileRegistry.Of(options));
         }
 
         public E2eKeyRing Ring { get; }

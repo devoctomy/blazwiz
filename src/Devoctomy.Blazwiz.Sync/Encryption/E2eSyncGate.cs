@@ -15,19 +15,17 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// read again before every pass of an encrypted profile. Passes only run after changes, on focus and on reconnecting, so this is
 /// one keys store call per pass.
 /// </remarks>
-public class E2eSyncGate(IE2eKeyManager keyManager, SyncOptions options)
+public class E2eSyncGate(IE2eKeyManager keyManager, ISyncProfileRegistry registry)
     : ISyncGate
 {
     private readonly IE2eKeyManager keyManager = keyManager ?? throw new ArgumentNullException(nameof(keyManager));
-    private readonly HashSet<string> profiles = (options ?? throw new ArgumentNullException(nameof(options))).Profiles
-        .Where(p => p.IsEncrypted)
-        .Select(p => p.Name)
-        .ToHashSet(StringComparer.Ordinal);
+    private readonly ISyncProfileRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
 
     /// <inheritdoc/>
     public async Task<bool> CanSyncAsync(string profile, CancellationToken ct = default)
     {
-        if (!profiles.Contains(profile))
+        // Protected profiles are never plaintext, so they cannot overwrite ciphertext and are never held back.
+        if (registry.Find(profile) is not { IsEncrypted: true, IsProtected: false })
         {
             return true;
         }

@@ -109,9 +109,10 @@ runs, and nothing about them is declared in the app's code.
   profile's file store from the registry by id rather than as a keyed service.
 - **Found again on every device.** At sign in, the registry adds every protected profile the user has (D3), so a
   profile created on one device appears on the others.
-- **Separate local storage per profile.** IndexedDB object stores can only be added while a database is upgraded, so
-  each protected profile gets its own databases (index and files, named after the profile id), created with the
-  profile and deleted with it. OPFS and the picked folder use a directory per profile id.
+- **Separate local storage per profile.** Each protected profile has its own object stores, named after its id: its
+  index (`sync` / `<id>_index`) and its files (`files` / `<id>`). `indexeddb.js` adds a missing object store to an
+  existing database at any time (it opens the next version), so no database of its own is needed. In OPFS its files
+  are under a directory named after its id, and in the picked folder under `profiles/<id>/`, as in S3.
 
 ### The index (R7, R8, D3)
 
@@ -212,11 +213,16 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 
 ### Phase 2: passphrase scopes
 
-- [ ] `UseOwnPassphrase(...)` on the profile builder: idle timeout, device unlock allowed, passphrase rules, Argon2id
-      costs (R5, R14, R17).
-- [ ] A registry of profiles added and removed at runtime, with no profile declared in code; the sync service,
-      scheduler, storage resolver and gate work over the registry (R7). Protected profiles found again at sign in.
-- [ ] Local stores per runtime profile: IndexedDB databases, OPFS and folder directories named after the profile id.
+- [ ] Each protected profile's own settings, with framework defaults: idle timeout, device unlock allowed, passphrase
+      rules, Argon2id costs (R5, R14, R17). (Replaces `UseOwnPassphrase(...)` on the profile builder: protected
+      profiles are created at runtime, not configured in code.)
+- [x] A registry of profiles (`ISyncProfileRegistry`): the configured ones and those added and removed at runtime,
+      each with its stores created once. The sync service, scheduler (which syncs a profile as soon as it is added),
+      storage resolver, storage moves, folder service, gate and account encryption all work over it. Configured
+      profiles' keyed services (`[FromKeyedServices("notes")]`) come from it (R7).
+- [x] Local stores per protected profile, named after its id (see "Separate local storage per profile").
+- [x] `ISyncProtectedProfileService`: adds the user's protected profiles as sync profiles when the session starts
+      (and removes any deleted elsewhere), creates them, and locks and removes them all on sign out.
 - [x] Keys-document cryptography shared by the account and protected profiles (`IE2eKeysDocumentService`), so it
       exists once.
 - [x] Key rings of protected profiles start refusing writes and can never be set to write plaintext; only the
@@ -226,16 +232,20 @@ Each phase leaves everything passing (all four suites and `test-template.ps1`).
 - [x] The index secret (`<sub>/keys/index`, `IE2eProfileIndexStore`) with this device's copy
       (`IE2eLocalProfileIndexStore`), read when listing and updated on create and delete (D3). Index entries hold
       the id and created date; per-profile settings are added with the features that use them.
-- [ ] Create a profile: its local stores and its registration as a sync profile (the keys, GUID and index entry are
-      done above) (R7).
+- [x] Create a profile: its keys, then its registration as a sync profile (R7).
 - [ ] Optional device unlock with the passkey (R14). Unlocking with the passphrase, online and offline, is done above.
-- [ ] Encrypting store: refuse when locked, coded errors, idle timer (R4, R5).
-- [ ] Leave passphrase scopes out of `E2eSyncGate` and the account sweeps; they sync while locked (R3, R12, R16).
+- [x] A locked protected profile's store refuses reads and writes with `E2eLockedException` (its key ring refuses
+      writes and has no keys to decrypt with) (R4).
+- [ ] Idle timer that locks a protected profile after a period without use (R5).
+- [x] Protected profiles are left out of `E2eSyncGate` and the account's sweeps, so they sync while locked (R3, R12,
+      R16). Unit tested; an integration scenario is in Phase 5.
 - [ ] Format version with scope and path in the authenticated data (R15).
 - [x] Change passphrase (R10).
-- [ ] Delete a profile's files on every storage, and remove it as a sync profile (its keys, this device's copy and
-      its index entry are done above) (R11).
-- [ ] Lock in every tab over a broadcast channel (R6); lock all from a session lifecycle handler on sign out.
+- [x] Delete a profile: its keys first, then under its sync lock its files in S3, its index records, and its files in
+      IndexedDB and OPFS (and the picked folder when that is the storage in use), then the sync profile (R11).
+- [x] Lock all on sign out, from the sync module's session handler, so keys are wiped then and not when the sign-in
+      page next loads (R5).
+- [ ] Lock in every tab over a broadcast channel (R6).
 
 ### Phase 3: AWS
 
