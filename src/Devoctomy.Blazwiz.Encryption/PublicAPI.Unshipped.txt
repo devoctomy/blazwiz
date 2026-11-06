@@ -1,1 +1,6 @@
 #nullable enable
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.SetIdleTimeoutAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.TimeSpan? idleTimeout, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.SetIdleTimeoutAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.TimeSpan? idleTimeout, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.IdleTimeoutSeconds.get -> int?
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.IdleTimeoutSeconds.set -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.TryGetIdleTimeout(out System.TimeSpan? idleTimeout) -> bool

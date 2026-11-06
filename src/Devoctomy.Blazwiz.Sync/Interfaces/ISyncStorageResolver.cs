@@ -31,11 +31,27 @@ public interface ISyncStorageResolver
     ISyncFileStore GetStore(string profile, SyncStorageKind kind);
 
     /// <summary>
-    /// Gets the signed in user's state for a profile: the recorded one, or the default storage.
+    /// Gets the signed in user's state for a profile: the recorded one; otherwise the storage chosen for this device
+    /// (<see cref="SetDeviceDefaultKindAsync"/>), if the profile can use it; otherwise the profile's default storage.
     /// </summary>
     /// <param name="profile">The profile.</param>
     /// <returns>The state.</returns>
     Task<SyncStorageState> GetStateAsync(string profile);
+
+    /// <summary>
+    /// Gets the storage the signed in user chose for this device: used by profiles that have no storage of their own
+    /// recorded yet, such as one the user creates later.
+    /// </summary>
+    /// <returns>The storage, or null if none was chosen.</returns>
+    Task<SyncStorageKind?> GetDeviceDefaultKindAsync();
+
+    /// <summary>
+    /// Records the storage the signed in user chose for this device, for profiles that have no storage of their own
+    /// recorded yet. Profiles already using a storage are not moved: see <see cref="ISyncStorageMigrationService"/>.
+    /// </summary>
+    /// <param name="kind">The storage.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task SetDeviceDefaultKindAsync(SyncStorageKind kind);
 
     /// <summary>
     /// Gets whether the browser can use a storage.

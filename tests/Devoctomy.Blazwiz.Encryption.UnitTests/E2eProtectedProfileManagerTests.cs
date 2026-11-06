@@ -303,6 +303,74 @@ public class E2eProtectedProfileManagerTests
     }
 
     [Fact]
+    public async Task GivenAProfile_WhenItsIdleTimeoutIsSet_ThenEveryDeviceSeesIt()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var other = new Device(this);
+        Assert.False((await other.Manager.GetProfilesAsync()).Single().TryGetIdleTimeout(out _));
+
+        // Act
+        await device.Manager.SetIdleTimeoutAsync(scope, TimeSpan.FromMinutes(5));
+
+        // Assert
+        var entry = Assert.Single(await other.Manager.GetProfilesAsync());
+        Assert.Equal(300, entry.IdleTimeoutSeconds);
+        Assert.True(entry.TryGetIdleTimeout(out var timeout));
+        Assert.Equal(TimeSpan.FromMinutes(5), timeout);
+        Assert.Contains("\"idleTimeoutSeconds\":300", index.Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GivenAProfile_WhenSetToNeverLockForBeingIdle_ThenItIsRecordedAsZero()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+
+        // Act
+        await device.Manager.SetIdleTimeoutAsync(scope, null);
+
+        // Assert
+        var entry = Assert.Single(await device.Manager.GetProfilesAsync());
+        Assert.Equal(0, entry.IdleTimeoutSeconds);
+        Assert.True(entry.TryGetIdleTimeout(out var timeout));
+        Assert.Null(timeout);
+    }
+
+    [Fact]
+    public async Task GivenNoIdleTimeoutChosen_WhenTheIndexIsWritten_ThenNoneIsRecorded()
+    {
+        // Act
+        await device.Manager.CreateAsync(Passphrase, Settings);
+
+        // Assert
+        Assert.DoesNotContain("idleTimeoutSeconds", index.Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GivenNoSuchProfile_WhenItsIdleTimeoutIsSet_ThenThrowsNotFoundAndNothingIsWritten()
+    {
+        // Arrange
+        await device.Manager.CreateAsync(Passphrase, Settings);
+        var writes = index.SetCount;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<E2eProfileNotFoundException>(() => device.Manager.SetIdleTimeoutAsync(new E2eKeyScope(Guid.NewGuid().ToString("D")), TimeSpan.FromMinutes(1)));
+        Assert.Equal(writes, index.SetCount);
+    }
+
+    [Fact]
+    public async Task GivenAnIdleTimeoutUnderASecond_WhenSet_ThenThrowsArgumentOutOfRange()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => device.Manager.SetIdleTimeoutAsync(scope, TimeSpan.FromMilliseconds(500)));
+        await Assert.ThrowsAsync<ArgumentException>(() => device.Manager.SetIdleTimeoutAsync(new E2eKeyScope("notes"), TimeSpan.FromMinutes(1)));
+    }
+
+    [Fact]
     public async Task GivenAProfileDeletedOnAnotherDevice_WhenForgotten_ThenThisDevicesCopyIsGoneAndItIsLocked()
     {
         // Arrange

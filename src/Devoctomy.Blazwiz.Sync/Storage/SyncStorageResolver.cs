@@ -62,9 +62,32 @@ public class SyncStorageResolver(
             ?? throw new InvalidOperationException("Sign in to use your files.");
 
         var state = await stateStore.GetAsync(profile, owner);
-        return state != null && settings.FileStores.Any(s => s.Kind == state.Kind)
-            ? state
-            : new SyncStorageState { Profile = profile, Owner = owner, Kind = settings.ResolvedDefaultStorageKind };
+        if (state != null && settings.FileStores.Any(s => s.Kind == state.Kind))
+        {
+            return state;
+        }
+
+        var deviceDefault = await GetDeviceDefaultKindAsync(owner);
+        var kind = deviceDefault is { } chosen && settings.FileStores.Any(s => s.Kind == chosen)
+            ? chosen
+            : settings.ResolvedDefaultStorageKind;
+        return new SyncStorageState { Profile = profile, Owner = owner, Kind = kind };
+    }
+
+    /// <inheritdoc/>
+    public async Task<SyncStorageKind?> GetDeviceDefaultKindAsync()
+    {
+        var owner = await userContext.GetUserIdAsync()
+            ?? throw new InvalidOperationException("Sign in to use your files.");
+        return await GetDeviceDefaultKindAsync(owner);
+    }
+
+    /// <inheritdoc/>
+    public async Task SetDeviceDefaultKindAsync(SyncStorageKind kind)
+    {
+        var owner = await userContext.GetUserIdAsync()
+            ?? throw new InvalidOperationException("Sign in to use your files.");
+        await stateStore.SaveAsync(new SyncStorageState { Profile = SyncDefaults.DeviceDefaultStorageName, Owner = owner, Kind = kind });
     }
 
     /// <inheritdoc/>
@@ -77,6 +100,11 @@ public class SyncStorageResolver(
             SyncStorageKind.LocalFolder => await folderClient.IsSupportedAsync(),
             _ => false,
         };
+    }
+
+    private async Task<SyncStorageKind?> GetDeviceDefaultKindAsync(string owner)
+    {
+        return (await stateStore.GetAsync(SyncDefaults.DeviceDefaultStorageName, owner))?.Kind;
     }
 
     private SyncProfileOptions? Find(string profile)

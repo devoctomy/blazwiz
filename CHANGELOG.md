@@ -8,7 +8,32 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+### Added
+- `IClipboardService` (Browser): copies text, and for secrets clears the clipboard again after a time unless something
+  else was copied since (when the browser lets the page see that). A later copy replaces a clear still waiting; if the
+  page does not have focus when the time comes, it is cleared when it has focus again.
+- Toasts: `IToastService.Show(message, tone, duration)` shows a short message over the page that goes by itself (4
+  seconds by default, at most 3 at once). The shell shows them (`ToastHost`, in the overlays region).
+- `AppSettings.LogoUrl`: the logo in the sidebar and on the sign-in pages, any image the browser shows. Defaults to
+  `images/icon.svg`, as before.
+- A storage for the device: `ISyncStorageResolver.Get/SetDeviceDefaultKindAsync`. A profile with no storage of its own
+  recorded yet (e.g. one the user creates) uses it, if it can. Moving the files to another storage in Settings also makes
+  it the device's storage. With no profiles at all yet, Settings offers the storage choice anyway, and choosing just
+  records it for the profiles created later.
+- A protected profile's own idle timeout: `ISyncProtectedProfileService.SetIdleTimeoutAsync` (and
+  `IE2eProtectedProfileManager.SetIdleTimeoutAsync`). It is kept in the index of the user's profiles
+  (`E2eProfileIndexEntry.IdleTimeoutSeconds`), so it applies on every device, over the app's `ProfileDefaults`, and takes
+  effect at once (`IE2eIdleLock.Refresh`).
+
+### Changed
+- Text from resources is looked up once for each culture and name, then kept (`OverridingStringLocalizer`). Each lookup
+  went through every override and resource manager, which in WebAssembly made a page that shows a lot of text, such as
+  a long list, many times slower to render. Overrides should be set before text is used, as `AddBlazwizText` does; if
+  their number changes afterwards, what was kept is forgotten.
+
 ### Fixed
+- A dialog opened over another (e.g. a picker over an editor) now dims the one beneath.
+- The theme preview in Settings and range sliders use the app's accent instead of the framework's purple.
 - An app with no sync profiles yet (all of them created by the user at runtime, none defined in code) now checks
   connectivity when sync starts, on focus and when back online. Before, the sync status pill said "Checking" forever and
   the Sync page logged no connectivity events until the first profile was created.

@@ -104,6 +104,16 @@ public interface ISyncProtectedProfileService
     Task SetLabelAsync(E2eKeyScope scope, string label);
 
     /// <summary>
+    /// Sets how long a profile the user created stays unlocked without being used. It is kept with the user's profiles,
+    /// so it applies on every device, and takes effect at once: an unlocked profile is timed again from now.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <param name="idleTimeout">The idle timeout, of at least a second; null to never lock it for being idle.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task SetIdleTimeoutAsync(E2eKeyScope scope, TimeSpan? idleTimeout, CancellationToken ct = default);
+
+    /// <summary>
     /// Locks every profile, and removes those the user created as sync profiles. Called when the user signs out.
     /// </summary>
     void Unload();

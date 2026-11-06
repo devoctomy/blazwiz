@@ -33,6 +33,7 @@ public partial class SyncSettingsViewModel : ViewModelBase
 
     private StorageDurabilityStatus? storage;
     private IReadOnlyList<string> switchableProfiles = [];
+    private bool choosesDeviceDefault;
     private SyncStorageKind storageKind;
     private bool isOpfsSupported;
     private bool isFolderSupported;
@@ -126,9 +127,11 @@ public partial class SyncSettingsViewModel : ViewModelBase
     public bool CanSyncNow => connectivityService.Status.IsOnline && syncService.Status.State != SyncState.Syncing && !IsMigrating;
 
     /// <summary>
-    /// Gets a value indicating whether the files can be kept in more than one storage, so the choice is shown.
+    /// Gets a value indicating whether the files can be kept in more than one storage, so the choice is shown. With no
+    /// profiles at all yet (e.g. an app whose profiles are all created by the user), the choice is the storage for the
+    /// device, used by the profiles created later.
     /// </summary>
-    public bool CanSwitchStorage => switchableProfiles.Count > 0;
+    public bool CanSwitchStorage => switchableProfiles.Count > 0 || choosesDeviceDefault;
 
     /// <summary>
     /// Gets the storage the files are kept in on this device.
@@ -343,6 +346,23 @@ public partial class SyncSettingsViewModel : ViewModelBase
             }
         }
 
+        if (switchableProfiles.Count == 0)
+        {
+            // No files yet, so nothing to move or confirm: just remember the choice for the profiles created later.
+            try
+            {
+                await storageMigrationService.MigrateAsync(kind);
+                StorageKind = kind;
+                FolderName = kind == SyncStorageKind.LocalFolder ? pendingFolderName : null;
+            }
+            catch (Exception ex)
+            {
+                StorageError = text["Sync.Storage.MoveFailed", errorText.Describe(ex)];
+            }
+
+            return;
+        }
+
         try
         {
             var count = 0;
@@ -465,10 +485,20 @@ public partial class SyncSettingsViewModel : ViewModelBase
     {
         try
         {
-            switchableProfiles = syncService.Profiles.Where(storageResolver.IsSwitchable).ToList();
+            var profiles = syncService.Profiles;
+            switchableProfiles = profiles.Where(storageResolver.IsSwitchable).ToList();
+            choosesDeviceDefault = profiles.Count == 0;
             if (switchableProfiles.Count > 0)
             {
                 StorageKind = (await storageResolver.GetStateAsync(switchableProfiles[0])).Kind;
+            }
+            else if (choosesDeviceDefault)
+            {
+                StorageKind = await storageResolver.GetDeviceDefaultKindAsync() ?? SyncStorageKind.IndexedDb;
+            }
+
+            if (CanSwitchStorage)
+            {
                 IsOpfsSupported = await storageResolver.IsSupportedAsync(SyncStorageKind.Opfs);
                 IsFolderSupported = await storageResolver.IsSupportedAsync(SyncStorageKind.LocalFolder);
                 FolderName = StorageKind == SyncStorageKind.LocalFolder ? (await folderService.GetStatusAsync())?.Name : null;
@@ -477,6 +507,7 @@ public partial class SyncSettingsViewModel : ViewModelBase
         catch (Exception)
         {
             switchableProfiles = [];
+            choosesDeviceDefault = false;
         }
 
         OnPropertyChanged(nameof(CanSwitchStorage));

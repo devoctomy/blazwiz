@@ -100,6 +100,7 @@ public class SyncStorageMigrationServiceTests
         Assert.Equal(SyncStorageKind.IndexedDb, stateStore.Saved[0].Kind);
         Assert.Equal((SyncStorageKind.IndexedDb, SyncStorageKind.Opfs), (stateStore.Saved[0].MigrationFrom, stateStore.Saved[0].MigrationTo));
         Assert.Equal(SyncStorageKind.Opfs, stateStore.Saved[1].Kind);
+        Assert.Equal(SyncStorageKind.Opfs, stateStore.DeviceDefault);
     }
 
     [Fact]
@@ -197,6 +198,22 @@ public class SyncStorageMigrationServiceTests
         // Assert
         Assert.Empty(calls);
         Assert.Empty(stateStore.Saved);
+        Assert.Equal(SyncStorageKind.IndexedDb, stateStore.DeviceDefault);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_WhenMigrate_ThenOnlyTheDevicesStorageIsChosen()
+    {
+        // Arrange
+        options.Profiles.Clear();
+
+        // Act
+        await CreateSut().MigrateAsync(SyncStorageKind.Opfs);
+
+        // Assert
+        Assert.Empty(calls);
+        Assert.Empty(stateStore.Saved);
+        Assert.Equal(SyncStorageKind.Opfs, stateStore.DeviceDefault);
     }
 
     [Fact]
@@ -244,6 +261,7 @@ public class SyncStorageMigrationServiceTests
         Assert.Equal(SyncStorageKind.IndexedDb, state.Kind);
         Assert.Null(state.MigrationPhase);
         Assert.Equal(["stop", "Migrating", "lock sync-notes", "Changed", "start"], calls);
+        Assert.Null(stateStore.DeviceDefault);
     }
 
     [Fact]
@@ -396,14 +414,26 @@ public class SyncStorageMigrationServiceTests
     {
         private SyncStorageState? current;
 
+        // The profiles' states saved, in order; the storage chosen for the device is kept apart.
         public List<SyncStorageState> Saved { get; } = [];
+
+        public SyncStorageKind? DeviceDefault { get; private set; }
 
         public void Set(SyncStorageState state) => current = state;
 
-        public Task<SyncStorageState?> GetAsync(string profile, string owner) => Task.FromResult(current);
+        public Task<SyncStorageState?> GetAsync(string profile, string owner) => Task.FromResult(
+            profile == SyncDefaults.DeviceDefaultStorageName
+                ? DeviceDefault is { } kind ? new SyncStorageState { Profile = profile, Owner = owner, Kind = kind } : null
+                : current);
 
         public Task SaveAsync(SyncStorageState state)
         {
+            if (state.Profile == SyncDefaults.DeviceDefaultStorageName)
+            {
+                DeviceDefault = state.Kind;
+                return Task.CompletedTask;
+            }
+
             current = state;
             Saved.Add(state);
             return Task.CompletedTask;

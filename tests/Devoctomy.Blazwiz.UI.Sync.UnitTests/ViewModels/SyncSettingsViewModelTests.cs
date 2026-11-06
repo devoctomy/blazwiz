@@ -97,39 +97,144 @@ public class SyncSettingsViewModelTests
     }
 
     [Fact]
-    public async Task GivenNoProfiles_WhenAProfileIsAdded_ThenStorageChoiceShown()
+    public async Task GivenNoProfiles_WhenInitialized_ThenTheDevicesStorageIsOffered()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        mockResolver.Setup(x => x.GetDeviceDefaultKindAsync()).ReturnsAsync(SyncStorageKind.Opfs);
+        mockResolver.Setup(x => x.IsSupportedAsync(SyncStorageKind.Opfs)).ReturnsAsync(true);
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.True(sut.CanSwitchStorage);
+        Assert.Equal(SyncStorageKind.Opfs, sut.StorageKind);
+        Assert.True(sut.IsOpfsSupported);
+    }
+
+    [Fact]
+    public async Task GivenNoProfilesAndNoDeviceStorage_WhenInitialized_ThenIndexedDbIsShown()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.True(sut.CanSwitchStorage);
+        Assert.Equal(SyncStorageKind.IndexedDb, sut.StorageKind);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_WhenAnotherStorageIsChosen_ThenItIsTheDevicesStorage_WithoutAskingToMoveFiles()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        mockResolver.Setup(x => x.IsSupportedAsync(SyncStorageKind.Opfs)).ReturnsAsync(true);
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        await sut.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.Opfs);
+
+        // Assert
+        Assert.Equal(SyncStorageKind.Opfs, sut.StorageKind);
+        Assert.False(sut.IsStorageDialogOpen);
+        Assert.Null(sut.PendingStorageKind);
+        mockMigration.Verify(x => x.MigrateAsync(SyncStorageKind.Opfs, It.IsAny<IProgress<SyncStorageMigrationProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_WhenAFolderIsChosen_ThenItIsPickedAndBecomesTheDevicesStorage()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        mockFolder.Setup(x => x.PickAsync()).ReturnsAsync("Vaults");
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        await sut.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.LocalFolder);
+
+        // Assert
+        Assert.Equal(SyncStorageKind.LocalFolder, sut.StorageKind);
+        Assert.Equal("Vaults", sut.FolderName);
+        mockMigration.Verify(x => x.MigrateAsync(SyncStorageKind.LocalFolder, It.IsAny<IProgress<SyncStorageMigrationProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_WhenChoosingAStorageFails_ThenTheErrorIsShownAndTheStorageKept()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        mockMigration.Setup(x => x.MigrateAsync(It.IsAny<SyncStorageKind>(), It.IsAny<IProgress<SyncStorageMigrationProgress>?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Sign in to use your files."));
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        await sut.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.Opfs);
+
+        // Assert
+        Assert.Equal(SyncStorageKind.IndexedDb, sut.StorageKind);
+        Assert.NotNull(sut.StorageError);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_WhenAProfileIsAdded_ThenItsStorageIsShown()
     {
         // Arrange
         mockSync.SetupGet(x => x.Profiles).Returns([]);
         var sut = CreateSut();
         await sut.OnInitializedAsync();
-        SetupSwitchableNotes(SyncStorageKind.IndexedDb, opfsSupported: true);
+        SetupSwitchableNotes(SyncStorageKind.LocalFolder, opfsSupported: true);
 
         // Act
         mockRegistry.Raise(x => x.ProfileAdded += null, mockRegistry.Object, "notes");
-        await WaitForAsync(() => sut.CanSwitchStorage);
+        await WaitForAsync(() => sut.StorageKind == SyncStorageKind.LocalFolder);
 
         // Assert
         Assert.True(sut.CanSwitchStorage);
-        Assert.Equal(SyncStorageKind.IndexedDb, sut.StorageKind);
+        Assert.Equal(SyncStorageKind.LocalFolder, sut.StorageKind);
         Assert.True(sut.IsOpfsSupported);
     }
 
     [Fact]
-    public async Task GivenOneProfile_WhenItIsRemoved_ThenStorageChoiceHidden()
+    public async Task GivenOneProfile_WhenItIsRemoved_ThenTheDevicesStorageIsOffered()
     {
         // Arrange
         SetupSwitchableNotes(SyncStorageKind.IndexedDb, opfsSupported: true);
+        mockResolver.Setup(x => x.GetDeviceDefaultKindAsync()).ReturnsAsync(SyncStorageKind.Opfs);
         var sut = CreateSut();
         await sut.OnInitializedAsync();
         mockSync.SetupGet(x => x.Profiles).Returns([]);
 
         // Act
         mockRegistry.Raise(x => x.ProfileRemoved += null, mockRegistry.Object, "notes");
-        await WaitForAsync(() => !sut.CanSwitchStorage);
+        await WaitForAsync(() => sut.StorageKind == SyncStorageKind.Opfs);
+
+        // Assert
+        Assert.True(sut.CanSwitchStorage);
+        Assert.Equal(SyncStorageKind.Opfs, sut.StorageKind);
+    }
+
+    [Fact]
+    public async Task GivenOnlyProfilesThatCannotSwitch_WhenInitialized_ThenNoStorageIsOffered()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns(["photos"]);
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
 
         // Assert
         Assert.False(sut.CanSwitchStorage);
+        mockResolver.Verify(x => x.GetDeviceDefaultKindAsync(), Times.Never);
     }
 
     [Fact]

@@ -82,7 +82,8 @@ public class SyncProtectedProfileService(
             await lockChannel.StartAsync();
         }
 
-        var scopes = (await manager.GetProfilesAsync(ct)).Select(p => new E2eKeyScope(p.Id)).ToList();
+        var entries = await manager.GetProfilesAsync(ct);
+        var scopes = entries.Select(p => new E2eKeyScope(p.Id)).ToList();
         foreach (var gone in CreatedProfiles().Where(p => !scopes.Contains(p.KeyScope!)).ToList())
         {
             // Deleted on another device: nothing of it is kept here either.
@@ -96,9 +97,23 @@ public class SyncProtectedProfileService(
             registry.Remove(gone.Name);
         }
 
-        foreach (var scope in scopes.Where(s => FindProfile(s) == null))
+        foreach (var entry in entries)
         {
-            registry.Add(CreateOptions(scope, options.ProfileDefaults));
+            // The settings chosen for the profile, on this device or another, over the app's defaults.
+            var scope = new E2eKeyScope(entry.Id);
+            var settings = SettingsFor(entry);
+            if (FindProfile(scope) is { } existing)
+            {
+                if (existing.Settings.IdleTimeout != settings.IdleTimeout)
+                {
+                    existing.Settings = settings;
+                    idleLock.Refresh(scope);
+                }
+            }
+            else
+            {
+                registry.Add(CreateOptions(scope, settings));
+            }
         }
 
         setUp.Clear();
@@ -193,6 +208,19 @@ public class SyncProtectedProfileService(
     }
 
     /// <inheritdoc/>
+    public async Task SetIdleTimeoutAsync(E2eKeyScope scope, TimeSpan? idleTimeout, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        var profile = CreatedProfiles().FirstOrDefault(p => p.KeyScope == scope)
+            ?? throw new ArgumentException($"There is no profile '{scope}' created by the user.", nameof(scope));
+
+        await manager.SetIdleTimeoutAsync(scope, idleTimeout, ct);
+        profile.Settings = WithIdleTimeout(profile.Settings, idleTimeout);
+        idleLock.Refresh(scope);
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <inheritdoc/>
     public Task EnableDeviceUnlockAsync(E2eKeyScope scope)
     {
         CheckDeviceUnlockAllowed(scope);
@@ -234,6 +262,14 @@ public class SyncProtectedProfileService(
         }
     }
 
+    private static E2eProfileSettings WithIdleTimeout(E2eProfileSettings settings, TimeSpan? idleTimeout) => new E2eProfileSettings
+    {
+        IdleTimeout = idleTimeout,
+        AllowDeviceUnlock = settings.AllowDeviceUnlock,
+        MinimumPassphraseLength = settings.MinimumPassphraseLength,
+        Argon2 = settings.Argon2,
+    };
+
     private static SyncProfileOptions CreateOptions(E2eKeyScope scope, E2eProfileSettings settings)
     {
         var id = scope.Id;
@@ -252,6 +288,10 @@ public class SyncProtectedProfileService(
             .UseDefault(SyncStorageKind.IndexedDb);
         return profile;
     }
+
+    private E2eProfileSettings SettingsFor(E2eProfileIndexEntry entry) => entry.TryGetIdleTimeout(out var idleTimeout)
+        ? WithIdleTimeout(options.ProfileDefaults, idleTimeout)
+        : options.ProfileDefaults;
 
     private async Task DeleteLocalFilesAsync(string name, CancellationToken ct)
     {

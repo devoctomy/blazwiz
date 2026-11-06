@@ -530,6 +530,87 @@ public class SyncProtectedProfileServiceTests
         mockResolver.Setup(x => x.GetStore(id, SyncStorageKind.IndexedDb)).Returns(store.Object);
     }
 
+    [Fact]
+    public async Task GivenProfilesWithAndWithoutTheirOwnIdleTimeout_WhenLoaded_ThenEachHasItsOwnOrTheDefault()
+    {
+        // Arrange
+        options.ProfileDefaults.IdleTimeout = TimeSpan.FromMinutes(15);
+        options.ProfileDefaults.AllowDeviceUnlock = true;
+        var own = Guid.NewGuid().ToString("D");
+        var never = Guid.NewGuid().ToString("D");
+        var defaulted = Guid.NewGuid().ToString("D");
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new E2eProfileIndexEntry { Id = own, IdleTimeoutSeconds = 300 },
+            new E2eProfileIndexEntry { Id = never, IdleTimeoutSeconds = 0 },
+            new E2eProfileIndexEntry { Id = defaulted },
+        ]);
+
+        // Act
+        await CreateSut().LoadAsync();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(5), registry.Find(own)!.Settings.IdleTimeout);
+        Assert.True(registry.Find(own)!.Settings.AllowDeviceUnlock);
+        Assert.Null(registry.Find(never)!.Settings.IdleTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(15), registry.Find(defaulted)!.Settings.IdleTimeout);
+    }
+
+    [Fact]
+    public async Task GivenAnIdleTimeoutChangedOnAnotherDevice_WhenLoadedAgain_ThenItIsUsedHereAndTheTimerRefreshed()
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        mockManager.SetupSequence(x => x.GetProfilesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new E2eProfileIndexEntry { Id = id }])
+            .ReturnsAsync([new E2eProfileIndexEntry { Id = id, IdleTimeoutSeconds = 60 }]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+
+        // Act
+        await sut.LoadAsync();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(1), registry.Find(id)!.Settings.IdleTimeout);
+        mockIdle.Verify(x => x.Refresh(new E2eKeyScope(id)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAProfileTheUserCreated_WhenItsIdleTimeoutIsSet_ThenItIsKeptUsedAtOnceAndProfilesChangedIsRaised()
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        var scope = new E2eKeyScope(id);
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = id }]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+        var changes = 0;
+        sut.ProfilesChanged += (_, _) => changes++;
+
+        // Act
+        await sut.SetIdleTimeoutAsync(scope, TimeSpan.FromMinutes(2));
+
+        // Assert
+        mockManager.Verify(x => x.SetIdleTimeoutAsync(scope, TimeSpan.FromMinutes(2), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(TimeSpan.FromMinutes(2), registry.Find(id)!.Settings.IdleTimeout);
+        Assert.Equal(TimeSpan.FromMinutes(2), sut.Profiles.Single(p => p.Name == id).Settings.IdleTimeout);
+        mockIdle.Verify(x => x.Refresh(scope), Times.Once);
+        Assert.Equal(1, changes);
+    }
+
+    [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenItsIdleTimeoutIsSet_ThenThrowsAndNothingIsKept()
+    {
+        // Arrange
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.SetIdleTimeoutAsync(notes, TimeSpan.FromMinutes(1)));
+        mockManager.Verify(x => x.SetIdleTimeoutAsync(It.IsAny<E2eKeyScope>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private SyncProtectedProfileService CreateSut() => new(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object);
 
     private sealed class Releaser(List<string> calls) : IAsyncDisposable

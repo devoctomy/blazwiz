@@ -9,7 +9,9 @@ public interface ISyncStorageMigrationService
 {
     /// <summary>
     /// Moves every profile that has the target storage to it. Sync is stopped, each profile's files are copied and
-    /// checked under its sync lock, the target is selected, the source is cleared, and sync is started again.
+    /// checked under its sync lock, the target is selected, the source is cleared, and sync is started again. The
+    /// target also becomes the storage chosen for the device, used by profiles created later
+    /// (<see cref="ISyncStorageResolver.SetDeviceDefaultKindAsync"/>), even when there is nothing to move.
     /// </summary>
     /// <param name="target">The storage to move to.</param>
     /// <param name="progress">Told about each file copied.</param>

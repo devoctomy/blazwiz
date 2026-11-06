@@ -1,1 +1,10 @@
 #nullable enable
+const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.DeviceDefaultStorageName = ":device" -> string!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.GetDeviceDefaultKindAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncStorageKind?>!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.SetDeviceDefaultKindAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.GetDeviceDefaultKindAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncStorageKind?>!
+Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.SetDeviceDefaultKindAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.E2eIdleLock.Refresh(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eIdleLock.Refresh(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.SetIdleTimeoutAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.TimeSpan? idleTimeout, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SetIdleTimeoutAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.TimeSpan? idleTimeout, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!

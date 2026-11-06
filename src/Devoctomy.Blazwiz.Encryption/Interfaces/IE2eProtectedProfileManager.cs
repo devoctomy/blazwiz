@@ -144,6 +144,17 @@ public interface IE2eProtectedProfileManager
     Task DeleteAsync(E2eKeyScope scope, CancellationToken ct = default);
 
     /// <summary>
+    /// Sets how long a protected profile stays unlocked without being used, on every device: it is kept in the index of
+    /// the user's profiles (<see cref="E2eProfileIndexEntry.IdleTimeoutSeconds"/>).
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <param name="idleTimeout">The idle timeout, of at least a second; null to never lock it for being idle.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="Exceptions.E2eProfileNotFoundException">The user has no such profile.</exception>
+    Task SetIdleTimeoutAsync(E2eKeyScope scope, TimeSpan? idleTimeout, CancellationToken ct = default);
+
+    /// <summary>
     /// Forgets a protected profile deleted on another device: locks it and deletes this device's copy of its keys.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>

@@ -6,6 +6,11 @@ namespace Devoctomy.Blazwiz.UI.Models;
 public class AppSettings
 {
     /// <summary>
+    /// The logo used when <see cref="LogoUrl"/> is not set: the template's <c>wwwroot/images/icon.svg</c>.
+    /// </summary>
+    public const string DefaultLogoUrl = "images/icon.svg";
+
+    /// <summary>
     /// Gets or sets the application title shown in the sidebar, login page and browser tab.
     /// </summary>
     public string ApplicationTitle { get; set; } = "blazwiz";
@@ -14,6 +19,12 @@ public class AppSettings
     /// Gets or sets a short description of the application, shown on the login page.
     /// </summary>
     public string ApplicationDescription { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the address of the application's logo, shown in the sidebar and on the sign-in pages: any image the
+    /// browser shows (SVG, PNG, ...), relative to the app's base address. Defaults to <see cref="DefaultLogoUrl"/>.
+    /// </summary>
+    public string LogoUrl { get; set; } = DefaultLogoUrl;
 
     /// <summary>
     /// Gets or sets the copyright message.

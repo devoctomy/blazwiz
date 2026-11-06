@@ -1,1 +1,41 @@
 #nullable enable
+const Devoctomy.Blazwiz.UI.Models.AppSettings.DefaultLogoUrl = "images/icon.svg" -> string!
+Devoctomy.Blazwiz.UI.Models.AppSettings.LogoUrl.get -> string!
+Devoctomy.Blazwiz.UI.Models.AppSettings.LogoUrl.set -> void
+const Devoctomy.Blazwiz.UI.Services.ToastService.MaximumToasts = 3 -> int
+Devoctomy.Blazwiz.UI.Components.ToastHost
+Devoctomy.Blazwiz.UI.Components.ToastHost.ToastHost() -> void
+Devoctomy.Blazwiz.UI.Models.Toast
+Devoctomy.Blazwiz.UI.Models.Toast.Icon.get -> string!
+Devoctomy.Blazwiz.UI.Models.Toast.Id.get -> System.Guid
+Devoctomy.Blazwiz.UI.Models.Toast.Id.init -> void
+Devoctomy.Blazwiz.UI.Models.Toast.Message.get -> string!
+Devoctomy.Blazwiz.UI.Models.Toast.Message.init -> void
+Devoctomy.Blazwiz.UI.Models.Toast.Toast() -> void
+Devoctomy.Blazwiz.UI.Models.Toast.Tone.get -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.Toast.Tone.init -> void
+Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.ToastTone.Danger = 3 -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.ToastTone.Info = 0 -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.ToastTone.Success = 1 -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.ToastTone.Warning = 2 -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService.Changed -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService.Dismiss(System.Guid id) -> void
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService.Show(string! message, Devoctomy.Blazwiz.UI.Models.ToastTone tone = Devoctomy.Blazwiz.UI.Models.ToastTone.Info, System.TimeSpan? duration = null) -> Devoctomy.Blazwiz.UI.Models.Toast!
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService.Toasts.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.Toast!>!
+Devoctomy.Blazwiz.UI.Services.ToastService
+Devoctomy.Blazwiz.UI.Services.ToastService.Changed -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Services.ToastService.Dismiss(System.Guid id) -> void
+Devoctomy.Blazwiz.UI.Services.ToastService.Dispose() -> void
+Devoctomy.Blazwiz.UI.Services.ToastService.Show(string! message, Devoctomy.Blazwiz.UI.Models.ToastTone tone = Devoctomy.Blazwiz.UI.Models.ToastTone.Info, System.TimeSpan? duration = null) -> Devoctomy.Blazwiz.UI.Models.Toast!
+Devoctomy.Blazwiz.UI.Services.ToastService.Toasts.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.Toast!>!
+Devoctomy.Blazwiz.UI.Services.ToastService.ToastService(System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.Dismiss(System.Guid id) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.DismissCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand<System.Guid>!
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.ToastHostViewModel(Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService! toastService) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.Toasts.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.Toast!>!
+override Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.Dispose(bool disposing) -> void
+static readonly Devoctomy.Blazwiz.UI.Services.ToastService.DefaultDuration -> System.TimeSpan
+~override Devoctomy.Blazwiz.UI.Components.ToastHost.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

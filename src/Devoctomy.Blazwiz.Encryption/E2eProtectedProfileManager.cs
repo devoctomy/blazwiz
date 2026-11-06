@@ -318,6 +318,22 @@ public class E2eProtectedProfileManager(
     }
 
     /// <inheritdoc/>
+    public async Task SetIdleTimeoutAsync(E2eKeyScope scope, TimeSpan? idleTimeout, CancellationToken ct = default)
+    {
+        CheckProtected(scope);
+        if (idleTimeout is { } timeout && timeout < TimeSpan.FromSeconds(1))
+        {
+            throw new ArgumentOutOfRangeException(nameof(idleTimeout), "An idle timeout must be at least a second.");
+        }
+
+        var index = await ReadIndexAsync(ct);
+        var entry = index.Profiles.FirstOrDefault(p => p.Id == scope.Id)
+            ?? throw new E2eProfileNotFoundException(scope.Id);
+        entry.IdleTimeoutSeconds = idleTimeout is { } after ? (int)Math.Min(int.MaxValue, Math.Round(after.TotalSeconds)) : 0;
+        await WriteIndexAsync(index, ct);
+    }
+
+    /// <inheritdoc/>
     public Task ForgetAsync(E2eKeyScope scope)
     {
         CheckProtected(scope);

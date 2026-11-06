@@ -96,6 +96,88 @@ public class SyncStorageResolverTests
     }
 
     [Fact]
+    public async Task GivenADeviceStorage_WhenGetStateAsyncWithoutRecordedState_ThenTheDevicesStorage()
+    {
+        // Arrange
+        mockStateStore.Setup(x => x.GetAsync(SyncDefaults.DeviceDefaultStorageName, "bob"))
+            .ReturnsAsync(new SyncStorageState { Profile = SyncDefaults.DeviceDefaultStorageName, Owner = "bob", Kind = SyncStorageKind.IndexedDb });
+
+        // Act
+        var state = await CreateSut().GetStateAsync("notes");
+
+        // Assert
+        Assert.Equal(("notes", "bob", SyncStorageKind.IndexedDb), (state.Profile, state.Owner, state.Kind));
+    }
+
+    [Fact]
+    public async Task GivenADeviceStorageTheProfileCannotUse_WhenGetStateAsync_ThenTheProfilesDefault()
+    {
+        // Arrange
+        mockStateStore.Setup(x => x.GetAsync(SyncDefaults.DeviceDefaultStorageName, "bob"))
+            .ReturnsAsync(new SyncStorageState { Profile = SyncDefaults.DeviceDefaultStorageName, Owner = "bob", Kind = SyncStorageKind.LocalFolder });
+
+        // Act
+        var state = await CreateSut().GetStateAsync("notes");
+
+        // Assert
+        Assert.Equal(SyncStorageKind.Opfs, state.Kind);
+    }
+
+    [Fact]
+    public async Task GivenRecordedStateAndADeviceStorage_WhenGetStateAsync_ThenTheRecordedState()
+    {
+        // Arrange
+        var recorded = new SyncStorageState { Profile = "notes", Owner = "bob", Kind = SyncStorageKind.Opfs };
+        mockStateStore.Setup(x => x.GetAsync("notes", "bob")).ReturnsAsync(recorded);
+        mockStateStore.Setup(x => x.GetAsync(SyncDefaults.DeviceDefaultStorageName, "bob"))
+            .ReturnsAsync(new SyncStorageState { Profile = SyncDefaults.DeviceDefaultStorageName, Owner = "bob", Kind = SyncStorageKind.IndexedDb });
+
+        // Act
+        var state = await CreateSut().GetStateAsync("notes");
+
+        // Assert
+        Assert.Same(recorded, state);
+    }
+
+    [Fact]
+    public async Task GivenNoDeviceStorage_WhenGetDeviceDefaultKindAsync_ThenNull()
+    {
+        // Act & Assert
+        Assert.Null(await CreateSut().GetDeviceDefaultKindAsync());
+    }
+
+    [Fact]
+    public async Task GivenAStorage_WhenSetDeviceDefaultKindAsync_ThenItIsRecordedForTheUserAndReadBack()
+    {
+        // Arrange
+        SyncStorageState? saved = null;
+        mockStateStore.Setup(x => x.SaveAsync(It.IsAny<SyncStorageState>()))
+            .Callback<SyncStorageState>(s => saved = s)
+            .Returns(Task.CompletedTask);
+        mockStateStore.Setup(x => x.GetAsync(SyncDefaults.DeviceDefaultStorageName, "bob")).ReturnsAsync(() => saved);
+        var sut = CreateSut();
+
+        // Act
+        await sut.SetDeviceDefaultKindAsync(SyncStorageKind.Opfs);
+
+        // Assert
+        Assert.Equal((SyncDefaults.DeviceDefaultStorageName, "bob", SyncStorageKind.Opfs), (saved!.Profile, saved.Owner, saved.Kind));
+        Assert.Equal(SyncStorageKind.Opfs, await sut.GetDeviceDefaultKindAsync());
+    }
+
+    [Fact]
+    public async Task GivenSignedOut_WhenTheDevicesStorageIsReadOrSet_ThenThrowsInvalidOperationException()
+    {
+        // Arrange
+        mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync((string?)null);
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.GetDeviceDefaultKindAsync());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.SetDeviceDefaultKindAsync(SyncStorageKind.Opfs));
+    }
+
+    [Fact]
     public async Task GivenRecordedState_WhenGetStateAsync_ThenReturnsIt()
     {
         // Arrange
