@@ -8,6 +8,14 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+### Fixed
+- An app with no sync profiles yet (all of them created by the user at runtime, none defined in code) now checks
+  connectivity when sync starts, on focus and when back online. Before, the sync status pill said "Checking" forever and
+  the Sync page logged no connectivity events until the first profile was created.
+- The Settings storage choice is loaded again when a profile is added or removed. Before, in an app with no profiles in
+  code, it stayed hidden after the user created their first protected profile until the page was opened again.
+  `SyncSettingsViewModel` takes an `ISyncProfileRegistry` (it is created by DI, so apps need no change).
+
 ## 0.4.0
 
 ### Added

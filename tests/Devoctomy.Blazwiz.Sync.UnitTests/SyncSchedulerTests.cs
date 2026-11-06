@@ -65,6 +65,54 @@ public class SyncSchedulerTests
     }
 
     [Fact]
+    public async Task GivenNoProfiles_WhenStartAsync_ThenConnectivityCheckedWithoutSyncing()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        using var sut = CreateSut();
+
+        // Act
+        await sut.StartAsync();
+
+        // Assert
+        Assert.Empty(calls);
+        mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Once);
+        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_WhenAppRegainsFocus_ThenConnectivityCheckedAgain()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        using var sut = CreateSut();
+        await sut.StartAsync();
+
+        // Act
+        mockBrowser.Raise(x => x.BecameVisible += null, EventArgs.Empty);
+        await WaitForAsync(() => mockConnectivity.Invocations.Count(i => i.Method.Name == nameof(IConnectivityService.CheckAsync)) >= 2);
+
+        // Assert
+        mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_AndConnectivityCheckThrows_WhenStartAsync_ThenStillStarted()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("probe failed"));
+        using var sut = CreateSut();
+
+        // Act
+        await sut.StartAsync();
+
+        // Assert
+        Assert.True(sut.IsStarted);
+    }
+
+    [Fact]
     public async Task GivenStarted_WhenStartAsyncAgain_ThenNothingHappens()
     {
         // Arrange

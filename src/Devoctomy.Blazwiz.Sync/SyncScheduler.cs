@@ -167,9 +167,40 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
 
     private async Task RunAllAsync()
     {
-        foreach (var profile in states.Keys.ToList())
+        var profiles = states.Keys.ToList();
+        if (profiles.Count == 0)
+        {
+            // Nothing to sync yet (e.g. an app whose profiles are all created by the user, before the first one), but
+            // connectivity is still checked, so the status and the sync log show it rather than checking forever.
+            await CheckConnectivityAsync();
+            return;
+        }
+
+        foreach (var profile in profiles)
         {
             await RunProfileAsync(profile);
+        }
+    }
+
+    private async Task CheckConnectivityAsync()
+    {
+        var token = lifetime?.Token ?? new CancellationToken(canceled: true);
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            await connectivityService.CheckAsync(token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Stopped.
+        }
+        catch (Exception)
+        {
+            // Reported through the connectivity status; the next trigger tries again.
         }
     }
 

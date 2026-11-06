@@ -20,6 +20,7 @@ public class SyncSettingsViewModelTests
     private readonly Mock<ISyncStorageResolver> mockResolver = new();
     private readonly Mock<ISyncStorageMigrationService> mockMigration = new();
     private readonly Mock<ISyncFolderService> mockFolder = new();
+    private readonly Mock<ISyncProfileRegistry> mockRegistry = new();
     private SyncStatus syncStatus = new() { PendingCount = 3, LastErrorCode = "Sync.FilesFailed", LastErrorArguments = [1], State = SyncState.Error };
     private ConnectivityStatus connectivity = new() { IsOnline = false, Reason = OfflineReason.Unreachable, LastCheckedAt = DateTimeOffset.UnixEpoch };
 
@@ -53,14 +54,15 @@ public class SyncSettingsViewModelTests
         var presenter = new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors);
 
         // Act & Assert
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(null!, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, null!, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, null!, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("syncStatusPresenter", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("storageDurabilityService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, null!, mockResolver.Object, mockMigration.Object, mockFolder.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("storageResolver", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, null!, mockMigration.Object, mockFolder.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("folderService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, null!, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("storageMigrationService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, null!, mockFolder.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(null!, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, null!, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, null!, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("syncStatusPresenter", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("storageDurabilityService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, null!, mockResolver.Object, mockMigration.Object, mockFolder.Object, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("storageResolver", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, null!, mockMigration.Object, mockFolder.Object, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("folderService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, null!, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("storageMigrationService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, null!, mockFolder.Object, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, null!, testText.Sync, testText.Errors)).ParamName);
     }
 
     [Fact]
@@ -92,6 +94,56 @@ public class SyncSettingsViewModelTests
         // Assert
         Assert.False(sut.CanSwitchStorage);
         mockResolver.Verify(x => x.GetStateAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_WhenAProfileIsAdded_ThenStorageChoiceShown()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        SetupSwitchableNotes(SyncStorageKind.IndexedDb, opfsSupported: true);
+
+        // Act
+        mockRegistry.Raise(x => x.ProfileAdded += null, mockRegistry.Object, "notes");
+        await WaitForAsync(() => sut.CanSwitchStorage);
+
+        // Assert
+        Assert.True(sut.CanSwitchStorage);
+        Assert.Equal(SyncStorageKind.IndexedDb, sut.StorageKind);
+        Assert.True(sut.IsOpfsSupported);
+    }
+
+    [Fact]
+    public async Task GivenOneProfile_WhenItIsRemoved_ThenStorageChoiceHidden()
+    {
+        // Arrange
+        SetupSwitchableNotes(SyncStorageKind.IndexedDb, opfsSupported: true);
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+
+        // Act
+        mockRegistry.Raise(x => x.ProfileRemoved += null, mockRegistry.Object, "notes");
+        await WaitForAsync(() => !sut.CanSwitchStorage);
+
+        // Assert
+        Assert.False(sut.CanSwitchStorage);
+    }
+
+    [Fact]
+    public void GivenDisposed_WhenAProfileIsAdded_ThenStorageNotLoaded()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        sut.Dispose();
+        mockRegistry.Raise(x => x.ProfileAdded += null, mockRegistry.Object, "notes");
+
+        // Assert
+        mockSync.VerifyGet(x => x.Profiles, Times.Never);
     }
 
     [Fact]
@@ -493,6 +545,15 @@ public class SyncSettingsViewModelTests
         Assert.Equal(2, changed.Count(c => c == nameof(SyncSettingsViewModel.SyncDisplay)));
     }
 
+    private static async Task WaitForAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+    }
+
     private Mock<ISyncFileStore> SetupSwitchableNotes(SyncStorageKind kind, bool opfsSupported, int fileCount = 0)
     {
         var files = new Mock<ISyncFileStore>();
@@ -515,5 +576,6 @@ public class SyncSettingsViewModelTests
         mockResolver.Object,
         mockMigration.Object,
         mockFolder.Object,
+        mockRegistry.Object,
         testText.Sync, testText.Errors);
 }
