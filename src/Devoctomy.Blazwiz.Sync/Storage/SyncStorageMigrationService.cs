@@ -49,6 +49,8 @@ public class SyncStorageMigrationService(
 
         if (profiles.Count == 0)
         {
+            // Nothing to move (e.g. no profile yet): profiles created later use the storage chosen.
+            await resolver.SetDeviceDefaultKindAsync(target);
             return;
         }
 
@@ -61,6 +63,9 @@ public class SyncStorageMigrationService(
             {
                 await MigrateProfileAsync(profile, target, progress, ct);
             }
+
+            // Profiles created later use the storage the others moved to.
+            await resolver.SetDeviceDefaultKindAsync(target);
         }
         finally
         {

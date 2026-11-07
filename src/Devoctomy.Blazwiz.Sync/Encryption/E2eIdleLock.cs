@@ -58,6 +58,18 @@ public sealed class E2eIdleLock(IE2eProtectedProfileManager manager, ISyncProfil
     }
 
     /// <inheritdoc/>
+    public void Refresh(E2eKeyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        StopTimer(scope);
+        if (manager.IsUnlocked(scope))
+        {
+            StartTimer(scope);
+        }
+    }
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         manager.LockStateChanged -= OnLockStateChanged;

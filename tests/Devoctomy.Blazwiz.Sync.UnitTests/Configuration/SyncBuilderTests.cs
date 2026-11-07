@@ -112,6 +112,95 @@ public class SyncBuilderTests
         Assert.Throws<ArgumentException>(() => sut.AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/*.md")));
     }
 
+    [Theory]
+    [InlineData("documents/**/*", "documents/**/*.md")]
+    [InlineData("documents/**/*", "documents/2026/**/*")]
+    [InlineData("notes/**/*", "notes/2026/today.md")]
+    [InlineData("documents/a*.md", "documents/b*.md")]
+    public void GivenOverlappingRemotePatterns_WhenAddProfile_ThenThrows(string first, string second)
+    {
+        // Arrange
+        var sut = new SyncBuilder(options).AddProfile("one", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote(first));
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => sut.AddProfile("two", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote(second)));
+        Assert.Contains("'two' and 'one' clash", ex.Message, StringComparison.Ordinal);
+        Assert.Single(options.Profiles);
+    }
+
+    [Theory]
+    [InlineData("**/*")]
+    [InlineData("profiles/**/*")]
+    [InlineData("profiles/abc/**/*")]
+    public void GivenARemotePatternOverTheProfilesUsersCreate_WhenAddProfile_ThenThrows(string pattern)
+    {
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => new SyncBuilder(options).AddProfile("one", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote(pattern)));
+        Assert.Contains("profiles users create", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenSeparateFolders_WhenAddProfile_ThenBothAdded()
+    {
+        // Act
+        new SyncBuilder(options)
+            .AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*.md"))
+            .AddProfile("photos", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("photos/**/*"))
+            .AddProfile("notes-archive", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes-archive/**/*.md"));
+
+        // Assert
+        Assert.Equal(["notes", "photos", "notes-archive"], options.Profiles.Select(p => p.Name));
+    }
+
+    [Fact]
+    public void GivenTheSameIndexStore_WhenAddProfile_ThenThrows()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options).AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*").UseIndexedDbIndexStore("sync", "index"));
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => sut.AddProfile("photos", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("photos/**/*").UseIndexedDbIndexStore("sync", "index")));
+        Assert.Contains("IndexedDB 'sync/index'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenTheSameIndexedDbFileStore_WhenAddProfile_ThenThrows()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options).AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*").UseIndexedDbFileStore("files", "files"));
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => sut.AddProfile("photos", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("photos/**/*").UseIndexedDbFileStore("files", "files")));
+        Assert.Contains("IndexedDB 'files/files'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenTheSameOpfsRoot_WhenAddProfile_ThenThrows()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options).AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*")
+            .UseFileStores(s => s.AddIndexedDb("files", "notes").AddOpfs("shared")));
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => sut.AddProfile("photos", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("photos/**/*")
+            .UseFileStores(s => s.AddIndexedDb("files", "photos").AddOpfs("shared"))));
+        Assert.Contains("OPFS 'shared'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenSwitchableStoragesWithDefaultNames_WhenTwoProfilesAdded_ThenBothAdded()
+    {
+        // Act: the default store names include the profile's name, and the picked folder is shared on purpose.
+        new SyncBuilder(options)
+            .AddProfile("notes", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("notes/**/*")
+                .UseFileStores(s => s.AddIndexedDb("files", "notes").AddOpfs("notes").AddLocalFolder()))
+            .AddProfile("photos", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("photos/**/*")
+                .UseFileStores(s => s.AddIndexedDb("files", "photos").AddOpfs("photos").AddLocalFolder()));
+
+        // Assert
+        Assert.Equal(2, options.Profiles.Count);
+    }
+
     private sealed class FakeEventLog : Devoctomy.Blazwiz.Sync.Interfaces.ISyncEventLog
     {
         public event EventHandler? EventsWritten;

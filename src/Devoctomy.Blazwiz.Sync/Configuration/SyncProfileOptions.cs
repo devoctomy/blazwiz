@@ -106,4 +106,91 @@ public class SyncProfileOptions
     /// Gets the IndexedDB object store holding the files: the configured one, or the profile name.
     /// </summary>
     public string ResolvedFileStoreName => FileStoreName ?? Name;
+
+    /// <summary>
+    /// Gets the fixed start of <see cref="RemotePattern"/>: the folders before its first wildcard. Two profiles whose
+    /// starts are the same, or one inside the other, could sync the same files.
+    /// </summary>
+    internal string RemotePrefix
+    {
+        get
+        {
+            var wildcard = RemotePattern.IndexOfAny(['*', '?', '[', '{']);
+            var fixedPart = wildcard < 0 ? RemotePattern : RemotePattern[..wildcard];
+            var end = fixedPart.LastIndexOf('/') + 1;
+            return fixedPart[..end];
+        }
+    }
+
+    /// <summary>
+    /// Gets where on the device the profile keeps its index, files and their metadata, as far as they are known: a
+    /// custom store (<see cref="IndexStoreFactory"/>, <see cref="FileStoreFactory"/>) is not.
+    /// </summary>
+    internal IEnumerable<string> DeviceStoreLocations
+    {
+        get
+        {
+            if (IndexStoreFactory == null)
+            {
+                yield return IndexedDbLocation(IndexDatabase, ResolvedIndexStoreName);
+            }
+
+            if (IsSwitchable)
+            {
+                foreach (var location in FileStores.SelectMany(s => s.Locations))
+                {
+                    yield return location;
+                }
+            }
+            else if (FileStoreFactory == null)
+            {
+                yield return IndexedDbLocation(FileDatabase, ResolvedFileStoreName);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Names an IndexedDB object store, as <see cref="DeviceStoreLocations"/> lists it.
+    /// </summary>
+    /// <param name="database">The database.</param>
+    /// <param name="store">The object store.</param>
+    /// <returns>The name.</returns>
+    internal static string IndexedDbLocation(string database, string store) => $"IndexedDB '{database}/{store}'";
+
+    /// <summary>
+    /// Names an OPFS directory, as <see cref="DeviceStoreLocations"/> lists it.
+    /// </summary>
+    /// <param name="root">The directory.</param>
+    /// <returns>The name.</returns>
+    internal static string OpfsLocation(string root) => $"OPFS '{root}'";
+
+    /// <summary>
+    /// Describes how this profile would clash with another, if it would: syncing the same remote files, or sharing a
+    /// store on the device.
+    /// </summary>
+    /// <param name="other">The other profile.</param>
+    /// <returns>Why they clash, or null if they do not.</returns>
+    internal string? FindClash(SyncProfileOptions other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        if (Overlaps(other.RemotePrefix))
+        {
+            return $"the remote patterns '{RemotePattern}' and '{other.RemotePattern}' could match the same files";
+        }
+
+        var shared = DeviceStoreLocations.Intersect(other.DeviceStoreLocations, StringComparer.Ordinal).FirstOrDefault();
+        return shared == null ? null : $"both keep data in {shared}";
+    }
+
+    /// <summary>
+    /// Checks whether the profile's remote files could be under a folder, or the folder's files among the profile's.
+    /// </summary>
+    /// <param name="folderPrefix">The folder, ending in <c>/</c>, or empty for the user's whole root.</param>
+    /// <returns>True if they could overlap.</returns>
+    internal bool Overlaps(string folderPrefix)
+    {
+        var prefix = RemotePrefix;
+        return prefix.StartsWith(folderPrefix, StringComparison.Ordinal) || folderPrefix.StartsWith(prefix, StringComparison.Ordinal);
+    }
 }

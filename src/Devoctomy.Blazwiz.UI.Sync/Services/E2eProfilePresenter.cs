@@ -2,6 +2,7 @@ using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Models;
+using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 
 namespace Devoctomy.Blazwiz.UI.Sync.Services;
@@ -12,9 +13,15 @@ namespace Devoctomy.Blazwiz.UI.Sync.Services;
 /// <param name="profiles">The user's profiles.</param>
 /// <param name="manager">Says which are unlocked, and which the passkey can unlock.</param>
 /// <param name="displayNames">The names profiles are shown by.</param>
-public class E2eProfilePresenter(ISyncProtectedProfileService profiles, IE2eProtectedProfileManager manager, ISyncProfileDisplayNames displayNames)
+/// <param name="passkeys">Whether the signed in user has a passkey on this device.</param>
+public class E2eProfilePresenter(
+    ISyncProtectedProfileService profiles,
+    IE2eProtectedProfileManager manager,
+    ISyncProfileDisplayNames displayNames,
+    IPasskeyKeysService passkeys)
     : IE2eProfilePresenter
 {
+    private readonly IPasskeyKeysService passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
     private readonly ISyncProtectedProfileService profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
     private readonly IE2eProtectedProfileManager manager = manager ?? throw new ArgumentNullException(nameof(manager));
     private readonly ISyncProfileDisplayNames displayNames = displayNames ?? throw new ArgumentNullException(nameof(displayNames));
@@ -44,6 +51,8 @@ public class E2eProfilePresenter(ISyncProtectedProfileService profiles, IE2eProt
         var state = !profile.IsSetUp ? E2eProfileState.NotSetUp
             : manager.IsUnlocked(profile.Scope) ? E2eProfileState.Unlocked
             : E2eProfileState.Locked;
+        var offered = profile.Settings.AllowDeviceUnlock && state != E2eProfileState.NotSetUp && await passkeys.IsAvailableAsync();
+        var isOn = offered && await HasDeviceUnlockAsync(profile);
         return new E2eProfileRow
         {
             Name = profile.Name,
@@ -52,15 +61,16 @@ public class E2eProfilePresenter(ISyncProtectedProfileService profiles, IE2eProt
             State = state,
             IsCreatedByUser = profile.IsCreatedByUser,
             AllowDeviceUnlock = profile.Settings.AllowDeviceUnlock,
-            CanUnlockWithDevice = profile.Settings.AllowDeviceUnlock && state != E2eProfileState.NotSetUp && await CanUnlockWithDeviceAsync(profile),
+            CanUnlockWithDevice = isOn,
+            CanSetUpDeviceUnlock = offered && !isOn,
         };
     }
 
-    private async Task<bool> CanUnlockWithDeviceAsync(SyncProtectedProfile profile)
+    private async Task<bool> HasDeviceUnlockAsync(SyncProtectedProfile profile)
     {
         try
         {
-            return await manager.CanUnlockWithDeviceAsync(profile.Scope);
+            return await manager.HasDeviceUnlockAsync(profile.Scope);
         }
         catch (Exception)
         {

@@ -35,4 +35,13 @@ public interface ISyncScheduler
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task SyncNowAsync();
+
+    /// <summary>
+    /// Runs a pass of one profile now, if sync is running and online, and finishes when it has. A pass of it already
+    /// running is followed by another, and this waits for both. Failures are reported through the sync status and log,
+    /// as for any pass, not thrown.
+    /// </summary>
+    /// <param name="profile">The profile.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task SyncProfileAsync(string profile);
 }

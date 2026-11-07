@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Resources;
 using Microsoft.Extensions.Localization;
@@ -8,13 +9,18 @@ namespace Devoctomy.Blazwiz.Core.Text;
 /// <summary>
 /// The framework's text, with the app's overrides. For each culture from the most specific to the neutral one (e.g.
 /// <c>fr-CA</c>, <c>fr</c>, neutral), it looks at the app's overrides first and then the package's text, so a package's
-/// French text still wins over the app's neutral (English) rewording.
+/// French text still wins over the app's neutral (English) rewording. What it finds is kept for each culture and name:
+/// looking text up through the resource managers is slow, especially in WebAssembly, and a page asks for the same text
+/// on every render. The text is expected to be configured before it is used; if the overrides change afterwards (their
+/// number does), what was kept is forgotten.
 /// </summary>
 public class OverridingStringLocalizer(ResourceManager resources, TextOptions options)
     : IStringLocalizer
 {
     private readonly ResourceManager resources = resources ?? throw new ArgumentNullException(nameof(resources));
     private readonly TextOptions options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly ConcurrentDictionary<(string Culture, string Name), string?> found = new ConcurrentDictionary<(string Culture, string Name), string?>();
+    private (int Overrides, int OverrideResources) foundWith;
 
     /// <inheritdoc/>
     public LocalizedString this[string name]
@@ -121,6 +127,18 @@ public class OverridingStringLocalizer(ResourceManager resources, TextOptions op
     }
 
     private string? Find(string name, CultureInfo culture)
+    {
+        var configuration = (options.Overrides.Count, options.OverrideResources.Count);
+        if (configuration != foundWith)
+        {
+            found.Clear();
+            foundWith = configuration;
+        }
+
+        return found.GetOrAdd((culture.Name, name), key => FindUncached(key.Name, culture));
+    }
+
+    private string? FindUncached(string name, CultureInfo culture)
     {
         foreach (var current in Cultures(culture))
         {

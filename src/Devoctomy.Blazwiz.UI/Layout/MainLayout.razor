@@ -17,7 +17,7 @@ else
     <div class="app-shell @(ViewModel.IsSidebarCollapsed ? "sidebar-collapsed" : null) @(ViewModel.IsMobileMenuOpen ? "mobile-menu-open" : null)">
         <aside class="sidebar" id="sidebar" aria-label="@Text["Shell.MainNavigation"]">
             <div class="sidebar-brand">
-                <img src="images/icon.svg" class="brand-icon" alt="@ViewModel.AppSettings.ApplicationTitle" />
+                <img src="@ViewModel.AppSettings.LogoUrl" class="brand-icon" alt="@ViewModel.AppSettings.ApplicationTitle" />
                 <span class="brand-name sidebar-label">@ViewModel.AppSettings.ApplicationTitle</span>
             </div>
 

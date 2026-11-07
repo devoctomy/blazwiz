@@ -29,9 +29,11 @@ public partial class SyncSettingsViewModel : ViewModelBase
     private readonly ISyncStorageResolver storageResolver;
     private readonly ISyncStorageMigrationService storageMigrationService;
     private readonly ISyncFolderService folderService;
+    private readonly ISyncProfileRegistry registry;
 
     private StorageDurabilityStatus? storage;
     private IReadOnlyList<string> switchableProfiles = [];
+    private bool choosesDeviceDefault;
     private SyncStorageKind storageKind;
     private bool isOpfsSupported;
     private bool isFolderSupported;
@@ -54,6 +56,7 @@ public partial class SyncSettingsViewModel : ViewModelBase
     /// <param name="storageResolver">Finds the storages the files can be kept in, and the one in use.</param>
     /// <param name="storageMigrationService">Moves the files to another storage.</param>
     /// <param name="folderService">Picks the folder on this computer for the files.</param>
+    /// <param name="registry">The sync profiles: the storage choice is loaded again when one is added or removed.</param>
     /// <param name="text">The sync UI's text.</param>
     /// <param name="errorText">Describes errors.</param>
     public SyncSettingsViewModel(
@@ -65,6 +68,7 @@ public partial class SyncSettingsViewModel : ViewModelBase
         ISyncStorageResolver storageResolver,
         ISyncStorageMigrationService storageMigrationService,
         ISyncFolderService folderService,
+        ISyncProfileRegistry registry,
         IStringLocalizer<SyncUiText> text,
         IErrorText errorText)
     {
@@ -76,10 +80,13 @@ public partial class SyncSettingsViewModel : ViewModelBase
         this.storageResolver = storageResolver ?? throw new ArgumentNullException(nameof(storageResolver));
         this.storageMigrationService = storageMigrationService ?? throw new ArgumentNullException(nameof(storageMigrationService));
         this.folderService = folderService ?? throw new ArgumentNullException(nameof(folderService));
+        this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
         this.text = text ?? throw new ArgumentNullException(nameof(text));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.syncService.StatusChanged += OnSyncStatusChanged;
         this.connectivityService.StatusChanged += OnConnectivityChanged;
+        this.registry.ProfileAdded += OnProfilesChanged;
+        this.registry.ProfileRemoved += OnProfilesChanged;
     }
 
     /// <summary>
@@ -120,9 +127,11 @@ public partial class SyncSettingsViewModel : ViewModelBase
     public bool CanSyncNow => connectivityService.Status.IsOnline && syncService.Status.State != SyncState.Syncing && !IsMigrating;
 
     /// <summary>
-    /// Gets a value indicating whether the files can be kept in more than one storage, so the choice is shown.
+    /// Gets a value indicating whether the files can be kept in more than one storage, so the choice is shown. With no
+    /// profiles at all yet (e.g. an app whose profiles are all created by the user), the choice is the storage for the
+    /// device, used by the profiles created later.
     /// </summary>
-    public bool CanSwitchStorage => switchableProfiles.Count > 0;
+    public bool CanSwitchStorage => switchableProfiles.Count > 0 || choosesDeviceDefault;
 
     /// <summary>
     /// Gets the storage the files are kept in on this device.
@@ -337,6 +346,23 @@ public partial class SyncSettingsViewModel : ViewModelBase
             }
         }
 
+        if (switchableProfiles.Count == 0)
+        {
+            // No files yet, so nothing to move or confirm: just remember the choice for the profiles created later.
+            try
+            {
+                await storageMigrationService.MigrateAsync(kind);
+                StorageKind = kind;
+                FolderName = kind == SyncStorageKind.LocalFolder ? pendingFolderName : null;
+            }
+            catch (Exception ex)
+            {
+                StorageError = text["Sync.Storage.MoveFailed", errorText.Describe(ex)];
+            }
+
+            return;
+        }
+
         try
         {
             var count = 0;
@@ -432,6 +458,8 @@ public partial class SyncSettingsViewModel : ViewModelBase
         {
             syncService.StatusChanged -= OnSyncStatusChanged;
             connectivityService.StatusChanged -= OnConnectivityChanged;
+            registry.ProfileAdded -= OnProfilesChanged;
+            registry.ProfileRemoved -= OnProfilesChanged;
         }
 
         base.Dispose(disposing);
@@ -457,10 +485,20 @@ public partial class SyncSettingsViewModel : ViewModelBase
     {
         try
         {
-            switchableProfiles = syncService.Profiles.Where(storageResolver.IsSwitchable).ToList();
+            var profiles = syncService.Profiles;
+            switchableProfiles = profiles.Where(storageResolver.IsSwitchable).ToList();
+            choosesDeviceDefault = profiles.Count == 0;
             if (switchableProfiles.Count > 0)
             {
                 StorageKind = (await storageResolver.GetStateAsync(switchableProfiles[0])).Kind;
+            }
+            else if (choosesDeviceDefault)
+            {
+                StorageKind = await storageResolver.GetDeviceDefaultKindAsync() ?? SyncStorageKind.IndexedDb;
+            }
+
+            if (CanSwitchStorage)
+            {
                 IsOpfsSupported = await storageResolver.IsSupportedAsync(SyncStorageKind.Opfs);
                 IsFolderSupported = await storageResolver.IsSupportedAsync(SyncStorageKind.LocalFolder);
                 FolderName = StorageKind == SyncStorageKind.LocalFolder ? (await folderService.GetStatusAsync())?.Name : null;
@@ -469,6 +507,7 @@ public partial class SyncSettingsViewModel : ViewModelBase
         catch (Exception)
         {
             switchableProfiles = [];
+            choosesDeviceDefault = false;
         }
 
         OnPropertyChanged(nameof(CanSwitchStorage));
@@ -488,6 +527,20 @@ public partial class SyncSettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ConnectivityText));
         OnPropertyChanged(nameof(IsSyncEnabled));
         OnPropertyChanged(nameof(CanSyncNow));
+    }
+
+    private async void OnProfilesChanged(object? sender, string profile)
+    {
+        // A profile created or deleted at runtime (e.g. a protected profile) changes which storages there are to choose
+        // from: an app with no profiles in code has none until the user creates the first.
+        try
+        {
+            await LoadStorageKindAsync();
+        }
+        catch (Exception)
+        {
+            // Event handlers must not throw.
+        }
     }
 
     private void OnSyncStatusChanged(object? sender, SyncStatus e)

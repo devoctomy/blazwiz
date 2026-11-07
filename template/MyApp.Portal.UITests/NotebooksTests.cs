@@ -41,21 +41,25 @@ public class NotebooksTests : TestBase
     }
 
     [TestMethod]
-    public async Task GivenANotebook_WhenReloaded_ThenItIsLockedAndShownByNameHereAndInSettings()
+    public async Task GivenANotebookAfterAPasswordSignIn_WhenReloaded_ThenItIsLockedAndShownById_AndItsNameWasNotKept()
     {
+        // Names are kept on the device only encrypted with the key derived from the passkey; signed in with a password
+        // there is no such key, so the name lasts only until the page is closed.
         await LoginAsync();
         await CreateNotebookAsync("Work");
         await AddPageAsync("Plan", "work plan");
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Expect(Page.Locator("#e2e-created-profiles .e2e-profile-name")).ToHaveTextAsync("Work");
+        var kept = await Page.EvaluateAsync<int>("() => Object.keys(localStorage).filter(k => k.includes('e2e_labels_')).length");
+        Assert.AreEqual(0, kept);
 
         await ReloadAsync();
         await Page.Locator("#nav-notebooks").ClickAsync();
 
         var created = Created();
-        await Expect(created.Locator(".notebook-title")).ToHaveTextAsync("Work");
+        var id = await created.GetAttributeAsync("data-notebook");
+        await Expect(created.Locator(".notebook-title")).ToHaveTextAsync(id!);
         await Expect(created.Locator(".notebook-state")).ToHaveTextAsync("Locked");
-        await Page.Locator("#nav-settings").ClickAsync();
-        await Expect(Page.Locator("#e2e-created-profiles .e2e-profile-name")).ToHaveTextAsync("Work");
-        await ScreenshotAsync("NamedInSettings");
     }
 
     [TestMethod]

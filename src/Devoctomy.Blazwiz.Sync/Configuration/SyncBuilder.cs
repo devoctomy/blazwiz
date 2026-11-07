@@ -264,6 +264,21 @@ public class SyncBuilder(SyncOptions options)
             throw new ArgumentException($"Sync profile '{name}' has the same id as another profile.", nameof(configure));
         }
 
+        foreach (var other in Options.Profiles)
+        {
+            if (profile.FindClash(other) is { } clash)
+            {
+                throw new ArgumentException($"Sync profiles '{name}' and '{other.Name}' clash: {clash}.", nameof(configure));
+            }
+        }
+
+        if (profile.Overlaps(SyncDefaults.ProtectedProfilesFolder + "/"))
+        {
+            throw new ArgumentException(
+                $"The remote pattern of sync profile '{name}' ('{profile.RemotePattern}') could match the files of the profiles users create, under '{SyncDefaults.ProtectedProfilesFolder}/'.",
+                nameof(configure));
+        }
+
         Options.Profiles.Add(profile);
         return this;
     }

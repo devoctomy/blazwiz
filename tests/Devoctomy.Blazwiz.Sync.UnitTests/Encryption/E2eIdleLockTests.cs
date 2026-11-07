@@ -138,6 +138,56 @@ public class E2eIdleLockTests
         mockManager.Verify(x => x.Lock(scope), Times.Once);
     }
 
+    [Fact]
+    public void GivenAnUnlockedProfile_WhenItsTimeoutIsChangedAndRefreshed_ThenTheNewTimeoutCountsFromNow()
+    {
+        // Arrange
+        using var sut = Started();
+        Unlock();
+        time.Advance(TimeSpan.FromMinutes(4));
+
+        // Act
+        registry.Find(scope.Id)!.Settings = new E2eProfileSettings { IdleTimeout = TimeSpan.FromMinutes(2) };
+        sut.Refresh(scope);
+
+        // Assert
+        time.Advance(TimeSpan.FromMinutes(1));
+        mockManager.Verify(x => x.Lock(It.IsAny<E2eKeyScope>()), Times.Never);
+        time.Advance(TimeSpan.FromMinutes(1));
+        mockManager.Verify(x => x.Lock(scope), Times.Once);
+    }
+
+    [Fact]
+    public void GivenAnUnlockedProfile_WhenItsTimeoutIsRemovedAndRefreshed_ThenItStaysUnlocked()
+    {
+        // Arrange
+        using var sut = Started();
+        Unlock();
+
+        // Act
+        registry.Find(scope.Id)!.Settings = new E2eProfileSettings { IdleTimeout = null };
+        sut.Refresh(scope);
+        time.Advance(TimeSpan.FromHours(1));
+
+        // Assert
+        mockManager.Verify(x => x.Lock(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenALockedProfile_WhenRefreshed_ThenItIsNotTimed()
+    {
+        // Arrange
+        using var sut = Started();
+
+        // Act
+        sut.Refresh(scope);
+        time.Advance(TimeSpan.FromHours(1));
+
+        // Assert
+        mockManager.Verify(x => x.Lock(It.IsAny<E2eKeyScope>()), Times.Never);
+        Assert.Throws<ArgumentNullException>(() => sut.Refresh(null!));
+    }
+
     private E2eIdleLock Started()
     {
         var sut = new E2eIdleLock(mockManager.Object, registry, time);

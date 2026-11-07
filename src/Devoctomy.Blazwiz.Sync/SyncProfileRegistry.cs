@@ -83,6 +83,14 @@ public class SyncProfileRegistry(IServiceProvider services, SyncOptions options)
                 throw new ArgumentException($"A sync profile called '{profile.Name}' already exists.", nameof(profile));
             }
 
+            foreach (var other in options.Profiles.Concat(added))
+            {
+                if (profile.FindClash(other) is { } clash)
+                {
+                    throw new ArgumentException($"Sync profiles '{profile.Name}' and '{other.Name}' clash: {clash}.", nameof(profile));
+                }
+            }
+
             added.Add(profile);
         }
 

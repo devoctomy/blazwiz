@@ -190,20 +190,10 @@
                         @onclick="() => ViewModel.OpenSetPassphraseCommand.Execute(row.Name)">@SyncText["Sync.E2e.SetPassphrase"]</button>
                 break;
             case E2eProfileState.Locked:
-                @if (row.CanUnlockWithDevice)
-                {
-                    <button type="button" class="btn btn-outline-primary btn-sm e2e-unlock-passkey"
-                            @onclick="() => ViewModel.UnlockWithDeviceCommand.ExecuteAsync(row.Name)"><i class="bi bi-fingerprint me-1"></i>@SyncText["Sync.E2e.UnlockWithPasskey"]</button>
-                }
                 <button type="button" class="btn btn-primary btn-sm e2e-unlock"
                         @onclick="() => ViewModel.OpenUnlockCommand.Execute(row.Name)">@SyncText["Sync.E2e.Unlock"]</button>
                 break;
             default:
-                @if (row.AllowDeviceUnlock && !row.CanUnlockWithDevice)
-                {
-                    <button type="button" class="btn btn-outline-secondary btn-sm e2e-use-passkey"
-                            @onclick="() => ViewModel.EnableDeviceUnlockCommand.ExecuteAsync(row.Name)"><i class="bi bi-fingerprint me-1"></i>@SyncText["Sync.E2e.UsePasskey"]</button>
-                }
                 <button type="button" class="btn btn-outline-secondary btn-sm e2e-change" disabled="@ViewModel.IsOffline"
                         @onclick="() => ViewModel.OpenChangePassphraseCommand.Execute(row.Name)">@SyncText["Sync.E2e.ChangePassphrase"]</button>
                 <button type="button" class="btn btn-outline-secondary btn-sm e2e-lock"

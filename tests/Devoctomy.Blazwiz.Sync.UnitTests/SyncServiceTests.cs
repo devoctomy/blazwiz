@@ -292,6 +292,120 @@ public class SyncServiceTests
     }
 
     [Fact]
+    public async Task GivenOneProfileFailed_WhenAnotherSyncsAfterIt_ThenStatusIsStillTheError()
+    {
+        // Arrange: one profile at a time, as the scheduler syncs them.
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 3 });
+        var sut = CreateSut();
+        await sut.SyncAsync("notes");
+
+        // Act
+        await sut.SyncAsync("photos");
+
+        // Assert
+        Assert.Equal(SyncState.Error, sut.Status.State);
+        Assert.Equal(SyncErrorCodes.FilesFailed, sut.Status.LastErrorCode);
+        Assert.Equal([3], sut.Status.LastErrorArguments);
+        Assert.Null(sut.Status.LastSyncedAt);
+    }
+
+    [Fact]
+    public async Task GivenAProfileFailed_WhenItSyncsAgainSuccessfully_ThenIdle()
+    {
+        // Arrange
+        mockEngine.SetupSequence(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new SyncNetworkException("down"))
+            .ReturnsAsync(new SyncResult());
+        var sut = CreateSut();
+        await sut.SyncAsync("notes");
+        await sut.SyncAsync("photos");
+
+        // Act
+        await sut.SyncAsync("notes");
+
+        // Assert
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+        Assert.Null(sut.Status.LastErrorCode);
+        Assert.Empty(sut.Status.LastErrorArguments);
+        Assert.Equal(Now, sut.Status.LastSyncedAt);
+    }
+
+    [Fact]
+    public async Task GivenProfilesSyncedAtDifferentTimes_WhenStatusRead_ThenLastSyncedIsTheLeastRecent_AndConflictsAddUp()
+    {
+        // Arrange
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { ConflictsResolved = 1 });
+        mockEngine.Setup(x => x.SyncAsync(photos, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { ConflictsResolved = 2 });
+        var sut = CreateSut();
+        await sut.SyncAsync("notes");
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now.AddMinutes(5));
+
+        // Act
+        await sut.SyncAsync("photos");
+
+        // Assert
+        Assert.Equal(Now, sut.Status.LastSyncedAt);
+        Assert.Equal(3, sut.Status.ConflictsResolved);
+    }
+
+    [Fact]
+    public async Task GivenAFailedProfile_WhenAGateHoldsItBack_ThenItNoLongerCounts()
+    {
+        // Arrange
+        var held = false;
+        var gate = new Mock<ISyncGate>();
+        gate.Setup(x => x.CanSyncAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string p, CancellationToken _) => p != "notes" || !held);
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
+        var sut = new SyncService(FakeSyncProfileRegistry.Of(notes, photos), mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [gate.Object]);
+        await sut.SyncAsync();
+        held = true;
+
+        // Act
+        await sut.SyncAsync();
+
+        // Assert
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+        Assert.Equal(Now, sut.Status.LastSyncedAt);
+    }
+
+    [Fact]
+    public async Task GivenAFailedProfile_WhenItIsRemoved_ThenItNoLongerCounts()
+    {
+        // Arrange
+        var registry = FakeSyncProfileRegistry.Of(notes);
+        registry.Add(photos);
+        mockEngine.Setup(x => x.SyncAsync(photos, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
+        var sut = new SyncService(registry, mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, []);
+        await sut.SyncAsync();
+        registry.Remove("photos");
+
+        // Act
+        await sut.SyncAsync("notes");
+
+        // Assert
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+        Assert.Equal(Now, sut.Status.LastSyncedAt);
+    }
+
+    [Fact]
+    public async Task GivenAProfileFailed_WhenReset_ThenTheFailureIsForgotten()
+    {
+        // Arrange
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
+        var sut = CreateSut();
+        await sut.SyncAsync("notes");
+        sut.Reset();
+
+        // Act
+        await sut.SyncAsync("photos");
+
+        // Assert
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+        Assert.Equal(Now, sut.Status.LastSyncedAt);
+    }
+
+    [Fact]
     public void GivenNullGates_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert

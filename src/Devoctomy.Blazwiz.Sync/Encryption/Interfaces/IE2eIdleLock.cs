@@ -18,4 +18,11 @@ public interface IE2eIdleLock
     /// </summary>
     /// <param name="scope">The profile's scope.</param>
     void Touch(E2eKeyScope scope);
+
+    /// <summary>
+    /// Times a profile again from now with its current idle timeout, after the timeout was changed: stops timing it if
+    /// it no longer has one, or if it is locked.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    void Refresh(E2eKeyScope scope);
 }

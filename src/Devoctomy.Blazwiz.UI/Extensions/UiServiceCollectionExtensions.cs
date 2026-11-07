@@ -78,6 +78,8 @@ public static class UiServiceCollectionExtensions
         services.TryAddScoped<IUserSettingsService, UserSettingsService>();
         services.TryAddScoped<IThemeService, ThemeService>();
         services.TryAddSingleton<IAppBuildInfo, AppBuildInfo>();
+        services.TryAddScoped<IToastService, ToastService>();
+        services.TryAddScoped<IPasskeyKeysService, PasskeyKeysService>();
 
         // The framework's view models. The app registers its own with AddMvvm too.
         services.AddMvvm(options =>
@@ -92,6 +94,7 @@ public static class UiServiceCollectionExtensions
         services.ReplacePage<SettingsView>(BlazwizPages.Settings);
 
         services.AddShellComponent<OfflineBanner>(ShellRegion.Banners, order: 0);
+        services.AddShellComponent<ToastHost>(ShellRegion.Overlays, order: 0);
 
         services.AddSettingsSection<AppearanceSettingsSection>(SettingsOrder.Appearance);
         services.AddSettingsSection<LanguageSettingsSection>(SettingsOrder.Language);

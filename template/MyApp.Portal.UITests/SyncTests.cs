@@ -165,6 +165,10 @@ public class SyncTests : TestBase
     public async Task GivenSyncPage_WhenOpened_ThenConnectivityEventsCanBeSearchedFilteredAndSurviveAReload()
     {
         await LoginAsync();
+
+        // The first connectivity check runs once sync starts after sign in. Turning sync off before it finishes means it
+        // never reports "no credentials", so wait for it (the event is logged before the status changes).
+        await Expect(Page.Locator("#sync-status-pill")).ToHaveAttributeAsync("title", new Regex("Offline: no credentials"));
         await Page.Locator("#sync-status-pill").ClickAsync();
         await Page.Locator("#sync-enabled-switch").UncheckAsync();
         await Page.Locator(".sync-popover-backdrop").ClickAsync();

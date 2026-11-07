@@ -345,28 +345,6 @@ public partial class E2eProfilesViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Lets this device unlock an unlocked profile with the passkey, when its settings allow it.
-    /// </summary>
-    /// <param name="name">The profile's name.</param>
-    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    [RelayCommand]
-    public Task EnableDeviceUnlockAsync(string name)
-    {
-        return FindRow(name) is { } row ? RunActionAsync(() => profiles.EnableDeviceUnlockAsync(new E2eKeyScope(row.Id))) : Task.CompletedTask;
-    }
-
-    /// <summary>
-    /// Unlocks a profile with the passkey.
-    /// </summary>
-    /// <param name="name">The profile's name.</param>
-    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    [RelayCommand]
-    public Task UnlockWithDeviceAsync(string name)
-    {
-        return FindRow(name) is { } row ? RunActionAsync(() => profiles.UnlockWithDeviceAsync(new E2eKeyScope(row.Id))) : Task.CompletedTask;
-    }
-
-    /// <summary>
     /// Closes the dialog. Ignored while its change is running.
     /// </summary>
     [RelayCommand]

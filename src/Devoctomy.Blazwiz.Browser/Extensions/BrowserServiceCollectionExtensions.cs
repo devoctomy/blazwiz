@@ -24,6 +24,8 @@ public static class BrowserServiceCollectionExtensions
         services.TryAddScoped<INavigationService, NavigationService>();
         services.TryAddScoped<IBrowserInteropService, BrowserInteropService>();
         services.TryAddScoped<IWebAuthnService, WebAuthnService>();
+        services.TryAddScoped<IClipboardService, ClipboardService>();
+        services.TryAddSingleton(TimeProvider.System);
         return services;
     }
 }

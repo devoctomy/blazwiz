@@ -10,12 +10,11 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/cloudformation/">
-    <File Path="cloudformation/_common.ps1" />
+    <File Path="cloudformation/app.yaml" />
+    <File Path="cloudformation/base-stack.ps1" />
     <File Path="cloudformation/deploy.ps1" />
     <File Path="cloudformation/README.md" />
     <File Path="cloudformation/remove.ps1" />
-    <File Path="cloudformation/stack-policy.json" />
-    <File Path="cloudformation/stack.yaml" />
     <File Path="cloudformation/test-auth.ps1" />
   </Folder>
   <!--#if (IncludeTests)-->
