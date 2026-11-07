@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
+using Devoctomy.Blazwiz.Cryptography;
+using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Sync.Encryption;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Moq;
@@ -7,29 +10,37 @@ namespace Devoctomy.Blazwiz.Sync.UnitTests.Encryption;
 
 public class LocalStorageE2eProfileLabelStoreTests
 {
+    private const string StorageKey = LocalStorageE2eProfileLabelStore.StorageKeyPrefix + "bob";
+
     private readonly Dictionary<string, string> storage = [];
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
+    private readonly BouncyCastleAesGcmCryptoService crypto = new();
+    private readonly InMemoryDerivedKeyStore keys = new();
 
     public LocalStorageE2eProfileLabelStoreTests()
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync("bob");
         mockLocalStorage.Setup(x => x.GetItemAsync(It.IsAny<string>())).ReturnsAsync((string key) => storage.GetValueOrDefault(key));
         mockLocalStorage.Setup(x => x.SetItemAsync(It.IsAny<string>(), It.IsAny<string>())).Callback<string, string>((k, v) => storage[k] = v).Returns(Task.CompletedTask);
+        mockLocalStorage.Setup(x => x.RemoveItemAsync(It.IsAny<string>())).Callback<string>(k => storage.Remove(k)).Returns(Task.CompletedTask);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(null!, mockUser.Object)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(mockLocalStorage.Object, null!)).ParamName);
+        Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(null!, mockUser.Object, crypto, keys)).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(mockLocalStorage.Object, null!, crypto, keys)).ParamName);
+        Assert.Equal("cryptoService", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(mockLocalStorage.Object, mockUser.Object, null!, keys)).ParamName);
+        Assert.Equal("keyStore", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(mockLocalStorage.Object, mockUser.Object, crypto, null!)).ParamName);
     }
 
     [Fact]
-    public async Task GivenLabels_WhenSetAndRemoved_ThenKeptUnderTheUser()
+    public async Task GivenTheLabelKey_WhenLabelsSetAndRemoved_ThenKeptUnderTheUser_Encrypted()
     {
         // Arrange
+        SetLabelKey();
         var sut = CreateSut();
 
         // Act
@@ -39,17 +50,84 @@ public class LocalStorageE2eProfileLabelStoreTests
 
         // Assert
         Assert.Equal(new Dictionary<string, string> { ["p1"] = "Work" }, await sut.GetAllAsync());
-        Assert.Contains("Work", storage[LocalStorageE2eProfileLabelStore.StorageKeyPrefix + "bob"]);
+        Assert.DoesNotContain("Work", storage[StorageKey], StringComparison.Ordinal);
+        Assert.DoesNotContain("p1", storage[StorageKey], StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task GivenUnreadableLabels_WhenGot_ThenNone()
+    public async Task GivenLabelsKept_WhenReadWithoutTheLabelKey_ThenNone_AndStillKept()
+    {
+        // Arrange: kept while signed in with the passkey, then read after a password sign in (or a reload).
+        SetLabelKey();
+        await CreateSut().SetAsync("p1", "Work");
+        keys.Clear();
+
+        // Act
+        var labels = await CreateSut().GetAllAsync();
+
+        // Assert
+        Assert.Empty(labels);
+        Assert.True(storage.ContainsKey(StorageKey));
+    }
+
+    [Fact]
+    public async Task GivenNoLabelKey_WhenALabelIsSet_ThenNothingIsKept()
+    {
+        // Act
+        await CreateSut().SetAsync("p1", "Work");
+
+        // Assert
+        Assert.Empty(storage);
+    }
+
+    [Fact]
+    public async Task GivenLabelsKept_AndNoLabelKey_WhenOneIsRemoved_ThenTheUsersLabelsAreRemoved()
+    {
+        // Arrange: the encrypted entry can't be changed without the key, so it goes.
+        SetLabelKey();
+        await CreateSut().SetAsync("p1", "Work");
+        keys.Clear();
+
+        // Act
+        await CreateSut().RemoveAsync("p1");
+
+        // Assert
+        Assert.False(storage.ContainsKey(StorageKey));
+    }
+
+    [Fact]
+    public async Task GivenLabelsKeptWithAnotherKey_WhenRead_ThenNone_AndANewLabelReplacesThem()
+    {
+        // Arrange: e.g. kept with another passkey.
+        SetLabelKey();
+        await CreateSut().SetAsync("p1", "Work");
+        SetLabelKey();
+        var sut = CreateSut();
+
+        // Act
+        var before = await sut.GetAllAsync();
+        await sut.SetAsync("p2", "Home");
+
+        // Assert
+        Assert.Empty(before);
+        Assert.Equal(new Dictionary<string, string> { ["p2"] = "Home" }, await sut.GetAllAsync());
+    }
+
+    [Theory]
+    [InlineData("not base64!")]
+    [InlineData("{\"p1\":\"Work\"}")]
+    [InlineData("AAAA")]
+    public async Task GivenUnreadableLabels_WhenGot_ThenNone(string stored)
     {
         // Arrange
-        storage[LocalStorageE2eProfileLabelStore.StorageKeyPrefix + "bob"] = "not json";
+        SetLabelKey();
+        storage[StorageKey] = stored;
 
-        // Act & Assert
-        Assert.Empty(await CreateSut().GetAllAsync());
+        // Act
+        var labels = await CreateSut().GetAllAsync();
+
+        // Assert
+        Assert.Empty(labels);
     }
 
     [Fact]
@@ -62,5 +140,7 @@ public class LocalStorageE2eProfileLabelStoreTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().GetAllAsync());
     }
 
-    private LocalStorageE2eProfileLabelStore CreateSut() => new(mockLocalStorage.Object, mockUser.Object);
+    private void SetLabelKey() => keys.SetKey(E2eKeyNames.LabelKey, RandomNumberGenerator.GetBytes(32));
+
+    private LocalStorageE2eProfileLabelStore CreateSut() => new(mockLocalStorage.Object, mockUser.Object, crypto, keys);
 }

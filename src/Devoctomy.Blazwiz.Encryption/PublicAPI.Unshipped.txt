@@ -4,3 +4,4 @@ Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.SetIdleTimeo
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.IdleTimeoutSeconds.get -> int?
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.IdleTimeoutSeconds.set -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.TryGetIdleTimeout(out System.TimeSpan? idleTimeout) -> bool
+const Devoctomy.Blazwiz.Encryption.E2eKeyNames.LabelKey = "e2e-labels" -> string!

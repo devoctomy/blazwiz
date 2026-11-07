@@ -12,6 +12,12 @@ public static class E2eKeyNames
     public const string KeyEncryptionKey = "e2e-kek";
 
     /// <summary>
+    /// The key derived from the passkey PRF that encrypts the labels protected profiles are shown by on this device.
+    /// Add it to the keys derived from the PRF with <c>AddKey(E2eKeyNames.LabelKey)</c>.
+    /// </summary>
+    public const string LabelKey = "e2e-labels";
+
+    /// <summary>
     /// The start of the name of every key held for a key scope: <c>e2e:&lt;scope&gt;:master</c> for its raw master key and
     /// <c>e2e:&lt;scope&gt;:file:&lt;key id&gt;</c> for each raw file key, while unlocked.
     /// </summary>

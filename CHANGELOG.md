@@ -26,6 +26,16 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   effect at once (`IE2eIdleLock.Refresh`).
 
 ### Changed
+- Protected profiles' labels are no longer kept on the device in plain text. A label can say what a profile holds,
+  e.g. a vault's name. They are kept encrypted (AES-GCM) with a new key derived from the passkey at sign in,
+  `E2eKeyNames.LabelKey`, which the sync module adds to the PRF keys. Without it (signed in with a password, or after
+  a reload until the next passkey sign in) labels are not read or kept, so profiles show by their ids. A label set then
+  lasts until the page is closed. `LocalStorageE2eProfileLabelStore` takes an `ICryptoService` and an
+  `IDerivedKeyStore` (created by DI, so apps need no change). Labels kept in plain text before are no longer read.
+  Apps created from the template with the notes example have a UI test that expects a notebook's name after a reload
+  (`NotebooksTests.GivenANotebook_WhenReloaded_ThenItIsLockedAndShownByNameHereAndInSettings`). The tests sign in with
+  a password, so the notebook now shows its id: change the test as the template's
+  (`GivenANotebookAfterAPasswordSignIn_WhenReloaded_ThenItIsLockedAndShownById_AndItsNameWasNotKept`).
 - Sync profiles that would clash are refused when they are added, with an error naming both:
   - remote patterns that could match the same files (one's fixed folders, before the first wildcard, the same as or
     inside the other's), e.g. `documents/**/*` and `documents/**/*.md`;
