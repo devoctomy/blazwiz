@@ -31,7 +31,7 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
         ArgumentException.ThrowIfNullOrWhiteSpace(store);
 
         var description = IndexedDbSyncFileStore.DescribeStore(database, store);
-        return Add(SyncStorageKind.IndexedDb, sp => new IndexedDbSyncFileStore(
+        return Add(SyncStorageKind.IndexedDb, [SyncProfileOptions.IndexedDbLocation(database, store)], sp => new IndexedDbSyncFileStore(
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
             sp.GetRequiredService<TimeProvider>(),
@@ -50,8 +50,10 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
         ArgumentException.ThrowIfNullOrWhiteSpace(metadataDatabase);
 
-        var description = OpfsSyncFileStore.DescribeMetadataStore(metadataDatabase, metadataStore ?? Options.Name + SyncDefaults.OpfsMetadataStoreSuffix);
-        return Add(SyncStorageKind.Opfs, sp => new OpfsSyncFileStore(
+        var metadataStoreName = metadataStore ?? Options.Name + SyncDefaults.OpfsMetadataStoreSuffix;
+        var description = OpfsSyncFileStore.DescribeMetadataStore(metadataDatabase, metadataStoreName);
+        string[] locations = [SyncProfileOptions.OpfsLocation(root), SyncProfileOptions.IndexedDbLocation(metadataDatabase, metadataStoreName)];
+        return Add(SyncStorageKind.Opfs, locations, sp => new OpfsSyncFileStore(
             sp.GetRequiredService<IOpfsClient>(),
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
@@ -72,8 +74,12 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
         ArgumentException.ThrowIfNullOrWhiteSpace(metadataDatabase);
 
         var name = Options.Name;
-        var description = FolderSyncFileStore.DescribeMetadataStore(metadataDatabase, metadataStore ?? name + SyncDefaults.FolderMetadataStoreSuffix);
-        return Add(SyncStorageKind.LocalFolder, sp => new FolderSyncFileStore(
+        var metadataStoreName = metadataStore ?? name + SyncDefaults.FolderMetadataStoreSuffix;
+        var description = FolderSyncFileStore.DescribeMetadataStore(metadataDatabase, metadataStoreName);
+
+        // The picked folder itself is shared by every profile (each sees only its own files), so only the metadata counts.
+        string[] locations = [SyncProfileOptions.IndexedDbLocation(metadataDatabase, metadataStoreName)];
+        return Add(SyncStorageKind.LocalFolder, locations, sp => new FolderSyncFileStore(
             sp.GetRequiredService<IFolderAccessClient>(),
             sp.GetRequiredService<IIndexedDbClient>(),
             sp.GetRequiredService<ISyncUserContext>(),
@@ -93,14 +99,14 @@ public class SyncFileStoresBuilder(SyncProfileOptions options)
         return this;
     }
 
-    private SyncFileStoresBuilder Add(SyncStorageKind kind, Func<IServiceProvider, ISyncFileStore> factory)
+    private SyncFileStoresBuilder Add(SyncStorageKind kind, IReadOnlyList<string> locations, Func<IServiceProvider, ISyncFileStore> factory)
     {
         if (Options.FileStores.Any(s => s.Kind == kind))
         {
             throw new ArgumentException($"The {kind} storage has already been added to sync profile '{Options.Name}'.", nameof(kind));
         }
 
-        Options.FileStores.Add(new SyncStorageOptions(kind, factory));
+        Options.FileStores.Add(new SyncStorageOptions(kind, factory) { Locations = locations });
         return this;
     }
 }

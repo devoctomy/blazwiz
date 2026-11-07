@@ -81,6 +81,20 @@ public class SyncProfileRegistryTests
     }
 
     [Fact]
+    public void GivenAProfileOverlappingAnother_WhenAdded_ThenThrows_AndItIsNotListed()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var overlapping = Profile("archive");
+        overlapping.RemotePattern = "notes/archive/**/*";
+
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => sut.Add(overlapping));
+        Assert.Contains("'archive' and 'notes' clash", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(["notes"], sut.Profiles.Select(p => p.Name));
+    }
+
+    [Fact]
     public void GivenAnIncompleteProfile_WhenAdded_ThenThrows()
     {
         // Arrange

@@ -19,4 +19,10 @@ public class SyncStorageOptions(SyncStorageKind kind, Func<IServiceProvider, ISy
     /// Gets the factory for the file store, without change tracking.
     /// </summary>
     public Func<IServiceProvider, ISyncFileStore> Factory { get; } = factory ?? throw new ArgumentNullException(nameof(factory));
+
+    /// <summary>
+    /// Gets or sets where on the device the storage keeps the profile's files and their metadata (see
+    /// <see cref="SyncProfileOptions.DeviceStoreLocations"/>), so that two profiles cannot be set up to share them.
+    /// </summary>
+    internal IReadOnlyList<string> Locations { get; set; } = [];
 }

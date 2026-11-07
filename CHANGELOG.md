@@ -26,12 +26,23 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   effect at once (`IE2eIdleLock.Refresh`).
 
 ### Changed
+- Sync profiles that would clash are refused when they are added, with an error naming both:
+  - remote patterns that could match the same files (one's fixed folders, before the first wildcard, the same as or
+    inside the other's), e.g. `documents/**/*` and `documents/**/*.md`;
+  - two profiles keeping data in the same IndexedDB object store (index, files or file metadata) or OPFS directory.
+  A profile set up in code may not cover `profiles/`, where the profiles users create are kept, so `**/*` is refused
+  too. Custom stores (`UseIndexStore<T>`, `UseFileStore<T>`) are not checked, and the picked local folder is shared by
+  every profile, as before. An app whose profiles overlapped stops at startup: give each profile a folder of its own.
 - Text from resources is looked up once for each culture and name, then kept (`OverridingStringLocalizer`). Each lookup
   went through every override and resource manager, which in WebAssembly made a page that shows a lot of text, such as
   a long list, many times slower to render. Overrides should be set before text is used, as `AddBlazwizText` does; if
   their number changes afterwards, what was kept is forgotten.
 
 ### Fixed
+- With more than one sync profile, the sync status showed only the last profile synced: a profile that failed was shown
+  as Idle with no error once another synced after it, and "last synced" moved on although it had not synced. The status
+  now covers every profile's last pass: Error if any failed, "last synced" when the least recently synced profile last
+  synced, and the conflicts all of them resolved. A profile held back (e.g. locked) or removed no longer counts.
 - A dialog opened over another (e.g. a picker over an editor) now dims the one beneath.
 - The theme preview in Settings and range sliders use the app's accent instead of the framework's purple.
 - An app with no sync profiles yet (all of them created by the user at runtime, none defined in code) now checks
