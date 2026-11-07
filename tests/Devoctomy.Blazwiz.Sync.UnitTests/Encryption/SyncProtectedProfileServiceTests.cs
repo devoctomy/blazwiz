@@ -177,6 +177,24 @@ public class SyncProtectedProfileServiceTests
     }
 
     [Fact]
+    public async Task GivenItsKeysDeleted_WhenDeletingItsFilesFails_ThenThrows_AndTheProfileIsStillRemoved()
+    {
+        // Arrange
+        var (sut, scope, remote) = await CreateDeletableProfileAsync();
+        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new RemoteObjectInfo { Key = $"profiles/{scope.Id}/a" }]);
+        remote.Setup(x => x.DeleteAsync(It.IsAny<string>(), null, It.IsAny<CancellationToken>())).ThrowsAsync(new SyncNetworkException(SyncErrorCodes.RemoteUnreachable));
+        var raised = 0;
+        sut.ProfilesChanged += (_, _) => raised++;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<SyncNetworkException>(() => sut.DeleteAsync(scope));
+        mockManager.Verify(x => x.DeleteAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Null(registry.Find(scope.Id));
+        Assert.DoesNotContain(sut.Profiles, p => p.Scope == scope);
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
     public async Task GivenNoSyncTarget_WhenDeleted_ThenItsKeysAndLocalFilesAreDeleted()
     {
         // Arrange
@@ -317,6 +335,46 @@ public class SyncProtectedProfileServiceTests
         // Assert
         mockManager.Verify(x => x.EnableDeviceUnlockAsync(scope), Times.Once);
         mockManager.Verify(x => x.UnlockWithDeviceAsync(scope), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenDeviceUnlockOnHere_WhenCheckedAndTurnedOff_ThenTheManagerSaysSo_AndTheProfilesChange()
+    {
+        // Arrange
+        options.ProfileDefaults.AllowDeviceUnlock = true;
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        mockManager.Setup(x => x.HasDeviceUnlockAsync(scope)).ReturnsAsync(true);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+        var raised = 0;
+        sut.ProfilesChanged += (_, _) => raised++;
+
+        // Act
+        var hasIt = await sut.HasDeviceUnlockAsync(scope);
+        await sut.DisableDeviceUnlockAsync(scope);
+
+        // Assert
+        Assert.True(hasIt);
+        mockManager.Verify(x => x.DisableDeviceUnlockAsync(scope), Times.Once);
+        Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    public async Task GivenSettingsNotAllowingDeviceUnlock_WhenChecked_ThenNotOn_AndTheManagerIsNotAsked()
+    {
+        // Arrange
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+
+        // Act
+        var hasIt = await sut.HasDeviceUnlockAsync(scope);
+
+        // Assert
+        Assert.False(hasIt);
+        mockManager.Verify(x => x.HasDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
     }
 
     [Fact]

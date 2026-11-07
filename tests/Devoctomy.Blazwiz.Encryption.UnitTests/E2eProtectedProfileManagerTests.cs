@@ -454,6 +454,38 @@ public class E2eProtectedProfileManagerTests
     }
 
     [Fact]
+    public async Task GivenDeviceUnlockTurnedOn_WhenThePasskeysKeyIsGoneFromMemory_ThenItIsStillOnHere_ButCannotUnlockNow()
+    {
+        // Arrange: e.g. after a reload, until the passkey is used again.
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.EnableDeviceUnlockAsync(scope);
+        device.Manager.Lock(scope);
+        device.DerivedKeys.RemoveKey(E2eKeyNames.KeyEncryptionKey);
+
+        // Act
+        var hasIt = await device.Manager.HasDeviceUnlockAsync(scope);
+        var can = await device.Manager.CanUnlockWithDeviceAsync(scope);
+
+        // Assert
+        Assert.True(hasIt);
+        Assert.False(can);
+    }
+
+    [Fact]
+    public async Task GivenDeviceUnlockNeverOrNoLongerOn_WhenChecked_ThenNotOnHere()
+    {
+        // Arrange
+        var never = await device.Manager.CreateAsync(Passphrase, Settings);
+        var turnedOff = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.EnableDeviceUnlockAsync(turnedOff);
+        await device.Manager.DisableDeviceUnlockAsync(turnedOff);
+
+        // Act & Assert
+        Assert.False(await device.Manager.HasDeviceUnlockAsync(never));
+        Assert.False(await device.Manager.HasDeviceUnlockAsync(turnedOff));
+    }
+
+    [Fact]
     public async Task GivenDeviceUnlockOff_WhenUnlockedWithThePasskey_ThenThePassphraseIsRequired()
     {
         // Arrange

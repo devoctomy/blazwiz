@@ -69,7 +69,8 @@ public interface ISyncProtectedProfileService
     /// Deletes a protected profile, under its sync lock: finds its files in S3 (and stops, with nothing deleted, if S3
     /// cannot be reached), then deletes its keys, so nothing left behind can be decrypted, then its files in S3 and on
     /// this device, and then the sync profile. Without a sync target in the session (local development) there are no
-    /// files in S3 to delete.
+    /// files in S3 to delete. Once its keys are deleted the profile is removed even if deleting its files then fails;
+    /// that error is still thrown.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>
     /// <param name="ct">A cancellation token.</param>
@@ -84,6 +85,22 @@ public interface ISyncProtectedProfileService
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     /// <exception cref="InvalidOperationException">The profile's settings do not allow device unlock.</exception>
     Task EnableDeviceUnlockAsync(E2eKeyScope scope);
+
+    /// <summary>
+    /// Gets whether device unlock is on for a protected profile on this device (its settings allow it, and it was
+    /// turned on here), whether or not the passkey's key is in memory now.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <returns>True when it is on here.</returns>
+    Task<bool> HasDeviceUnlockAsync(E2eKeyScope scope);
+
+    /// <summary>
+    /// Stops this device unlocking a protected profile with the passkey, forgetting its passkey-wrapped key here. The
+    /// passphrase still unlocks it.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task DisableDeviceUnlockAsync(E2eKeyScope scope);
 
     /// <summary>
     /// Unlocks a protected profile with the passkey, when its settings allow it and it was turned on on this device.

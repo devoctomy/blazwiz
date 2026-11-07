@@ -267,11 +267,15 @@ code {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    /* The height actually visible: mobile browsers count the area behind their toolbars in 100vh. */
+    min-height: 100dvh;
 }
 
 .app-shell {
     display: flex;
     min-height: 100vh;
+    /* The height actually visible: mobile browsers count the area behind their toolbars in 100vh. */
+    min-height: 100dvh;
 }
 
 /* ---------- Sidebar ---------- */
@@ -284,6 +288,9 @@ code {
     flex-shrink: 0;
     width: var(--bw-sidebar-width);
     height: 100vh;
+    /* The height actually visible: mobile browsers count the area behind their toolbars in 100vh, which hid the
+       sidebar footer (Log out) behind them. */
+    height: 100dvh;
     padding: 1rem 0.75rem;
     background: var(--bw-sidebar-bg);
     border-right: 1px solid var(--bw-border);
@@ -739,6 +746,8 @@ code {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    /* The height actually visible: mobile browsers count the area behind their toolbars in 100vh. */
+    min-height: 100dvh;
     padding: 2rem 1rem;
     overflow: hidden;
 }
@@ -873,14 +882,17 @@ code {
 /* Shown by the app update check (Devoctomy.Blazwiz.UI.lib.module.js) when a new version of the app is ready. Plain HTML, so it works even if the app does not. */
 #app-update-banner {
     position: fixed;
-    left: 50%;
+    /* Centred across the whole width (left: 50% with a transform left it only half the screen on a phone, so its text
+       wrapped a word to a line). */
+    left: 1rem;
+    right: 1rem;
     bottom: 1rem;
-    transform: translateX(-50%);
+    width: fit-content;
+    margin: 0 auto;
     z-index: 2001;
     display: flex;
     align-items: center;
     gap: 1rem;
-    max-width: calc(100% - 2rem);
     padding: 0.6rem 0.75rem 0.6rem 1.25rem;
     border-radius: var(--bw-radius-sm);
     background: var(--bs-body-bg);
@@ -891,6 +903,13 @@ code {
 
 #app-update-banner[hidden] {
     display: none;
+}
+
+@media (max-width: 767.98px) {
+    /* Above the sync status pill, which sits in the bottom corner on a phone. */
+    #app-update-banner {
+        bottom: 3.75rem;
+    }
 }
 
 #blazor-error-ui {

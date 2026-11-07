@@ -79,6 +79,7 @@ public static class UiServiceCollectionExtensions
         services.TryAddScoped<IThemeService, ThemeService>();
         services.TryAddSingleton<IAppBuildInfo, AppBuildInfo>();
         services.TryAddScoped<IToastService, ToastService>();
+        services.TryAddScoped<IPasskeyKeysService, PasskeyKeysService>();
 
         // The framework's view models. The app registers its own with AddMvvm too.
         services.AddMvvm(options =>

@@ -5,3 +5,5 @@ Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.IdleTimeoutSeconds.get 
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.IdleTimeoutSeconds.set -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.TryGetIdleTimeout(out System.TimeSpan? idleTimeout) -> bool
 const Devoctomy.Blazwiz.Encryption.E2eKeyNames.LabelKey = "e2e-labels" -> string!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.HasDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.HasDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!

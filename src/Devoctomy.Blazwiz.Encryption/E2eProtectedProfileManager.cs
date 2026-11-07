@@ -196,6 +196,15 @@ public class E2eProtectedProfileManager(
     }
 
     /// <inheritdoc/>
+    public async Task<bool> HasDeviceUnlockAsync(E2eKeyScope scope)
+    {
+        CheckProtected(scope);
+
+        var local = await localKeyStore.GetAsync(scope);
+        return local?.CachedDocument != null && HasDeviceKey(local);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> CanUnlockWithDeviceAsync(E2eKeyScope scope)
     {
         CheckProtected(scope);

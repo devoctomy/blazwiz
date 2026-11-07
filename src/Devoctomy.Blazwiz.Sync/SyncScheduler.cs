@@ -130,6 +130,25 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
     }
 
     /// <inheritdoc/>
+    public Task SyncProfileAsync(string profile)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(profile);
+        if (lifetime == null || !states.TryGetValue(profile, out var state))
+        {
+            return Task.CompletedTask;
+        }
+
+        if (state.Running && state.Finished is { } running)
+        {
+            // Single flight: the pass running now is followed by another, and both are waited for.
+            state.RunAgain = true;
+            return running.Task;
+        }
+
+        return RunProfileAsync(profile);
+    }
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         connectivityService.StatusChanged -= OnConnectivityChanged;
@@ -220,6 +239,8 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
         }
 
         state.Running = true;
+        var finished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        state.Finished = finished;
         try
         {
             do
@@ -253,6 +274,8 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
         finally
         {
             state.Running = false;
+            state.Finished = null;
+            finished.TrySetResult();
         }
     }
 
@@ -318,5 +341,7 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
         public bool VerifyPending { get; set; }
 
         public CancellationTokenSource? Debounce { get; set; }
+
+        public TaskCompletionSource? Finished { get; set; }
     }
 }

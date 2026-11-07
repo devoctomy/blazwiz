@@ -86,6 +86,14 @@ public interface IE2eProtectedProfileManager
     Task DisableDeviceUnlockAsync(E2eKeyScope scope);
 
     /// <summary>
+    /// Gets whether device unlock is on for a protected profile on this device: its master key is kept here wrapped by
+    /// the passkey's key. Unlike <see cref="CanUnlockWithDeviceAsync"/>, the passkey's key need not be in memory now.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <returns>True when device unlock is on for it here.</returns>
+    Task<bool> HasDeviceUnlockAsync(E2eKeyScope scope);
+
+    /// <summary>
     /// Gets whether this device can unlock a protected profile with the passkey now.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>

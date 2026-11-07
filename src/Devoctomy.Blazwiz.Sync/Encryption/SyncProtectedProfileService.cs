@@ -162,29 +162,41 @@ public class SyncProtectedProfileService(
         var profile = CreatedProfiles().FirstOrDefault(p => p.KeyScope == scope)
             ?? throw new ArgumentException($"There is no profile '{scope}' created by the user; profiles set up in code are not deleted.", nameof(scope));
 
-        await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
+        var keysDeleted = false;
+        try
         {
-            // Its files in S3 are found before anything is deleted, so a profile is never left without keys but with
-            // files it could not reach.
-            var syncProfile = registry.GetSyncProfile(profile.Name);
-            var remoteFiles = await ListRemoteAsync(syncProfile, ct);
-
-            // Then the keys: whatever happens to the files after this, they can no longer be decrypted.
-            await manager.DeleteAsync(scope, ct);
-
-            foreach (var remote in remoteFiles)
+            await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
             {
-                await syncProfile.RemoteStore.DeleteAsync(remote.Key, ifMatch: null, ct);
+                // Its files in S3 are found before anything is deleted, so a profile is never left without keys but with
+                // files it could not reach.
+                var syncProfile = registry.GetSyncProfile(profile.Name);
+                var remoteFiles = await ListRemoteAsync(syncProfile, ct);
+
+                // Then the keys: whatever happens to the files after this, they can no longer be decrypted.
+                await manager.DeleteAsync(scope, ct);
+                keysDeleted = true;
+
+                foreach (var remote in remoteFiles)
+                {
+                    await syncProfile.RemoteStore.DeleteAsync(remote.Key, ifMatch: null, ct);
+                }
+
+                await DeleteLocalFilesAsync(profile.Name, ct);
             }
-
-            await DeleteLocalFilesAsync(profile.Name, ct);
         }
-
-        registry.Remove(profile.Name);
-        setUp.Remove(scope);
-        labels.Remove(scope.Id);
-        await labelStore.RemoveAsync(scope.Id);
-        ProfilesChanged?.Invoke(this, EventArgs.Empty);
+        finally
+        {
+            // Once its keys are gone the profile is gone, here and (through the index) on every device, even if some of
+            // its files could not be deleted: they can never be read again, and the error still reaches the caller.
+            if (keysDeleted)
+            {
+                registry.Remove(profile.Name);
+                setUp.Remove(scope);
+                labels.Remove(scope.Id);
+                await labelStore.RemoveAsync(scope.Id);
+                ProfilesChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -225,6 +237,21 @@ public class SyncProtectedProfileService(
     {
         CheckDeviceUnlockAllowed(scope);
         return manager.EnableDeviceUnlockAsync(scope);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HasDeviceUnlockAsync(E2eKeyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return FindProfile(scope) is { Settings.AllowDeviceUnlock: true } && await manager.HasDeviceUnlockAsync(scope);
+    }
+
+    /// <inheritdoc/>
+    public async Task DisableDeviceUnlockAsync(E2eKeyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        await manager.DisableDeviceUnlockAsync(scope);
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc/>

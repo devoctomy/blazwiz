@@ -26,6 +26,29 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   effect at once (`IE2eIdleLock.Refresh`).
 
 ### Changed
+- Unlocking a protected profile with the passkey is now "Unlock with biometrics", turned on from the unlock panel.
+  Unlocking with the passphrase there offers "Unlock with biometrics next time on this device", when the profile's
+  settings allow it and the signed in user is remembered here with a passkey ("Remember me"). From then on the
+  panel shows "Unlock with biometrics".
+  - **The passkey is asked for** (fingerprint, face or PIN) whenever its key is not in memory. Before, the key was
+    only there after a sign in with the passkey, so after a reload the profile needed its passphrase until the next
+    such sign in.
+  - **Settings no longer has** "Use passkey on this device" or "Unlock with passkey". `E2eProfilesViewModel` loses
+    `EnableDeviceUnlockAsync` and `UnlockWithDeviceAsync`.
+  - **New API:**
+    - `IPasskeyKeysService` (UI): whether the user has a passkey here, and making sure a key derived from it is in
+      memory, asking for the passkey if not.
+    - `ISyncProtectedProfileService.HasDeviceUnlockAsync` and `DisableDeviceUnlockAsync`.
+    - `IE2eProtectedProfileManager.HasDeviceUnlockAsync`.
+    - `E2eProfileRow.CanSetUpDeviceUnlock`.
+    - `E2eProfilePresenter` and `E2eUnlockPanelViewModel` take an `IPasskeyKeysService` (and the panel an
+      `IToastService`), created by DI.
+  - **Text:** `Sync.E2e.UnlockWithPasskey` now reads "Unlock with biometrics"; `Sync.E2e.UsePasskey` is gone; new
+    `Sync.E2e.RememberBiometrics` and `Sync.E2e.Error.BiometricsNotSetUp`.
+- The unlock panel syncs the profile before unlocking it (online, and with sync on), so what it shows once open is up
+  to date. A failed pass does not stop the unlock. `ISyncScheduler.SyncProfileAsync(profile)` runs a pass of one
+  profile and waits for it (and for a pass already running). `E2eUnlockPanelViewModel` takes an `ISyncScheduler`
+  (created by DI, so apps need no change).
 - Protected profiles' labels are no longer kept on the device in plain text. A label can say what a profile holds,
   e.g. a vault's name. They are kept encrypted (AES-GCM) with a new key derived from the passkey at sign in,
   `E2eKeyNames.LabelKey`, which the sync module adds to the PRF keys. Without it (signed in with a password, or after
@@ -49,6 +72,14 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   their number changes afterwards, what was kept is forgotten.
 
 ### Fixed
+- In a phone's browser (not installed), the bottom of the sidebar, with Log out, was hidden behind the browser's
+  toolbar: the shell used `100vh`, which mobile browsers measure as if their toolbars were hidden. It now uses the
+  visible height (`100dvh`, with `100vh` where that is not supported).
+- On a phone the update banner ("A new version of the app is available") was squeezed into half the screen, a word to
+  a line, and covered the sync status pill. It now takes the screen's width and sits above the pill.
+- Deleting a protected profile that failed after its keys were deleted (e.g. removing one of its files) left it
+  listed on this device, locked and impossible to unlock, until the next sign in. Once its keys are gone it is now
+  removed whatever happens to its files; the error is still thrown.
 - With more than one sync profile, the sync status showed only the last profile synced: a profile that failed was shown
   as Idle with no error once another synced after it, and "last synced" moved on although it had not synced. The status
   now covers every profile's last pass: Error if any failed, "last synced" when the least recently synced profile last

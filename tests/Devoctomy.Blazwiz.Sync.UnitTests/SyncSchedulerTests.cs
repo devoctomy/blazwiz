@@ -285,6 +285,78 @@ public class SyncSchedulerTests
     }
 
     [Fact]
+    public async Task GivenStarted_WhenSyncProfileAsync_ThenOnlyThatProfileIsSyncedUnderItsLock()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        calls.Clear();
+
+        // Act
+        await sut.SyncProfileAsync("photos");
+
+        // Assert
+        Assert.Equal(["lock sync-photos", "sync photos verify=False", "release"], calls);
+    }
+
+    [Fact]
+    public async Task GivenAPassOfTheProfileRunning_WhenSyncProfileAsync_ThenItWaitsForThatPassAndOneMore()
+    {
+        // Arrange
+        var gate = new TaskCompletionSource<SyncResult>();
+        var passes = 0;
+        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .Returns(() => ++passes == 2 ? gate.Task : Task.FromResult(new SyncResult()));
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        sut.RequestSync("notes");
+        time.Advance(options.ChangeDebounce);
+        await WaitForAsync(() => passes == 2);
+
+        // Act
+        var waiting = sut.SyncProfileAsync("notes");
+        var finishedEarly = waiting.IsCompleted;
+        gate.SetResult(new SyncResult());
+        await waiting;
+
+        // Assert
+        Assert.False(finishedEarly);
+        Assert.Equal(3, passes);
+    }
+
+    [Fact]
+    public async Task GivenOffline_WhenSyncProfileAsync_ThenNothingSyncs()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        connectivity = new ConnectivityStatus { IsOnline = false };
+        calls.Clear();
+
+        // Act
+        await sut.SyncProfileAsync("notes");
+
+        // Assert
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public async Task GivenNotStartedOrAnUnknownProfile_WhenSyncProfileAsync_ThenNothingHappens()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        await sut.SyncProfileAsync("notes");
+        await sut.StartAsync();
+        calls.Clear();
+        await sut.SyncProfileAsync("unknown");
+
+        // Assert
+        Assert.Empty(calls);
+    }
+
+    [Fact]
     public async Task GivenNotStarted_WhenSyncRequested_ThenNothingHappens()
     {
         // Arrange

@@ -39,3 +39,10 @@ Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.Toasts.get -> System.Collecti
 override Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.Dispose(bool disposing) -> void
 static readonly Devoctomy.Blazwiz.UI.Services.ToastService.DefaultDuration -> System.TimeSpan
 ~override Devoctomy.Blazwiz.UI.Components.ToastHost.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService
+Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService.EnsureKeyAsync(string! keyName) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService.IsAvailableAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.EnsureKeyAsync(string! keyName) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.IsAvailableAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.PasskeyKeysService(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService! webAuthnService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void

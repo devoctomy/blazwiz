@@ -36,7 +36,14 @@ public class E2eProfileRow
     public bool AllowDeviceUnlock { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether this device can unlock it with the passkey.
+    /// Gets or sets a value indicating whether this device can unlock it with biometrics: it was turned on here, and the
+    /// signed in user has a passkey here (they are asked for it when its key is not in memory).
     /// </summary>
     public bool CanUnlockWithDevice { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether unlocking it with biometrics can be turned on here: its settings allow it,
+    /// it is not on yet, and the signed in user has a passkey here.
+    /// </summary>
+    public bool CanSetUpDeviceUnlock { get; set; }
 }
