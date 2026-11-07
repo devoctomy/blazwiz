@@ -39,6 +39,8 @@ Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Unlock = 2 -> Devoctomy.Blazwiz.U
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.AllowDeviceUnlock.get -> bool
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.AllowDeviceUnlock.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.CanSetUpDeviceUnlock.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.CanSetUpDeviceUnlock.set -> void
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.CanUnlockWithDevice.get -> bool
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.CanUnlockWithDevice.set -> void
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.DisplayName.get -> string!
@@ -165,7 +167,7 @@ Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.GetTargetAsync(System
 Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.Invalidate() -> void
 Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.IsConfigured.get -> bool
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter
-Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.E2eProfilePresenter(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncProfileDisplayNames! displayNames) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.E2eProfilePresenter(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncProfileDisplayNames! displayNames, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys) -> void
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.GetProfileAsync(string! name) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?>!
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.GetProfilesAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow!>!>!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter
@@ -288,7 +290,6 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogProfile.get -> D
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogTitle.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.E2eProfilesViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.EnableDeviceUnlockAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Error.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.FinishedText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.GetStateText(Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow! row) -> string!
@@ -308,9 +309,8 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenUnlock(string! nam
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Passphrase.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Passphrase.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Steps.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem!>!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.UnlockWithDeviceAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.E2eUnlockPanelViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.E2eUnlockPanelViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! scheduler, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys, Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService! toasts) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Error.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsLocked.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsUnlocked.get -> bool
@@ -321,6 +321,8 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.OpenSettings() -> v
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Passphrase.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Passphrase.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Profile.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RememberBiometrics.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RememberBiometrics.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.SetProfileAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.UnlockAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.UnlockWithDeviceAsync() -> System.Threading.Tasks.Task!
@@ -372,7 +374,7 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.StorageKind.get -> De
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.StorageText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncDisplay.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncNowAsync() -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncSettingsViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter! syncStatusPresenter, Devoctomy.Blazwiz.Sync.Interfaces.IStorageDurabilityService! storageDurabilityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver! storageResolver, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService! storageMigrationService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncFolderService! folderService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncSettingsViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter! syncStatusPresenter, Devoctomy.Blazwiz.Sync.Interfaces.IStorageDurabilityService! storageDurabilityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver! storageResolver, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService! storageMigrationService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncFolderService! folderService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.SyncStatus.get -> Devoctomy.Blazwiz.Sync.Models.SyncStatus!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel.ToggleSyncAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel

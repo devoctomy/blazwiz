@@ -1,8 +1,1 @@
 #nullable enable
-const Devoctomy.Blazwiz.Browser.Services.ClipboardService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/clipboard.js" -> string!
-Devoctomy.Blazwiz.Browser.Services.ClipboardService
-Devoctomy.Blazwiz.Browser.Services.ClipboardService.ClipboardService(Microsoft.JSInterop.IJSRuntime! jsRuntime, System.TimeProvider! timeProvider) -> void
-Devoctomy.Blazwiz.Browser.Services.ClipboardService.CopyAsync(string! text, System.TimeSpan? clearAfter = null) -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.Browser.Services.ClipboardService.Dispose() -> void
-Devoctomy.Blazwiz.Browser.Services.Interfaces.IClipboardService
-Devoctomy.Blazwiz.Browser.Services.Interfaces.IClipboardService.CopyAsync(string! text, System.TimeSpan? clearAfter = null) -> System.Threading.Tasks.Task!

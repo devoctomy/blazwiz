@@ -148,6 +148,7 @@ Devoctomy.Blazwiz.Sync.Connectivity.OfflineReason.Unreachable = 4 -> Devoctomy.B
 Devoctomy.Blazwiz.Sync.Encryption.E2eIdleLock
 Devoctomy.Blazwiz.Sync.Encryption.E2eIdleLock.Dispose() -> void
 Devoctomy.Blazwiz.Sync.Encryption.E2eIdleLock.E2eIdleLock(Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.Sync.Encryption.E2eIdleLock.Refresh(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Sync.Encryption.E2eIdleLock.Start() -> void
 Devoctomy.Blazwiz.Sync.Encryption.E2eIdleLock.Touch(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Sync.Encryption.E2eLockChannel
@@ -165,6 +166,7 @@ Devoctomy.Blazwiz.Sync.Encryption.EncryptingSyncFileStore.ListAsync(System.Threa
 Devoctomy.Blazwiz.Sync.Encryption.EncryptingSyncFileStore.ReadAsync(string! key, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncFile?>!
 Devoctomy.Blazwiz.Sync.Encryption.EncryptingSyncFileStore.WriteAsync(string! key, byte[]! content, System.DateTimeOffset? modifiedAt = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eIdleLock
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eIdleLock.Refresh(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eIdleLock.Start() -> void
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eIdleLock.Touch(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eLockChannel
@@ -179,11 +181,14 @@ Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.ChangePassphraseAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! currentPassphrase, string! newPassphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.CreateAsync(string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.DisableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.EnableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.HasDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.IsLoaded.get -> bool
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.LoadAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!>!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.Profiles.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile!>!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.ProfilesChanged -> System.EventHandler?
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.SetIdleTimeoutAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.TimeSpan? idleTimeout, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.SetLabelAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! label) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.SetUpAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService.Unload() -> void
@@ -199,7 +204,7 @@ Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.LocalSto
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.SaveAsync(string! value) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.GetAllAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<string!, string!>!>!
-Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.LocalStorageE2eProfileLabelStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext) -> void
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.LocalStorageE2eProfileLabelStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService! cryptoService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.RemoveAsync(string! profileId) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.SetAsync(string! profileId, string! label) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageUserKeysStore
@@ -214,11 +219,14 @@ Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.ChangePassphraseAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! currentPassphrase, string! newPassphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.CreateAsync(string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.DisableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.EnableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.HasDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.IsLoaded.get -> bool
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.LoadAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!>!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.Profiles.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncProtectedProfile!>!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.ProfilesChanged -> System.EventHandler?
+Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SetIdleTimeoutAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.TimeSpan? idleTimeout, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SetLabelAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! label) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SetUpAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, System.IProgress<Devoctomy.Blazwiz.Encryption.Models.E2eProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.SyncProtectedProfileService.SyncProtectedProfileService(Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver! storageResolver, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.ISyncLockService! lockService, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eLockChannel! lockChannel, Devoctomy.Blazwiz.Sync.Configuration.SyncOptions! options, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eIdleLock! idleLock, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.IE2eProfileLabelStore! labelStore) -> void
@@ -485,6 +493,7 @@ Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler.RequestSync(string! profile) ->
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler.StartAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler.StopAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler.SyncNowAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler.SyncProfileAsync(string! profile) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncService
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncService.FilesChanged -> System.EventHandler<Devoctomy.Blazwiz.Sync.Models.SyncFilesChangedEventArgs!>?
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncService.Profiles.get -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -502,11 +511,13 @@ Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService.MigrateAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind target, System.IProgress<Devoctomy.Blazwiz.Sync.Models.SyncStorageMigrationProgress!>? progress = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageMigrationService.RecoverAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.GetDeviceDefaultKindAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncStorageKind?>!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.GetKinds(string! profile) -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncStorageKind>!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.GetStateAsync(string! profile) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncStorageState!>!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.GetStore(string! profile, Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> Devoctomy.Blazwiz.Sync.Interfaces.ISyncFileStore!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.IsSupportedAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.IsSwitchable(string! profile) -> bool
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver.SetDeviceDefaultKindAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageStateStore
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageStateStore.GetAsync(string! profile, string! owner) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncStorageState?>!
 Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageStateStore.SaveAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageState! state) -> System.Threading.Tasks.Task!
@@ -894,11 +905,13 @@ Devoctomy.Blazwiz.Sync.Storage.SyncStorageMigrationService.MigrateAsync(Devoctom
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageMigrationService.RecoverAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageMigrationService.SyncStorageMigrationService(Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageResolver! resolver, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageStateStore! stateStore, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! scheduler, Devoctomy.Blazwiz.Sync.Interfaces.ISyncLockService! lockService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageChannel! channel, Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService) -> void
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver
+Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.GetDeviceDefaultKindAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncStorageKind?>!
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.GetKinds(string! profile) -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncStorageKind>!
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.GetStateAsync(string! profile) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncStorageState!>!
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.GetStore(string! profile, Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> Devoctomy.Blazwiz.Sync.Interfaces.ISyncFileStore!
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.IsSupportedAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.IsSwitchable(string! profile) -> bool
+Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.SetDeviceDefaultKindAsync(Devoctomy.Blazwiz.Sync.Models.SyncStorageKind kind) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.SyncStorageResolver(System.IServiceProvider! services, Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageStateStore! stateStore, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.IOpfsClient! opfsClient, Devoctomy.Blazwiz.Sync.Interfaces.IFolderAccessClient! folderClient) -> void
 Devoctomy.Blazwiz.Sync.SyncEngine
 Devoctomy.Blazwiz.Sync.SyncEngine.SyncAsync(Devoctomy.Blazwiz.Sync.SyncProfile! profile, bool verify, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncResult!>!
@@ -934,6 +947,7 @@ Devoctomy.Blazwiz.Sync.SyncScheduler.RequestSync(string! profile) -> void
 Devoctomy.Blazwiz.Sync.SyncScheduler.StartAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.SyncScheduler.StopAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.SyncScheduler.SyncNowAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.SyncScheduler.SyncProfileAsync(string! profile) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.SyncScheduler.SyncScheduler(Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.IBrowserNetworkStatus! browserNetworkStatus, Devoctomy.Blazwiz.Sync.Interfaces.ISyncLockService! lockService, Devoctomy.Blazwiz.Sync.Configuration.SyncOptions! options, System.TimeProvider! timeProvider) -> void
 Devoctomy.Blazwiz.Sync.SyncService
 Devoctomy.Blazwiz.Sync.SyncService.FilesChanged -> System.EventHandler<Devoctomy.Blazwiz.Sync.Models.SyncFilesChangedEventArgs!>?
@@ -957,6 +971,7 @@ Devoctomy.Blazwiz.Sync.WebLockSyncLockService.WebLockSyncLockService(Microsoft.J
 abstract Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition.Configure(Devoctomy.Blazwiz.Sync.Configuration.SyncProfileBuilder! profile) -> void
 abstract Devoctomy.Blazwiz.Sync.Configuration.SyncProfileDefinition.Name.get -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.ConfigurationSection = "Sync" -> string!
+const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.DeviceDefaultStorageName = ":device" -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.EventLogStore = "events" -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.FileDatabase = "files" -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.FolderMetadataStoreSuffix = "_folder" -> string!

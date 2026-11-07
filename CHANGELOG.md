@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.5.0
+
 ### Added
 - `IClipboardService` (Browser): copies text, and for secrets clears the clipboard again after a time unless something
   else was copied since (when the browser lets the page see that). A later copy replaces a clear still waiting; if the
