@@ -24,6 +24,14 @@ else
                     }
                     @SyncText["Sync.E2e.Unlock"]
                 </button>
+                @if (ViewModel.Profile?.CanSetUpDeviceUnlock == true)
+                {
+                    <div class="form-check text-start mt-2">
+                        <input class="form-check-input" type="checkbox" id="e2e-unlock-remember-biometrics" disabled="@ViewModel.IsWorking"
+                               @bind="ViewModel.RememberBiometrics" />
+                        <label class="form-check-label small" for="e2e-unlock-remember-biometrics">@SyncText["Sync.E2e.RememberBiometrics"]</label>
+                    </div>
+                }
                 @if (ViewModel.Profile?.CanUnlockWithDevice == true)
                 {
                     <button type="button" class="btn btn-outline-primary w-100 mt-2" id="e2e-unlock-passkey-button" disabled="@ViewModel.IsWorking"

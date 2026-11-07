@@ -1,10 +1,14 @@
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
+using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Sync.Interfaces;
+using Devoctomy.Blazwiz.UI.Models;
+using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.Text;
@@ -15,7 +19,10 @@ namespace Devoctomy.Blazwiz.UI.Sync.ViewModels;
 
 /// <summary>
 /// ViewModel for the unlock panel, shown in place of a profile's content while it is locked: its passphrase, and the
-/// passkey when this device can use it. A profile with no passphrase yet points to Settings, where it is set.
+/// passkey when this device can use it. A profile with no passphrase yet points to Settings, where it is set. Online, the
+/// profile is synced before it is unlocked, so what it shows once open is up to date. A user with a passkey on this
+/// device can choose to unlock it with biometrics from then on; they are asked for the passkey whenever its key is not
+/// in memory.
 /// </summary>
 public partial class E2eUnlockPanelViewModel : ViewModelBase
 {
@@ -25,12 +32,16 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     private readonly INavigationService navigationService;
     private readonly IStringLocalizer<SyncUiText> text;
     private readonly IErrorText errorText;
+    private readonly ISyncScheduler scheduler;
+    private readonly IPasskeyKeysService passkeys;
+    private readonly IToastService toasts;
 
     private string? profile;
     private E2eProfileRow? row;
     private string passphrase = string.Empty;
     private string? error;
     private bool isWorking;
+    private bool rememberBiometrics;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="E2eUnlockPanelViewModel"/> class.
@@ -41,14 +52,23 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     /// <param name="navigationService">Opens Settings.</param>
     /// <param name="text">The sync UI's text.</param>
     /// <param name="errorText">Describes errors.</param>
+    /// <param name="scheduler">Syncs the profile before it is unlocked.</param>
+    /// <param name="passkeys">Asks for the passkey when its key is needed.</param>
+    /// <param name="toasts">Says if biometrics could not be turned on.</param>
     public E2eUnlockPanelViewModel(
         ISyncProtectedProfileService profiles,
         IE2eProtectedProfileManager manager,
         IE2eProfilePresenter presenter,
         INavigationService navigationService,
         IStringLocalizer<SyncUiText> text,
-        IErrorText errorText)
+        IErrorText errorText,
+        ISyncScheduler scheduler,
+        IPasskeyKeysService passkeys,
+        IToastService toasts)
     {
+        this.passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
+        this.toasts = toasts ?? throw new ArgumentNullException(nameof(toasts));
+        this.scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
         this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         this.presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
@@ -113,6 +133,16 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Gets or sets a value indicating whether, once unlocked with the passphrase, the profile is unlocked with
+    /// biometrics on this device from then on. Offered when <see cref="E2eProfileRow.CanSetUpDeviceUnlock"/>.
+    /// </summary>
+    public bool RememberBiometrics
+    {
+        get => rememberBiometrics;
+        set => SetProperty(ref rememberBiometrics, value);
+    }
+
+    /// <summary>
     /// Gets a value indicating whether the profile is being unlocked.
     /// </summary>
     public bool IsWorking
@@ -155,7 +185,15 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         }
 
         var value = Passphrase;
-        return RunAsync(scope => manager.UnlockAsync(scope, value));
+        var remember = RememberBiometrics && Profile?.CanSetUpDeviceUnlock == true;
+        return RunAsync(async scope =>
+        {
+            await manager.UnlockAsync(scope, value);
+            if (remember)
+            {
+                await TurnOnBiometricsAsync(scope);
+            }
+        });
     }
 
     /// <summary>
@@ -165,7 +203,16 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     [RelayCommand]
     public Task UnlockWithDeviceAsync()
     {
-        return RunAsync(profiles.UnlockWithDeviceAsync);
+        return RunAsync(async scope =>
+        {
+            if (!await passkeys.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey))
+            {
+                // Cancelled, or no passkey here: the passphrase is still asked for.
+                throw new E2ePassphraseRequiredException();
+            }
+
+            await profiles.UnlockWithDeviceAsync(scope);
+        });
     }
 
     /// <summary>
@@ -200,6 +247,7 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         IsWorking = true;
         try
         {
+            await SyncFirstAsync();
             await unlock(new E2eKeyScope(current.Id));
             Passphrase = string.Empty;
         }
@@ -211,6 +259,43 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         {
             IsWorking = false;
             await RefreshAsync();
+        }
+    }
+
+    private async Task TurnOnBiometricsAsync(E2eKeyScope scope)
+    {
+        try
+        {
+            if (await passkeys.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey))
+            {
+                await profiles.EnableDeviceUnlockAsync(scope);
+                RememberBiometrics = false;
+                return;
+            }
+        }
+        catch (Exception)
+        {
+            // Said below; the profile is unlocked all the same.
+        }
+
+        toasts.Show(text["Sync.E2e.Error.BiometricsNotSetUp"], ToastTone.Warning);
+    }
+
+    private async Task SyncFirstAsync()
+    {
+        if (profile == null)
+        {
+            return;
+        }
+
+        try
+        {
+            // Skipped offline or while sync is turned off; a failed pass is reported by the sync status and log.
+            await scheduler.SyncProfileAsync(profile);
+        }
+        catch (Exception)
+        {
+            // Unlocking goes ahead with the files this device has.
         }
     }
 

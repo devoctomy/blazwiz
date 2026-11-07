@@ -82,7 +82,8 @@ public class SyncProtectedProfileService(
             await lockChannel.StartAsync();
         }
 
-        var scopes = (await manager.GetProfilesAsync(ct)).Select(p => new E2eKeyScope(p.Id)).ToList();
+        var entries = await manager.GetProfilesAsync(ct);
+        var scopes = entries.Select(p => new E2eKeyScope(p.Id)).ToList();
         foreach (var gone in CreatedProfiles().Where(p => !scopes.Contains(p.KeyScope!)).ToList())
         {
             // Deleted on another device: nothing of it is kept here either.
@@ -96,9 +97,23 @@ public class SyncProtectedProfileService(
             registry.Remove(gone.Name);
         }
 
-        foreach (var scope in scopes.Where(s => FindProfile(s) == null))
+        foreach (var entry in entries)
         {
-            registry.Add(CreateOptions(scope, options.ProfileDefaults));
+            // The settings chosen for the profile, on this device or another, over the app's defaults.
+            var scope = new E2eKeyScope(entry.Id);
+            var settings = SettingsFor(entry);
+            if (FindProfile(scope) is { } existing)
+            {
+                if (existing.Settings.IdleTimeout != settings.IdleTimeout)
+                {
+                    existing.Settings = settings;
+                    idleLock.Refresh(scope);
+                }
+            }
+            else
+            {
+                registry.Add(CreateOptions(scope, settings));
+            }
         }
 
         setUp.Clear();
@@ -147,29 +162,41 @@ public class SyncProtectedProfileService(
         var profile = CreatedProfiles().FirstOrDefault(p => p.KeyScope == scope)
             ?? throw new ArgumentException($"There is no profile '{scope}' created by the user; profiles set up in code are not deleted.", nameof(scope));
 
-        await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
+        var keysDeleted = false;
+        try
         {
-            // Its files in S3 are found before anything is deleted, so a profile is never left without keys but with
-            // files it could not reach.
-            var syncProfile = registry.GetSyncProfile(profile.Name);
-            var remoteFiles = await ListRemoteAsync(syncProfile, ct);
-
-            // Then the keys: whatever happens to the files after this, they can no longer be decrypted.
-            await manager.DeleteAsync(scope, ct);
-
-            foreach (var remote in remoteFiles)
+            await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
             {
-                await syncProfile.RemoteStore.DeleteAsync(remote.Key, ifMatch: null, ct);
+                // Its files in S3 are found before anything is deleted, so a profile is never left without keys but with
+                // files it could not reach.
+                var syncProfile = registry.GetSyncProfile(profile.Name);
+                var remoteFiles = await ListRemoteAsync(syncProfile, ct);
+
+                // Then the keys: whatever happens to the files after this, they can no longer be decrypted.
+                await manager.DeleteAsync(scope, ct);
+                keysDeleted = true;
+
+                foreach (var remote in remoteFiles)
+                {
+                    await syncProfile.RemoteStore.DeleteAsync(remote.Key, ifMatch: null, ct);
+                }
+
+                await DeleteLocalFilesAsync(profile.Name, ct);
             }
-
-            await DeleteLocalFilesAsync(profile.Name, ct);
         }
-
-        registry.Remove(profile.Name);
-        setUp.Remove(scope);
-        labels.Remove(scope.Id);
-        await labelStore.RemoveAsync(scope.Id);
-        ProfilesChanged?.Invoke(this, EventArgs.Empty);
+        finally
+        {
+            // Once its keys are gone the profile is gone, here and (through the index) on every device, even if some of
+            // its files could not be deleted: they can never be read again, and the error still reaches the caller.
+            if (keysDeleted)
+            {
+                registry.Remove(profile.Name);
+                setUp.Remove(scope);
+                labels.Remove(scope.Id);
+                await labelStore.RemoveAsync(scope.Id);
+                ProfilesChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -193,10 +220,38 @@ public class SyncProtectedProfileService(
     }
 
     /// <inheritdoc/>
+    public async Task SetIdleTimeoutAsync(E2eKeyScope scope, TimeSpan? idleTimeout, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        var profile = CreatedProfiles().FirstOrDefault(p => p.KeyScope == scope)
+            ?? throw new ArgumentException($"There is no profile '{scope}' created by the user.", nameof(scope));
+
+        await manager.SetIdleTimeoutAsync(scope, idleTimeout, ct);
+        profile.Settings = WithIdleTimeout(profile.Settings, idleTimeout);
+        idleLock.Refresh(scope);
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <inheritdoc/>
     public Task EnableDeviceUnlockAsync(E2eKeyScope scope)
     {
         CheckDeviceUnlockAllowed(scope);
         return manager.EnableDeviceUnlockAsync(scope);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HasDeviceUnlockAsync(E2eKeyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return FindProfile(scope) is { Settings.AllowDeviceUnlock: true } && await manager.HasDeviceUnlockAsync(scope);
+    }
+
+    /// <inheritdoc/>
+    public async Task DisableDeviceUnlockAsync(E2eKeyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        await manager.DisableDeviceUnlockAsync(scope);
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc/>
@@ -234,6 +289,14 @@ public class SyncProtectedProfileService(
         }
     }
 
+    private static E2eProfileSettings WithIdleTimeout(E2eProfileSettings settings, TimeSpan? idleTimeout) => new E2eProfileSettings
+    {
+        IdleTimeout = idleTimeout,
+        AllowDeviceUnlock = settings.AllowDeviceUnlock,
+        MinimumPassphraseLength = settings.MinimumPassphraseLength,
+        Argon2 = settings.Argon2,
+    };
+
     private static SyncProfileOptions CreateOptions(E2eKeyScope scope, E2eProfileSettings settings)
     {
         var id = scope.Id;
@@ -252,6 +315,10 @@ public class SyncProtectedProfileService(
             .UseDefault(SyncStorageKind.IndexedDb);
         return profile;
     }
+
+    private E2eProfileSettings SettingsFor(E2eProfileIndexEntry entry) => entry.TryGetIdleTimeout(out var idleTimeout)
+        ? WithIdleTimeout(options.ProfileDefaults, idleTimeout)
+        : options.ProfileDefaults;
 
     private async Task DeleteLocalFilesAsync(string name, CancellationToken ct)
     {

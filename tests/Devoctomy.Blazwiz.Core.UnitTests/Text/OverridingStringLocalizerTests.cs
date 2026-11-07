@@ -241,6 +241,65 @@ public class OverridingStringLocalizerTests
         Assert.Equal("Hello", result.Value);
     }
 
+    [Fact]
+    public void GivenTextAlreadyUsed_WhenAnOverrideIsAddedAfterwards_ThenTheOverrideIsUsed()
+    {
+        // Arrange
+        using var culture = new CultureScope("en-GB");
+        var sut = Create();
+        var before = sut["Shared"].Value;
+
+        // Act
+        options.OverrideResources.Add(new System.Resources.ResourceManager(typeof(AppOverrides).FullName!, typeof(AppOverrides).Assembly));
+
+        // Assert
+        Assert.NotEqual("App neutral", before);
+        Assert.Equal("App neutral", sut["Shared"].Value);
+    }
+
+    [Fact]
+    public void GivenTextUsedInOneCulture_WhenUsedInAnother_ThenEachCulturesOwnText()
+    {
+        // Arrange
+        var sut = Create();
+        string english;
+        using (new CultureScope("en-GB"))
+        {
+            english = sut["Greeting"].Value;
+        }
+
+        // Act
+        string french;
+        using (new CultureScope("fr-FR"))
+        {
+            french = sut["Greeting"].Value;
+        }
+
+        // Assert
+        Assert.Equal("Bonjour", french);
+        Assert.NotEqual(french, english);
+        using (new CultureScope("en-GB"))
+        {
+            Assert.Equal(english, sut["Greeting"].Value);
+        }
+    }
+
+    [Fact]
+    public void GivenAMissingKeyLookedUpTwice_WhenLookingUp_ThenItIsStillReportedMissing()
+    {
+        // Arrange
+        using var culture = new CultureScope("en-GB");
+        var sut = Create();
+        _ = sut["NoSuchKey"];
+
+        // Act
+        var text = sut["NoSuchKey"];
+
+        // Assert
+        Assert.True(text.ResourceNotFound);
+        Assert.Equal("NoSuchKey", text.Value);
+    }
+
     private IStringLocalizer Create() => new OverridingStringLocalizerFactory(options).Create(typeof(PackageText));
 
     private sealed class CultureScope : IDisposable

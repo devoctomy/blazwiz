@@ -91,10 +91,11 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddScoped<LocalStorageUserKeysStore>();
         services.AddScoped<IUserKeysStore>(sp => UsesSecretsManager(sp) ? sp.GetRequiredService<SecretsManagerUserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
         services.AddScoped<IE2eProfileIndexStore>(sp => UsesSecretsManager(sp) ? sp.GetRequiredService<SecretsManagerUserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
-        services.AddBlazwizPrfKeyDerivation(prf => prf.AddKey(E2eKeyNames.KeyEncryptionKey));
+        services.AddBlazwizPrfKeyDerivation(prf => prf.AddKey(E2eKeyNames.KeyEncryptionKey).AddKey(E2eKeyNames.LabelKey));
         services.AddBlazwizE2eEncryption(argon2 => configuration.GetSection(Argon2idConfigurationSection).Bind(argon2.Parameters));
         services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
         services.AddScoped<IE2eLocalProfileIndexStore, LocalStorageE2eLocalProfileIndexStore>();
+        services.AddBlazwizCryptography();
         services.AddScoped<IE2eProfileLabelStore, LocalStorageE2eProfileLabelStore>();
         services.AddScoped<IE2eLockChannel, E2eLockChannel>();
         services.AddScoped<IE2eIdleLock, E2eIdleLock>();

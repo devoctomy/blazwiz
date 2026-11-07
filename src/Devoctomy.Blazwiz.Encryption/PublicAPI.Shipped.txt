@@ -30,10 +30,12 @@ Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.E2eProtectedProfileManag
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.EnableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.ForgetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.GetProfilesAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry!>!>!
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.HasDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.IsUnlocked(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> bool
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.Lock(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.LockAll() -> void
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.LockStateChanged -> System.EventHandler<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>?
+Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.SetIdleTimeoutAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.TimeSpan? idleTimeout, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.UnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.UnlockWithDeviceAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.Unlocked.get -> System.Collections.Generic.IReadOnlyCollection<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
@@ -99,10 +101,12 @@ Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.DisableDevic
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.EnableDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.ForgetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.GetProfilesAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry!>!>!
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.HasDeviceUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.IsUnlocked(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> bool
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.Lock(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> void
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.LockAll() -> void
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.LockStateChanged -> System.EventHandler<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>?
+Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.SetIdleTimeoutAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.TimeSpan? idleTimeout, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.UnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! passphrase, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.UnlockWithDeviceAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.Unlocked.get -> System.Collections.Generic.IReadOnlyCollection<Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope!>!
@@ -151,6 +155,9 @@ Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.Created.set -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.E2eProfileIndexEntry() -> void
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.Id.get -> string!
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.Id.set -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.IdleTimeoutSeconds.get -> int?
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.IdleTimeoutSeconds.set -> void
+Devoctomy.Blazwiz.Encryption.Models.E2eProfileIndexEntry.TryGetIdleTimeout(out System.TimeSpan? idleTimeout) -> bool
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.AllowDeviceUnlock.get -> bool
 Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings.AllowDeviceUnlock.set -> void
@@ -205,6 +212,7 @@ Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument.Version.get -> int
 Devoctomy.Blazwiz.Encryption.Models.UserKeysDocument.Version.set -> void
 const Devoctomy.Blazwiz.Encryption.E2eKeyNames.FileKeySuffix = ":file:" -> string!
 const Devoctomy.Blazwiz.Encryption.E2eKeyNames.KeyEncryptionKey = "e2e-kek" -> string!
+const Devoctomy.Blazwiz.Encryption.E2eKeyNames.LabelKey = "e2e-labels" -> string!
 const Devoctomy.Blazwiz.Encryption.E2eKeyNames.MasterKeySuffix = ":master" -> string!
 const Devoctomy.Blazwiz.Encryption.E2eKeyNames.ScopePrefix = "e2e:" -> string!
 const Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.KeyIdPrefix = "k_" -> string!

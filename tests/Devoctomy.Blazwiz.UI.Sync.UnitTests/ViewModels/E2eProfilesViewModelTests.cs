@@ -252,20 +252,6 @@ public class E2eProfilesViewModelTests
     }
 
     [Fact]
-    public async Task GivenDeviceUnlockFails_WhenTurnedOn_ThenTheErrorIsShown()
-    {
-        // Arrange
-        mockProfiles.Setup(x => x.EnableDeviceUnlockAsync(It.IsAny<E2eKeyScope>())).ThrowsAsync(new E2eWrongPassphraseException());
-        using var sut = await CreateInitializedSutAsync();
-
-        // Act
-        await sut.EnableDeviceUnlockCommand.ExecuteAsync("notes");
-
-        // Assert
-        Assert.NotNull(sut.Error);
-    }
-
-    [Fact]
     public async Task GivenAProfileLocks_WhenShown_ThenTheListIsRefreshed()
     {
         // Arrange

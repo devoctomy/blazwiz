@@ -151,6 +151,30 @@ code {
     border-color: var(--bw-accent);
 }
 
+.form-range::-webkit-slider-thumb {
+    background-color: var(--bw-accent);
+}
+
+.form-range::-webkit-slider-thumb:active {
+    background-color: var(--bw-accent-2);
+}
+
+.form-range::-moz-range-thumb {
+    background-color: var(--bw-accent);
+}
+
+.form-range::-moz-range-thumb:active {
+    background-color: var(--bw-accent-2);
+}
+
+.form-range:focus::-webkit-slider-thumb {
+    box-shadow: 0 0 0 1px var(--bw-bg), 0 0 0 0.25rem rgba(var(--bw-accent-rgb), 0.25);
+}
+
+.form-range:focus::-moz-range-thumb {
+    box-shadow: 0 0 0 1px var(--bw-bg), 0 0 0 0.25rem rgba(var(--bw-accent-rgb), 0.25);
+}
+
 .form-label {
     font-weight: 600;
     font-size: 0.875rem;
@@ -185,6 +209,23 @@ code {
 
 .modal-backdrop.show {
     opacity: 0.45;
+}
+
+/* A dialog opened over another (e.g. a picker over an editor): its backdrop dims the one beneath. */
+.app-modal ~ .modal-backdrop {
+    z-index: 1060;
+}
+
+.app-modal ~ .app-modal {
+    z-index: 1065;
+}
+
+.app-modal ~ .app-modal ~ .modal-backdrop {
+    z-index: 1070;
+}
+
+.app-modal ~ .app-modal ~ .app-modal {
+    z-index: 1075;
 }
 
 .table {
@@ -226,11 +267,15 @@ code {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    /* The height actually visible: mobile browsers count the area behind their toolbars in 100vh. */
+    min-height: 100dvh;
 }
 
 .app-shell {
     display: flex;
     min-height: 100vh;
+    /* The height actually visible: mobile browsers count the area behind their toolbars in 100vh. */
+    min-height: 100dvh;
 }
 
 /* ---------- Sidebar ---------- */
@@ -243,6 +288,9 @@ code {
     flex-shrink: 0;
     width: var(--bw-sidebar-width);
     height: 100vh;
+    /* The height actually visible: mobile browsers count the area behind their toolbars in 100vh, which hid the
+       sidebar footer (Log out) behind them. */
+    height: 100dvh;
     padding: 1rem 0.75rem;
     background: var(--bw-sidebar-bg);
     border-right: 1px solid var(--bw-border);
@@ -665,7 +713,7 @@ code {
 }
 
 .theme-preview span:nth-child(2) {
-    background: linear-gradient(135deg, #7c3aed, #06b6d4);
+    background: var(--bw-gradient);
 }
 
 /* ---------- Profile ---------- */
@@ -698,6 +746,8 @@ code {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    /* The height actually visible: mobile browsers count the area behind their toolbars in 100vh. */
+    min-height: 100dvh;
     padding: 2rem 1rem;
     overflow: hidden;
 }
@@ -832,14 +882,17 @@ code {
 /* Shown by the app update check (Devoctomy.Blazwiz.UI.lib.module.js) when a new version of the app is ready. Plain HTML, so it works even if the app does not. */
 #app-update-banner {
     position: fixed;
-    left: 50%;
+    /* Centred across the whole width (left: 50% with a transform left it only half the screen on a phone, so its text
+       wrapped a word to a line). */
+    left: 1rem;
+    right: 1rem;
     bottom: 1rem;
-    transform: translateX(-50%);
+    width: fit-content;
+    margin: 0 auto;
     z-index: 2001;
     display: flex;
     align-items: center;
     gap: 1rem;
-    max-width: calc(100% - 2rem);
     padding: 0.6rem 0.75rem 0.6rem 1.25rem;
     border-radius: var(--bw-radius-sm);
     background: var(--bs-body-bg);
@@ -850,6 +903,13 @@ code {
 
 #app-update-banner[hidden] {
     display: none;
+}
+
+@media (max-width: 767.98px) {
+    /* Above the sync status pill, which sits in the bottom corner on a phone. */
+    #app-update-banner {
+        bottom: 3.75rem;
+    }
 }
 
 #blazor-error-ui {
@@ -926,3 +986,82 @@ code {
 .language-select {
     max-width: 28rem;
 }
+
+/* ---------- Toasts ---------- */
+
+.bw-toasts {
+    position: fixed;
+    bottom: 4.5rem;
+    left: 50%;
+    z-index: 1090;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.bw-toast {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 0.75rem 0.625rem 1rem;
+    border: 1px solid var(--bw-border);
+    border-radius: 999px;
+    background: var(--bw-surface);
+    box-shadow: var(--bw-shadow-lg);
+    color: var(--bw-text);
+    font-size: 0.9rem;
+    font-weight: 500;
+    pointer-events: auto;
+    animation: bw-toast-in 0.18s ease-out;
+}
+
+.bw-toast-icon {
+    font-size: 1.05rem;
+}
+
+.bw-toast-info .bw-toast-icon {
+    color: var(--bw-accent);
+}
+
+.bw-toast-success .bw-toast-icon {
+    color: var(--bs-success);
+}
+
+.bw-toast-warning .bw-toast-icon {
+    color: var(--bs-warning);
+}
+
+.bw-toast-danger .bw-toast-icon {
+    color: var(--bs-danger);
+}
+
+.bw-toast-close {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-left: 0.25rem;
+    font-size: 0.65rem;
+}
+
+@keyframes bw-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bw-toast {
+        animation: none;
+    }
+}
+

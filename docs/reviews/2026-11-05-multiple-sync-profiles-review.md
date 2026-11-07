@@ -70,7 +70,8 @@ findings below.
 
 ### MP1 (Medium). The sync status shows only the last profile's pass
 
-- [ ] Fixed
+- [x] Fixed (2026-11-07: `SyncService` keeps each profile's last pass; `SyncStatus` is worked out from all of them.
+  A profile held back by a gate or removed no longer counts. `SyncServiceTests`.)
 
 `SyncScheduler.RunAllAsync` (`SyncScheduler.cs:158`) calls `SyncService.SyncAsync(profile)` once per profile.
 Each call overwrites the whole status in its `finally` (`SyncService.cs:102-106`): `State`, `LastErrorCode` and
@@ -117,7 +118,9 @@ in MP2. It does not fit option 2: picking a folder for one profile changes it fo
 
 ### MP4 (Medium). Nothing stops two profiles from clashing
 
-- [ ] Fixed
+- [x] Fixed (2026-11-07: `SyncBuilder.AddProfile` and `SyncProfileRegistry.Add` refuse a profile whose remote prefix
+  overlaps another's, or that shares an IndexedDB store or OPFS root with another; a profile set up in code may not
+  overlap `profiles/`. `SyncProfileOptions.FindClash`; `SyncBuilderTests`, `SyncProfileRegistryTests`.)
 
 `SyncBuilder.AddProfile` (`SyncBuilder.cs:99`) checks only the name. Two profiles can be configured to:
 

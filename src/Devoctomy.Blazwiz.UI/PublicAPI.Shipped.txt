@@ -59,6 +59,8 @@ Devoctomy.Blazwiz.UI.Components.Shell.PageHost
 Devoctomy.Blazwiz.UI.Components.Shell.PageHost.Key.get -> string!
 Devoctomy.Blazwiz.UI.Components.Shell.PageHost.Key.set -> void
 Devoctomy.Blazwiz.UI.Components.Shell.PageHost.PageHost() -> void
+Devoctomy.Blazwiz.UI.Components.ToastHost
+Devoctomy.Blazwiz.UI.Components.ToastHost.ToastHost() -> void
 Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions
 Devoctomy.Blazwiz.UI.Extensions.TextUiServiceCollectionExtensions
 Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions
@@ -77,6 +79,8 @@ Devoctomy.Blazwiz.UI.Models.AppSettings.CopyrightMessage.get -> string!
 Devoctomy.Blazwiz.UI.Models.AppSettings.CopyrightMessage.set -> void
 Devoctomy.Blazwiz.UI.Models.AppSettings.EnablePortalLoginAuthn.get -> bool
 Devoctomy.Blazwiz.UI.Models.AppSettings.EnablePortalLoginAuthn.set -> void
+Devoctomy.Blazwiz.UI.Models.AppSettings.LogoUrl.get -> string!
+Devoctomy.Blazwiz.UI.Models.AppSettings.LogoUrl.set -> void
 Devoctomy.Blazwiz.UI.Models.CultureOption
 Devoctomy.Blazwiz.UI.Models.CultureOption.CultureOption() -> void
 Devoctomy.Blazwiz.UI.Models.CultureOption.DisplayName.get -> string!
@@ -106,6 +110,20 @@ Devoctomy.Blazwiz.UI.Models.NavigationItem.Text.set -> void
 Devoctomy.Blazwiz.UI.Models.NavigationItem.TextResource.get -> System.Type?
 Devoctomy.Blazwiz.UI.Models.NavigationItem.TextResource.set -> void
 Devoctomy.Blazwiz.UI.Models.ThemeNames
+Devoctomy.Blazwiz.UI.Models.Toast
+Devoctomy.Blazwiz.UI.Models.Toast.Icon.get -> string!
+Devoctomy.Blazwiz.UI.Models.Toast.Id.get -> System.Guid
+Devoctomy.Blazwiz.UI.Models.Toast.Id.init -> void
+Devoctomy.Blazwiz.UI.Models.Toast.Message.get -> string!
+Devoctomy.Blazwiz.UI.Models.Toast.Message.init -> void
+Devoctomy.Blazwiz.UI.Models.Toast.Toast() -> void
+Devoctomy.Blazwiz.UI.Models.Toast.Tone.get -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.Toast.Tone.init -> void
+Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.ToastTone.Danger = 3 -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.ToastTone.Info = 0 -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.ToastTone.Success = 1 -> Devoctomy.Blazwiz.UI.Models.ToastTone
+Devoctomy.Blazwiz.UI.Models.ToastTone.Warning = 2 -> Devoctomy.Blazwiz.UI.Models.ToastTone
 Devoctomy.Blazwiz.UI.Models.UserSettings
 Devoctomy.Blazwiz.UI.Models.UserSettings.SidebarCollapsed.get -> bool
 Devoctomy.Blazwiz.UI.Models.UserSettings.SidebarCollapsed.set -> void
@@ -147,6 +165,9 @@ Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService.CurrentCulture.get -> S
 Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService.SupportedCultures.get -> System.Collections.Generic.IReadOnlyList<System.Globalization.CultureInfo!>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.INavigationMenuService
 Devoctomy.Blazwiz.UI.Services.Interfaces.INavigationMenuService.GetMainItems() -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.NavigationItem!>!
+Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService
+Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService.EnsureKeyAsync(string! keyName) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService.IsAvailableAsync() -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService
 Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService.CurrentTheme.get -> string!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService.InitializeAsync() -> System.Threading.Tasks.Task!
@@ -154,12 +175,21 @@ Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService.IsDark.get -> bool
 Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService.SetThemeAsync(string! theme) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService.ThemeChanged -> System.EventHandler?
 Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService.ToggleThemeAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService.Changed -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService.Dismiss(System.Guid id) -> void
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService.Show(string! message, Devoctomy.Blazwiz.UI.Models.ToastTone tone = Devoctomy.Blazwiz.UI.Models.ToastTone.Info, System.TimeSpan? duration = null) -> Devoctomy.Blazwiz.UI.Models.Toast!
+Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService.Toasts.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.Toast!>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IUserSettingsService
 Devoctomy.Blazwiz.UI.Services.Interfaces.IUserSettingsService.GetSettingsAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.UI.Models.UserSettings!>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IUserSettingsService.SaveSettingsAsync(Devoctomy.Blazwiz.UI.Models.UserSettings! settings) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Services.NavigationMenuService
 Devoctomy.Blazwiz.UI.Services.NavigationMenuService.GetMainItems() -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.NavigationItem!>!
 Devoctomy.Blazwiz.UI.Services.NavigationMenuService.NavigationMenuService(System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Models.NavigationItem!>! items, Devoctomy.Blazwiz.UI.Shell.Interfaces.IPageRegistry! pageRegistry, Microsoft.Extensions.Localization.IStringLocalizerFactory! localizerFactory) -> void
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.EnsureKeyAsync(string! keyName) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.IsAvailableAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.PasskeyKeysService(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService! webAuthnService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
 Devoctomy.Blazwiz.UI.Services.ThemeService
 Devoctomy.Blazwiz.UI.Services.ThemeService.CurrentTheme.get -> string!
 Devoctomy.Blazwiz.UI.Services.ThemeService.InitializeAsync() -> System.Threading.Tasks.Task!
@@ -168,6 +198,13 @@ Devoctomy.Blazwiz.UI.Services.ThemeService.SetThemeAsync(string! theme) -> Syste
 Devoctomy.Blazwiz.UI.Services.ThemeService.ThemeChanged -> System.EventHandler?
 Devoctomy.Blazwiz.UI.Services.ThemeService.ThemeService(Devoctomy.Blazwiz.UI.Services.Interfaces.IUserSettingsService! userSettingsService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService! browserInteropService) -> void
 Devoctomy.Blazwiz.UI.Services.ThemeService.ToggleThemeAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Services.ToastService
+Devoctomy.Blazwiz.UI.Services.ToastService.Changed -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Services.ToastService.Dismiss(System.Guid id) -> void
+Devoctomy.Blazwiz.UI.Services.ToastService.Dispose() -> void
+Devoctomy.Blazwiz.UI.Services.ToastService.Show(string! message, Devoctomy.Blazwiz.UI.Models.ToastTone tone = Devoctomy.Blazwiz.UI.Models.ToastTone.Info, System.TimeSpan? duration = null) -> Devoctomy.Blazwiz.UI.Models.Toast!
+Devoctomy.Blazwiz.UI.Services.ToastService.ToastService(System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.UI.Services.ToastService.Toasts.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.Toast!>!
 Devoctomy.Blazwiz.UI.Services.UserSettingsService
 Devoctomy.Blazwiz.UI.Services.UserSettingsService.GetSettingsAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.UI.Models.UserSettings!>!
 Devoctomy.Blazwiz.UI.Services.UserSettingsService.SaveSettingsAsync(Devoctomy.Blazwiz.UI.Models.UserSettings! settings) -> System.Threading.Tasks.Task!
@@ -371,6 +408,11 @@ Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.TickAsync() -> System.Thre
 Devoctomy.Blazwiz.UI.ViewModels.SettingsViewModel
 Devoctomy.Blazwiz.UI.ViewModels.SettingsViewModel.Sections.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
 Devoctomy.Blazwiz.UI.ViewModels.SettingsViewModel.SettingsViewModel(Devoctomy.Blazwiz.UI.Shell.Interfaces.ISettingsSectionRegistry! sectionRegistry) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.Dismiss(System.Guid id) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.DismissCommand.get -> CommunityToolkit.Mvvm.Input.IRelayCommand<System.Guid>!
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.ToastHostViewModel(Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService! toastService) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.Toasts.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.Toast!>!
 Devoctomy.Blazwiz.UI.Views.ForgotPasswordView
 Devoctomy.Blazwiz.UI.Views.ForgotPasswordView.ForgotPasswordView() -> void
 Devoctomy.Blazwiz.UI.Views.LoginView
@@ -389,9 +431,11 @@ const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrde
 const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrder.Language = 150 -> int
 const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrder.Offline = 200 -> int
 const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SupportedCulturesSetting = "Text:SupportedCultures" -> string!
+const Devoctomy.Blazwiz.UI.Models.AppSettings.DefaultLogoUrl = "images/icon.svg" -> string!
 const Devoctomy.Blazwiz.UI.Models.ThemeNames.Dark = "dark" -> string!
 const Devoctomy.Blazwiz.UI.Models.ThemeNames.Light = "light" -> string!
 const Devoctomy.Blazwiz.UI.Services.CultureService.StorageKey = "culture" -> string!
+const Devoctomy.Blazwiz.UI.Services.ToastService.MaximumToasts = 3 -> int
 const Devoctomy.Blazwiz.UI.Services.UserSettingsService.StorageKey = "user_settings" -> string!
 const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.ForgotPassword = "forgot-password" -> string!
 const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.Login = "login" -> string!
@@ -412,6 +456,7 @@ override Devoctomy.Blazwiz.UI.ViewModels.OfflineModeSwitchViewModel.Dispose(bool
 override Devoctomy.Blazwiz.UI.ViewModels.ProfileViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+override Devoctomy.Blazwiz.UI.ViewModels.ToastHostViewModel.Dispose(bool disposing) -> void
 static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.AddBlazwizShell(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.AddNavigationItem(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Devoctomy.Blazwiz.UI.Models.NavigationItem! item) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.AddPageAssembly(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Reflection.Assembly! assembly) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
@@ -423,6 +468,7 @@ static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.ReplaceP
 static Devoctomy.Blazwiz.UI.Extensions.TextUiServiceCollectionExtensions.AddBlazwizUiText(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.TextUiServiceCollectionExtensions.AddErrorText<TResource>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.AddBlazwizUi(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static readonly Devoctomy.Blazwiz.UI.Services.ToastService.DefaultDuration -> System.TimeSpan
 static readonly Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.ReadInterval -> System.TimeSpan
 static readonly Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.TickInterval -> System.TimeSpan
 ~override Devoctomy.Blazwiz.UI.Components.ChangePasswordForm.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
@@ -439,6 +485,7 @@ static readonly Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.TickInterv
 ~override Devoctomy.Blazwiz.UI.Components.Settings.OfflineSettingsSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Components.Shell.BlazwizRouter.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Components.Shell.PageHost.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override Devoctomy.Blazwiz.UI.Components.ToastHost.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Layout.LoginLayout.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Layout.MainLayout.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Pages.ForgotPasswordPage.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

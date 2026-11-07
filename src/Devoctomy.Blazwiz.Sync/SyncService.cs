@@ -9,6 +9,11 @@ namespace Devoctomy.Blazwiz.Sync;
 /// remote deletes, and prunes the log afterwards. A network failure marks the app offline; a refused credential is
 /// refreshed once, then the pass fails. A profile is skipped while an <see cref="ISyncGate"/> holds it back.
 /// </summary>
+/// <remarks>
+/// Each profile's last pass is kept, and the status is worked out from all of them, because the scheduler syncs one
+/// profile at a time: one profile's pass failing is still shown after another's succeeds. A profile held back by a gate,
+/// or no longer registered, no longer counts.
+/// </remarks>
 public class SyncService(
     ISyncProfileRegistry registry,
     ISyncEngine engine,
@@ -28,6 +33,8 @@ public class SyncService(
     private readonly ISyncEventLog eventLog = eventLog ?? throw new ArgumentNullException(nameof(eventLog));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly IReadOnlyList<ISyncGate> gates = (gates ?? throw new ArgumentNullException(nameof(gates))).ToList();
+
+    private readonly Dictionary<string, ProfileOutcome> outcomes = new Dictionary<string, ProfileOutcome>(StringComparer.Ordinal);
 
     private SyncStatus status = new SyncStatus();
 
@@ -52,62 +59,50 @@ public class SyncService(
 
         var total = new SyncResult { Profile = profile };
         UpdateStatus(s => s.State = SyncState.Syncing);
-        string? error = null;
-        IReadOnlyList<object> errorArguments = [];
-        var ran = false;
+        string? current = null;
         try
         {
             foreach (var item in selected)
             {
                 if (!await CanSyncAsync(item.Name, ct))
                 {
+                    outcomes.Remove(item.Name);
                     continue;
                 }
 
-                ran = true;
+                current = item.Name;
                 var result = await RunProfileAsync(item, verify, ct);
                 total.Add(result);
+                Record(item.Name, result.Failed > 0 ? SyncErrorCodes.FilesFailed : null, [result.Failed], result.ConflictsResolved);
+                current = null;
                 if (result.ChangedLocalKeys.TryGetValue(item.Name, out var keys) && keys.Count > 0)
                 {
                     FilesChanged?.Invoke(this, new SyncFilesChangedEventArgs(item.Name, keys));
                 }
             }
-
-            if (total.Failed > 0)
-            {
-                error = SyncErrorCodes.FilesFailed;
-                errorArguments = [total.Failed];
-            }
         }
         catch (SyncNetworkException ex)
         {
             connectivityService.ReportNetworkFailure(ex);
-            error = SyncErrorCodes.RemoteUnreachable;
+            Record(current, SyncErrorCodes.RemoteUnreachable, [], 0);
             total.Errors.Add(ex.Message);
         }
         catch (SyncAccessDeniedException ex)
         {
-            error = SyncErrorCodes.RemoteAccessDenied;
+            Record(current, SyncErrorCodes.RemoteAccessDenied, [], 0);
             total.Errors.Add(ex.Message);
         }
         catch (OperationCanceledException)
         {
-            // Stopped (e.g. sign out): not an error.
+            // Stopped (e.g. sign out): not an error, and the profile keeps its last pass.
         }
         finally
         {
             var pending = await CountPendingAsync();
             UpdateStatus(s =>
             {
-                s.State = error == null ? SyncState.Idle : SyncState.Error;
-                s.LastErrorCode = error;
-                s.LastErrorArguments = errorArguments;
+                ApplyOutcomes(s);
                 s.PendingCount = pending;
-                s.ConflictsResolved = total.ConflictsResolved;
-                if (error == null && ran && !ct.IsCancellationRequested)
-                {
-                    s.LastSyncedAt = timeProvider.GetUtcNow();
-                }
             });
             await PruneLogAsync();
         }
@@ -128,6 +123,7 @@ public class SyncService(
     /// <inheritdoc/>
     public void Reset()
     {
+        outcomes.Clear();
         status = new SyncStatus();
         StatusChanged?.Invoke(this, status.Clone());
     }
@@ -196,11 +192,68 @@ public class SyncService(
         }
     }
 
+    /// <summary>
+    /// Keeps a profile's pass: its error, if it failed, or when it succeeded.
+    /// </summary>
+    private void Record(string? profile, string? errorCode, IReadOnlyList<object> errorArguments, int conflictsResolved)
+    {
+        if (profile == null)
+        {
+            return;
+        }
+
+        var previous = outcomes.GetValueOrDefault(profile);
+        outcomes[profile] = new ProfileOutcome(
+            errorCode,
+            errorCode == null ? [] : errorArguments,
+            conflictsResolved,
+            errorCode == null ? timeProvider.GetUtcNow() : previous?.LastSyncedAt);
+    }
+
+    /// <summary>
+    /// Works the status out from every registered profile's last pass: an error if any failed (the first, in the
+    /// registry's order), the conflicts they resolved, and when the least recently synced of them last synced, or none
+    /// while any of them has yet to.
+    /// </summary>
+    private void ApplyOutcomes(SyncStatus target)
+    {
+        var current = registry.Profiles
+            .Select(p => outcomes.GetValueOrDefault(p.Name))
+            .OfType<ProfileOutcome>()
+            .ToList();
+        var failed = current.FirstOrDefault(o => o.ErrorCode != null);
+        target.State = failed == null ? SyncState.Idle : SyncState.Error;
+        target.LastErrorCode = failed?.ErrorCode;
+        target.LastErrorArguments = failed?.ErrorArguments ?? [];
+        target.ConflictsResolved = current.Sum(o => o.ConflictsResolved);
+        target.LastSyncedAt = current.Count == 0 || current.Any(o => o.LastSyncedAt == null)
+            ? null
+            : current.Min(o => o.LastSyncedAt);
+    }
+
     private void UpdateStatus(Action<SyncStatus> change)
     {
         var updated = status.Clone();
         change(updated);
         status = updated;
         StatusChanged?.Invoke(this, status.Clone());
+    }
+
+    /// <summary>
+    /// A profile's last pass.
+    /// </summary>
+    private sealed class ProfileOutcome(
+        string? errorCode,
+        IReadOnlyList<object> errorArguments,
+        int conflictsResolved,
+        DateTimeOffset? lastSyncedAt)
+    {
+        public string? ErrorCode { get; } = errorCode;
+
+        public IReadOnlyList<object> ErrorArguments { get; } = errorArguments;
+
+        public int ConflictsResolved { get; } = conflictsResolved;
+
+        public DateTimeOffset? LastSyncedAt { get; } = lastSyncedAt;
     }
 }

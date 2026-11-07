@@ -65,6 +65,54 @@ public class SyncSchedulerTests
     }
 
     [Fact]
+    public async Task GivenNoProfiles_WhenStartAsync_ThenConnectivityCheckedWithoutSyncing()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        using var sut = CreateSut();
+
+        // Act
+        await sut.StartAsync();
+
+        // Assert
+        Assert.Empty(calls);
+        mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Once);
+        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_WhenAppRegainsFocus_ThenConnectivityCheckedAgain()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        using var sut = CreateSut();
+        await sut.StartAsync();
+
+        // Act
+        mockBrowser.Raise(x => x.BecameVisible += null, EventArgs.Empty);
+        await WaitForAsync(() => mockConnectivity.Invocations.Count(i => i.Method.Name == nameof(IConnectivityService.CheckAsync)) >= 2);
+
+        // Assert
+        mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_AndConnectivityCheckThrows_WhenStartAsync_ThenStillStarted()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("probe failed"));
+        using var sut = CreateSut();
+
+        // Act
+        await sut.StartAsync();
+
+        // Assert
+        Assert.True(sut.IsStarted);
+    }
+
+    [Fact]
     public async Task GivenStarted_WhenStartAsyncAgain_ThenNothingHappens()
     {
         // Arrange
@@ -234,6 +282,78 @@ public class SyncSchedulerTests
 
         // Assert
         Assert.Equal(6, calls.Count);
+    }
+
+    [Fact]
+    public async Task GivenStarted_WhenSyncProfileAsync_ThenOnlyThatProfileIsSyncedUnderItsLock()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        calls.Clear();
+
+        // Act
+        await sut.SyncProfileAsync("photos");
+
+        // Assert
+        Assert.Equal(["lock sync-photos", "sync photos verify=False", "release"], calls);
+    }
+
+    [Fact]
+    public async Task GivenAPassOfTheProfileRunning_WhenSyncProfileAsync_ThenItWaitsForThatPassAndOneMore()
+    {
+        // Arrange
+        var gate = new TaskCompletionSource<SyncResult>();
+        var passes = 0;
+        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .Returns(() => ++passes == 2 ? gate.Task : Task.FromResult(new SyncResult()));
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        sut.RequestSync("notes");
+        time.Advance(options.ChangeDebounce);
+        await WaitForAsync(() => passes == 2);
+
+        // Act
+        var waiting = sut.SyncProfileAsync("notes");
+        var finishedEarly = waiting.IsCompleted;
+        gate.SetResult(new SyncResult());
+        await waiting;
+
+        // Assert
+        Assert.False(finishedEarly);
+        Assert.Equal(3, passes);
+    }
+
+    [Fact]
+    public async Task GivenOffline_WhenSyncProfileAsync_ThenNothingSyncs()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        connectivity = new ConnectivityStatus { IsOnline = false };
+        calls.Clear();
+
+        // Act
+        await sut.SyncProfileAsync("notes");
+
+        // Assert
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public async Task GivenNotStartedOrAnUnknownProfile_WhenSyncProfileAsync_ThenNothingHappens()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        await sut.SyncProfileAsync("notes");
+        await sut.StartAsync();
+        calls.Clear();
+        await sut.SyncProfileAsync("unknown");
+
+        // Assert
+        Assert.Empty(calls);
     }
 
     [Fact]

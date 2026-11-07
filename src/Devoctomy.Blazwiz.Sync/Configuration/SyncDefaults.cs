@@ -17,6 +17,12 @@ public static class SyncDefaults
     public const string ProtectedProfilesFolder = "profiles";
 
     /// <summary>
+    /// The name the storage chosen for the device is recorded under, among the profiles' storage states. Not a
+    /// profile name: profiles cannot be called this.
+    /// </summary>
+    public const string DeviceDefaultStorageName = ":device";
+
+    /// <summary>
     /// The IndexedDB database holding the sync index and the log, unless configured otherwise.
     /// </summary>
     public const string IndexDatabase = "sync";

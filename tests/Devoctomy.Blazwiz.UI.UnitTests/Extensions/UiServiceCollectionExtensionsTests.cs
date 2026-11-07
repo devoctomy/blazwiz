@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.UI.Components;
 using Devoctomy.Blazwiz.TestSupport;
 using Devoctomy.Blazwiz.Auth.Services;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
@@ -53,6 +54,9 @@ public class UiServiceCollectionExtensionsTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ChangePasswordViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ForgotPasswordViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<LanguageSettingsViewModel>());
+        Assert.IsType<ToastService>(scope.ServiceProvider.GetRequiredService<IToastService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ToastHostViewModel>());
+        Assert.Contains(typeof(ToastHost), scope.ServiceProvider.GetRequiredService<IShellRegistry>().GetComponents(ShellRegion.Overlays));
         Assert.IsType<CultureService>(scope.ServiceProvider.GetRequiredService<ICultureService>());
         Assert.Empty(scope.ServiceProvider.GetRequiredService<ICultureService>().SupportedCultures);
     }

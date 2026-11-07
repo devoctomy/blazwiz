@@ -34,5 +34,6 @@ public class BrowserServiceCollectionExtensionsTests
         Assert.IsType<NavigationService>(scope.ServiceProvider.GetRequiredService<INavigationService>());
         Assert.IsType<BrowserInteropService>(scope.ServiceProvider.GetRequiredService<IBrowserInteropService>());
         Assert.IsType<WebAuthnService>(scope.ServiceProvider.GetRequiredService<IWebAuthnService>());
+        Assert.IsType<ClipboardService>(scope.ServiceProvider.GetRequiredService<IClipboardService>());
     }
 }

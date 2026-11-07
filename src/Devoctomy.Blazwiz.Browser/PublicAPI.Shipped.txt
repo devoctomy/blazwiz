@@ -34,11 +34,17 @@ Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.FocusFirstInputAsync(Mi
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.GetPreferredThemeAsync() -> System.Threading.Tasks.Task<string!>!
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.SetDocumentLanguageAsync(string! language) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.SetThemeAsync(string! theme) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Browser.Services.ClipboardService
+Devoctomy.Blazwiz.Browser.Services.ClipboardService.ClipboardService(Microsoft.JSInterop.IJSRuntime! jsRuntime, System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.Browser.Services.ClipboardService.CopyAsync(string! text, System.TimeSpan? clearAfter = null) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Browser.Services.ClipboardService.Dispose() -> void
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.FocusFirstInputAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.GetPreferredThemeAsync() -> System.Threading.Tasks.Task<string!>!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.SetDocumentLanguageAsync(string! language) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.SetThemeAsync(string! theme) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IClipboardService
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IClipboardService.CopyAsync(string! text, System.TimeSpan? clearAfter = null) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService.GetItemAsync(string! key) -> System.Threading.Tasks.Task<string?>!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService.GetObjectAsync<T>(string! key) -> System.Threading.Tasks.Task<T?>!
@@ -67,4 +73,5 @@ Devoctomy.Blazwiz.Browser.Services.WebAuthnService.AuthenticateAsync(string! cre
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.RegisterAsync(string! username, string? userId) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult!>!
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.WebAuthnService(Microsoft.JSInterop.IJSRuntime! jsRuntime, Devoctomy.Blazwiz.Cryptography.Interfaces.IPrfKeyDerivator! prfKeyDerivator) -> void
 const Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/browser.js" -> string!
+const Devoctomy.Blazwiz.Browser.Services.ClipboardService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/clipboard.js" -> string!
 static Devoctomy.Blazwiz.Browser.Extensions.BrowserServiceCollectionExtensions.AddBlazwizBrowser(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

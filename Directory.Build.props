@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- One version for every Devoctomy.Blazwiz package and the template (docs/versioning.md). -->
-    <VersionPrefix>0.4.0</VersionPrefix>
+    <VersionPrefix>0.5.0</VersionPrefix>
     <Authors>Nick Pateman</Authors>
     <Company>Devoctomy</Company>
     <Copyright>Copyright (c) Nick Pateman</Copyright>

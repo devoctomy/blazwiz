@@ -1,0 +1,16 @@
+@using Devoctomy.Blazwiz.UI.Text
+@using Devoctomy.Blazwiz.UI.ViewModels
+@inherits MvvmComponentBase<ToastHostViewModel>
+@inject IStringLocalizer<UiText> Text
+
+<div class="bw-toasts" id="toasts" aria-live="polite" aria-atomic="false">
+    @foreach (var toast in ViewModel.Toasts)
+    {
+        <div class="bw-toast bw-toast-@toast.Tone.ToString().ToLowerInvariant()" role="status" data-toast="@toast.Id" @key="toast.Id">
+            <i class="bi @toast.Icon bw-toast-icon"></i>
+            <span class="bw-toast-message">@toast.Message</span>
+            <button type="button" class="btn-close btn-close-sm bw-toast-close" aria-label="@Text["Common.Close"]"
+                    @onclick="() => ViewModel.DismissCommand.Execute(toast.Id)"></button>
+        </div>
+    }
+</div>
