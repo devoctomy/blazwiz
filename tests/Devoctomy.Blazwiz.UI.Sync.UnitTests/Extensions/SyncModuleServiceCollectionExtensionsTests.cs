@@ -13,6 +13,7 @@ using Devoctomy.Blazwiz.UI.Extensions;
 using Devoctomy.Blazwiz.UI.Models;
 using Devoctomy.Blazwiz.UI.Shell;
 using Devoctomy.Blazwiz.UI.Shell.Interfaces;
+using Devoctomy.Blazwiz.Auth.Cognito.Extensions;
 using Devoctomy.Blazwiz.UI.Sync.Extensions;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services;
@@ -54,6 +55,7 @@ public class SyncModuleServiceCollectionExtensionsTests
         services.AddBlazwizUi(configuration);
 
         // Act
+        services.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
         services.AddBlazwizSyncModule(configuration, sync => sync.AddProfile(Profile, profile => profile.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("files/**/*")));
 
         // Assert
@@ -72,6 +74,7 @@ public class SyncModuleServiceCollectionExtensionsTests
         services.AddBlazwizUi(configuration);
 
         // Act
+        services.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
         var result = services.AddBlazwizSyncModule(configuration, sync => sync.AddProfile(Profile, profile => profile.UseKeyId(Guid.NewGuid().ToString("D"))
             .UseIndexedDbIndexStore(database: "sync", store: "files_index")
             .UseFileStores(stores => stores
@@ -128,6 +131,7 @@ public class SyncModuleServiceCollectionExtensionsTests
         var services = TestServices.Create();
 
         // Act
+        services.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
         services.AddBlazwizSyncModule(configuration, sync => { });
 
         // Assert
@@ -150,6 +154,7 @@ public class SyncModuleServiceCollectionExtensionsTests
         var services = TestServices.Create();
 
         // Act
+        services.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
         services.AddBlazwizSyncModule(configuration, sync => { });
 
         // Assert
@@ -167,6 +172,7 @@ public class SyncModuleServiceCollectionExtensionsTests
         var services = TestServices.Create();
 
         // Act
+        services.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
         services.AddBlazwizSyncModule(configuration, sync => { });
 
         // Assert

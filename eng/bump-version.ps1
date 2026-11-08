@@ -13,6 +13,10 @@ there. The script:
   3. Moves each package's public API from PublicAPI.Unshipped.txt to PublicAPI.Shipped.txt (applying *REMOVED* lines).
 Package validation needs nothing here: packing finds the latest release itself (eng/get-validation-baseline.ps1).
 
+If the current version has not been released (it is not on nuget.org as a plain version; betas do not count), no bump
+is needed, and the script offers to add the Unreleased changes to it instead: the version stays, the Unreleased notes
+join its changelog section, and the public API is moved. Answer n to bump anyway. -Version always bumps.
+
 It only changes files; review them with git diff, then commit.
 
 .EXAMPLE
@@ -59,14 +63,39 @@ if (-not $match.Success) {
 }
 
 $current = ConvertTo-Version $match.Groups[1].Value 'VersionPrefix in Directory.Build.props'
+
+# A version is released once it is on nuget.org as a plain version (betas are <version>-beta.<run>).
+function Test-Released([version]$Version) {
+    try {
+        $index = Invoke-RestMethod 'https://api.nuget.org/v3-flatcontainer/devoctomy.blazwiz.core/index.json'
+    }
+    catch {
+        throw "Could not read nuget.org to see whether $Version has been released ($($_.Exception.Message)). Try again, or pass -Version to bump regardless."
+    }
+
+    return @($index.versions) -contains "$Version"
+}
+
+$addToCurrent = $false
 if ($Version) {
     $next = ConvertTo-Version $Version '-Version'
+}
+elseif (-not (Test-Released $current)) {
+    Write-Host "No bump needed: $current has not been released yet."
+    $answer = Read-Host "Add the Unreleased changes to $current instead of bumping? [Y/n]"
+    if (-not $answer -or $answer -match '^[Yy]') {
+        $addToCurrent = $true
+        $next = $current
+    }
+    else {
+        $next = New-Object System.Version($current.Major, ($current.Minor + 1), 0)
+    }
 }
 else {
     $next = New-Object System.Version($current.Major, ($current.Minor + 1), 0)
 }
 
-if ($next -le $current) {
+if (-not $addToCurrent -and $next -le $current) {
     throw "The new version ($next) must be higher than the current one ($current)."
 }
 
@@ -78,23 +107,60 @@ if (-not $unreleased.Success) {
     throw 'CHANGELOG.md has no "## Unreleased" section to release.'
 }
 
-if ([regex]::IsMatch($changelog, "(?m)^## $([regex]::Escape("$next"))\s*$")) {
+$versionHeading = [regex]::Match($changelog, "(?m)^## $([regex]::Escape("$next"))[^\r\n]*\r?\n")
+if ($versionHeading.Success -and -not $addToCurrent) {
     throw "CHANGELOG.md already has a section for $next."
 }
 
+if ($addToCurrent -and -not $versionHeading.Success) {
+    throw "CHANGELOG.md has no section for $current to add the Unreleased changes to."
+}
+
+# The body of the section whose heading ends at $Start: up to the next "## " heading or the end.
+function Get-SectionBody([string]$Text, [int]$Start) {
+    $following = [regex]::Match($Text.Substring($Start), '(?m)^## ')
+    return $(if ($following.Success) { $Text.Substring($Start, $following.Index) } else { $Text.Substring($Start) })
+}
+
 $sectionStart = $unreleased.Index + $unreleased.Length
-$nextSection = [regex]::Match($changelog.Substring($sectionStart), '(?m)^## ')
-$sectionBody = if ($nextSection.Success) { $changelog.Substring($sectionStart, $nextSection.Index) } else { $changelog.Substring($sectionStart) }
-if (-not $sectionBody.Trim()) {
+$sectionBody = Get-SectionBody $changelog $sectionStart
+if (-not $sectionBody.Trim() -and -not $addToCurrent) {
     Write-Warning 'The Unreleased section of CHANGELOG.md is empty: the release will have no notes. Add them before releasing.'
 }
 
-Write-Text $propsPath ($props.Substring(0, $match.Index) + "<VersionPrefix>$next</VersionPrefix>" + $props.Substring($match.Index + $match.Length)) $props
-Write-Host "Version: $current -> $next"
+if ($addToCurrent) {
+    # Each "### Added" etc. of Unreleased joins the same heading of the version's section, or is added at its end.
+    $versionStart = $versionHeading.Index + $versionHeading.Length
+    $versionBody = Get-SectionBody $changelog $versionStart
+    $merged = $versionBody.TrimEnd() + "`n"
+    $parts = [regex]::Split($sectionBody.Trim(), '(?m)^(?=### )') | Where-Object { $_.Trim() }
+    foreach ($part in $parts) {
+        $heading = [regex]::Match($part, '^### [^\r\n]*').Value
+        $items = $part.Substring($heading.Length).Trim()
+        $existing = if ($heading) { [regex]::Match($merged, "(?m)^$([regex]::Escape($heading))[^\r\n]*\r?\n") } else { $null }
+        if ($existing -and $existing.Success) {
+            $after = $existing.Index + $existing.Length
+            $body = [regex]::Match($merged.Substring($after), '(?m)^### |\z')
+            $merged = $merged.Substring(0, $after + $body.Index).TrimEnd() + "`n" + $items + "`n`n" + $merged.Substring($after + $body.Index)
+        }
+        else {
+            $merged = $merged.TrimEnd() + "`n`n" + $part.Trim() + "`n"
+        }
+    }
 
-$changelogText = $changelog.Substring(0, $unreleased.Index) + "## Unreleased`n`n## $next`n" + $changelog.Substring($sectionStart)
-Write-Text $changelogPath $changelogText $changelog
-Write-Host "CHANGELOG.md: Unreleased is now $next."
+    $changelogText = $changelog.Substring(0, $sectionStart) + "`n" + $changelog.Substring($sectionStart + $sectionBody.Length, $versionStart - $sectionStart - $sectionBody.Length) + $merged.TrimEnd() + "`n`n" + $changelog.Substring($versionStart + $versionBody.Length)
+    Write-Text $changelogPath $changelogText $changelog
+    Write-Host "Version: $current (unchanged)"
+    Write-Host "CHANGELOG.md: the Unreleased changes are now under $current."
+}
+else {
+    Write-Text $propsPath ($props.Substring(0, $match.Index) + "<VersionPrefix>$next</VersionPrefix>" + $props.Substring($match.Index + $match.Length)) $props
+    Write-Host "Version: $current -> $next"
+
+    $changelogText = $changelog.Substring(0, $unreleased.Index) + "## Unreleased`n`n## $next`n" + $changelog.Substring($sectionStart)
+    Write-Text $changelogPath $changelogText $changelog
+    Write-Host "CHANGELOG.md: Unreleased is now $next."
+}
 
 # 3. The public API.
 foreach ($package in Get-ChildItem -Path (Join-Path $root 'src') -Directory) {

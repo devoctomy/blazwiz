@@ -38,8 +38,13 @@ public sealed class SyncStepDefinitions(TestContext testContext)
     [Given("device {string} has a binary file {string} of {int} bytes")]
     public Task GivenDeviceHasABinaryFile(string device, string key, int size)
     {
+        // Content that is not text and the same on every run: the engine never looks inside it.
         var bytes = new byte[size];
-        new Random(42).NextBytes(bytes);
+        for (var i = 0; i < bytes.Length; i++)
+        {
+            bytes[i] = (byte)((i * 31) + 7);
+        }
+
         return Device(device).TrackedFiles.WriteAsync(key, bytes);
     }
 

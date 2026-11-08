@@ -22,16 +22,22 @@
       "datatype": "text",
       "defaultValue": "",
       "displayName": "Title",
-      "description": "Shown in the browser tab, on the login page, in the PWA manifest and in the copyright. Defaults to the name. Avoid quotes."
+      "description": "Shown in the browser tab, on the login page, in the PWA manifest and in the copyright. Defaults to the name. Quotes, angle brackets, ampersands and backslashes are removed."
     },
     "Description": {
       "type": "parameter",
       "datatype": "text",
       "defaultValue": "Sign in to continue.",
       "displayName": "Description",
-      "description": "Shown under the title on the login page.",
+      "description": "Shown under the title on the login page. Quotes, angle brackets, ampersands and backslashes are removed."
+    },
+    "appDescription": {
+      "type": "derived",
+      "valueSource": "Description",
+      "valueTransform": "safeText",
       "replaces": "Sign in to continue.",
-      "onlyIf": [ { "after": "\"ApplicationDescription\": \"" } ]
+      "onlyIf": [ { "after": "\"ApplicationDescription\": \"" } ],
+      "description": "The description, made safe for the JSON string it goes into."
     },
     "IncludeTests": {
       "type": "parameter",
@@ -103,7 +109,13 @@
       "parameters": {
         "sourceVariableName": "Title",
         "fallbackVariableName": "name"
-      },
+      }
+    },
+    "appTitleText": {
+      "type": "derived",
+      "valueSource": "appTitle",
+      "valueTransform": "safeText",
+      "description": "The title, made safe for the JSON, HTML and C# strings it goes into.",
       "replaces": "MyApp",
       "onlyIf": [
         { "after": "\"ApplicationTitle\": \"" },
@@ -169,6 +181,11 @@
       "identifier": "replace",
       "pattern": "[^A-Z0-9]",
       "replacement": "_"
+    },
+    "safeText": {
+      "identifier": "replace",
+      "pattern": "[\"<>&\\\\]",
+      "replacement": ""
     }
   },
   "sources": [

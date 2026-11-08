@@ -108,7 +108,8 @@ public sealed class E2eIdleLock(IE2eProtectedProfileManager manager, ISyncProfil
 
     private void StartTimer(E2eKeyScope scope)
     {
-        if (registry.Find(scope.Id)?.Settings.IdleTimeout is not { } timeout)
+        // By key scope, not by name: a profile set up in code (e.g. "files") has a name that is not its scope id.
+        if (registry.Profiles.FirstOrDefault(p => p.KeyScope == scope)?.Settings.IdleTimeout is not { } timeout)
         {
             // No idle timeout: unlocked until locked or signed out.
             return;

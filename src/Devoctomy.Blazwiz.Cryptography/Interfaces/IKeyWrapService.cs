@@ -9,6 +9,11 @@ namespace Devoctomy.Blazwiz.Cryptography.Interfaces;
 public interface IKeyWrapService
 {
     /// <summary>
+    /// Gets the length in bytes of the keys it wraps with, and of the keys <see cref="CreateKey"/> makes by default.
+    /// </summary>
+    int KeySize { get; }
+
+    /// <summary>
     /// Makes a new key from a cryptographically secure random number generator.
     /// </summary>
     /// <param name="length">The length in bytes, by default the cipher's key size.</param>

@@ -212,7 +212,8 @@ public class S3SyncRemoteStore(IS3SyncTargetProvider targetProvider, ISyncPathMa
 
         if (target == null)
         {
-            throw new SyncAccessDeniedException(SyncErrorCodes.RemoteNoCredentials);
+            // Nothing set up to sync with, or set up but no credentials right now: callers treat them differently.
+            throw new SyncAccessDeniedException(targetProvider.IsConfigured ? SyncErrorCodes.RemoteNoCredentials : SyncErrorCodes.RemoteNotConfigured);
         }
 
         try

@@ -30,6 +30,7 @@ flowchart TB
         Body["Page content (the route)<br/>framework pages through PageHost"]
         Floating["Floating region: SyncPill 0"]
         Overlays["Overlays region: ToastHost 0,<br/>StorageMigrationOverlay 0"]
+        Update["AppUpdateIndicator (fixed, in both layouts;<br/>not a region)"]
     end
 
     subgraph SettingsPage["Settings page (settings)"]

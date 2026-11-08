@@ -93,7 +93,8 @@ public class NoteTreeService
         return key != null
             && key.StartsWith(root, StringComparison.Ordinal)
             && key.EndsWith(NoteExtension, StringComparison.OrdinalIgnoreCase)
-            && key.Length > root.Length + NoteExtension.Length;
+            && key.Length > root.Length + NoteExtension.Length
+            && HasPlainSegments(key[root.Length..]);
     }
 
     /// <inheritdoc/>
@@ -176,6 +177,21 @@ public class NoteTreeService
         var options = new List<FolderOption> { new FolderOption { Id = string.Empty, Name = topLevelName, Depth = 0 } };
         AddFolderOptions(list, null, 1, excluded, options);
         return options;
+    }
+
+    // A key can come from the URL, not just from the tree: every folder and the note need a real name, with no empty,
+    // "." or ".." segments that other layers might read as another path.
+    private static bool HasPlainSegments(string path)
+    {
+        foreach (var segment in path.Split('/'))
+        {
+            if (segment.Length == 0 || segment.Trim('.').Length == 0 || segment.Any(char.IsControl))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void AddFolders(string root, Dictionary<string, NoteEntry> entries, string folderKey, string owner, DateTimeOffset modifiedAt)

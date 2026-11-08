@@ -197,9 +197,9 @@ public class SyncProtectedProfileServiceTests
     [Fact]
     public async Task GivenNoSyncTarget_WhenDeleted_ThenItsKeysAndLocalFilesAreDeleted()
     {
-        // Arrange
+        // Arrange: nothing was ever synced, so there is nothing in the cloud to leave behind.
         var (sut, scope, remote) = await CreateDeletableProfileAsync();
-        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException(SyncErrorCodes.RemoteNoCredentials));
+        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException(SyncErrorCodes.RemoteNotConfigured));
 
         // Act
         await sut.DeleteAsync(scope);
@@ -208,6 +208,42 @@ public class SyncProtectedProfileServiceTests
         mockManager.Verify(x => x.DeleteAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
         remote.Verify(x => x.DeleteAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Null(registry.Find(scope.Id));
+    }
+
+    [Fact]
+    public async Task GivenASyncTargetButNoCredentialsRightNow_WhenDeleted_ThenThrowsAndNothingIsDeleted()
+    {
+        // Arrange: the files in the cloud would be left with nothing to decrypt them.
+        var (sut, scope, remote) = await CreateDeletableProfileAsync();
+        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException(SyncErrorCodes.RemoteNoCredentials));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<SyncAccessDeniedException>(() => sut.DeleteAsync(scope));
+        mockManager.Verify(x => x.DeleteAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.NotNull(registry.Find(scope.Id));
+    }
+
+    [Fact]
+    public async Task GivenAProfileMissingFromTheIndexWhoseKeysStillExist_WhenLoadedAgain_ThenItIsKeptAndPutBack()
+    {
+        // Arrange: two devices wrote the index at once and this profile's entry was lost; its keys are what make it real.
+        var kept = Guid.NewGuid().ToString("D");
+        var lost = Guid.NewGuid().ToString("D");
+        mockManager.SetupSequence(x => x.GetProfilesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new E2eProfileIndexEntry { Id = kept }, new E2eProfileIndexEntry { Id = lost }])
+            .ReturnsAsync([new E2eProfileIndexEntry { Id = kept }]);
+        mockManager.Setup(x => x.TryRestoreToIndexAsync(new E2eKeyScope(lost), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+
+        // Act
+        var scopes = await sut.LoadAsync();
+
+        // Assert
+        Assert.Equal(["notes", kept, lost], registry.Profiles.Select(p => p.Name));
+        Assert.Contains(new E2eKeyScope(lost), scopes);
+        mockManager.Verify(x => x.ForgetAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+        Assert.Empty(calls);
     }
 
     [Fact]
@@ -612,6 +648,47 @@ public class SyncProtectedProfileServiceTests
         Assert.True(registry.Find(own)!.Settings.AllowDeviceUnlock);
         Assert.Null(registry.Find(never)!.Settings.IdleTimeout);
         Assert.Equal(TimeSpan.FromMinutes(15), registry.Find(defaulted)!.Settings.IdleTimeout);
+    }
+
+    [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenLoaded_ThenItsOwnSettingsAreKept()
+    {
+        // Arrange: its keys are set, so it is in the index, with no idle timeout chosen; the defaults for created
+        // profiles differ from its settings in every way.
+        options.Profiles[0].Settings = new E2eProfileSettings { IdleTimeout = TimeSpan.FromMinutes(5), AllowDeviceUnlock = false, MinimumPassphraseLength = 20 };
+        options.ProfileDefaults.IdleTimeout = TimeSpan.FromMinutes(15);
+        options.ProfileDefaults.AllowDeviceUnlock = true;
+        options.ProfileDefaults.MinimumPassphraseLength = 12;
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = notes.Id }]);
+
+        // Act
+        await CreateSut().LoadAsync();
+
+        // Assert
+        var settings = registry.Find("notes")!.Settings;
+        Assert.Equal(TimeSpan.FromMinutes(5), settings.IdleTimeout);
+        Assert.False(settings.AllowDeviceUnlock);
+        Assert.Equal(20, settings.MinimumPassphraseLength);
+        mockIdle.Verify(x => x.Refresh(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenLoadedWithAnIdleTimeoutFromTheIndex_ThenOnlyItsIdleTimeoutChanges()
+    {
+        // Arrange
+        options.Profiles[0].Settings = new E2eProfileSettings { IdleTimeout = TimeSpan.FromMinutes(5), AllowDeviceUnlock = false, MinimumPassphraseLength = 20 };
+        options.ProfileDefaults.AllowDeviceUnlock = true;
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = notes.Id, IdleTimeoutSeconds = 60 }]);
+
+        // Act
+        await CreateSut().LoadAsync();
+
+        // Assert
+        var settings = registry.Find("notes")!.Settings;
+        Assert.Equal(TimeSpan.FromMinutes(1), settings.IdleTimeout);
+        Assert.False(settings.AllowDeviceUnlock);
+        Assert.Equal(20, settings.MinimumPassphraseLength);
+        mockIdle.Verify(x => x.Refresh(notes), Times.Once);
     }
 
     [Fact]

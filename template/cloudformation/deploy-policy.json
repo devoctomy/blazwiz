@@ -15,8 +15,9 @@
         "cloudformation:DescribeStackResources",
         "cloudformation:GetTemplate",
         "cloudformation:GetTemplateSummary",
-        "cloudformation:DeleteStack",
-        "cloudformation:SetStackPolicy"
+        "cloudformation:UpdateStack",
+        "cloudformation:ContinueUpdateRollback",
+        "cloudformation:DeleteStack"
       ],
       "Resource": [
         "arn:aws:cloudformation:*:ACCOUNT_ID:stack/myapp-*/*",
@@ -36,6 +37,8 @@
         "s3:PutBucketTagging",
         "s3:PutBucketPolicy",
         "s3:DeleteBucketPolicy",
+        "s3:PutBucketVersioning",
+        "s3:PutLifecycleConfiguration",
         "s3:Get*",
         "s3:List*"
       ],
@@ -47,7 +50,8 @@
       "Action": [
         "s3:GetObject",
         "s3:PutObject",
-        "s3:DeleteObject"
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion"
       ],
       "Resource": "arn:aws:s3:::myapp-*/*"
     },
@@ -74,6 +78,34 @@
       "Resource": "arn:aws:cloudfront::ACCOUNT_ID:*"
     },
     {
+      "Sid": "CloudTrail",
+      "Effect": "Allow",
+      "Action": [
+        "cloudtrail:CreateTrail",
+        "cloudtrail:UpdateTrail",
+        "cloudtrail:DeleteTrail",
+        "cloudtrail:StartLogging",
+        "cloudtrail:StopLogging",
+        "cloudtrail:PutEventSelectors",
+        "cloudtrail:GetEventSelectors",
+        "cloudtrail:GetTrail",
+        "cloudtrail:GetTrailStatus",
+        "cloudtrail:AddTags",
+        "cloudtrail:RemoveTags",
+        "cloudtrail:ListTags"
+      ],
+      "Resource": "arn:aws:cloudtrail:*:ACCOUNT_ID:trail/myapp-*"
+    },
+    {
+      "Sid": "CloudTrailList",
+      "Effect": "Allow",
+      "Action": [
+        "cloudtrail:DescribeTrails",
+        "cloudtrail:ListTrails"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "CognitoUserPoolCreate",
       "Effect": "Allow",
       "Action": "cognito-idp:CreateUserPool",
@@ -95,9 +127,11 @@
         "cognito-idp:TagResource",
         "cognito-idp:UntagResource",
         "cognito-idp:ListTagsForResource",
+        "cognito-idp:ListUsers",
         "cognito-idp:AdminGetUser",
         "cognito-idp:AdminCreateUser",
-        "cognito-idp:AdminSetUserPassword"
+        "cognito-idp:AdminSetUserPassword",
+        "cognito-idp:AdminInitiateAuth"
       ],
       "Resource": "arn:aws:cognito-idp:*:ACCOUNT_ID:userpool/*"
     },
@@ -118,6 +152,26 @@
         "cognito-identity:ListTagsForResource"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "UsersSecretsList",
+      "Effect": "Allow",
+      "Action": "secretsmanager:ListSecrets",
+      "Resource": "*"
+    },
+    {
+      "Sid": "UsersSecretsDelete",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:DeleteSecret"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "secretsmanager:ResourceTag/app": "myapp"
+        }
+      }
     },
     {
       "Sid": "IamAuthenticatedRole",

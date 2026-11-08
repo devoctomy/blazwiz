@@ -11,8 +11,8 @@ The infrastructure is in two stacks:
 | Script | What it does |
 | --- | --- |
 | `deploy.ps1` | Creates or updates the base stack, then the app's stack, publishes the portal to S3, invalidates CloudFront and sets up a test user in Cognito. |
-| `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials, per-user S3 access and per-user keys secrets. |
-| `remove.ps1` | Deletes the app's stack, then empties both buckets and deletes the base stack. |
+| `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials, per-user S3 access (and that other users' prefixes are refused) and per-user keys secrets. |
+| `remove.ps1` | Deletes the app's stack, the users' keys secrets, then empties the buckets (every version) and deletes the base stack, turning the user pool's deletion protection off first. |
 | `app.yaml` | The app's own CloudFormation template. |
 | `base-stack.ps1` | Finds the base stack and its scripts. |
 
@@ -23,7 +23,7 @@ All three scripts use the AWS CLI v2 with your normal credential chain. Pass `-A
 
 ## Minimum IAM policy for running the scripts
 
-`deploy.ps1` runs `aws cloudformation deploy` without a CloudFormation service role, so CloudFormation creates the resources using **your** credentials. The deploying identity needs permission for every resource type in the template, as well as for the S3 upload, the CloudFront invalidation and the Cognito user admin calls.
+`deploy.ps1` deploys the base stack through a change set (and the app's stack with `aws cloudformation deploy`) without a CloudFormation service role, so CloudFormation creates the resources using **your** credentials. The deploying identity needs permission for every resource type in the template, as well as for the S3 upload, the CloudFront invalidation, the Cognito user admin calls, and deleting the users' tagged secrets when the environment is removed.
 
 [`deploy-policy.json`](deploy-policy.json) covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and nothing more.
 Before you use it:
@@ -44,11 +44,12 @@ paste the file into the policy's JSON editor in the IAM console.
 
 Notes:
 
-- **You don't need permissions for some calls.** `sts:GetCallerIdentity` is always allowed. The Cognito sign-in calls in `test-auth.ps1` (`initiate-auth`, `get-id`, `get-credentials-for-identity`) are public APIs. The S3 and Secrets Manager checks in that script run as the signed-in test user, not as you.
+- **You don't need permissions for some calls.** `sts:GetCallerIdentity` is always allowed. The identity pool calls in `test-auth.ps1` (`get-id`, `get-credentials-for-identity`) are public APIs; the sign-in itself uses `admin-initiate-auth` as you, because the portal's client only allows SRP from the browser. The S3 and Secrets Manager checks in that script run as the signed-in test user, not as you.
+- **`UsersSecretsDelete` only matches secrets tagged `app=myapp`**, which the portal adds as it creates them. That is how `remove.ps1` deletes the users' keys secrets with the environment without being able to touch any other secret in the account.
 - **`IamPassRoleToIdentityPool` has no `iam:PassedToService` condition.** A condition of `cognito-identity.amazonaws.com` doesn't match when the role is attached to the identity pool, and the deploy fails at `IdentityPoolRoleAttachment`. It is limited by the `myapp-*` role name instead.
 - **`CustomDomainCertificate`** is only needed when you pass `-CustomDomainName` / `-CertificateArn`. You can drop it otherwise.
 - **IAM is the sensitive part.** The template creates an IAM role, so this identity can create and edit any role whose name starts with `myapp-`. In principle that lets it create a more powerful role for itself. For throwaway testing that is usually fine. For stronger isolation, use a dedicated sandbox account, or add a permissions boundary condition (`iam:PermissionsBoundary`) to `CreateRole` / `PutRolePolicy`.
-- **If a deploy fails with `AccessDenied`**, the stack events name the exact missing action. Run `aws cloudformation describe-stack-events --stack-name myapp-dev`, add that action to the policy and deploy again. A failed first deploy leaves the stack in `ROLLBACK_COMPLETE`. Delete it with `remove.ps1` before you retry.
+- **If a deploy fails with `AccessDenied`**, the stack events name the exact missing action. Run `aws cloudformation describe-stack-events --stack-name myapp-dev`, add that action to the policy and deploy again. A failed first deploy leaves the stack in `ROLLBACK_COMPLETE`. Delete it with `remove.ps1` before you retry. A failed update whose rollback also failed (`UPDATE_ROLLBACK_FAILED`, e.g. because the same permission was missing both ways) is recovered with `aws cloudformation continue-update-rollback --stack-name <stack>` once the policy has the action, then deployed again.
 
 ### Setting up the credentials
 

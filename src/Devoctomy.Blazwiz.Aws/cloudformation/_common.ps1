@@ -225,16 +225,55 @@ function ConvertTo-PlainText([Security.SecureString]$Secure) {
     }
 }
 
+function Protect-TempFile([string]$Path) {
+    <#
+    .SYNOPSIS
+    Lets only the current user read a temporary file, as some hold passwords or tokens. Best effort: a file that
+    cannot be protected is still used, and is deleted by the caller straight after.
+    #>
+    try {
+        if ($env:OS -eq 'Windows_NT') {
+            $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+            & icacls $Path /inheritance:r /grant:r "${user}:(R,W)" *> $null
+        }
+        else {
+            & chmod 600 $Path
+        }
+    }
+    catch {
+        Write-Verbose "Could not restrict access to ${Path}: $_"
+    }
+}
+
 function New-TempJsonFile($Value) {
     <#
     .SYNOPSIS
-    Writes a value as JSON to a temporary file and returns its path, for use with file:// arguments.
-    Avoids quoting problems when passing JSON on the command line. Delete the file when done.
+    Writes a value as JSON to a temporary file that only the current user can read, and returns its path, for use
+    with file:// arguments. Avoids quoting problems when passing JSON on the command line, and keeps secrets out of
+    process listings. Delete the file when done.
     #>
     $path = Join-Path ([IO.Path]::GetTempPath()) "blazwiz-$([Guid]::NewGuid().ToString('N')).json"
+    [IO.File]::WriteAllText($path, '', (New-Object Text.UTF8Encoding($false)))
+    Protect-TempFile $path
     $json = $Value | ConvertTo-Json -Depth 10 -Compress
     [IO.File]::WriteAllText($path, $json, (New-Object Text.UTF8Encoding($false)))
     return $path
+}
+
+function Remove-TempFile([string]$Path) {
+    <#
+    .SYNOPSIS
+    Overwrites and deletes a temporary file, so a secret it held is not left on disk.
+    #>
+    if ($Path -and (Test-Path $Path)) {
+        try {
+            [IO.File]::WriteAllBytes($Path, (New-Object byte[] ((Get-Item $Path).Length)))
+        }
+        catch {
+            Write-Verbose "Could not overwrite ${Path}: $_"
+        }
+        Remove-Item -Force $Path -ErrorAction SilentlyContinue
+    }
 }
 
 function Add-ContentSecurityPolicy {

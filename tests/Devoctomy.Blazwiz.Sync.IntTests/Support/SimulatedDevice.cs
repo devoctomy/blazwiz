@@ -1,6 +1,7 @@
 using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Sync;
+using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.InMemory;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -33,7 +34,7 @@ public sealed class SimulatedDevice
         Files = new InMemorySyncFileStore(user.Object, clock.Object);
         TrackedFiles = new TrackingSyncFileStore(Profile, Files, Index, user.Object, Mock.Of<ISyncScheduler>(), clock.Object, new EncryptedFileFormat(new BouncyCastleAesGcmAeadCipher()));
         SyncProfile = new SyncProfile(Profile, Files, Index, new S3SyncRemoteStore(targets.Object, matcher), matcher);
-        Engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), clock.Object, new EncryptedFileFormat(new BouncyCastleAesGcmAeadCipher()));
+        Engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), clock.Object, new EncryptedFileFormat(new BouncyCastleAesGcmAeadCipher()), new SyncOptions());
     }
 
     /// <summary>

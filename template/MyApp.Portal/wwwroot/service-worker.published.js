@@ -23,15 +23,46 @@ const base = "/";
 const baseUrl = new URL(base, self.origin);
 const manifestUrlList = self.assetsManifest.assets.map(asset => new URL(asset.url, baseUrl).href);
 
+// How many files are fetched at once while installing.
+const installConcurrency = 6;
+
 async function onInstall(event) {
     console.info('Service worker: Install');
 
-    // Fetch and cache all matching items from the assets manifest
-    const assetsRequests = self.assetsManifest.assets
+    // Fetch and cache all matching items from the assets manifest, telling the open pages how far it has got (the
+    // app update indicator in Devoctomy.Blazwiz.UI). A file already cached by an earlier, failed attempt at this version
+    // is kept: it was checked against the manifest's hash when fetched.
+    const assets = self.assetsManifest.assets
         .filter(asset => offlineAssetsInclude.some(pattern => pattern.test(asset.url)))
-        .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)))
-        .map(asset => new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' }));
-    await caches.open(cacheName).then(cache => cache.addAll(assetsRequests));
+        .filter(asset => !offlineAssetsExclude.some(pattern => pattern.test(asset.url)));
+    const cache = await caches.open(cacheName);
+    const queue = assets.slice();
+    let done = 0;
+
+    async function reportProgress() {
+        const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+        for (const client of clients) {
+            client.postMessage({ type: 'INSTALL_PROGRESS', done, total: assets.length });
+        }
+    }
+
+    async function cacheNext() {
+        for (let asset = queue.shift(); asset; asset = queue.shift()) {
+            const request = new Request(asset.url, { integrity: asset.hash, cache: 'no-cache' });
+            if (!await cache.match(request)) {
+                const response = await fetch(request);
+                if (!response.ok) {
+                    throw new Error(`Service worker: ${response.status} fetching ${asset.url}`);
+                }
+                await cache.put(request, response);
+            }
+            done++;
+            await reportProgress();
+        }
+    }
+
+    await reportProgress();
+    await Promise.all(Array.from({ length: Math.min(installConcurrency, assets.length) }, cacheNext));
 }
 
 async function onActivate(event) {

@@ -48,7 +48,8 @@ public interface IUserKeysStore
     Task<bool> TryCreateAsync(E2eKeyScope scope, string value, CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes the user's keys for a scope straight away, with no recovery window. Does nothing when there are none.
+    /// Deletes the user's keys for a scope. Does nothing when there are none. A store may keep them restorable by an
+    /// operator for a while (Secrets Manager does, for 7 days); the app treats them as gone.
     /// </summary>
     /// <param name="scope">The key scope.</param>
     /// <param name="ct">A cancellation token.</param>

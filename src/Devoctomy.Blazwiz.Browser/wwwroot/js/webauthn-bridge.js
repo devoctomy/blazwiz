@@ -26,6 +26,36 @@ window.webAuthnWrapper = (function() {
         return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
     }
 
+    function fromB64URL(str) {
+        const b64 = str.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - str.length % 4) % 4);
+        return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    }
+
+    // The authenticator data's flags byte (offset 32, after the RP id hash): bit 0 is user presence (UP), bit 2 is
+    // user verification (UV). The library returns the authenticator data base64url encoded.
+    function readFlags(authenticatorData) {
+        try {
+            const bytes = typeof authenticatorData === 'string' ? fromB64URL(authenticatorData) : new Uint8Array(authenticatorData);
+            const flags = bytes.length > 32 ? bytes[32] : 0;
+            return { up: (flags & 0x01) !== 0, uv: (flags & 0x04) !== 0 };
+        } catch {
+            return { up: false, uv: false };
+        }
+    }
+
+    // The PRF output as bytes, which Blazor hands to .NET as a byte array. The copy here is wiped once the result has
+    // been handed over: the result is serialised when the returned promise settles, before a timer can run.
+    function takePrfOutput(clientExtensionResults) {
+        const first = clientExtensionResults?.prf?.results?.first;
+        if (!first) {
+            return null;
+        }
+
+        const bytes = new Uint8Array(first);
+        setTimeout(() => bytes.fill(0), 0);
+        return bytes;
+    }
+
     function translateError(error) {
         const errorMsg = error?.message || error?.toString() || 'Unknown error';
 
@@ -71,7 +101,7 @@ window.webAuthnWrapper = (function() {
         }
     }
 
-    async function register(username, existingCredentialId = null) {
+    async function register(username) {
         try {
             checkLibrary();
 
@@ -82,7 +112,6 @@ window.webAuthnWrapper = (function() {
             const { startRegistration } = SimpleWebAuthnBrowser;
 
             const challenge = toB64URL(randomBytes(32));
-            const userIdBytes = enc.encode(username + '-' + Date.now());
 
             const optionsJSON = {
                 rp: {
@@ -90,7 +119,8 @@ window.webAuthnWrapper = (function() {
                     name: RP_NAME
                 },
                 user: {
-                    id: toB64URL(userIdBytes),
+                    // Random: the user handle is stored by the authenticator and must not identify the user.
+                    id: toB64URL(randomBytes(32)),
                     name: username,
                     displayName: username
                 },
@@ -106,13 +136,9 @@ window.webAuthnWrapper = (function() {
                 authenticatorSelection: {
                     residentKey: 'preferred',
                     requireResidentKey: false,
-                    userVerification: 'preferred'
+                    userVerification: 'required'
                 },
-                excludeCredentials: existingCredentialId ? [{
-                    id: existingCredentialId,
-                    type: 'public-key',
-                    transports: ['internal', 'usb', 'ble', 'nfc', 'hybrid']
-                }] : [],
+                excludeCredentials: [],
                 extensions: {
                     prf: {}
                 }
@@ -122,6 +148,7 @@ window.webAuthnWrapper = (function() {
             const clientExtensionResults = attResp.clientExtensionResults || {};
 
             let prfOutput = null;
+            let userVerified = false;
 
             // If PRF is enabled, perform a quick authentication to get PRF output
             if (clientExtensionResults.prf?.enabled) {
@@ -132,7 +159,7 @@ window.webAuthnWrapper = (function() {
                     const authOptionsJSON = {
                         challenge: authChallenge,
                         rpId: RP_ID,
-                        userVerification: 'preferred',
+                        userVerification: 'required',
                         allowCredentials: [
                             {
                                 id: attResp.id,
@@ -151,12 +178,8 @@ window.webAuthnWrapper = (function() {
                     };
 
                     const authResp = await startAuthentication({ optionsJSON: authOptionsJSON });
-                    const authExtResults = authResp.clientExtensionResults || {};
-
-                    if (authExtResults.prf?.results?.first) {
-                        const prfResult = new Uint8Array(authExtResults.prf.results.first);
-                        prfOutput = Array.from(prfResult).map(b => b.toString(16).padStart(2, '0')).join('');
-                    }
+                    userVerified = readFlags(authResp.response?.authenticatorData).uv;
+                    prfOutput = takePrfOutput(authResp.clientExtensionResults);
                 } catch (prfError) {
                     console.warn('Failed to get PRF output during registration:', prfError);
                     // Continue without PRF output - registration was still successful
@@ -169,6 +192,7 @@ window.webAuthnWrapper = (function() {
                 userID: optionsJSON.user.id,
                 username: username,
                 prfEnabled: clientExtensionResults.prf?.enabled || false,
+                userVerified: userVerified,
                 prfOutput: prfOutput,
                 error: null
             };
@@ -181,6 +205,8 @@ window.webAuthnWrapper = (function() {
                 userID: null,
                 username: null,
                 prfEnabled: false,
+                userVerified: false,
+                prfOutput: null,
                 error: translateError(error)
             };
         }
@@ -201,7 +227,7 @@ window.webAuthnWrapper = (function() {
             const optionsJSON = {
                 challenge,
                 rpId: RP_ID,
-                userVerification: 'preferred',
+                userVerification: 'required',
                 allowCredentials: [
                     {
                         id: credentialID,
@@ -220,20 +246,13 @@ window.webAuthnWrapper = (function() {
             };
 
             const asseResp = await startAuthentication({ optionsJSON });
-            const flags = asseResp.response?.authenticatorDataFlags || {};
-            const clientExtensionResults = asseResp.clientExtensionResults || {};
-
-            let prfOutput = null;
-            if (clientExtensionResults.prf?.results?.first) {
-                const prfResult = new Uint8Array(clientExtensionResults.prf.results.first);
-                prfOutput = Array.from(prfResult).map(b => b.toString(16).padStart(2, '0')).join('');
-            }
+            const flags = readFlags(asseResp.response?.authenticatorData);
 
             return {
                 success: true,
-                userPresent: flags.up || false,
-                userVerified: flags.uv || false,
-                prfOutput: prfOutput,
+                userPresent: flags.up,
+                userVerified: flags.uv,
+                prfOutput: takePrfOutput(asseResp.clientExtensionResults),
                 error: null
             };
         } catch (error) {

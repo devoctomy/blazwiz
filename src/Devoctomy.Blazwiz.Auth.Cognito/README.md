@@ -23,7 +23,9 @@ It reads the `AwsCognito` section of the configuration (`wwwroot/appsettings.jso
 }
 ```
 
-While no user pool is configured (local development), the placeholder sign in stays in use.
+While no user pool is configured, the placeholder sign in (any credentials) stays in use only where the app allows it:
+`AddBlazwizCognito(configuration, allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment())`. Anywhere else,
+missing settings stop the app from starting rather than letting anyone in.
 
 ## Versions
 

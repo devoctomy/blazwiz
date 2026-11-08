@@ -13,7 +13,10 @@
       "Resource": [
         "LogicalResourceId/UserPool",
         "LogicalResourceId/IdentityPool",
-        "LogicalResourceId/DataBucket"
+        "LogicalResourceId/DataBucket",
+        "LogicalResourceId/AuditLogBucket",
+        "LogicalResourceId/PortalDistribution",
+        "LogicalResourceId/UserPoolClient"
       ]
     }
   ]

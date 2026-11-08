@@ -6,10 +6,13 @@ Deploys a blazwiz app to AWS: infrastructure (CloudFormation), portal (S3 + Clou
 The base stack and this script are released with the framework (Devoctomy.Blazwiz.Aws). Apps run it through
 their own cloudformation/deploy.ps1, which passes the app's name, folder and portal project.
 
-Safe to run repeatedly. Each run:
+Safe to run repeatedly. An optional parameter that is not given (-CustomDomainName, -CertificateArn,
+-LocalDevOrigins, -UserPoolDeletionProtection, -AuditLogging) keeps the value the stack already has, so an upgrade
+run need not repeat them. Each run:
   1. Creates / updates the CloudFormation stack "<AppName>-<Environment>" through a change set. The changes
-     are listed first, replacements need confirming, and replacing the user pool, identity pool or data
-     bucket is refused unless -AllowStatefulReplacement is given (see stack-policy.json). Then the app's own
+     are listed first, replacements need confirming, and replacing the user pool, identity pool, data bucket,
+     audit log bucket, CloudFront distribution or app client is refused unless -AllowStatefulReplacement is
+     given (see stack-policy.json). Then the app's own
      stack "<AppName>-<Environment>-app" (-AppStackTemplate), which imports the base stack's outputs.
   2. Writes the stack outputs into wwwroot/appsettings.Production.json, publishes the portal and adds its
      Content-Security-Policy (see Add-ContentSecurityPolicy in _common.ps1).
@@ -58,17 +61,30 @@ param(
     # Password for the test user (min 12 chars, upper, lower and a number). Prompted for if needed and not supplied.
     [Security.SecureString]$TestUserPassword,
 
-    # Optional custom domain for the portal, e.g. app.example.com.
+    # Optional custom domain for the portal, e.g. app.example.com. Pass '' to remove one the stack has.
     [string]$CustomDomainName = '',
 
     # ACM certificate ARN (us-east-1) for the custom domain.
     [string]$CertificateArn = '',
 
+    # Origins allowed to call the data bucket besides the portal, for running the portal locally against this
+    # environment. Defaults to the portal's local development URLs for every environment but prod, and to none for prod.
+    [string[]]$LocalDevOrigins,
+
+    # Whether Cognito refuses to delete the user pool (and every user with it). auto: on for prod.
+    [ValidateSet('auto', 'ACTIVE', 'INACTIVE')]
+    [string]$UserPoolDeletionProtection = 'auto',
+
+    # Whether every read, write and delete of an object in the data bucket is recorded by CloudTrail. auto: on for prod.
+    [ValidateSet('auto', 'true', 'false')]
+    [string]$AuditLogging = 'auto',
+
     # Skip the CloudFormation deployment (just publish the portal / manage the user).
     [switch]$SkipInfrastructure,
 
-    # Let the deployment replace or remove resources protected by stack-policy.json (the user pool, identity
-    # pool and data bucket). This loses their users / data, only use it when that is intended.
+    # Let the deployment replace or remove resources protected by stack-policy.json: the user pool, identity pool,
+    # data bucket and audit log bucket (their users, data and logs would be lost), the CloudFront distribution (the
+    # portal's address would change) and the app client (every session would end). Only when that is intended.
     [switch]$AllowStatefulReplacement,
 
     # Skip publishing and uploading the portal.
@@ -107,6 +123,10 @@ if ($CustomDomainName -and -not $CertificateArn) {
     throw '-CertificateArn (an ACM certificate in us-east-1) is required when -CustomDomainName is set.'
 }
 
+if ($null -eq $LocalDevOrigins) {
+    $LocalDevOrigins = if ($Environment -eq 'prod') { @() } else { @('https://localhost:7090', 'http://localhost:5090') }
+}
+
 Write-Step "Checking AWS access"
 $identity = Initialize-AwsContext -Region $Region -AwsProfile $AwsProfile
 Confirm-Action -Force:$Force -Message "This will create / update stack '$stackName' and its resources in account $($identity.Account) ($script:AwsRegion)."
@@ -123,12 +143,35 @@ if (-not $SkipInfrastructure) {
     $changeSetName = "deploy-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
     Write-Step "Working out changes to stack '$stackName'"
-    $parametersFile = New-TempJsonFile @(
+    # An optional parameter that is not given keeps the value the stack already has (e.g. the custom domain), so an
+    # upgrade run does not have to repeat every setting. The first deployment, or a stack from before the parameter
+    # existed, gets the default.
+    $previousKeys = if ($changeSetType -eq 'UPDATE') { @($existingStack.Stacks[0].Parameters | ForEach-Object { $_.ParameterKey }) } else { @() }
+    $kept = @()
+    $parameters = @(
         @{ ParameterKey = 'AppName'; ParameterValue = $AppName }
         @{ ParameterKey = 'Environment'; ParameterValue = $Environment }
-        @{ ParameterKey = 'CustomDomainName'; ParameterValue = $CustomDomainName }
-        @{ ParameterKey = 'CertificateArn'; ParameterValue = $CertificateArn }
     )
+    $optional = [ordered]@{
+        CustomDomainName           = $CustomDomainName
+        CertificateArn             = $CertificateArn
+        LocalDevOrigins            = ($LocalDevOrigins -join ',')
+        UserPoolDeletionProtection = $UserPoolDeletionProtection
+        AuditLogging               = $AuditLogging
+    }
+    foreach ($key in $optional.Keys) {
+        if (-not $PSBoundParameters.ContainsKey($key) -and $previousKeys -contains $key) {
+            $parameters += @{ ParameterKey = $key; UsePreviousValue = $true }
+            $kept += $key
+        }
+        else {
+            $parameters += @{ ParameterKey = $key; ParameterValue = $optional[$key] }
+        }
+    }
+    if ($kept.Count -gt 0) {
+        Write-Info "Keeping the stack's current $($kept -join ', ')"
+    }
+    $parametersFile = New-TempJsonFile $parameters
     $tagsFile = New-TempJsonFile @(
         @{ Key = 'app'; Value = $AppName }
         @{ Key = 'environment'; Value = $Environment }
@@ -193,7 +236,7 @@ if (-not $SkipInfrastructure) {
         $blocked = @($replacing | Where-Object { $protected -contains $_ })
         if ($blocked.Count -gt 0 -and -not $AllowStatefulReplacement) {
             Invoke-Aws -Arguments @('cloudformation', 'delete-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName) | Out-Null
-            throw ("This deployment would replace or remove $($blocked -join ', '), losing users and / or their data. Nothing was changed. " +
+            throw ("This deployment would replace or remove $($blocked -join ', '): users, data or logs would be lost, or the portal's address or app client would change. Nothing was changed. " +
                 'Revert the template change, or re-run with -AllowStatefulReplacement if that is really intended.')
         }
         if ($replacing.Count -gt 0) {
@@ -378,18 +421,19 @@ if (-not $SkipTestUser -and $TestUserEmail) {
             Write-Ok "User created"
         }
 
-        $plainPassword = ConvertTo-PlainText $TestUserPassword
+        # Through a file only the current user can read, not the command line, so the password is not in process listings.
+        $passwordFile = $null
         try {
-            Invoke-Aws -Arguments @(
-                'cognito-idp', 'admin-set-user-password',
-                '--user-pool-id', $userPoolId,
-                '--username', $TestUserEmail,
-                '--password', $plainPassword,
-                '--permanent'
-            ) | Out-Null
+            $passwordFile = New-TempJsonFile @{
+                UserPoolId = $userPoolId
+                Username   = $TestUserEmail
+                Password   = (ConvertTo-PlainText $TestUserPassword)
+                Permanent  = $true
+            }
+            Invoke-Aws -Arguments @('cognito-idp', 'admin-set-user-password', '--cli-input-json', "file://$passwordFile") | Out-Null
         }
         finally {
-            $plainPassword = $null
+            Remove-TempFile $passwordFile
         }
         Write-Ok "Password set (permanent)"
     }

@@ -15,7 +15,7 @@ public class LocalStorageE2eProfileLabelStoreTests
     private readonly Dictionary<string, string> storage = [];
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
-    private readonly BouncyCastleAesGcmCryptoService crypto = new();
+    private readonly BouncyCastleAesGcmAeadCipher crypto = new();
     private readonly InMemoryDerivedKeyStore keys = new();
 
     public LocalStorageE2eProfileLabelStoreTests()
@@ -32,7 +32,7 @@ public class LocalStorageE2eProfileLabelStoreTests
         // Act & Assert
         Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(null!, mockUser.Object, crypto, keys)).ParamName);
         Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(mockLocalStorage.Object, null!, crypto, keys)).ParamName);
-        Assert.Equal("cryptoService", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(mockLocalStorage.Object, mockUser.Object, null!, keys)).ParamName);
+        Assert.Equal("cipher", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(mockLocalStorage.Object, mockUser.Object, null!, keys)).ParamName);
         Assert.Equal("keyStore", Assert.Throws<ArgumentNullException>(() => new LocalStorageE2eProfileLabelStore(mockLocalStorage.Object, mockUser.Object, crypto, null!)).ParamName);
     }
 
@@ -122,6 +122,22 @@ public class LocalStorageE2eProfileLabelStoreTests
         // Arrange
         SetLabelKey();
         storage[StorageKey] = stored;
+
+        // Act
+        var labels = await CreateSut().GetAllAsync();
+
+        // Assert
+        Assert.Empty(labels);
+    }
+
+    [Fact]
+    public async Task GivenLabelsKeptForOneUser_WhenReadAsAnotherUserWithTheSameKey_ThenNone()
+    {
+        // Arrange: the labels are bound to the user they were kept for.
+        SetLabelKey();
+        await CreateSut().SetAsync("p1", "Work");
+        storage[LocalStorageE2eProfileLabelStore.StorageKeyPrefix + "alice"] = storage[StorageKey];
+        mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync("alice");
 
         // Act
         var labels = await CreateSut().GetAllAsync();

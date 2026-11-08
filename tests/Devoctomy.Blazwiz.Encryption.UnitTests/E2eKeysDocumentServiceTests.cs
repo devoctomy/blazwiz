@@ -132,6 +132,27 @@ public class E2eKeysDocumentServiceTests
         Assert.Throws<InvalidDataException>(() => sut.Parse(json));
     }
 
+    [Theory]
+    [InlineData(nameof(KdfSettings.MemoryKib), E2eKeysDocumentService.MaxMemoryKib + 1)]
+    [InlineData(nameof(KdfSettings.MemoryKib), 7)]
+    [InlineData(nameof(KdfSettings.Iterations), 0)]
+    [InlineData(nameof(KdfSettings.Iterations), E2eKeysDocumentService.MaxIterations + 1)]
+    [InlineData(nameof(KdfSettings.Parallelism), 0)]
+    [InlineData(nameof(KdfSettings.Parallelism), E2eKeysDocumentService.MaxParallelism + 1)]
+    [InlineData(nameof(KdfSettings.KeyLength), 16)]
+    [InlineData(nameof(KdfSettings.KeyLength), 64)]
+    public async Task GivenKeyDerivationSettingsOutOfRange_WhenParsed_ThenThrowsInvalidData(string setting, int value)
+    {
+        // Arrange: the settings come from the document, so a tampered one must not exhaust memory or get as far as the
+        // cipher with the wrong key length.
+        using var keys = await sut.CreateAsync("correct horse");
+        typeof(KdfSettings).GetProperty(setting)!.SetValue(keys.Document.Kdf, value);
+        var json = sut.Serialize(keys.Document);
+
+        // Act & Assert
+        Assert.Throws<InvalidDataException>(() => sut.Parse(json));
+    }
+
     [Fact]
     public async Task GivenABadSalt_WhenUnwrapped_ThenThrowsInvalidData()
     {

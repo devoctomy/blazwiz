@@ -633,13 +633,13 @@ public class LoginViewModelTests
         sut.SignInOffline = true;
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
-        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
 
         // Assert
-        mockPasswordCrypto.Verify(x => x.DecryptAsync("enc"), Times.Once);
+        mockPasswordCrypto.Verify(x => x.DecryptAsync("enc", It.IsAny<string>()), Times.Once);
         mockAuth.Verify(x => x.SignInOfflineAsync("user@test.com", OfflineEntryReason.Chosen), Times.Once);
         mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
@@ -653,7 +653,7 @@ public class LoginViewModelTests
         sut.SignInOffline = true;
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
-        mockPasswordCrypto.Setup(x => x.DecryptAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("bad tag"));
+        mockPasswordCrypto.Setup(x => x.DecryptAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("bad tag"));
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
@@ -670,7 +670,7 @@ public class LoginViewModelTests
         var sut = CreateSut();
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
-        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
         mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = false, ServiceUnreachable = true });
 
         // Act
@@ -688,7 +688,7 @@ public class LoginViewModelTests
         var sut = CreateSut();
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
-        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
         mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = false, ErrorCode = AuthErrorCodes.SignInFailed });
 
         // Act
@@ -740,7 +740,7 @@ public class LoginViewModelTests
         var sut = CreateSut();
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
-        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
         mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = true });
 
         // Act
@@ -759,7 +759,7 @@ public class LoginViewModelTests
         var sut = CreateSut();
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
-        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("stale");
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("stale");
         mockAuth.Setup(x => x.LoginAsync("user@test.com", "stale")).ReturnsAsync(new LoginResult { Success = false });
 
         // Act
@@ -779,7 +779,7 @@ public class LoginViewModelTests
         var sut = CreateSut();
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
-        mockPasswordCrypto.Setup(x => x.DecryptAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("bad tag"));
+        mockPasswordCrypto.Setup(x => x.DecryptAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("bad tag"));
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
@@ -804,7 +804,7 @@ public class LoginViewModelTests
 
         // Assert
         Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
-        mockPasswordCrypto.Verify(x => x.DecryptAsync(It.IsAny<string>()), Times.Never);
+        mockPasswordCrypto.Verify(x => x.DecryptAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
@@ -947,9 +947,9 @@ public class LoginViewModelTests
         sut.Password = "pass";
         sut.ShowWebAuthnPrompt = true;
         mockWebAuthn
-            .Setup(x => x.RegisterAsync("user", null))
+            .Setup(x => x.RegisterAsync("user"))
             .ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, KeysDerived = true, CredentialID = "cred1", UserID = "uid1" });
-        mockPasswordCrypto.Setup(x => x.EncryptAsync("pass")).ReturnsAsync("encrypted");
+        mockPasswordCrypto.Setup(x => x.EncryptAsync("pass", "user")).ReturnsAsync("encrypted");
 
         // Act
         await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
@@ -972,7 +972,7 @@ public class LoginViewModelTests
         // Arrange
         var sut = CreateSut();
         sut.Username = "user";
-        mockWebAuthn.Setup(x => x.RegisterAsync("user", null)).ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = false });
+        mockWebAuthn.Setup(x => x.RegisterAsync("user")).ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = false });
 
         // Act
         await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
@@ -980,7 +980,7 @@ public class LoginViewModelTests
         // Assert
         Assert.NotNull(sut.WebAuthnErrorMessage);
         Assert.False(sut.IsWebAuthnProcessing);
-        mockPasswordCrypto.Verify(x => x.EncryptAsync(It.IsAny<string>()), Times.Never);
+        mockPasswordCrypto.Verify(x => x.EncryptAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
     }
 
@@ -990,14 +990,14 @@ public class LoginViewModelTests
         // Arrange
         var sut = CreateSut();
         sut.Username = "user";
-        mockWebAuthn.Setup(x => x.RegisterAsync("user", null)).ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, KeysDerived = false });
+        mockWebAuthn.Setup(x => x.RegisterAsync("user")).ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, KeysDerived = false });
 
         // Act
         await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
 
         // Assert
         Assert.NotNull(sut.WebAuthnErrorMessage);
-        mockPasswordCrypto.Verify(x => x.EncryptAsync(It.IsAny<string>()), Times.Never);
+        mockPasswordCrypto.Verify(x => x.EncryptAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
     }
 
@@ -1007,7 +1007,7 @@ public class LoginViewModelTests
         // Arrange
         var sut = CreateSut();
         sut.Username = "user";
-        mockWebAuthn.Setup(x => x.RegisterAsync(It.IsAny<string>(), null)).ThrowsAsync(new InvalidOperationException("webauthn error"));
+        mockWebAuthn.Setup(x => x.RegisterAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("webauthn error"));
 
         // Act
         await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
@@ -1173,7 +1173,7 @@ public class LoginViewModelTests
         AddOption(option, typeof(string));
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
-        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc")).ReturnsAsync("secret");
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
         var sut = CreateSut();
         sut.SignInOffline = true;
 

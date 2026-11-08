@@ -91,9 +91,7 @@ public class PasskeyKeysService(
             return null;
         }
 
-        var user = saved?.Users.FirstOrDefault(u =>
-            string.Equals(u.Email, session.Username, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(u.Email, session.Email, StringComparison.OrdinalIgnoreCase));
+        var user = saved?.Users.FirstOrDefault(u => u.IsFor(session.Username, session.Email));
         return string.IsNullOrEmpty(user?.WebAuthnCredential?.CredentialID) ? null : user.WebAuthnCredential.CredentialID;
     }
 }

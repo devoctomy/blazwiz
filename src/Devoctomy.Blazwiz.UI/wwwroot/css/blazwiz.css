@@ -912,6 +912,32 @@ code {
     }
 }
 
+/* Shown by AppUpdateIndicator while a new version downloads in the background, above the sync status pill's corner. */
+.app-update-progress {
+    position: fixed;
+    right: 1rem;
+    bottom: 3.75rem;
+    z-index: 1041;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    border-radius: 999px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 575.98px) {
+    .app-update-progress {
+        right: 0.75rem;
+        bottom: 3.5rem;
+    }
+}
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;

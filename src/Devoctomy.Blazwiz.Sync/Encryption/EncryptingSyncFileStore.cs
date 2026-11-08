@@ -15,7 +15,8 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// </summary>
 /// <remarks>
 /// It wraps the <see cref="TrackingSyncFileStore"/>, so the index records the stored (encrypted) content. Folder
-/// markers have no content, so they pass straight through.
+/// markers have no content, so they pass straight through; an empty file is reported as not encrypted, as a truncated
+/// one would be.
 /// </remarks>
 public class EncryptingSyncFileStore(
     ISyncFileStore inner,
@@ -36,9 +37,22 @@ public class EncryptingSyncFileStore(
     public async Task<SyncFile?> ReadAsync(string key, CancellationToken ct = default)
     {
         var file = await inner.ReadAsync(key, ct);
-        if (file == null || file.Content.Length == 0)
+        if (file == null)
         {
-            return file;
+            return null;
+        }
+
+        if (file.Content.Length == 0)
+        {
+            if (key.EndsWith('/'))
+            {
+                // A folder marker has no content.
+                return file;
+            }
+
+            // An encrypted file is never empty (it has a header and a tag), so this one was truncated: the one change
+            // to a file the authentication tag cannot catch.
+            throw new InvalidDataException($"'{key}' is empty, so it is not an encrypted file of this profile.");
         }
 
         if (!encryptedFileFormat.TryGetKeyId(file.Content, out var keyId))
