@@ -101,7 +101,7 @@ const Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.Sessi
 override Devoctomy.Blazwiz.Auth.Cognito.Services.BrowserHttpClientFactory.CreateHttpClient(Amazon.Runtime.IClientConfig! clientConfig) -> System.Net.Http.HttpClient!
 override Devoctomy.Blazwiz.Auth.Cognito.Services.BrowserHttpClientFactory.DisposeHttpClientsAfterUse(Amazon.Runtime.IClientConfig! clientConfig) -> bool
 override Devoctomy.Blazwiz.Auth.Cognito.Services.BrowserHttpClientFactory.UseSDKHttpClientCaching(Amazon.Runtime.IClientConfig! clientConfig) -> bool
-static Devoctomy.Blazwiz.Auth.Cognito.Extensions.CognitoServiceCollectionExtensions.AddBlazwizCognito(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Devoctomy.Blazwiz.Auth.Cognito.Extensions.CognitoServiceCollectionExtensions.AddBlazwizCognito(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, bool allowPlaceholderSignIn) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.IsConfigured(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsCognitoConfig? config) -> bool
 static readonly Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.TokenRefreshMargin -> System.TimeSpan
 static readonly Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAwsCredentialsProvider.RefreshMargin -> System.TimeSpan

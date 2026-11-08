@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.6.0
+
 ### Security
 From the security review of 2026-11-08 (`docs/reviews/security-review-2026-11-08-01-Fable-5.1.md`), every finding
 whose fix needs no functional change:

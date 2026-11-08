@@ -1,6 +1,1 @@
 #nullable enable
-Devoctomy.Blazwiz.Encryption.E2eProtectedProfileManager.TryRestoreToIndexAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager.TryRestoreToIndexAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-const Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.MaxIterations = 100 -> int
-const Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.MaxMemoryKib = 4194304 -> int
-const Devoctomy.Blazwiz.Encryption.E2eKeysDocumentService.MaxParallelism = 16 -> int
