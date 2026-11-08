@@ -1,8 +1,8 @@
 # Plan: static web assets compression failures and their workarounds
 
 **Date:** 2026-11-08
-**Status:** not started; decisions D1 to D4 to make
-**From:** the techdebt note `docs/plans/techdebt/static-web-assets-compression.md` (found 2026-11-03), which this plan
+**Status:** not started
+**From:** the techdebt note `docs/plans/techdebt/static-web-assets-compression.md` (removed, found 2026-11-03), which this plan
 replaces
 
 ## Goal
@@ -43,7 +43,7 @@ Workaround then: delete `src/*/obj/Release`, `src/*/bin/Release`, `template/*/ob
 | # | Where | What | Why, as written |
 |---|---|---|---|
 | W1 | `template/MyApp.Portal.UITests/TestBase.cs` (`StartDotnet`) | `MSBUILDDISABLENODEREUSE=1` for the portal's `dotnet build` and `dotnet run` | This failure. **Ships in every generated app** with `--tests` |
-| W2 | `.github/workflows/ci.yml` (job `env`) | `MSBUILDDISABLENODEREUSE: 1` for every build and test step | This failure (comment points at the techdebt note) |
+| W2 | `.github/workflows/ci.yml` (job `env`) | `MSBUILDDISABLENODEREUSE: 1` for every build and test step | This failure |
 | W3 | `.github/workflows/release.yml` (job `env`) | `MSBUILDDISABLENODEREUSE: 1` | No comment |
 | W4 | `templatepack/test-template.ps1` | `-m:1` on each generated app's build and on `dotnet pack` | No comment. Added in Phase 2 (`eb5c537`), the same day as the note, which mentions `-m:1` builds |
 | W5 | `AGENTS.md` (Build and test) | "build again with `MSBUILDDISABLENODEREUSE=1`" | This failure |
@@ -97,78 +97,61 @@ them in its own `obj`. Whether that path can fail is not known: in CI `test-temp
   `dotnet build template/MyApp.Portal -c Release`, `dotnet build blazwiz.slnx`. All passed.
 - Twice: touch both packages' initializers, `dotnet test template/MyApp.Portal.Application.UnitTests`, then
   `dotnet run --project template/MyApp.Portal -c Release --no-launch-profile`. Both built and started.
-- Not tried: the UI test suite itself without W1 (it needs a code change), Linux, SDK 10.0.402 or 10.0.403.
+- Not tried: the UI test suite itself without W1 (it needs a code change).
 
 **CI.** Of the last 40 runs of `ci.yml`, one failed, on a UI test (`GivenSyncPage_WhenOpened_...`), not a build.
 CI runs with W2, so it says nothing about the failure.
 
-**SDK.** `global.json` pins 10.0.401 with `rollForward: latestPatch`. 10.0.402 (2026-10-13) and 10.0.403
-(2026-10-25) are out; this machine has only 10.0.401, and `actions/setup-dotnet` installs the version in
-`global.json`.
+**SDK.** The plan uses the latest .NET 10 SDK. On 2026-11-03 this machine had 10.0.401, while 10.0.402 (2026-10-13)
+and 10.0.403 (2026-10-25) were already out: updating was not tried then. 10.0.403 was installed here on 2026-11-08, and
+the build and every test suite in `AGENTS.md` passed on it (with W1 on). `global.json` still pins 10.0.401 with
+`rollForward: latestPatch`.
 
 ## Requirements
 
 - **R1. Know whether it still happens.** Run the sequences that failed before, with the workarounds off, enough times
-  to say (at least 5 runs each), on Windows and Linux, on SDK 10.0.401 and the latest 10.0.4xx patch.
+  to say (at least 5 runs each), here, on the latest .NET 10 SDK. CI builds and tests on Linux on every push, so
+  once the workarounds are gone it covers Linux.
 - **R2. Know whether apps can hit it.** Build and test an app made by `test-template.ps1`, against the packages, with
   node reuse on and without `-m:1`, the way an app's developer would (UI tests included).
-- **R3. Every workaround has a reason.** Each of W1 to W5 is either removed, or kept with a comment saying what it
-  prevents and pointing at this plan or the upstream issue. None stays only because nobody checked.
-- **R4. Report an SDK bug.** If it reproduces, report it to dotnet/sdk with a minimal reproduction and a binlog, and
-  link the issue from the workarounds kept.
-- **R5. Apps are told.** If apps can hit it (R2), say what to do in the template's README (and `UPGRADING.md` from
-  1.0), and keep W1 in the template's `TestBase`.
-- **R6. Docs.** `AGENTS.md`, the comments in the workflows and `TestBase`, and `CHANGELOG.md` (if the template's
+- **R3. Every workaround has a reason.** Each of W1 to W5 is either removed, or kept because a test run showed it is
+  needed. None stays only because nobody checked.
+- **R6. Docs.** `AGENTS.md` and `CHANGELOG.md` (if the template's
   tests change) match what is decided.
 
 Changing `TestBase` changes template content only. Existing apps do not take template files on upgrade, so no
 upgrade test is needed for it (`AGENTS.md`, Upgrade tests).
 
-## Decisions to make
-
-- **D1. Which SDK.** Move `global.json` to 10.0.403 (and install it here), or stay on 10.0.401 and only test 10.0.403?
-- **D2. If it no longer reproduces:** remove the workarounds (faster builds, nothing hidden), or keep W2 and W3 in the
-  workflows as cheap insurance and remove only W1 (shipped to apps) and W5?
-- **D3. If it reproduces but not on a minimal project:** report it upstream anyway, with our binlog (the repository is
-  public), or only keep the workarounds?
-- **D4. Linux runs.** Run R1's Linux sequences in WSL here, or on a CI branch with W2 switched off (that needs the
-  maintainer to push the branch)?
-
 ## Work
 
 ### Phase 1: does it still happen (R1)
 
+- [ ] Use the latest .NET 10 SDK everywhere: `global.json` names `10.0.100` with `rollForward: latestFeature`, and both
+  workflows use `actions/setup-dotnet@v6`, which installs the newest SDK that rule allows. Done first, so every run
+  below uses it.
 - [ ] Switch W1 off in the working tree only (not committed), and run the UI tests as CI does: build, unit tests,
   integration tests, UI tests, with node reuse on. 5 runs, with a binlog of the portal's build (`-bl`) and
   `portal.log` kept for any failure.
 - [ ] The same with the repository at a different path casing (`E:\source\...`), to test the casing lead.
-- [ ] The same on the latest 10.0.4xx patch (D1).
-- [ ] The same on Linux (D4).
 - [ ] Record the results here, then restore W1.
 
 ### Phase 2: apps (R2)
 
 - [ ] Make an app with `test-template.ps1` (keep its work folder), then build and run its UI tests in reused nodes,
-  without `-m:1` and with `MSBUILDDISABLENODEREUSE` unset. 5 runs, Windows and Linux.
+  without `-m:1` and with `MSBUILDDISABLENODEREUSE` unset. 5 runs.
 - [ ] Find out why `-m:1` (W4) was added: run `test-template.ps1` without it and see what fails.
 
-### Phase 3: the cause and upstream (R4, only if Phase 1 or 2 reproduced it)
+### Phase 3: the workarounds (R3)
 
-- [ ] From the binlog: which items put the same compressed asset into `_CompressionCurrentProjectBuildAssets` twice,
-  and why only in a reused node.
-- [ ] A minimal reproduction: a Razor class library with a `wwwroot/<Id>.lib.module.js`, a WebAssembly app
-  referencing it, a test project, and the build sequence.
-- [ ] Report to dotnet/sdk (D3), linking aspnetcore#64512, sdk#56235 and sdk#54749.
+A workaround for a failure that no longer happens is removed. Each of these is removed unless a run in phase 1 or 2
+failed without it:
 
-### Phase 4: the workarounds (R3, R5, D2)
+- [ ] W1 (`TestBase`, shipped to apps).
+- [ ] W2 and W3 (workflows).
+- [ ] W4 (`-m:1`).
+- [ ] W5 (`AGENTS.md`).
 
-- [ ] W1 (`TestBase`, shipped to apps): keep with its reason and the issue link, or remove.
-- [ ] W2 and W3 (workflows): keep with a comment pointing at this plan or the issue, or remove.
-- [ ] W4 (`-m:1`): keep with the reason Phase 2 found, or remove.
-- [ ] W5 (`AGENTS.md`): reword to what is true now, or remove.
-- [ ] If apps can hit it: the template's README says what to do.
-
-### Phase 5: proving it and docs (R6)
+### Phase 4: proving it and docs (R6)
 
 - [ ] Everything in `AGENTS.md`'s Build and test passes, including the UI tests and
   `./templatepack/test-template.ps1 -SkipRepositoryTests`, with the workarounds as decided.

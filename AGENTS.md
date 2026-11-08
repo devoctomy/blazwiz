@@ -30,7 +30,7 @@ blazwiz is a framework for Blazor WebAssembly PWAs that sign in with AWS Cognito
 to end encryption, and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
 that creates an app built on them.
 
-Plans are in `docs/plans`: active plans as `docs/plans/<date>-<topic>-plan.md`, ideas not yet planned in
+Plans are in `docs/plans`: active plans in `docs/plans/active` (`<date>-<topic>-plan.md`), ideas not yet planned in
 `docs/plans/backlog`, and known technical debt in `docs/plans/techdebt`. Before working on an active plan, read it,
 and tick off its checkboxes as items are completed.
 
@@ -145,7 +145,7 @@ These are the steps CI runs (`.github/workflows/ci.yml`). Test namespaces must c
   Never edit `PublicAPI.Shipped.txt`; the maintainer moves entries there at a release.
 - If a build fails in the static web assets compression step ("An item with the same key has already been added"),
   the cause is usually MSBuild node reuse: build again with `MSBUILDDISABLENODEREUSE=1`. The UI tests already start
-  the portal that way. See `docs/plans/2026-11-08-static-web-assets-compression-plan.md`.
+  the portal that way. See `docs/plans/active/2026-11-08-static-web-assets-compression-plan.md`.
 - `./templatepack/test-template.ps1` packs the packages (with a version unique to the run) and the template, creates
   apps with awkward names and every option, and checks each one has no `MyApp` left, builds against the packages and
   passes its tests. Run it after changing packages' public surface, template content or `.template.config/`.
