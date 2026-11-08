@@ -8,6 +8,15 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.7.1
+
+### Fixed
+- `deploy.ps1` could not apply the stack policy to an environment without audit logging (every environment but prod,
+  by default): the policy names the audit log bucket, and CloudFormation refuses a policy naming a resource the stack
+  does not have (`Unknown logical id 'LogicalResourceId/AuditLogBucket'`). The stack kept the policy from before 0.7.0,
+  so the CloudFront distribution and the app client were not protected. The policy is now applied with only the
+  protected resources the stack has. Deploy to pick it up.
+
 ## 0.7.0
 
 ### Added
