@@ -89,6 +89,9 @@ And the review's smaller functional changes:
 - The minimum IAM policy in the template's `cloudformation/README.md` lacked `cloudformation:GetTemplateSummary`, which
   deploying the app's own stack (`aws cloudformation deploy`) needs. With that policy, a deploy updated the base stack,
   then failed with AccessDenied on the app's stack. Add the action to policies made from the README.
+- Unlocking a profile with the passphrase and "unlock with biometrics from now on" ticked asks for the passkey first,
+  then unlocks. Before, the profile unlocked and the biometric prompt appeared afterwards, as if unrelated. A wrong
+  passphrase does not prompt again on the retry: the device key derived the first time is kept.
 
 ### Changed
 - `deploy.ps1` keeps the stack's current value of any optional parameter it is not given (`-CustomDomainName`,
