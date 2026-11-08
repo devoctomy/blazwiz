@@ -20,6 +20,10 @@ packed. Published versions are `MAJOR.MINOR.PATCH` for a release and `MAJOR.MINO
    It sets the version, turns the `Unreleased` section of `CHANGELOG.md` into the new version's section (and starts
    a new `Unreleased`), and moves each package's public API from `PublicAPI.Unshipped.txt` to
    `PublicAPI.Shipped.txt`. Review the changes, and for a major version add its breaking changes to `UPGRADING.md`.
+
+   If the current version has not been released yet (it is not on nuget.org; betas don't count), the script says no
+   bump is needed and offers to add the `Unreleased` changes to it instead: the version stays, the notes join its
+   section, and the public API is moved. Answer `n` to bump anyway; `-Version` always bumps.
 2. Push, let CI pass, and merge to main.
 3. Run the Release workflow (Run workflow) on main.
 
