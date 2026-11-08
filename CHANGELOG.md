@@ -8,6 +8,15 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+### Fixed
+- The minimum IAM policy in the template's `cloudformation/README.md` lacked `cloudformation:GetTemplateSummary`, which
+  deploying the app's own stack (`aws cloudformation deploy`) needs. With that policy, a deploy updated the base stack,
+  then failed with AccessDenied on the app's stack. Add the action to policies made from the README.
+
+### Changed
+- The template's minimum IAM policy for deploying is now a file, `cloudformation/deploy-policy.json`, in place of a block
+  in `cloudformation/README.md`, which shows how to create the policy from it.
+
 ## 0.5.0
 
 ### Added

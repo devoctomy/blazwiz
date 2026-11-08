@@ -13,6 +13,7 @@
     <File Path="cloudformation/app.yaml" />
     <File Path="cloudformation/base-stack.ps1" />
     <File Path="cloudformation/deploy.ps1" />
+    <File Path="cloudformation/deploy-policy.json" />
     <File Path="cloudformation/README.md" />
     <File Path="cloudformation/remove.ps1" />
     <File Path="cloudformation/test-auth.ps1" />
