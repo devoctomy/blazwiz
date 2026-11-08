@@ -4,8 +4,7 @@ A framework for **Blazor WebAssembly PWAs** that sign in with **AWS Cognito**, s
 to end encrypted) and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
 that creates an app built on them, so apps take framework upgrades by changing one version number.
 
-> **Status:** in development, unreleased (0.x). The restructure into packages is planned and tracked in
-> [docs/reviews/2026-11-03-upgradeability-review.md](docs/reviews/2026-11-03-upgradeability-review.md).
+> **Status:** in development, unreleased (0.x).
 
 ## Repository layout
 

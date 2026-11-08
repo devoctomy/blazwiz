@@ -30,9 +30,9 @@ blazwiz is a framework for Blazor WebAssembly PWAs that sign in with AWS Cognito
 to end encryption, and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
 that creates an app built on them.
 
-The restructure from "a template you fork" into "a framework you upgrade" is planned in
-`docs/reviews/2026-11-03-upgradeability-review.md`, with the findings (U*, T*) and decisions (D*). Read it before
-structural work, and tick off its checkboxes as items are completed.
+Plans are in `docs/plans`: active plans as `docs/plans/<date>-<topic>-plan.md`, ideas not yet planned in
+`docs/plans/backlog`, and known technical debt in `docs/plans/techdebt`. Before working on an active plan, read it,
+and tick off its checkboxes as items are completed.
 
 - `src/Devoctomy.Blazwiz.<Package>`: the packages. `Core` (app identity, storage names, offline mode, text, coded
   errors), `Cryptography`, `Encryption` (E2E keys), `Browser` (storage, theme, navigation, WebAuthn and their JS),
