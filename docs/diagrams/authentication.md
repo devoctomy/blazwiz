@@ -288,9 +288,10 @@ sequenceDiagram
     Layout->>Life: SignedOutAsync()
     Life->>AwsH: OnSignedOutAsync()
     AwsH->>Mem: credentialsProvider.Clear(), cached = null
+    Life->>Mem: DerivedKeySessionHandler: DerivedKeyStore.Clear() (zeroes the PRF-derived keys and anything left)
     Layout->>Login: Navigate to /login
     Login->>Auth: GetCurrentUserAsync() returns null
-    Login->>Mem: DerivedKeyStore.Clear() (zeroes the PRF-derived keys and anything left)
+    Login->>Mem: DerivedKeyStore.Clear() again (nobody signed in, so no keys)
     Login->>LS: GET myapp_saved_users (show remembered users)
     Note over LS: Files, sync index, event log and this device's key copies stay, partitioned by user
 ```

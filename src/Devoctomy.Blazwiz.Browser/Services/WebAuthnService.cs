@@ -7,8 +7,8 @@ using Microsoft.JSInterop;
 namespace Devoctomy.Blazwiz.Browser.Services;
 
 /// <summary>
-/// Implementation of <see cref="IWebAuthnService"/> via browser JavaScript interop. The PRF output goes straight to the
-/// <see cref="IPrfKeyDerivator"/> and is wiped, so nothing else in the app sees it.
+/// Implementation of <see cref="IWebAuthnService"/> via browser JavaScript interop. The PRF output arrives as bytes,
+/// goes straight to the <see cref="IPrfKeyDerivator"/> and is wiped, so nothing else in the app sees it.
 /// </summary>
 public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDerivator)
     : IWebAuthnService
@@ -17,9 +17,9 @@ public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDeriva
     private readonly IPrfKeyDerivator prfKeyDerivator = prfKeyDerivator ?? throw new ArgumentNullException(nameof(prfKeyDerivator));
 
     /// <inheritdoc/>
-    public async Task<WebAuthnRegisterResult> RegisterAsync(string username, string? userId)
+    public async Task<WebAuthnRegisterResult> RegisterAsync(string username)
     {
-        var result = await jsRuntime.InvokeAsync<JsRegisterResult>("webAuthnWrapper.register", username, userId);
+        var result = await jsRuntime.InvokeAsync<JsRegisterResult>("webAuthnWrapper.register", username);
         return new WebAuthnRegisterResult
         {
             Success = result.Success,
@@ -46,14 +46,13 @@ public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDeriva
         };
     }
 
-    private bool DeriveKeys(string? prfOutputHex)
+    private bool DeriveKeys(byte[]? prfOutput)
     {
-        if (string.IsNullOrEmpty(prfOutputHex))
+        if (prfOutput == null || prfOutput.Length == 0)
         {
             return false;
         }
 
-        var prfOutput = Convert.FromHexString(prfOutputHex);
         try
         {
             prfKeyDerivator.DeriveKeys(prfOutput);
@@ -79,7 +78,7 @@ public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDeriva
 
         public bool PrfEnabled { get; set; }
 
-        public string? PrfOutput { get; set; }
+        public byte[]? PrfOutput { get; set; }
     }
 
     private sealed class JsAuthenticateResult
@@ -92,6 +91,6 @@ public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDeriva
 
         public bool UserVerified { get; set; }
 
-        public string? PrfOutput { get; set; }
+        public byte[]? PrfOutput { get; set; }
     }
 }

@@ -1,1 +1,10 @@
 #nullable enable
+Devoctomy.Blazwiz.Cryptography.AeadKeyWrapService.KeySize.get -> int
+Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService.KeySize.get -> int
+*REMOVED*Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmCryptoService
+*REMOVED*Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmCryptoService.BouncyCastleAesGcmCryptoService() -> void
+*REMOVED*Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmCryptoService.DecryptAsync(System.IO.Stream! inputStream, System.IO.Stream! outputStream, string? base64Key) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmCryptoService.EncryptAsync(System.IO.Stream! inputStream, System.IO.Stream! outputStream, string? base64Key) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService
+*REMOVED*Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService.DecryptAsync(System.IO.Stream! inputStream, System.IO.Stream! outputStream, string? base64Key) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService.EncryptAsync(System.IO.Stream! inputStream, System.IO.Stream! outputStream, string? base64Key) -> System.Threading.Tasks.Task!

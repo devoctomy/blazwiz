@@ -8,6 +8,56 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+### Security
+From the security review of 2026-11-08 (`docs/reviews/security-review-2026-11-08-01-Fable-5.1.md`), every finding
+whose fix needs no functional change:
+- Idle auto-lock now applies to profiles set up in code, such as the template's `files`: `E2eIdleLock` looked them up
+  by name with their key scope id, so only profiles users create were ever locked for being idle (SR2).
+- The passkey-derived keys (`rememberme`, `e2e-kek`, `e2e-labels`) are wiped on sign out by a new Auth session
+  lifecycle handler, `DerivedKeySessionHandler`, not only by the framework's login page, so an app with its own login
+  page no longer keeps them in memory (SR9).
+- The WebAuthn bridge hands the PRF output to .NET as bytes (wiped on both sides) instead of a hex string, reports the
+  real user presence and verification flags from the authenticator data (they were always false), and gives new
+  passkeys a random user handle instead of one holding the email address. `IWebAuthnService.RegisterAsync` lost its
+  unused `userId` parameter (SR10, SR32, part of SR1).
+- Remembered passwords and profile labels are encrypted with `IAeadCipher` and bound to the user they belong to
+  (`IPasswordCryptoService.EncryptAsync`/`DecryptAsync` take the email), in place of the stream-based `ICryptoService`,
+  which is removed with `BouncyCastleAesGcmCryptoService`. Passwords remembered and labels kept by earlier builds are
+  dropped; signing in with the password offers the passkey again (SR24).
+- A profile's master key wrapped for device unlock is bound to the profile, so one moved to another profile's entry
+  does not unwrap. Device unlock set up by earlier builds falls back to the passphrase (SR23).
+- A keys document's Argon2id settings are checked against upper bounds (`E2eKeysDocumentService.MaxMemoryKib`,
+  `MaxIterations`, `MaxParallelism`) and the cipher's key size (`IKeyWrapService.KeySize`) when parsed, so a tampered
+  document cannot exhaust the browser's memory (SR30).
+- An empty file in an encrypted profile is reported as not encrypted instead of read as empty content; folder markers
+  still pass through (SR19).
+- Loading the profile index no longer replaces a code-defined profile's whole settings with the defaults for created
+  profiles; only an idle timeout chosen for the profile is taken from the index (SR18).
+- The conflict resolver ignores a remote edit time more than `RemoteObjectInfo.MaxClockSkew` (5 minutes) after the
+  object's upload time, so S3-side metadata cannot make a version win every conflict (SR22).
+- `GlobSyncPathMatcher` never matches keys with empty, `.` or `..` segments or backslashes, which the glob library would
+  normalise and the stores would not (SR36).
+- The template's note editor refuses note keys from the URL with such segments or control characters (SR33).
+- `ChangePasswordViewModel` and `PasskeyKeysService` match the saved user with one rule, `SavedUser.IsFor` (SR42).
+- `Login.Passkey.Question` is plain text rendered with encoding, not markup (SR41).
+- The base stack: the data bucket is versioned (old versions kept 30 days), the user pool has deletion protection in
+  `prod` (`UserPoolDeletionProtection`), a CloudTrail trail records data bucket access in `prod` (`AuditLogging`), email
+  changes need verification and the app client's attributes are limited, the public client no longer allows
+  `USER_PASSWORD_AUTH` (`test-auth.ps1` signs in with the admin flow as the deployer), local development origins are
+  only in the data bucket's CORS where asked (`LocalDevOrigins`, none for `prod`), and the users' keys secrets are
+  tagged `app=<AppName>` so `remove.ps1` deletes them with the environment. The scripts keep passwords off the command
+  line, `test-auth.ps1` also checks that another user's prefix cannot be read or listed and no longer writes the real
+  index, and the deployer policy gained the actions these need (SR4, SR11, SR12, SR13, SR14, SR15, SR16, SR17 in part,
+  SR48, SR49). Deploy again after upgrading.
+- GitHub Actions are pinned to commits (Dependabot keeps them current), the branch name reaches the release scripts
+  through the environment, and checkouts do not keep the job token (SR7, SR25, SR26).
+- `templatepack/test-template.ps1` refuses a `-WorkRoot` that already exists instead of deleting it on failure (SR8).
+- Every .NET security analyzer rule is on (`AnalysisModeSecurity` `All`) (SR27).
+- `.gitignore` covers more secret-bearing files; a root `nuget.config` restores from nuget.org only; `LICENSE`,
+  `THIRD-PARTY-NOTICES.md` and the vendored libraries' licence files are added (SR28, SR44, SR45).
+- The template removes quotes, angle brackets, ampersands and backslashes from `--title` and `--description`, which
+  would have broken the generated app's JSON, HTML and tests (SR29).
+
 ### Fixed
 - The minimum IAM policy in the template's `cloudformation/README.md` lacked `cloudformation:GetTemplateSummary`, which
   deploying the app's own stack (`aws cloudformation deploy`) needs. With that policy, a deploy updated the base stack,

@@ -6,15 +6,16 @@ Verifies a deployed blazwiz app's environment end to end, using the same flow th
 Checks, and reports PASS / FAIL for each:
   - The portal is served over HTTPS, deep links fall back to index.html, and the deployed
     appsettings.Production.json points at this stack's user pool.
-  - The user can sign in to the Cognito user pool.
+  - The user can sign in to the Cognito user pool (with the admin flow, as your credentials: the portal's client
+    only allows SRP from the browser).
   - The ID token can be exchanged for temporary AWS credentials via the identity pool.
-  - Those credentials can read / write / list the user's own prefix in the data bucket,
-    and are denied access to anyone else's prefix.
-  - They can create, read and delete a profile's keys secret (<sub>/keys/<id>), read and write the index
-    (<sub>/keys/index), and are denied another user's secrets.
+  - Those credentials can read / write / list the user's own prefix in the data bucket, and are denied writing,
+    reading and listing anyone else's prefix, and listing the whole bucket.
+  - They can create (tagged, as the portal does), read and delete a profile's keys secret (<sub>/keys/<id>), read the
+    index (<sub>/keys/index) if there is one, and are denied another user's secrets.
 
 It creates a small test object under the user's own prefix and a test profile secret, and deletes both again. The
-index is written back unchanged, or deleted again if it did not exist.
+user's real index is only read, never written.
 Exits with code 1 if any check fails.
 
 .EXAMPLE
@@ -44,12 +45,6 @@ function Get-TokenSubject([string]$Token) {
     $payload = $Token.Split('.')[1].Replace('-', '+').Replace('_', '/')
     $payload += '=' * ((4 - $payload.Length % 4) % 4)
     ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json).sub
-}
-
-function New-TempTextFile([string]$Text) {
-    $path = Join-Path ([IO.Path]::GetTempPath()) "$([Guid]::NewGuid().ToString('N')).txt"
-    [IO.File]::WriteAllText($path, $Text)
-    $path
 }
 
 function Test-Check([string]$Name, [scriptblock]$Check) {
@@ -119,15 +114,22 @@ $loginsFile = $null
 
 try {
     Test-Check "User pool sign-in as $Email" {
+        # The portal's client only allows SRP from the browser, so the command line signs in with the admin flow, as
+        # your credentials (cognito-idp:AdminInitiateAuth). The password goes through a file only you can read.
         $authFile = New-TempJsonFile @{ USERNAME = $Email; PASSWORD = (ConvertTo-PlainText $Password) }
         $tempFiles.Add($authFile)
-        $auth = Invoke-Aws -Json -NoProfile -Arguments @(
-            'cognito-idp', 'initiate-auth',
-            '--auth-flow', 'USER_PASSWORD_AUTH',
-            '--client-id', $outputs['UserPoolClientId'],
-            '--auth-parameters', "file://$authFile"
-        )
-        Remove-Item -Force $authFile
+        try {
+            $auth = Invoke-Aws -Json -Arguments @(
+                'cognito-idp', 'admin-initiate-auth',
+                '--auth-flow', 'ADMIN_USER_PASSWORD_AUTH',
+                '--user-pool-id', $outputs['UserPoolId'],
+                '--client-id', $outputs['UserPoolClientId'],
+                '--auth-parameters', "file://$authFile"
+            )
+        }
+        finally {
+            Remove-TempFile $authFile
+        }
 
         $challenge = $auth.PSObject.Properties['ChallengeName']
         if ($null -ne $challenge -and $challenge.Value) {
@@ -213,7 +215,19 @@ if ($credentials) {
             if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied|Forbidden|403') {
                 throw "Expected AccessDenied writing to $otherKey"
             }
-            'AccessDenied, as expected'
+            $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('s3api', 'get-object', '--bucket', $bucket, '--key', $otherKey, (Join-Path ([IO.Path]::GetTempPath()) "$AppName-test-auth-other-$([Guid]::NewGuid().ToString('N')).txt"))
+            if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied|Forbidden|403') {
+                throw "Expected AccessDenied reading $otherKey"
+            }
+            $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('s3api', 'list-objects-v2', '--bucket', $bucket, '--prefix', 'someone-else/')
+            if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied|Forbidden|403') {
+                throw "Expected AccessDenied listing someone-else/"
+            }
+            $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('s3api', 'list-objects-v2', '--bucket', $bucket)
+            if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied|Forbidden|403') {
+                throw 'Expected AccessDenied listing the whole bucket'
+            }
+            'AccessDenied for writing, reading and listing, as expected'
         } | Out-Null
 
         Test-Check 'Can delete from own prefix (clean up)' {
@@ -227,8 +241,9 @@ if ($credentials) {
         $indexSecret = "$sub/keys/index"
         $secretText = "$AppName test-auth"
 
-        Test-Check 'Can create a profile secret' {
-            Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'create-secret', '--name', $profileSecret, '--secret-string', $secretText) | Out-Null
+        Test-Check 'Can create a profile secret, tagged with the app' {
+            # Tagged as the portal tags them (secretsmanager:TagResource), so remove.ps1 can find them.
+            Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'create-secret', '--name', $profileSecret, '--secret-string', $secretText, '--tags', "Key=app,Value=$AppName") | Out-Null
             $profileSecret
         } | Out-Null
 
@@ -241,23 +256,14 @@ if ($credentials) {
             Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $profileSecret, '--force-delete-without-recovery') | Out-Null
         } | Out-Null
 
-        # The index lists the user's real profiles, so it is written back unchanged, or deleted again if it is new.
-        Test-Check 'Can read and write the index secret' {
+        # The index lists the user's real profiles, so it is only read: writing is already shown by the profile secret.
+        Test-Check 'Can read the index secret' {
             $index = Invoke-Aws -NoProfile -Json -AllowFailure -Arguments @('secretsmanager', 'get-secret-value', '--secret-id', $indexSecret)
             if ($null -ne $index) {
-                $indexFile = New-TempTextFile $index.SecretString
-                try {
-                    Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'put-secret-value', '--secret-id', $indexSecret, '--secret-string', "file://$indexFile") | Out-Null
-                }
-                finally {
-                    Remove-Item -Force $indexFile -ErrorAction SilentlyContinue
-                }
-                'Existing index written back unchanged'
+                'Existing index read'
             }
             elseif ($script:LastAwsError -match 'ResourceNotFoundException') {
-                Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'create-secret', '--name', $indexSecret, '--secret-string', $secretText) | Out-Null
-                Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $indexSecret, '--force-delete-without-recovery') | Out-Null
-                'No index yet: created and deleted again'
+                'No index yet (the user has no protected profiles); reading it is allowed'
             }
             else {
                 throw $script:LastAwsError

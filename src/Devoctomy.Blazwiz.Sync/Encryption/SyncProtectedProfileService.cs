@@ -99,20 +99,20 @@ public class SyncProtectedProfileService(
 
         foreach (var entry in entries)
         {
-            // The settings chosen for the profile, on this device or another, over the app's defaults.
             var scope = new E2eKeyScope(entry.Id);
-            var settings = SettingsFor(entry);
             if (FindProfile(scope) is { } existing)
             {
-                if (existing.Settings.IdleTimeout != settings.IdleTimeout)
+                // Only the idle timeout chosen for the profile (on this device or another) is taken from the index; the
+                // profile's other settings are the app's, and stay as they are.
+                if (entry.TryGetIdleTimeout(out var idleTimeout) && existing.Settings.IdleTimeout != idleTimeout)
                 {
-                    existing.Settings = settings;
+                    existing.Settings = WithIdleTimeout(existing.Settings, idleTimeout);
                     idleLock.Refresh(scope);
                 }
             }
             else
             {
-                registry.Add(CreateOptions(scope, settings));
+                registry.Add(CreateOptions(scope, SettingsFor(entry)));
             }
         }
 

@@ -3,6 +3,7 @@ using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
 using Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
+using Devoctomy.Blazwiz.Core.Configuration;
 using Devoctomy.Blazwiz.Core.Offline.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
@@ -16,20 +17,29 @@ namespace Devoctomy.Blazwiz.UI.Sync.Services;
 /// the session's identity pool credentials. Each secret is named after the user pool sub, not the identity id, because
 /// identity ids contain ':', which secret names cannot: <c>&lt;sub&gt;/keys/&lt;scope&gt;</c> for each profile's keys,
 /// and <c>&lt;sub&gt;/keys/index</c> for the index of the user's profiles. The stack only lets each user reach the secrets matching their own sub (cloudformation/stack.yaml).
+/// Every secret is tagged with the app's name (<see cref="AppTag"/>), so the stack's remove script can find and
+/// delete them when the environment goes.
 /// </summary>
 public sealed class SecretsManagerUserKeysStore(
     IAuthenticationService authService,
     IAwsCredentialsProvider credentialsProvider,
     ISecretsManagerClientFactory clientFactory,
-    IOfflineModeService offlineModeService)
+    IOfflineModeService offlineModeService,
+    BlazwizAppOptions app)
     : IUserKeysStore, IE2eProfileIndexStore
 {
+    /// <summary>
+    /// The tag every secret carries, with the app's name as its value.
+    /// </summary>
+    public const string AppTag = "app";
+
     private const string IndexSecretSuffix = "keys/index";
 
     private readonly IAuthenticationService authService = authService ?? throw new ArgumentNullException(nameof(authService));
     private readonly IAwsCredentialsProvider credentialsProvider = credentialsProvider ?? throw new ArgumentNullException(nameof(credentialsProvider));
     private readonly ISecretsManagerClientFactory clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
     private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
+    private readonly BlazwizAppOptions app = app ?? throw new ArgumentNullException(nameof(app));
 
     /// <inheritdoc/>
     public Task<string?> GetAsync(E2eKeyScope scope, CancellationToken ct = default) =>
@@ -56,7 +66,7 @@ public sealed class SecretsManagerUserKeysStore(
         {
             try
             {
-                await client.CreateSecretAsync(new CreateSecretRequest { Name = secretName, SecretString = value }, ct);
+                await client.CreateSecretAsync(CreateRequest(secretName, value), ct);
                 return true;
             }
             catch (ResourceExistsException)
@@ -107,6 +117,13 @@ public sealed class SecretsManagerUserKeysStore(
         }
     }
 
+    private CreateSecretRequest CreateRequest(string secretName, string value) => new CreateSecretRequest
+    {
+        Name = secretName,
+        SecretString = value,
+        Tags = [new Tag { Key = AppTag, Value = app.Name }],
+    };
+
     private Task<string?> GetSecretAsync(string suffix, CancellationToken ct) =>
         WithClientAsync(suffix, ct, async (client, secretName) =>
         {
@@ -135,7 +152,7 @@ public sealed class SecretsManagerUserKeysStore(
             {
                 try
                 {
-                    await client.CreateSecretAsync(new CreateSecretRequest { Name = secretName, SecretString = value }, ct);
+                    await client.CreateSecretAsync(CreateRequest(secretName, value), ct);
                 }
                 catch (ResourceExistsException)
                 {

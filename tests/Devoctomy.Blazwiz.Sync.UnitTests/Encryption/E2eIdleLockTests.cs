@@ -125,6 +125,29 @@ public class E2eIdleLockTests
     }
 
     [Fact]
+    public void GivenAProfileSetUpInCode_WhoseNameIsNotItsScopeId_WhenUnlocked_ThenItIsTimed()
+    {
+        // Arrange: e.g. the template's "files" profile, whose key scope is a GUID.
+        var files = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        options.Profiles.Add(new SyncProfileOptions
+        {
+            Name = "files",
+            RemotePattern = "files/**/*",
+            KeyScope = files,
+            Settings = new E2eProfileSettings { IdleTimeout = TimeSpan.FromMinutes(3) },
+        });
+        using var sut = Started();
+        unlocked.Add(files);
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, files);
+
+        // Act
+        time.Advance(TimeSpan.FromMinutes(3));
+
+        // Assert
+        mockManager.Verify(x => x.Lock(files), Times.Once);
+    }
+
+    [Fact]
     public void GivenAProfileAlreadyUnlocked_WhenStarted_ThenItIsTimed()
     {
         // Arrange

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Devoctomy.Blazwiz.Cryptography.Models;
@@ -168,7 +169,7 @@ public class E2eProtectedProfileManager(
             try
             {
                 var local = await localKeyStore.GetAsync(scope) ?? new E2eLocalKeys();
-                local.WrappedMasterKey = keyWrapService.Wrap(kek, masterKey);
+                local.WrappedMasterKey = keyWrapService.Wrap(kek, masterKey, DeviceKeyBinding(scope));
                 await localKeyStore.SaveAsync(scope, local);
             }
             finally
@@ -233,11 +234,11 @@ public class E2eProtectedProfileManager(
         byte[] masterKey;
         try
         {
-            masterKey = keyWrapService.Unwrap(kek, local.WrappedMasterKey);
+            masterKey = keyWrapService.Unwrap(kek, local.WrappedMasterKey, DeviceKeyBinding(scope));
         }
         catch (CryptographicException ex)
         {
-            // Another passkey (e.g. registered again): the passphrase is needed.
+            // Another passkey (e.g. registered again), or another profile's key put here: the passphrase is needed.
             throw new E2ePassphraseRequiredException(ex);
         }
         finally
@@ -361,6 +362,10 @@ public class E2eProtectedProfileManager(
     }
 
     private static bool HasDeviceKey(E2eLocalKeys local) => !string.IsNullOrEmpty(local.WrappedMasterKey.Wrapped);
+
+    // The scope is the associated data of the master key wrapped for device unlock, so a wrapped key moved to another
+    // profile's entry does not unwrap.
+    private static byte[] DeviceKeyBinding(E2eKeyScope scope) => Encoding.UTF8.GetBytes(scope.Id);
 
     private static void CheckPassphrase(string passphrase, E2eProfileSettings settings)
     {

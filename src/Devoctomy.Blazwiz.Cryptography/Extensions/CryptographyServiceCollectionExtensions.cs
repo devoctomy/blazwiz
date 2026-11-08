@@ -19,7 +19,6 @@ public static class CryptographyServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddScoped<ICryptoService, BouncyCastleAesGcmCryptoService>();
         services.TryAddSingleton<IAeadCipher, BouncyCastleAesGcmAeadCipher>();
         services.TryAddSingleton<IKeyWrapService, AeadKeyWrapService>();
         services.TryAddSingleton<IArgon2idKeyDerivationService, BouncyCastleArgon2idKeyDerivationService>();

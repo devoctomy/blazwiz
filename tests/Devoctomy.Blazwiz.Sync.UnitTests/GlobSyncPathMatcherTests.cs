@@ -67,6 +67,36 @@ public class GlobSyncPathMatcherTests
     }
 
     [Theory]
+    [InlineData("notes/a/../b.md")]
+    [InlineData("notes/../notes/b.md")]
+    [InlineData("notes/./b.md")]
+    [InlineData("notes//b.md")]
+    [InlineData("notes/Work//")]
+    [InlineData("notes\\b.md")]
+    [InlineData("notes/Work\\b.md")]
+    public void GivenADotEmptyOrBackslashSegment_WhenIsMatch_ThenNeverMatches(string key)
+    {
+        // Arrange: the glob library would normalise these to another path that the stores would not.
+        var sut = new GlobSyncPathMatcher("notes/**/*.md", true);
+
+        // Act & Assert
+        Assert.False(sut.IsMatch(key));
+    }
+
+    [Theory]
+    [InlineData("notes/a..md")]
+    [InlineData("notes/.hidden.md")]
+    [InlineData("notes/Work.d/b.md")]
+    public void GivenDotsWithinASegment_WhenIsMatch_ThenMatches(string key)
+    {
+        // Arrange
+        var sut = new GlobSyncPathMatcher("notes/**/*.md", false);
+
+        // Act & Assert
+        Assert.True(sut.IsMatch(key));
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]

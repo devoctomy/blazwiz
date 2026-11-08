@@ -64,6 +64,18 @@ param(
     # ACM certificate ARN (us-east-1) for the custom domain.
     [string]$CertificateArn = '',
 
+    # Origins allowed to call the data bucket besides the portal, for running the portal locally against this
+    # environment. Defaults to the portal's local development URLs for every environment but prod, and to none for prod.
+    [string[]]$LocalDevOrigins,
+
+    # Whether Cognito refuses to delete the user pool (and every user with it). auto: on for prod.
+    [ValidateSet('auto', 'ACTIVE', 'INACTIVE')]
+    [string]$UserPoolDeletionProtection = 'auto',
+
+    # Whether every read, write and delete of an object in the data bucket is recorded by CloudTrail. auto: on for prod.
+    [ValidateSet('auto', 'true', 'false')]
+    [string]$AuditLogging = 'auto',
+
     # Skip the CloudFormation deployment (just publish the portal / manage the user).
     [switch]$SkipInfrastructure,
 
@@ -107,6 +119,10 @@ if ($CustomDomainName -and -not $CertificateArn) {
     throw '-CertificateArn (an ACM certificate in us-east-1) is required when -CustomDomainName is set.'
 }
 
+if ($null -eq $LocalDevOrigins) {
+    $LocalDevOrigins = if ($Environment -eq 'prod') { @() } else { @('https://localhost:7090', 'http://localhost:5090') }
+}
+
 Write-Step "Checking AWS access"
 $identity = Initialize-AwsContext -Region $Region -AwsProfile $AwsProfile
 Confirm-Action -Force:$Force -Message "This will create / update stack '$stackName' and its resources in account $($identity.Account) ($script:AwsRegion)."
@@ -128,6 +144,9 @@ if (-not $SkipInfrastructure) {
         @{ ParameterKey = 'Environment'; ParameterValue = $Environment }
         @{ ParameterKey = 'CustomDomainName'; ParameterValue = $CustomDomainName }
         @{ ParameterKey = 'CertificateArn'; ParameterValue = $CertificateArn }
+        @{ ParameterKey = 'LocalDevOrigins'; ParameterValue = ($LocalDevOrigins -join ',') }
+        @{ ParameterKey = 'UserPoolDeletionProtection'; ParameterValue = $UserPoolDeletionProtection }
+        @{ ParameterKey = 'AuditLogging'; ParameterValue = $AuditLogging }
     )
     $tagsFile = New-TempJsonFile @(
         @{ Key = 'app'; Value = $AppName }
@@ -378,18 +397,19 @@ if (-not $SkipTestUser -and $TestUserEmail) {
             Write-Ok "User created"
         }
 
-        $plainPassword = ConvertTo-PlainText $TestUserPassword
+        # Through a file only the current user can read, not the command line, so the password is not in process listings.
+        $passwordFile = $null
         try {
-            Invoke-Aws -Arguments @(
-                'cognito-idp', 'admin-set-user-password',
-                '--user-pool-id', $userPoolId,
-                '--username', $TestUserEmail,
-                '--password', $plainPassword,
-                '--permanent'
-            ) | Out-Null
+            $passwordFile = New-TempJsonFile @{
+                UserPoolId = $userPoolId
+                Username   = $TestUserEmail
+                Password   = (ConvertTo-PlainText $TestUserPassword)
+                Permanent  = $true
+            }
+            Invoke-Aws -Arguments @('cognito-idp', 'admin-set-user-password', '--cli-input-json', "file://$passwordFile") | Out-Null
         }
         finally {
-            $plainPassword = $null
+            Remove-TempFile $passwordFile
         }
         Write-Ok "Password set (permanent)"
     }

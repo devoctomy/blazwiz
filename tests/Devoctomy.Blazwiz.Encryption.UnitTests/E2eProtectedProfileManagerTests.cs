@@ -501,6 +501,28 @@ public class E2eProtectedProfileManagerTests
     }
 
     [Fact]
+    public async Task GivenDeviceUnlockOn_WhenAnotherProfilesWrappedKeyIsPutInItsPlace_ThenThePassphraseIsRequired()
+    {
+        // Arrange: the wrapped master key is bound to its profile, so one moved between entries does not unwrap.
+        var a = await device.Manager.CreateAsync(Passphrase, Settings);
+        var b = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.EnableDeviceUnlockAsync(a);
+        await device.Manager.EnableDeviceUnlockAsync(b);
+        device.Manager.Lock(a);
+        device.Manager.Lock(b);
+        var localA = (await device.LocalKeys.GetAsync(a))!;
+        var localB = (await device.LocalKeys.GetAsync(b))!;
+        localB.WrappedMasterKey = localA.WrappedMasterKey;
+        await device.LocalKeys.SaveAsync(b, localB);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<E2ePassphraseRequiredException>(() => device.Manager.UnlockWithDeviceAsync(b));
+        Assert.False(device.Manager.IsUnlocked(b));
+        await device.Manager.UnlockWithDeviceAsync(a);
+        Assert.True(device.Manager.IsUnlocked(a));
+    }
+
+    [Fact]
     public async Task GivenDeviceUnlockOnOneDevice_WhenAnotherDeviceTries_ThenThePassphraseIsRequired()
     {
         // Arrange

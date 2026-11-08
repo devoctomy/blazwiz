@@ -1,1 +1,16 @@
 #nullable enable
+Devoctomy.Blazwiz.Auth.Models.SavedUser.IsFor(string? username, string? email = null) -> bool
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService.DecryptAsync(string! encryptedPasswordBase64, string! email) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService.EncryptAsync(string! password, string! email) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.DecryptAsync(string! encryptedPasswordBase64, string! email) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.EncryptAsync(string! password, string! email) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.PasswordCryptoService(Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher! cipher, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
+Devoctomy.Blazwiz.Auth.Sessions.DerivedKeySessionHandler
+Devoctomy.Blazwiz.Auth.Sessions.DerivedKeySessionHandler.DerivedKeySessionHandler(Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
+Devoctomy.Blazwiz.Auth.Sessions.DerivedKeySessionHandler.OnSignedOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Sessions.DerivedKeySessionHandler.Order.get -> int
+*REMOVED*Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService.DecryptAsync(string! encryptedPasswordBase64) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService.EncryptAsync(string! password) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.DecryptAsync(string! encryptedPasswordBase64) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.EncryptAsync(string! password) -> System.Threading.Tasks.Task<string!>!
+*REMOVED*Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService.PasswordCryptoService(Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService! cryptoService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void

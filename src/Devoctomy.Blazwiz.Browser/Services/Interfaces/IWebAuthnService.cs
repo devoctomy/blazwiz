@@ -10,12 +10,12 @@ namespace Devoctomy.Blazwiz.Browser.Services.Interfaces;
 public interface IWebAuthnService
 {
     /// <summary>
-    /// Registers a new WebAuthn credential for the specified user.
+    /// Registers a new WebAuthn credential for the specified user. The credential's user handle is random, so it
+    /// identifies nobody on its own.
     /// </summary>
     /// <param name="username">The username to register the credential for.</param>
-    /// <param name="userId">The user identifier, or null to generate one automatically.</param>
     /// <returns>The result of the registration operation, saying whether keys were derived.</returns>
-    Task<WebAuthnRegisterResult> RegisterAsync(string username, string? userId);
+    Task<WebAuthnRegisterResult> RegisterAsync(string username);
 
     /// <summary>
     /// Authenticates a user using an existing WebAuthn credential.

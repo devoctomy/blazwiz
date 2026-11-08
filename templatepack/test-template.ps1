@@ -60,6 +60,8 @@ $script:Failures = New-Object System.Collections.Generic.List[string]
 # Name, extra options, and whether the generated app includes tests.
 $cases = @(
     @{ Name = 'AcmePortal'; Options = @('--title', 'Acme Portal', '--description', 'Welcome to Acme.'); Tests = $true; UiTests = $true },
+    # Characters that would break the JSON, HTML and C# strings the title and description go into are removed.
+    @{ Name = 'Quoted'; Options = @('--title', 'Acme "Portal" <Beta> & C\o', '--description', 'Say "hi" <now> & \leave'); Tests = $true; UiTests = $true },
     @{ Name = 'my-site'; Options = @(); Tests = $true; UiTests = $false },
     @{ Name = '1stApp'; Options = @('--showcase', 'false'); Tests = $true; UiTests = $false },
     @{ Name = 'NoNotes'; Options = @('--notes', 'false'); Tests = $true; UiTests = $true },
@@ -74,6 +76,16 @@ if ($Only) {
 function Write-Step([string]$Message) {
     Write-Host ''
     Write-Host "==> $Message" -ForegroundColor Cyan
+}
+
+# Windows PowerShell (5.1) hands arguments to native commands without escaping the quotes inside them, so a quote in
+# a title would end the argument there. PowerShell 7 escapes them itself.
+function ConvertTo-NativeArguments([string[]]$Arguments) {
+    if ($PSVersionTable.PSVersion.Major -ge 7) {
+        return $Arguments
+    }
+
+    return @($Arguments | ForEach-Object { $_ -replace '"', '\"' })
 }
 
 function Invoke-Checked([string]$Description, [scriptblock]$Command) {
@@ -123,8 +135,15 @@ function Test-Project([string]$Root, [string]$Solution, [bool]$UiTests, [string]
     }
 }
 
+if (Test-Path $workRoot) {
+    # Never run in, or afterwards delete, a folder this run did not create.
+    throw "The work folder '$workRoot' already exists. Use a new folder, or delete it first."
+}
+
+$createdWorkRoot = $false
 try {
     New-Item -ItemType Directory -Path $workRoot | Out-Null
+    $createdWorkRoot = $true
 
     if (-not $SkipRepositoryTests) {
         Write-Step 'Repository builds and passes its tests'
@@ -168,7 +187,8 @@ try {
         Write-Step "App '$name' $($case.Options -join ' ')"
         $output = Join-Path $workRoot "apps/$name"
 
-        if (-not (Invoke-Checked "'$name' is created" { dotnet new blazwiz -n $name -o $output @($case.Options) --no-restore --debug:custom-hive $hive })) {
+        $options = ConvertTo-NativeArguments $case.Options
+        if (-not (Invoke-Checked "'$name' is created" { dotnet new blazwiz -n $name -o $output @options --no-restore --debug:custom-hive $hive })) {
             continue
         }
 
@@ -284,7 +304,7 @@ finally {
         Write-Host ''
         Write-Host "Output kept in $workRoot"
     }
-    else {
+    elseif ($createdWorkRoot) {
         Remove-Item -Recurse -Force $workRoot -ErrorAction SilentlyContinue
     }
 }

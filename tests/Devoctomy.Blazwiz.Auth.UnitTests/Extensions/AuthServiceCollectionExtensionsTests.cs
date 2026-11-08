@@ -122,6 +122,22 @@ public class AuthServiceCollectionExtensionsTests
         Assert.Throws<ArgumentNullException>(() => AuthServiceCollectionExtensions.AddDataMigration<TestMigration>(null!));
     }
 
+    [Fact]
+    public async Task GivenAddBlazwizAuth_WhenTheHandlersAreOrdered_ThenTheDerivedKeysAreWipedLast()
+    {
+        // Arrange
+        var services = TestServices.Create();
+        services.AddBlazwizAuth();
+
+        // Act
+        await using var provider = services.BuildValidated();
+        await using var scope = provider.CreateAsyncScope();
+        var handlers = scope.ServiceProvider.GetServices<ISessionLifecycleHandler>().OrderBy(h => h.Order).ToList();
+
+        // Assert
+        Assert.IsType<DerivedKeySessionHandler>(handlers.Last());
+    }
+
     private sealed class TestMigration : IDataMigration
     {
         public string Area => "Test";

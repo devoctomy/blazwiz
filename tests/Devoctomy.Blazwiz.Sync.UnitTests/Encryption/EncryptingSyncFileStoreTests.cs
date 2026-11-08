@@ -45,6 +45,31 @@ public class EncryptingSyncFileStoreTests
     }
 
     [Fact]
+    public async Task GivenAnEmptyFileInTheStore_WhenRead_ThenThrowsInvalidData()
+    {
+        // Arrange: an encrypted file is never empty, so this one was truncated (the one change the tag cannot catch).
+        Unlock();
+        await inner.WriteAsync(Key, []);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(() => sut.ReadAsync(Key));
+    }
+
+    [Fact]
+    public async Task GivenAFolderMarker_WhenRead_ThenItPassesThrough()
+    {
+        // Arrange
+        Unlock();
+        await inner.CreateFolderAsync("notes/Work/");
+
+        // Act
+        var folder = await sut.ReadAsync("notes/Work/");
+
+        // Assert
+        Assert.True(folder == null || folder.Content.Length == 0);
+    }
+
+    [Fact]
     public async Task GivenUnlocked_WhenWrittenAndRead_ThenStoredBoundToTheProfileAndPathAndReadBack()
     {
         // Arrange

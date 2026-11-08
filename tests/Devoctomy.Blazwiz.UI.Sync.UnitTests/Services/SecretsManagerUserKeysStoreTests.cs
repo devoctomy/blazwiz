@@ -6,6 +6,7 @@ using Devoctomy.Blazwiz.Auth.Cognito.Models;
 using Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces;
 using Devoctomy.Blazwiz.Auth.Models;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
+using Devoctomy.Blazwiz.Core.Configuration;
 using Devoctomy.Blazwiz.Core.Offline;
 using Devoctomy.Blazwiz.Core.Offline.Models;
 using Devoctomy.Blazwiz.Encryption.Models;
@@ -29,6 +30,7 @@ public class SecretsManagerUserKeysStoreTests
     private readonly Mock<IAmazonSecretsManager> mockClient = new();
     private readonly OfflineModeService offlineMode = new();
     private readonly AwsTemporaryCredentials credentials = new() { IdentityId = "eu-west-2:id", AccessKeyId = "AKIA", SecretKey = "s", SessionToken = "t" };
+    private readonly BlazwizAppOptions app = new() { Name = "myapp", Id = "a78e68c7-90e0-4f90-aa3d-73f7b2c9f2c8" };
 
     public SecretsManagerUserKeysStoreTests()
     {
@@ -41,10 +43,11 @@ public class SecretsManagerUserKeysStoreTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(null!, mockCredentials.Object, mockFactory.Object, offlineMode)).ParamName);
-        Assert.Equal("credentialsProvider", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, null!, mockFactory.Object, offlineMode)).ParamName);
-        Assert.Equal("clientFactory", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, null!, offlineMode)).ParamName);
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, mockFactory.Object, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(null!, mockCredentials.Object, mockFactory.Object, offlineMode, app)).ParamName);
+        Assert.Equal("credentialsProvider", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, null!, mockFactory.Object, offlineMode, app)).ParamName);
+        Assert.Equal("clientFactory", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, null!, offlineMode, app)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, mockFactory.Object, null!, app)).ParamName);
+        Assert.Equal("app", Assert.Throws<ArgumentNullException>(() => new SecretsManagerUserKeysStore(mockAuth.Object, mockCredentials.Object, mockFactory.Object, offlineMode, null!)).ParamName);
     }
 
     [Fact]
@@ -371,6 +374,24 @@ public class SecretsManagerUserKeysStoreTests
         await Assert.ThrowsAsync<AmazonSecretsManagerException>(() => sut.GetAsync(new E2eKeyScope("s0")));
     }
 
+    [Fact]
+    public async Task GivenAnApp_WhenASecretIsCreated_ThenItIsTaggedWithTheAppsName()
+    {
+        // Arrange: the tag is how remove.ps1 finds the users' secrets when the environment goes.
+        mockClient.Setup(x => x.PutSecretValueAsync(It.IsAny<PutSecretValueRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ResourceNotFoundException("not found"));
+        var sut = CreateSut();
+
+        // Act
+        await sut.TryCreateAsync(new E2eKeyScope("s0"), "keys");
+        await sut.SetIndexAsync("index");
+
+        // Assert
+        mockClient.Verify(
+            x => x.CreateSecretAsync(It.Is<CreateSecretRequest>(r => r.Tags.Count == 1 && r.Tags[0].Key == SecretsManagerUserKeysStore.AppTag && r.Tags[0].Value == "myapp"), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
     private SecretsManagerUserKeysStore CreateSut() =>
-        new(mockAuth.Object, mockCredentials.Object, mockFactory.Object, offlineMode);
+        new(mockAuth.Object, mockCredentials.Object, mockFactory.Object, offlineMode, app);
 }

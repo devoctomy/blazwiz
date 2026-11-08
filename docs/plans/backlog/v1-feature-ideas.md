@@ -30,14 +30,13 @@ needs them. Related:
 Use the official `Amazon.Extensions.CognitoAuthentication` library, never hand-rolled crypto.
 
 ### CI and release pipeline
-There is no `.github`, so the four test suites, `templatepack/test-template.ps1` and the deploy have no pipeline. A
-GitHub Actions workflow would build, test, run the template test script, and optionally deploy.
+Done: `.github/workflows/ci.yml` builds and runs the four test suites and `templatepack/test-template.ps1` on every
+push; `release.yml` publishes (see `docs/releasing.md`). Deploying is still by hand.
 
 ### Security headers and CSP
-- No CSP (review item I1).
-- The data bucket has no versioning (I2).
-
-Both are cheap fixes in `cloudformation/stack.yaml`.
+Done: `deploy.ps1` adds a Content-Security-Policy to the published `index.html` (I1), and the data bucket is versioned
+(I2), both from the security review of 2026-11-08 (`docs/reviews/security-review-2026-11-08-01-Fable-5.1.md`). What is
+left from that review is in its summary table.
 
 ### Real performance work
 AOT is commented out in `blazwiz.Portal.csproj`. For a "high performance" template:

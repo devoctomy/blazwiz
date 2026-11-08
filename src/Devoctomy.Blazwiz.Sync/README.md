@@ -99,6 +99,16 @@ or in `Storages` the user can switch between (keyed `IndexedDb`, `Opfs` or `Loca
 an invalid value stops the app at startup with an error naming the setting. Custom stores and logs (`UseFileStore<T>`,
 `UseIndexStore<T>`, `UseEventLog<T>`) are set in code.
 
+### What encryption does and does not hide
+
+Each profile's files are encrypted with its own keys (AES-256-GCM, bound to the profile and the file's path), so
+nobody with access to the bucket, the device's storage or a backup can read their content or move a file to another
+path or profile without the passphrase. What stays visible to anyone with that access is the **metadata**: file names
+and folder structure (the S3 keys), sizes, edit times (`x-amz-meta-modified-at`) and the sync log's keys and error
+messages. Keep anything secret inside files, not in their names. A new random nonce is used for every write; the
+profile's file key is never rotated by the framework (the format allows retired keys, but nothing retires one yet), and
+changing the passphrase keeps the same master and file keys.
+
 ## Versions
 
 Every `Devoctomy.Blazwiz.*` package and the `Devoctomy.Blazwiz.Templates` template are released together at one

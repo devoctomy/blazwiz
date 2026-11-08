@@ -615,6 +615,47 @@ public class SyncProtectedProfileServiceTests
     }
 
     [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenLoaded_ThenItsOwnSettingsAreKept()
+    {
+        // Arrange: its keys are set, so it is in the index, with no idle timeout chosen; the defaults for created
+        // profiles differ from its settings in every way.
+        options.Profiles[0].Settings = new E2eProfileSettings { IdleTimeout = TimeSpan.FromMinutes(5), AllowDeviceUnlock = false, MinimumPassphraseLength = 20 };
+        options.ProfileDefaults.IdleTimeout = TimeSpan.FromMinutes(15);
+        options.ProfileDefaults.AllowDeviceUnlock = true;
+        options.ProfileDefaults.MinimumPassphraseLength = 12;
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = notes.Id }]);
+
+        // Act
+        await CreateSut().LoadAsync();
+
+        // Assert
+        var settings = registry.Find("notes")!.Settings;
+        Assert.Equal(TimeSpan.FromMinutes(5), settings.IdleTimeout);
+        Assert.False(settings.AllowDeviceUnlock);
+        Assert.Equal(20, settings.MinimumPassphraseLength);
+        mockIdle.Verify(x => x.Refresh(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAProfileSetUpInCode_WhenLoadedWithAnIdleTimeoutFromTheIndex_ThenOnlyItsIdleTimeoutChanges()
+    {
+        // Arrange
+        options.Profiles[0].Settings = new E2eProfileSettings { IdleTimeout = TimeSpan.FromMinutes(5), AllowDeviceUnlock = false, MinimumPassphraseLength = 20 };
+        options.ProfileDefaults.AllowDeviceUnlock = true;
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = notes.Id, IdleTimeoutSeconds = 60 }]);
+
+        // Act
+        await CreateSut().LoadAsync();
+
+        // Assert
+        var settings = registry.Find("notes")!.Settings;
+        Assert.Equal(TimeSpan.FromMinutes(1), settings.IdleTimeout);
+        Assert.False(settings.AllowDeviceUnlock);
+        Assert.Equal(20, settings.MinimumPassphraseLength);
+        mockIdle.Verify(x => x.Refresh(notes), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenAnIdleTimeoutChangedOnAnotherDevice_WhenLoadedAgain_ThenItIsUsedHereAndTheTimerRefreshed()
     {
         // Arrange

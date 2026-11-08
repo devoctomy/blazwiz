@@ -130,7 +130,7 @@
     <value>Use Windows Hello, Touch ID, your phone's screen lock or a security key.</value>
   </data>
   <data name="Login.Passkey.Question" xml:space="preserve">
-    <value>Would you like to use &lt;strong&gt;biometrics&lt;/strong&gt; for quicker login next time?</value>
+    <value>Would you like to use biometrics for quicker login next time?</value>
   </data>
   <data name="Login.Passkey.SettingUp" xml:space="preserve">
     <value>Setting up biometric login...</value>

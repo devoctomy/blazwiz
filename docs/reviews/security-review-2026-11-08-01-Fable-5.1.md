@@ -19,6 +19,11 @@ the published `@simplewebauthn/browser@14.0.0` npm tarball into the scratchpad t
 (never executed). The test suites were **not** run for this review; no dynamic testing against a browser or a
 deployed stack was done, so anything marked "Needs testing" is reasoning from the code only.
 
+**Fixes applied on 2026-11-08 (same day, after the review):** every finding whose fix needs no functional change was
+fixed in the working tree, as the "Fixed" column of the summary table says; see "What was fixed" before the table for
+how that was checked and what could not be. The findings themselves are left as they were found, so the report still
+describes the code at `2e63f07`.
+
 **Severity scale.** *Critical:* exploitable now by an unauthenticated party, or one user reaching another user's data.
 *High:* a signed-in user or a plausible attacker (XSS, stolen device, hijacked session) can read keys or plaintext they
 should not, with little effort. *Medium:* a stated security control does not hold, or a realistic attacker gains a
@@ -737,61 +742,93 @@ committed. Release publishing uses OIDC trusted publishing, no stored API key, a
 - **Code quality controls:** warnings as errors, nullable, StyleCop, PublicApiAnalyzers, package validation,
   `TreatWarningsAsErrors`; no `unsafe` code; no analyzer suppressions beyond style.
 
+## What was fixed
+
+On 2026-11-08, after the review, every finding marked as needing no functional change was fixed in the working tree
+(uncommitted, for the maintainer to review). The changes are listed under "Security" in `CHANGELOG.md`'s Unreleased
+section. How they were checked:
+
+- **Code:** `dotnet build blazwiz.slnx` (warnings as errors, StyleCop, PublicApiAnalyzers, and from this change every
+  .NET security analyzer rule), then all four suites: `--filter FullyQualifiedName~UnitTests`, `~IntTests` (the `@aws`
+  scenarios skipped, as always without AWS credentials) and `~UITests` (Playwright, the portal started by the tests),
+  and `./templatepack/test-template.ps1 -SkipRepositoryTests`, which packs the packages and template and creates,
+  builds and tests apps with every option, now including one with quotes, angle brackets, an ampersand and a
+  backslash in its title and description (SR29). Each fix has a unit test for the behaviour it changes.
+- **AWS stack and scripts (SR4, SR11 to SR17, SR48):** changed in `stack.yaml`, `deploy.ps1`, `remove.ps1`,
+  `test-auth.ps1`, `_common.ps1` and the template's `deploy-policy.json`. These **were not deployed or run**: nothing
+  here can call AWS. The YAML and JSON were parsed for structure, every `Condition` reference was checked, and the
+  scripts were parsed by PowerShell. The first deploy of an environment after this change needs the maintainer's
+  attention: `deploy.ps1` lists the changes (versioning and a lifecycle rule on the data bucket, deletion protection
+  and a CloudTrail trail with its log bucket in `prod`, attribute settings on the user pool and client, the admin auth
+  flow in place of the password flow, the role's `secretsmanager:TagResource`), and `test-auth.ps1` then exercises the
+  new permissions (tagging a secret, reading and listing another prefix). `deploy-policy.json` must be updated in the
+  account first (it gained `cloudformation:UpdateStack`, the versioning, lifecycle, CloudTrail, `ListUsers`,
+  `AdminInitiateAuth` and tagged-secret actions).
+- **Stored data:** remembered passwords, profile labels and device-unlock keys from earlier builds stop decrypting
+  (SR23, SR24); before 1.0 that needs no migration. Secrets created before this change carry no `app` tag, so
+  `remove.ps1` reports them and leaves them for deletion by hand (SR12).
+- **Left for a decision, with the reason in the table:** SR1 (the flags are now real, but requiring verification is
+  the small functional change the finding describes), SR17 (a permissions boundary needs the account's administrator
+  to create the boundary policy first), SR31 (moving the CSP into the build is a design change, and `style-src` needs
+  a browser check), SR39, SR45 (lock files) and SR46.
+
 ## Summary
 
-| ID | Severity | Area | Description | What could result | Functional change needed? |
-|---|---|---|---|---|---|
-| SR1 | Medium | Passkeys | User verification is `preferred`, never required or checked; the flags reporting it are always false | Possession of the device or security key alone decrypts the saved password, signs in offline, and unlocks device-unlock profiles | Small: authenticators that cannot verify stop being offered for remember-me |
-| SR2 | Medium | Sync / E2E | Idle auto-lock looks profiles up by name but is given the key scope id, so it never starts for code-defined profiles (the template's `files`) | Unlocked profile keys and plaintext stay available for the whole session, including on an unattended machine | No (restores documented behaviour) |
-| SR3 | Medium | Key management | Passphrase change rewraps the same master key; file keys unchanged; old document kept as `AWSPREVIOUS` | Anyone holding an old keys document and old passphrase, or the master key, keeps reading all current and future files | Yes: key rotation on passphrase change, optional re-encryption, new text |
-| SR4 | Medium | AWS | Data bucket not versioned; role may delete and overwrite | Leaked one-hour credentials or an engine bug permanently destroys a user's files | No (infrastructure) |
-| SR5 | Medium | AWS / UI.Sync | Keys secrets force-deleted with no recovery window; policy allows it | A hijacked session or a bug irrecoverably destroys a profile's keys, making all its files unreadable | Small: deleted keys linger unreadable for 7 days; test script changes |
-| SR6 | Medium | AWS / Auth | No MFA, no threat protection (in backlog) | A phished or reused password yields the tokens, AWS credentials, wrapped keys and ciphertext, and the power to destroy them | Yes: a second sign-in step and Profile page set-up |
-| SR7 | Medium | CI | Actions pinned by tag, including `NuGet/login` in the publish job | A compromised action publishes malicious `Devoctomy.Blazwiz.*` packages that every app restores | No (workflow files) |
-| SR8 | Medium | Scripts | `test-template.ps1` deletes a pre-existing `-WorkRoot` on failure | Loss of a maintainer's local folder contents | No |
-| SR9 | Low | Passkeys | PRF-derived keys cleared only by the framework login page, not on sign out | Apps with their own login page keep `rememberme` and `e2e-kek` in memory after sign out; next sign in needs no passkey prompt to unwrap | No |
-| SR10 | Low | Passkeys | PRF output passed as a hex string, never zeroed in JS | Root secret of all derived keys lingers in process memory | No |
-| SR11 | Low | AWS | `ALLOW_USER_PASSWORD_AUTH` on the public client, for a test script | Plaintext-password path to Cognito for phishing validation and credential stuffing; docs' SRP claim is false for the client | No for the app; test script changes |
-| SR12 | Low | AWS / scripts | `remove.ps1` and user deletion leave users' secrets and prefixes behind | Indefinite retention of wrapped keys and metadata; cost; a false promise in the script | No (scripts, a tag on secrets) |
-| SR13 | Low | AWS | No Cognito deletion protection | `delete-stack` or a console action removes every user and their data mapping | No |
-| SR14 | Low | AWS | Email changes unverified; client write attributes unrestricted | An access-token holder changes the sign-in email and locks the user out of sign in and recovery | No |
-| SR15 | Low | Scripts | Test-user password on the CLI; plaintext temp files | Local exposure through process lists, transcripts, telemetry | No |
-| SR16 | Low | AWS | Localhost origins in production CORS | A localhost page with stolen credentials can reach the production bucket from the browser | No |
-| SR17 | Low | AWS | Deployer policy allows self-escalation; `AdminSetUserPassword` on every pool | Deployer identity gains admin on the account and can take over any user in any pool | No |
-| SR18 | Low | Sync / E2E | Index load replaces a code profile's whole settings object with user-profile defaults | `AllowDeviceUnlock` and passphrase rules silently change for the main profile | No (bug fix) |
-| SR19 | Low | Sync / E2E | Zero-length content bypasses the encrypted-format check | S3-side truncation shows as an empty file with no error, where any other tamper is detected | No |
-| SR20 | Low | Sync / E2E | Index lost updates and "missing from index" wipe local keys and files | A profile's local files and keys copy are deleted on every device; keys secret and ciphertext survive but cannot be re-attached | Yes (recovery behaviour) |
-| SR21 | Low | Sync | Profile deletion proceeds when S3 is unreachable for credential reasons | Permanently undecryptable orphan objects in the user's prefix | Small: deletion refuses while S3 cannot be reached |
-| SR22 | Low | Sync | Remote-supplied edit time trusted; no version binding | An S3-side actor forces its version to win or rolls files back silently on every device | No |
-| SR23 | Low | Key management | Device-unlock wrapped master key has no associated data | A moved wrapped key fails late with the wrong exception; no bypass | No (existing device-unlock entries fall back to the passphrase) |
-| SR24 | Low | Auth | Remembered passwords use the legacy stream cipher: no binding, key copied into a string | Key material outlives its use; ciphertext not bound to the user | No (saved passwords re-created at next sign in) |
-| SR25 | Low | CI | `github.ref_name` interpolated into `run:` scripts | Script injection in the job holding the publishing token, by someone who can already dispatch it | No |
-| SR26 | Low | CI | Checkout persists the job token | A later step could push with `contents: write` in the release job | No |
-| SR27 | Low | Build | Security analyzers at SDK defaults | Injection and crypto regressions are not caught at build time | No |
-| SR28 | Low | Repo | `.gitignore` gaps for keys and production settings | A future accidental commit of a secret is not stopped | No |
-| SR29 | Low | Template | Title and description substituted without escaping | A quote or angle bracket breaks the generated app's JSON, HTML and tests | No |
-| SR30 | Low | Key management | Stored Argon2id parameters have no upper bounds; wrong key length escapes untyped | A tampered document hangs or crashes the tab on unlock; no key exposure | No |
-| SR31 | Low | Hosting | CSP added only by `deploy.ps1`, not by the build; `style-src 'unsafe-inline'` | Apps hosted another way ship with no CSP, so an XSS reaches tokens and keys unhindered | No (build change) |
-| SR32 | Low | Passkeys | User handle embeds the email; `userId` parameter mismatch | Email leaks via the authenticator; a latent misuse of the register call | No |
-| SR33 | Low | Template | Note keys from the URL only prefix-checked | Odd keys inside the user's own store; no access to anything else | No |
-| SR34 | Low | Auth | Missing Cognito settings silently select the placeholder sign in | A misdeployed app lets anyone "sign in" and read local data for the typed name; no AWS access | Small: fail fast outside development |
-| SR35 | Info | Sync | File names, sizes and times are plaintext in S3 and IndexedDB | Metadata visible to anyone with bucket or device access | Docs |
-| SR36 | Info | Sync | Glob matcher accepts `.`/`..`/empty segments inside the prefix; `\` differs between Windows and browser | Aliased keys; tests that pass on Windows for inputs that differ at runtime | No |
-| SR37 | Info | Encryption | Random nonces with no rotation trigger | Theoretical nonce-reuse bound far beyond realistic use | Only if rotation is added |
-| SR38 | Info | Encryption | Passphrases in .NET strings | Cannot be zeroed; inherent | None |
-| SR39 | Info | Sync | Whole-object buffering, no size cap | A huge object in the prefix crashes the tab | Small, if a ceiling is added |
-| SR40 | Info | Encryption | Argon2id default depends on the package's build configuration | A Debug publish of this repository's template derives 19 MiB keys; published packages are Release | Docs |
-| SR41 | Info | UI | Framework text rendered as `MarkupString` | Overrides that are not HTML, or pseudo-localisation, break the tag | No |
-| SR42 | Info | UI | Password change and passkey lookup match the saved user differently | An old password could stay encrypted in `saved_users` if username ever differs from email | No |
-| SR43 | Info | UI.Sync | Sync log persists raw exception text for 30 days | AWS request ids and identity ids kept in IndexedDB; user's own | None |
-| SR44 | Info | Supply chain | Licence files and provenance missing for vendored assets | Licence compliance; harder to verify integrity later | No |
-| SR45 | Info | Supply chain | No lock file, `nuget.config` or source mapping | Reproducibility and substitution protection rely on CPM and defaults | No |
-| SR46 | Info | Supply chain | Deprecated test packages | Test-only maintenance | No |
-| SR47 | Info | Release | Required reviewers for the `nuget` environment live outside the repo | Cannot be verified here; release could run on one person's approval | None |
-| SR48 | Info | AWS | No audit logging | No record of which credentials deleted or changed what after an incident | No |
-| SR49 | Info | Docs / AWS | Backlog says no CI and no CSP; README mechanism drift; cross-prefix read not tested end to end; TLS 1.0 with the default certificate; HSTS without `includeSubDomains` | Misleading docs; weaker TLS floor without a custom domain | Docs; no |
+| ID | Severity | Area | Description | What could result | Functional change needed? | Fixed |
+|---|---|---|---|---|---|---|
+| SR1 | Medium | Passkeys | User verification is `preferred`, never required or checked; the flags reporting it are always false | Possession of the device or security key alone decrypts the saved password, signs in offline, and unlocks device-unlock profiles | Small: authenticators that cannot verify stop being offered for remember-me | Partly: the bridge now reports the real UP and UV flags from the authenticator data, so the check can be added. `preferred` and the missing check remain (functional) |
+| SR2 | Medium | Sync / E2E | Idle auto-lock looks profiles up by name but is given the key scope id, so it never starts for code-defined profiles (the template's `files`) | Unlocked profile keys and plaintext stay available for the whole session, including on an unattended machine | No (restores documented behaviour) | Yes: lookup by key scope; unit test with a profile whose name is not its scope id |
+| SR3 | Medium | Key management | Passphrase change rewraps the same master key; file keys unchanged; old document kept as `AWSPREVIOUS` | Anyone holding an old keys document and old passphrase, or the master key, keeps reading all current and future files | Yes: key rotation on passphrase change, optional re-encryption, new text | No (functional) |
+| SR4 | Medium | AWS | Data bucket not versioned; role may delete and overwrite | Leaked one-hour credentials or an engine bug permanently destroys a user's files | No (infrastructure) | Yes, not deployed: versioning, old versions expire after 30 days, incomplete uploads after 7; `remove.ps1` deletes every version |
+| SR5 | Medium | AWS / UI.Sync | Keys secrets force-deleted with no recovery window; policy allows it | A hijacked session or a bug irrecoverably destroys a profile's keys, making all its files unreadable | Small: deleted keys linger unreadable for 7 days; test script changes | No (small functional) |
+| SR6 | Medium | AWS / Auth | No MFA, no threat protection (in backlog) | A phished or reused password yields the tokens, AWS credentials, wrapped keys and ciphertext, and the power to destroy them | Yes: a second sign-in step and Profile page set-up | No (functional, in the backlog) |
+| SR7 | Medium | CI | Actions pinned by tag, including `NuGet/login` in the publish job | A compromised action publishes malicious `Devoctomy.Blazwiz.*` packages that every app restores | No (workflow files) | Yes: every action pinned to the commit its tag pointed at (v4.4.0, v6.1.0, v4.6.2, v4.3.0, v1.2.0), with Dependabot for `github-actions` |
+| SR8 | Medium | Scripts | `test-template.ps1` deletes a pre-existing `-WorkRoot` on failure | Loss of a maintainer's local folder contents | No | Yes: refuses an existing folder; deletes only one it created |
+| SR9 | Low | Passkeys | PRF-derived keys cleared only by the framework login page, not on sign out | Apps with their own login page keep `rememberme` and `e2e-kek` in memory after sign out; next sign in needs no passkey prompt to unwrap | No | Yes: `DerivedKeySessionHandler` (Auth, runs last) wipes the store on sign out, including when the session ends |
+| SR10 | Low | Passkeys | PRF output passed as a hex string, never zeroed in JS | Root secret of all derived keys lingers in process memory | No | Yes: bytes across interop, wiped in JavaScript after hand-over and in .NET after derivation |
+| SR11 | Low | AWS | `ALLOW_USER_PASSWORD_AUTH` on the public client, for a test script | Plaintext-password path to Cognito for phishing validation and credential stuffing; docs' SRP claim is false for the client | No for the app; test script changes | Yes, not deployed: removed; `test-auth.ps1` uses `ADMIN_USER_PASSWORD_AUTH` as the deployer |
+| SR12 | Low | AWS / scripts | `remove.ps1` and user deletion leave users' secrets and prefixes behind | Indefinite retention of wrapped keys and metadata; cost; a false promise in the script | No (scripts, a tag on secrets) | Yes, not deployed: secrets tagged `app=<name>` by the portal (unit test); `remove.ps1` lists users and deletes their tagged secrets; the deployer may delete tagged secrets only. Untagged earlier secrets are reported, not deleted. A single user's deletion is still by hand |
+| SR13 | Low | AWS | No Cognito deletion protection | `delete-stack` or a console action removes every user and their data mapping | No | Yes, not deployed: `UserPoolDeletionProtection` (`auto` = on for `prod`); `remove.ps1` turns it off first |
+| SR14 | Low | AWS | Email changes unverified; client write attributes unrestricted | An access-token holder changes the sign-in email and locks the user out of sign in and recovery | No | Yes, not deployed: email verified before update; client reads `email`, `email_verified`, `name` and writes `name` only |
+| SR15 | Low | Scripts | Test-user password on the CLI; plaintext temp files | Local exposure through process lists, transcripts, telemetry | No | Yes, not run: password via `--cli-input-json` from a user-only file, overwritten before deletion; the real index is no longer written to a file |
+| SR16 | Low | AWS | Localhost origins in production CORS | A localhost page with stolen credentials can reach the production bucket from the browser | No | Yes, not deployed: `LocalDevOrigins` defaults to none for `prod`; `POST` dropped from the CORS methods |
+| SR17 | Low | AWS | Deployer policy allows self-escalation; `AdminSetUserPassword` on every pool | Deployer identity gains admin on the account and can take over any user in any pool | No | Partly: duplicate action removed and new actions added with scoped resources or tag conditions. The permissions boundary needs the account administrator to create the boundary policy; the tag condition on `cognito-idp:Admin*` needs testing |
+| SR18 | Low | Sync / E2E | Index load replaces a code profile's whole settings object with user-profile defaults | `AllowDeviceUnlock` and passphrase rules silently change for the main profile | No (bug fix) | Yes: only an idle timeout chosen in the index is applied, over the profile's own settings; two unit tests |
+| SR19 | Low | Sync / E2E | Zero-length content bypasses the encrypted-format check | S3-side truncation shows as an empty file with no error, where any other tamper is detected | No | Yes: empty non-folder content throws `InvalidDataException`; folder markers pass through |
+| SR20 | Low | Sync / E2E | Index lost updates and "missing from index" wipe local keys and files | A profile's local files and keys copy are deleted on every device; keys secret and ciphertext survive but cannot be re-attached | Yes (recovery behaviour) | No (functional) |
+| SR21 | Low | Sync | Profile deletion proceeds when S3 is unreachable for credential reasons | Permanently undecryptable orphan objects in the user's prefix | Small: deletion refuses while S3 cannot be reached | No (small functional) |
+| SR22 | Low | Sync | Remote-supplied edit time trusted; no version binding | An S3-side actor forces its version to win or rolls files back silently on every device | No | Yes: an edit time more than 5 minutes after the upload falls back to the upload time (`RemoteObjectInfo.MaxClockSkew`); unit tests. Version binding is a design change, documented |
+| SR23 | Low | Key management | Device-unlock wrapped master key has no associated data | A moved wrapped key fails late with the wrong exception; no bypass | No (existing device-unlock entries fall back to the passphrase) | Yes: the scope id is the associated data; unit test moves a wrapped key between profiles |
+| SR24 | Low | Auth | Remembered passwords use the legacy stream cipher: no binding, key copied into a string | Key material outlives its use; ciphertext not bound to the user | No (saved passwords re-created at next sign in) | Yes: `IAeadCipher` with the email (passwords) or user id (labels) as associated data; `ICryptoService` and its implementation removed |
+| SR25 | Low | CI | `github.ref_name` interpolated into `run:` scripts | Script injection in the job holding the publishing token, by someone who can already dispatch it | No | Yes: passed through `env:` |
+| SR26 | Low | CI | Checkout persists the job token | A later step could push with `contents: write` in the release job | No | Yes: `persist-credentials: false` on every checkout |
+| SR27 | Low | Build | Security analyzers at SDK defaults | Injection and crypto regressions are not caught at build time | No | Yes: `AnalysisModeSecurity` `All` in both `Directory.Build.props`; the one finding (CA5394, `Random` for test bytes) was fixed, not suppressed |
+| SR28 | Low | Repo | `.gitignore` gaps for keys and production settings | A future accidental commit of a secret is not stopped | No | Yes, in both `.gitignore` files |
+| SR29 | Low | Template | Title and description substituted without escaping | A quote or angle bracket breaks the generated app's JSON, HTML and tests | No | Yes: a `safeText` form strips `" < > & \`; `test-template.ps1` creates an app with all of them in its title and description |
+| SR30 | Low | Key management | Stored Argon2id parameters have no upper bounds; wrong key length escapes untyped | A tampered document hangs or crashes the tab on unlock; no key exposure | No | Yes: `Parse` rejects memory over 4 GiB, more than 100 passes or 16 lanes, and a key length other than the cipher's (`IKeyWrapService.KeySize`); unit tests |
+| SR31 | Low | Hosting | CSP added only by `deploy.ps1`, not by the build; `style-src 'unsafe-inline'` | Apps hosted another way ship with no CSP, so an XSS reaches tokens and keys unhindered | No (build change) | No: where the CSP is produced is a design decision, and tightening `style-src` needs a browser check against the deployed app |
+| SR32 | Low | Passkeys | User handle embeds the email; `userId` parameter mismatch | Email leaks via the authenticator; a latent misuse of the register call | No | Yes: random 32-byte user handle; the parameter is gone from `IWebAuthnService.RegisterAsync` |
+| SR33 | Low | Template | Note keys from the URL only prefix-checked | Odd keys inside the user's own store; no access to anything else | No | Yes: `IsNoteKey` rejects empty, `.`, `..` and control-character segments; unit tests |
+| SR34 | Low | Auth | Missing Cognito settings silently select the placeholder sign in | A misdeployed app lets anyone "sign in" and read local data for the typed name; no AWS access | Small: fail fast outside development | No (small functional) |
+| SR35 | Info | Sync | File names, sizes and times are plaintext in S3 and IndexedDB | Metadata visible to anyone with bucket or device access | Docs | Yes: stated in the Sync README |
+| SR36 | Info | Sync | Glob matcher accepts `.`/`..`/empty segments inside the prefix; `\` differs between Windows and browser | Aliased keys; tests that pass on Windows for inputs that differ at runtime | No | Yes: such keys never match; unit tests |
+| SR37 | Info | Encryption | Random nonces with no rotation trigger | Theoretical nonce-reuse bound far beyond realistic use | Only if rotation is added | Documented in the Sync README; rotation belongs with SR3 |
+| SR38 | Info | Encryption | Passphrases in .NET strings | Cannot be zeroed; inherent | None | n/a |
+| SR39 | Info | Sync | Whole-object buffering, no size cap | A huge object in the prefix crashes the tab | Small, if a ceiling is added | No |
+| SR40 | Info | Encryption | Argon2id default depends on the package's build configuration | A Debug publish of this repository's template derives 19 MiB keys; published packages are Release | Docs | Yes: stated in the template README |
+| SR41 | Info | UI | Framework text rendered as `MarkupString` | Overrides that are not HTML, or pseudo-localisation, break the tag | No | Yes: plain text, rendered with encoding |
+| SR42 | Info | UI | Password change and passkey lookup match the saved user differently | An old password could stay encrypted in `saved_users` if username ever differs from email | No | Yes: `SavedUser.IsFor` used by both and by the login page; unit tests |
+| SR43 | Info | UI.Sync | Sync log persists raw exception text for 30 days | AWS request ids and identity ids kept in IndexedDB; user's own | None | n/a |
+| SR44 | Info | Supply chain | Licence files and provenance missing for vendored assets | Licence compliance; harder to verify integrity later | No | Yes: `LICENSE`, `THIRD-PARTY-NOTICES.md` (source, version, SHA-256), licence files beside each library; `*.min.js` kept byte for byte, and the SimpleWebAuthn bundle now matches upstream exactly |
+| SR45 | Info | Supply chain | No lock file, `nuget.config` or source mapping | Reproducibility and substitution protection rely on CPM and defaults | No | Partly: a root `nuget.config` restores from nuget.org only. No lock file or source mapping (optional, not taken on) |
+| SR46 | Info | Supply chain | Deprecated test packages | Test-only maintenance | No | No: moving to xunit v3 and MSTest 4 is churn in every test project, and Reqnroll depends on xunit 2 |
+| SR47 | Info | Release | Required reviewers for the `nuget` environment live outside the repo | Cannot be verified here; release could run on one person's approval | None | n/a: GitHub settings, for the maintainer to confirm |
+| SR48 | Info | AWS | No audit logging | No record of which credentials deleted or changed what after an incident | No | Yes, not deployed: `AuditLogging` (`auto` = on for `prod`) adds a CloudTrail trail of data bucket object events into an audit bucket kept a year |
+| SR49 | Info | Docs / AWS | Backlog says no CI and no CSP; README mechanism drift; cross-prefix read not tested end to end; TLS 1.0 with the default certificate; HSTS without `includeSubDomains` | Misleading docs; weaker TLS floor without a custom domain | Docs; no | Yes: backlog and READMEs corrected, TLS and HSTS stated; `test-auth.ps1` also checks reading and listing another prefix and the whole bucket |
 
-Counts: 0 Critical, 0 High, 8 Medium, 26 Low, 15 Informational.
+Counts: 0 Critical, 0 High, 8 Medium, 26 Low, 15 Informational. Fixed: 33 in full, 4 in part (SR1, SR17, SR37,
+SR45), 9 left as needing a functional change or a decision (SR3, SR5, SR6, SR20, SR21, SR31, SR34, SR39, SR46), 3 not
+applicable (SR38, SR43, SR47).
 
 ## Closing assessment
 
@@ -817,3 +854,9 @@ Suggested order: SR1 and SR2 first (both are the framework not doing what it say
 SR5 and SR7 (cheap, and they bound the damage from everything else), then SR9, SR11, SR18 and SR19 as a hardening
 batch, then plan SR3 and SR6. The Informational items are for the README and the threat-model section this review
 suggests adding.
+
+**After the fixes of 2026-11-08** (see "What was fixed"), what remains open is: SR1's last step (require user
+verification in the WebAuthn bridge and check the now-real flag), SR5 (delete secrets with a recovery window), SR21
+and SR34 (small functional changes), SR3, SR6 and SR20 (features), SR31 (a design decision about where the CSP is
+produced), SR17's permissions boundary (an account administrator's task), and the deploy that puts the stack changes
+into effect. The next review should start from this table.

@@ -4,6 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Every security rule (CA3xxx, CA5xxx), not just the few on by default. -->
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
     <!-- One version for every Devoctomy.Blazwiz package and the template (docs/versioning.md). -->
     <VersionPrefix>0.5.0</VersionPrefix>
     <Authors>Nick Pateman</Authors>

@@ -200,6 +200,12 @@ public class NoteTreeServiceTests
     [InlineData("notes/.md", false)]
     [InlineData("notes/a.txt", false)]
     [InlineData("other/a.md", false)]
+    [InlineData("notes/../a.md", false)]
+    [InlineData("notes/Work/../a.md", false)]
+    [InlineData("notes/./a.md", false)]
+    [InlineData("notes//a.md", false)]
+    [InlineData("notes/a\tb.md", false)]
+    [InlineData("notes/.hidden.md", true)]
     public void GivenKey_WhenIsNoteKey_ThenOnlyMarkdownUnderTheRoot(string key, bool expected)
     {
         // Act & Assert
