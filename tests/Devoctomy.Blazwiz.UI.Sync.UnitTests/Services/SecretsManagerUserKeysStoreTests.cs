@@ -315,16 +315,20 @@ public class SecretsManagerUserKeysStoreTests
     }
 
     [Fact]
-    public async Task GivenSecret_WhenDeleteAsync_ThenDeletesWithoutRecoveryWindow()
+    public async Task GivenSecret_WhenDeleteAsync_ThenDeletesWithARecoveryWindow()
     {
-        // Arrange
+        // Arrange: never at once, so a bug or a hijacked session cannot destroy a profile's keys for good.
         var sut = CreateSut();
 
         // Act
         await sut.DeleteAsync(new E2eKeyScope("s0"));
 
         // Assert
-        mockClient.Verify(x => x.DeleteSecretAsync(It.Is<DeleteSecretRequest>(r => r.SecretId == SecretName && r.ForceDeleteWithoutRecovery == true), It.IsAny<CancellationToken>()), Times.Once);
+        mockClient.Verify(
+            x => x.DeleteSecretAsync(
+                It.Is<DeleteSecretRequest>(r => r.SecretId == SecretName && r.RecoveryWindowInDays == SecretsManagerUserKeysStore.RecoveryWindowDays && r.ForceDeleteWithoutRecovery != true),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

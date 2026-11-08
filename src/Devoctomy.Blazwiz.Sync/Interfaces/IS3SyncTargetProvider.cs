@@ -9,6 +9,13 @@ namespace Devoctomy.Blazwiz.Sync.Interfaces;
 public interface IS3SyncTargetProvider
 {
     /// <summary>
+    /// Gets a value indicating whether a cloud target is set up at all (a region and a bucket). When it is not, there
+    /// is nothing to sync with and nothing remote to look for; when it is but <see cref="GetTargetAsync"/> gives null,
+    /// there are no credentials just now.
+    /// </summary>
+    bool IsConfigured { get; }
+
+    /// <summary>
     /// Gets the target, using cached credentials while they are valid.
     /// </summary>
     /// <param name="ct">A cancellation token.</param>

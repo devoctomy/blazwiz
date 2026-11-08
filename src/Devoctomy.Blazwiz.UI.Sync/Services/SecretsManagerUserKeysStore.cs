@@ -33,6 +33,13 @@ public sealed class SecretsManagerUserKeysStore(
     /// </summary>
     public const string AppTag = "app";
 
+    /// <summary>
+    /// How long a deleted keys secret can still be restored by an operator (the shortest Secrets Manager allows). The
+    /// app never restores it; the window is so that a bug, or a hijacked session, cannot destroy a profile's keys at
+    /// once. Profile ids are GUIDs, so the name being reserved meanwhile is harmless.
+    /// </summary>
+    public const int RecoveryWindowDays = 7;
+
     private const string IndexSecretSuffix = "keys/index";
 
     private readonly IAuthenticationService authService = authService ?? throw new ArgumentNullException(nameof(authService));
@@ -82,7 +89,7 @@ public sealed class SecretsManagerUserKeysStore(
         {
             try
             {
-                await client.DeleteSecretAsync(new DeleteSecretRequest { SecretId = secretName, ForceDeleteWithoutRecovery = true }, ct);
+                await client.DeleteSecretAsync(new DeleteSecretRequest { SecretId = secretName, RecoveryWindowInDays = RecoveryWindowDays }, ct);
             }
             catch (ResourceNotFoundException)
             {

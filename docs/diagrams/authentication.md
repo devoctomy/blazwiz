@@ -15,9 +15,11 @@ Main classes:
 - `MainLayoutViewModel` (`src/Devoctomy.Blazwiz.UI/ViewModels/MainLayoutViewModel.cs`) and `SessionLifecycle` (`src/Devoctomy.Blazwiz.Auth/Sessions/SessionLifecycle.cs`)
 
 `AddBlazwizCognito` registers `CognitoAuthenticationService` and `CognitoPasswordService` when the region, user pool
-and app client are configured (`AwsCognito` in `appsettings.json`). When they are not (local development),
-`LocalAuthenticationService` and `LocalPasswordService` (Auth) take their place: any non-empty credentials sign in, an
-8 hour session is stored under `myapp_session` in localStorage, and nothing calls AWS.
+and app client are configured (`AwsCognito` in `appsettings.json`). When they are not, and the app allows it
+(`allowPlaceholderSignIn`, the template passes the host environment's `IsDevelopment()`), `LocalAuthenticationService`
+and `LocalPasswordService` (Auth) take their place: any non-empty credentials sign in, an 8 hour session is stored
+under `myapp_session` in localStorage, and nothing calls AWS. When the app does not allow it, `AddBlazwizCognito`
+throws, so a deployment missing its settings fails to start.
 
 Storage names below use the template's app name, `myapp`: the storage clients add the prefix set with
 `AddBlazwizApp` (`IAppStorageKeys`), so the code names them `cognito_session`, `saved_users` and so on.

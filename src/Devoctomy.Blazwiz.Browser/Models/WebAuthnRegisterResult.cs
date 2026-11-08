@@ -36,6 +36,12 @@ public class WebAuthnRegisterResult
     public bool PrfEnabled { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the authenticator verified the user (fingerprint, face or PIN) when the
+    /// PRF output was read. Keys are only derived when it did.
+    /// </summary>
+    public bool UserVerified { get; set; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether keys were derived from the Pseudo-Random Function (PRF) output and put in
     /// the key store. The PRF output itself never leaves the WebAuthn service.
     /// </summary>

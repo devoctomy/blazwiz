@@ -58,7 +58,32 @@ whose fix needs no functional change:
 - The template removes quotes, angle brackets, ampersands and backslashes from `--title` and `--description`, which
   would have broken the generated app's JSON, HTML and tests (SR29).
 
+And the review's smaller functional changes:
+- Passkeys must verify the user (fingerprint, face or PIN): the WebAuthn ceremonies require it, and keys are derived
+  from the PRF output only when the authenticator reports it (`WebAuthnRegisterResult.UserVerified`). A passkey that
+  cannot verify the user is no longer offered for "remember me"; one set up without verification needs setting up
+  again (SR1).
+- A profile's keys secret is deleted with a 7 day recovery window (`SecretsManagerUserKeysStore.RecoveryWindowDays`),
+  and the base stack's role refuses forced deletion, so an operator can restore the keys of a profile deleted by a bug
+  or a hijacked session. The app treats them as gone (SR5).
+- A profile missing from the index of the user's profiles is only forgotten (and its local files deleted) once its
+  keys document is gone too; while the keys exist the entry is put back
+  (`IE2eProtectedProfileManager.TryRestoreToIndexAsync`). Two devices writing the index at once no longer lose a
+  profile (SR20).
+- Deleting a profile refuses while sync is set up but has no credentials right now, instead of deleting the keys and
+  leaving its files in S3 undecryptable. `IS3SyncTargetProvider.IsConfigured` tells the two apart, and the S3 store
+  reports `Sync.Remote.NotConfigured` when nothing is set up to sync with (SR21).
+- `AddBlazwizCognito(configuration, allowPlaceholderSignIn)`: the placeholder sign in (any credentials) now stands in
+  for Cognito only where the app allows it. The template and clypse pass the host environment's `IsDevelopment()`, so a
+  deployed app whose settings are missing fails to start instead of letting anyone in (SR34).
+- A pass downloads no remote file larger than `SyncOptions.MaxFileSize` (100 MiB by default, `UseMaxFileSize`); larger
+  ones are reported as failed (`Sync.Remote.TooLarge`, with the sizes) and left in the cloud (SR39). `SyncEngine` takes
+  the `SyncOptions`.
+
 ### Fixed
+- The sync status could say "Offline: no credentials" for up to half a minute after sync was turned off (or on), when
+  a connectivity check was already running at the time: its stale answer was kept. A check that finishes after the
+  switch changed now runs again. Seen as a flaky `GivenNoCloud_WhenSyncSwitchedOff_...` UI test in CI.
 - The minimum IAM policy in the template's `cloudformation/README.md` lacked `cloudformation:GetTemplateSummary`, which
   deploying the app's own stack (`aws cloudformation deploy`) needs. With that policy, a deploy updated the base stack,
   then failed with AccessDenied on the app's stack. Add the action to policies made from the README.

@@ -203,8 +203,9 @@ is kept) are in `MyApp.Portal/sync.json`, embedded in the app and read by `UseEm
 `AddBlazwizCognito` signs in with Cognito when `AwsCognito` has a region, user pool id and app client id (deployed
 builds get these from `appsettings.Production.json`), using SRP through AWS's
 [`Amazon.Extensions.CognitoAuthentication`](https://github.com/aws/aws-sdk-net-extensions-cognito), so the password
-is never sent. Otherwise it keeps the placeholder sign-in (any credentials), e.g. for local development and the UI
-tests.
+is never sent. Without those settings it keeps the placeholder sign-in (any credentials) only in the Development
+environment (`allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment()` in `Program.cs`), for local development
+and the UI tests; a published build whose settings are missing refuses to start instead.
 
 ## Deploying to AWS
 

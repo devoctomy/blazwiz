@@ -413,6 +413,15 @@ Resources:
                   - secretsmanager:RestoreSecret
                   - secretsmanager:TagResource
                 Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${!aws:PrincipalTag/userSub}/keys/*-??????'
+              # A deleted keys secret can be restored by an operator for at least 7 days (the portal asks for 7). A
+              # hijacked session, or a bug, cannot make it gone at once.
+              - Sid: NoForcedSecretDeletion
+                Effect: Deny
+                Action: secretsmanager:DeleteSecret
+                Resource: '*'
+                Condition:
+                  Bool:
+                    secretsmanager:ForceDeleteWithoutRecovery: 'true'
       Tags:
         - Key: app
           Value: !Ref AppName

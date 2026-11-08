@@ -252,8 +252,14 @@ if ($credentials) {
             if ($secret.SecretString -ne $secretText) { throw 'Unexpected content' }
         } | Out-Null
 
-        Test-Check 'Can delete a profile secret (clean up)' {
-            Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $profileSecret, '--force-delete-without-recovery') | Out-Null
+        Test-Check 'Can delete a profile secret with a recovery window, but not at once (clean up)' {
+            # The role refuses forced deletion, so a deleted profile's keys can be restored for a week.
+            $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $profileSecret, '--force-delete-without-recovery')
+            if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied') {
+                throw 'Expected AccessDenied deleting without a recovery window'
+            }
+            Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $profileSecret, '--recovery-window-in-days', '7') | Out-Null
+            'Scheduled for deletion in 7 days, as the portal does'
         } | Out-Null
 
         # The index lists the user's real profiles, so it is only read: writing is already shown by the profile secret.

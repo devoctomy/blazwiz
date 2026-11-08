@@ -38,6 +38,10 @@ Every script takes `-AppName`, `-Environment`, `-Region` and `-AwsProfile`; see 
   for every environment but `prod`, which gets none.
 - **The users' secrets go with the environment.** The portal tags every keys secret `app=<AppName>`; `remove.ps1`
   finds and deletes them (the deployer's policy allows deleting tagged secrets only).
+- **A deleted profile's keys can be restored for 7 days.** The portal deletes a keys secret with a recovery window,
+  and the role refuses deletion without one, so neither a bug nor a hijacked session can destroy a profile's keys at
+  once. An operator can restore the secret (`aws secretsmanager restore-secret`) within the window; the app treats
+  the profile as gone.
 - **Secrets stay off the command line.** The scripts pass passwords and tokens to the AWS CLI through files only the
   current user can read, overwritten and deleted afterwards.
 - **TLS.** With the CloudFront certificate (no custom domain) the minimum TLS version is 1.0, which CloudFront does not

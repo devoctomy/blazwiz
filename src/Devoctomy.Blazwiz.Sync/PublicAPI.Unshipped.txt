@@ -1,4 +1,13 @@
 #nullable enable
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.LocalStorageE2eProfileLabelStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher! cipher, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
 static readonly Devoctomy.Blazwiz.Sync.Models.RemoteObjectInfo.MaxClockSkew -> System.TimeSpan
+const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.MaxFileSize = 104857600 -> long
+const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.RemoteNotConfigured = "Sync.Remote.NotConfigured" -> string!
+const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.RemoteTooLarge = "Sync.Remote.TooLarge" -> string!
+Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseMaxFileSize(long bytes) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
+Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.MaxFileSize.get -> long
+Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.MaxFileSize.set -> void
+Devoctomy.Blazwiz.Sync.Interfaces.IS3SyncTargetProvider.IsConfigured.get -> bool
+Devoctomy.Blazwiz.Sync.SyncEngine.SyncEngine(Devoctomy.Blazwiz.Sync.Interfaces.ISyncPlanner! planner, Devoctomy.Blazwiz.Sync.Interfaces.ISyncConflictResolver! conflictResolver, Devoctomy.Blazwiz.Sync.Interfaces.IContentHasher! contentHasher, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.ISyncEventLog! eventLog, System.TimeProvider! timeProvider, Devoctomy.Blazwiz.Encryption.Interfaces.IEncryptedFileFormat! encryptedFileFormat, Devoctomy.Blazwiz.Sync.Configuration.SyncOptions! options) -> void
+*REMOVED*Devoctomy.Blazwiz.Sync.SyncEngine.SyncEngine(Devoctomy.Blazwiz.Sync.Interfaces.ISyncPlanner! planner, Devoctomy.Blazwiz.Sync.Interfaces.ISyncConflictResolver! conflictResolver, Devoctomy.Blazwiz.Sync.Interfaces.IContentHasher! contentHasher, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.ISyncEventLog! eventLog, System.TimeProvider! timeProvider, Devoctomy.Blazwiz.Encryption.Interfaces.IEncryptedFileFormat! encryptedFileFormat) -> void
 *REMOVED*Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.LocalStorageE2eProfileLabelStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService! cryptoService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void

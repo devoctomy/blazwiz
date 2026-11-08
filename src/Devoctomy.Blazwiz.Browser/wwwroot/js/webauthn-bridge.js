@@ -136,7 +136,7 @@ window.webAuthnWrapper = (function() {
                 authenticatorSelection: {
                     residentKey: 'preferred',
                     requireResidentKey: false,
-                    userVerification: 'preferred'
+                    userVerification: 'required'
                 },
                 excludeCredentials: [],
                 extensions: {
@@ -148,6 +148,7 @@ window.webAuthnWrapper = (function() {
             const clientExtensionResults = attResp.clientExtensionResults || {};
 
             let prfOutput = null;
+            let userVerified = false;
 
             // If PRF is enabled, perform a quick authentication to get PRF output
             if (clientExtensionResults.prf?.enabled) {
@@ -158,7 +159,7 @@ window.webAuthnWrapper = (function() {
                     const authOptionsJSON = {
                         challenge: authChallenge,
                         rpId: RP_ID,
-                        userVerification: 'preferred',
+                        userVerification: 'required',
                         allowCredentials: [
                             {
                                 id: attResp.id,
@@ -177,6 +178,7 @@ window.webAuthnWrapper = (function() {
                     };
 
                     const authResp = await startAuthentication({ optionsJSON: authOptionsJSON });
+                    userVerified = readFlags(authResp.response?.authenticatorData).uv;
                     prfOutput = takePrfOutput(authResp.clientExtensionResults);
                 } catch (prfError) {
                     console.warn('Failed to get PRF output during registration:', prfError);
@@ -190,6 +192,7 @@ window.webAuthnWrapper = (function() {
                 userID: optionsJSON.user.id,
                 username: username,
                 prfEnabled: clientExtensionResults.prf?.enabled || false,
+                userVerified: userVerified,
                 prfOutput: prfOutput,
                 error: null
             };
@@ -202,6 +205,8 @@ window.webAuthnWrapper = (function() {
                 userID: null,
                 username: null,
                 prfEnabled: false,
+                userVerified: false,
+                prfOutput: null,
                 error: translateError(error)
             };
         }
@@ -222,7 +227,7 @@ window.webAuthnWrapper = (function() {
             const optionsJSON = {
                 challenge,
                 rpId: RP_ID,
-                userVerification: 'preferred',
+                userVerification: 'required',
                 allowCredentials: [
                     {
                         id: credentialID,

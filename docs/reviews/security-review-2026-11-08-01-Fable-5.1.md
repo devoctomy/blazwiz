@@ -767,20 +767,23 @@ section. How they were checked:
 - **Stored data:** remembered passwords, profile labels and device-unlock keys from earlier builds stop decrypting
   (SR23, SR24); before 1.0 that needs no migration. Secrets created before this change carry no `app` tag, so
   `remove.ps1` reports them and leaves them for deletion by hand (SR12).
-- **Left for a decision, with the reason in the table:** SR1 (the flags are now real, but requiring verification is
-  the small functional change the finding describes), SR17 (a permissions boundary needs the account's administrator
+- **Second pass, later the same day:** the small functional changes SR1, SR5, SR20, SR21, SR34 and SR39 were made too,
+  with the maintainer's agreement, and checked the same way, plus clypse (the one app on the framework) packed against
+  the working tree and its unit and UI suites run. The stack change for SR5 (the `Deny` on forced deletion) is again not
+  deployed.
+- **Left for a decision, with the reason in the table:** SR17 (a permissions boundary needs the account's administrator
   to create the boundary policy first), SR31 (moving the CSP into the build is a design change, and `style-src` needs
-  a browser check), SR39, SR45 (lock files) and SR46.
+  a browser check), SR45 (lock files) and SR46. SR3 and SR6 have backlog plans.
 
 ## Summary
 
 | ID | Severity | Area | Description | What could result | Functional change needed? | Fixed |
 |---|---|---|---|---|---|---|
-| SR1 | Medium | Passkeys | User verification is `preferred`, never required or checked; the flags reporting it are always false | Possession of the device or security key alone decrypts the saved password, signs in offline, and unlocks device-unlock profiles | Small: authenticators that cannot verify stop being offered for remember-me | Partly: the bridge now reports the real UP and UV flags from the authenticator data, so the check can be added. `preferred` and the missing check remain (functional) |
+| SR1 | Medium | Passkeys | User verification is `preferred`, never required or checked; the flags reporting it are always false | Possession of the device or security key alone decrypts the saved password, signs in offline, and unlocks device-unlock profiles | Small: authenticators that cannot verify stop being offered for remember-me | Yes (later the same day): the bridge reports the real UP and UV flags from the authenticator data, every ceremony requires verification, and keys are derived only when it was done (`WebAuthnRegisterResult.UserVerified`); unit tests with a fake JavaScript runtime |
 | SR2 | Medium | Sync / E2E | Idle auto-lock looks profiles up by name but is given the key scope id, so it never starts for code-defined profiles (the template's `files`) | Unlocked profile keys and plaintext stay available for the whole session, including on an unattended machine | No (restores documented behaviour) | Yes: lookup by key scope; unit test with a profile whose name is not its scope id |
 | SR3 | Medium | Key management | Passphrase change rewraps the same master key; file keys unchanged; old document kept as `AWSPREVIOUS` | Anyone holding an old keys document and old passphrase, or the master key, keeps reading all current and future files | Yes: key rotation on passphrase change, optional re-encryption, new text | No (functional) |
 | SR4 | Medium | AWS | Data bucket not versioned; role may delete and overwrite | Leaked one-hour credentials or an engine bug permanently destroys a user's files | No (infrastructure) | Yes, not deployed: versioning, old versions expire after 30 days, incomplete uploads after 7; `remove.ps1` deletes every version |
-| SR5 | Medium | AWS / UI.Sync | Keys secrets force-deleted with no recovery window; policy allows it | A hijacked session or a bug irrecoverably destroys a profile's keys, making all its files unreadable | Small: deleted keys linger unreadable for 7 days; test script changes | No (small functional) |
+| SR5 | Medium | AWS / UI.Sync | Keys secrets force-deleted with no recovery window; policy allows it | A hijacked session or a bug irrecoverably destroys a profile's keys, making all its files unreadable | Small: deleted keys linger unreadable for 7 days; test script changes | Yes (later the same day), not deployed: `RecoveryWindowInDays = 7` in the store, a `Deny` on forced deletion in the role, `test-auth.ps1` checks both |
 | SR6 | Medium | AWS / Auth | No MFA, no threat protection (in backlog) | A phished or reused password yields the tokens, AWS credentials, wrapped keys and ciphertext, and the power to destroy them | Yes: a second sign-in step and Profile page set-up | No (functional, in the backlog) |
 | SR7 | Medium | CI | Actions pinned by tag, including `NuGet/login` in the publish job | A compromised action publishes malicious `Devoctomy.Blazwiz.*` packages that every app restores | No (workflow files) | Yes: every action pinned to the commit its tag pointed at (v4.4.0, v6.1.0, v4.6.2, v4.3.0, v1.2.0), with Dependabot for `github-actions` |
 | SR8 | Medium | Scripts | `test-template.ps1` deletes a pre-existing `-WorkRoot` on failure | Loss of a maintainer's local folder contents | No | Yes: refuses an existing folder; deletes only one it created |
@@ -795,8 +798,8 @@ section. How they were checked:
 | SR17 | Low | AWS | Deployer policy allows self-escalation; `AdminSetUserPassword` on every pool | Deployer identity gains admin on the account and can take over any user in any pool | No | Partly: duplicate action removed and new actions added with scoped resources or tag conditions. The permissions boundary needs the account administrator to create the boundary policy; the tag condition on `cognito-idp:Admin*` needs testing |
 | SR18 | Low | Sync / E2E | Index load replaces a code profile's whole settings object with user-profile defaults | `AllowDeviceUnlock` and passphrase rules silently change for the main profile | No (bug fix) | Yes: only an idle timeout chosen in the index is applied, over the profile's own settings; two unit tests |
 | SR19 | Low | Sync / E2E | Zero-length content bypasses the encrypted-format check | S3-side truncation shows as an empty file with no error, where any other tamper is detected | No | Yes: empty non-folder content throws `InvalidDataException`; folder markers pass through |
-| SR20 | Low | Sync / E2E | Index lost updates and "missing from index" wipe local keys and files | A profile's local files and keys copy are deleted on every device; keys secret and ciphertext survive but cannot be re-attached | Yes (recovery behaviour) | No (functional) |
-| SR21 | Low | Sync | Profile deletion proceeds when S3 is unreachable for credential reasons | Permanently undecryptable orphan objects in the user's prefix | Small: deletion refuses while S3 cannot be reached | No (small functional) |
+| SR20 | Low | Sync / E2E | Index lost updates and "missing from index" wipe local keys and files | A profile's local files and keys copy are deleted on every device; keys secret and ciphertext survive but cannot be re-attached | Yes (recovery behaviour) | Yes (later the same day): before forgetting, `TryRestoreToIndexAsync` checks the keys document; if it exists the entry is put back, if the store is unreachable the profile is kept; unit tests in Encryption and Sync. Guarding the index write itself is still open (`protected-profile-concurrent-writes.md`) |
+| SR21 | Low | Sync | Profile deletion proceeds when S3 is unreachable for credential reasons | Permanently undecryptable orphan objects in the user's prefix | Small: deletion refuses while S3 cannot be reached | Yes (later the same day): `IS3SyncTargetProvider.IsConfigured` separates "nothing set up" (`Sync.Remote.NotConfigured`, deletion proceeds) from "no credentials now" (deletion refuses); unit tests |
 | SR22 | Low | Sync | Remote-supplied edit time trusted; no version binding | An S3-side actor forces its version to win or rolls files back silently on every device | No | Yes: an edit time more than 5 minutes after the upload falls back to the upload time (`RemoteObjectInfo.MaxClockSkew`); unit tests. Version binding is a design change, documented |
 | SR23 | Low | Key management | Device-unlock wrapped master key has no associated data | A moved wrapped key fails late with the wrong exception; no bypass | No (existing device-unlock entries fall back to the passphrase) | Yes: the scope id is the associated data; unit test moves a wrapped key between profiles |
 | SR24 | Low | Auth | Remembered passwords use the legacy stream cipher: no binding, key copied into a string | Key material outlives its use; ciphertext not bound to the user | No (saved passwords re-created at next sign in) | Yes: `IAeadCipher` with the email (passwords) or user id (labels) as associated data; `ICryptoService` and its implementation removed |
@@ -809,12 +812,12 @@ section. How they were checked:
 | SR31 | Low | Hosting | CSP added only by `deploy.ps1`, not by the build; `style-src 'unsafe-inline'` | Apps hosted another way ship with no CSP, so an XSS reaches tokens and keys unhindered | No (build change) | No: where the CSP is produced is a design decision, and tightening `style-src` needs a browser check against the deployed app |
 | SR32 | Low | Passkeys | User handle embeds the email; `userId` parameter mismatch | Email leaks via the authenticator; a latent misuse of the register call | No | Yes: random 32-byte user handle; the parameter is gone from `IWebAuthnService.RegisterAsync` |
 | SR33 | Low | Template | Note keys from the URL only prefix-checked | Odd keys inside the user's own store; no access to anything else | No | Yes: `IsNoteKey` rejects empty, `.`, `..` and control-character segments; unit tests |
-| SR34 | Low | Auth | Missing Cognito settings silently select the placeholder sign in | A misdeployed app lets anyone "sign in" and read local data for the typed name; no AWS access | Small: fail fast outside development | No (small functional) |
+| SR34 | Low | Auth | Missing Cognito settings silently select the placeholder sign in | A misdeployed app lets anyone "sign in" and read local data for the typed name; no AWS access | Small: fail fast outside development | Yes (later the same day): `AddBlazwizCognito(configuration, allowPlaceholderSignIn)` throws when Cognito is unconfigured and the placeholder is not allowed; the template and clypse pass `IsDevelopment()`; unit test |
 | SR35 | Info | Sync | File names, sizes and times are plaintext in S3 and IndexedDB | Metadata visible to anyone with bucket or device access | Docs | Yes: stated in the Sync README |
 | SR36 | Info | Sync | Glob matcher accepts `.`/`..`/empty segments inside the prefix; `\` differs between Windows and browser | Aliased keys; tests that pass on Windows for inputs that differ at runtime | No | Yes: such keys never match; unit tests |
 | SR37 | Info | Encryption | Random nonces with no rotation trigger | Theoretical nonce-reuse bound far beyond realistic use | Only if rotation is added | Documented in the Sync README; rotation belongs with SR3 |
 | SR38 | Info | Encryption | Passphrases in .NET strings | Cannot be zeroed; inherent | None | n/a |
-| SR39 | Info | Sync | Whole-object buffering, no size cap | A huge object in the prefix crashes the tab | Small, if a ceiling is added | No |
+| SR39 | Info | Sync | Whole-object buffering, no size cap | A huge object in the prefix crashes the tab | Small, if a ceiling is added | Yes (later the same day): `SyncOptions.MaxFileSize` (100 MiB, `UseMaxFileSize`); a larger remote file is reported (`Sync.Remote.TooLarge`) and not fetched; unit test |
 | SR40 | Info | Encryption | Argon2id default depends on the package's build configuration | A Debug publish of this repository's template derives 19 MiB keys; published packages are Release | Docs | Yes: stated in the template README |
 | SR41 | Info | UI | Framework text rendered as `MarkupString` | Overrides that are not HTML, or pseudo-localisation, break the tag | No | Yes: plain text, rendered with encoding |
 | SR42 | Info | UI | Password change and passkey lookup match the saved user differently | An old password could stay encrypted in `saved_users` if username ever differs from email | No | Yes: `SavedUser.IsFor` used by both and by the login page; unit tests |
@@ -826,9 +829,9 @@ section. How they were checked:
 | SR48 | Info | AWS | No audit logging | No record of which credentials deleted or changed what after an incident | No | Yes, not deployed: `AuditLogging` (`auto` = on for `prod`) adds a CloudTrail trail of data bucket object events into an audit bucket kept a year |
 | SR49 | Info | Docs / AWS | Backlog says no CI and no CSP; README mechanism drift; cross-prefix read not tested end to end; TLS 1.0 with the default certificate; HSTS without `includeSubDomains` | Misleading docs; weaker TLS floor without a custom domain | Docs; no | Yes: backlog and READMEs corrected, TLS and HSTS stated; `test-auth.ps1` also checks reading and listing another prefix and the whole bucket |
 
-Counts: 0 Critical, 0 High, 8 Medium, 26 Low, 15 Informational. Fixed: 33 in full, 4 in part (SR1, SR17, SR37,
-SR45), 9 left as needing a functional change or a decision (SR3, SR5, SR6, SR20, SR21, SR31, SR34, SR39, SR46), 3 not
-applicable (SR38, SR43, SR47).
+Counts: 0 Critical, 0 High, 8 Medium, 26 Low, 15 Informational. Fixed: 39 in full (33 in the first pass, then SR1,
+SR5, SR20, SR21, SR34 and SR39 later the same day), 3 in part (SR17, SR37, SR45), 4 left for a decision or a plan
+(SR3, SR6, SR31, SR46), 3 not applicable (SR38, SR43, SR47).
 
 ## Closing assessment
 
@@ -855,8 +858,9 @@ SR5 and SR7 (cheap, and they bound the damage from everything else), then SR9, S
 batch, then plan SR3 and SR6. The Informational items are for the README and the threat-model section this review
 suggests adding.
 
-**After the fixes of 2026-11-08** (see "What was fixed"), what remains open is: SR1's last step (require user
-verification in the WebAuthn bridge and check the now-real flag), SR5 (delete secrets with a recovery window), SR21
-and SR34 (small functional changes), SR3, SR6 and SR20 (features), SR31 (a design decision about where the CSP is
-produced), SR17's permissions boundary (an account administrator's task), and the deploy that puts the stack changes
-into effect. The next review should start from this table.
+**After the fixes of 2026-11-08** (see "What was fixed"), including the second pass that did the small functional
+changes (SR1, SR5, SR20, SR21, SR34, SR39), what remains open is: SR3 (key rotation on passphrase change, planned in
+`docs/plans/backlog/passphrase-change-key-rotation.md`), SR6 (MFA, blocked by the session model as
+`docs/plans/backlog/mfa-totp.md` explains), SR31 (where the CSP is produced, `docs/plans/backlog/csp-in-build.md`),
+SR17's permissions boundary (an account administrator's task), SR46 (test package churn), and the deploy that puts the
+stack changes into effect. The next review should start from this table.

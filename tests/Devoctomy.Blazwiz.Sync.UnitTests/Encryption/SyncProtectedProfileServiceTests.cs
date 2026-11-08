@@ -197,9 +197,9 @@ public class SyncProtectedProfileServiceTests
     [Fact]
     public async Task GivenNoSyncTarget_WhenDeleted_ThenItsKeysAndLocalFilesAreDeleted()
     {
-        // Arrange
+        // Arrange: nothing was ever synced, so there is nothing in the cloud to leave behind.
         var (sut, scope, remote) = await CreateDeletableProfileAsync();
-        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException(SyncErrorCodes.RemoteNoCredentials));
+        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException(SyncErrorCodes.RemoteNotConfigured));
 
         // Act
         await sut.DeleteAsync(scope);
@@ -208,6 +208,42 @@ public class SyncProtectedProfileServiceTests
         mockManager.Verify(x => x.DeleteAsync(scope, It.IsAny<CancellationToken>()), Times.Once);
         remote.Verify(x => x.DeleteAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Null(registry.Find(scope.Id));
+    }
+
+    [Fact]
+    public async Task GivenASyncTargetButNoCredentialsRightNow_WhenDeleted_ThenThrowsAndNothingIsDeleted()
+    {
+        // Arrange: the files in the cloud would be left with nothing to decrypt them.
+        var (sut, scope, remote) = await CreateDeletableProfileAsync();
+        remote.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException(SyncErrorCodes.RemoteNoCredentials));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<SyncAccessDeniedException>(() => sut.DeleteAsync(scope));
+        mockManager.Verify(x => x.DeleteAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.NotNull(registry.Find(scope.Id));
+    }
+
+    [Fact]
+    public async Task GivenAProfileMissingFromTheIndexWhoseKeysStillExist_WhenLoadedAgain_ThenItIsKeptAndPutBack()
+    {
+        // Arrange: two devices wrote the index at once and this profile's entry was lost; its keys are what make it real.
+        var kept = Guid.NewGuid().ToString("D");
+        var lost = Guid.NewGuid().ToString("D");
+        mockManager.SetupSequence(x => x.GetProfilesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new E2eProfileIndexEntry { Id = kept }, new E2eProfileIndexEntry { Id = lost }])
+            .ReturnsAsync([new E2eProfileIndexEntry { Id = kept }]);
+        mockManager.Setup(x => x.TryRestoreToIndexAsync(new E2eKeyScope(lost), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+
+        // Act
+        var scopes = await sut.LoadAsync();
+
+        // Assert
+        Assert.Equal(["notes", kept, lost], registry.Profiles.Select(p => p.Name));
+        Assert.Contains(new E2eKeyScope(lost), scopes);
+        mockManager.Verify(x => x.ForgetAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+        Assert.Empty(calls);
     }
 
     [Fact]

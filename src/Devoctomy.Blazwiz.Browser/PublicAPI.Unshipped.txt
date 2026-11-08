@@ -1,4 +1,6 @@
 #nullable enable
+Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult.UserVerified.get -> bool
+Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult.UserVerified.set -> void
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService.RegisterAsync(string! username) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult!>!
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.RegisterAsync(string! username) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult!>!
 *REMOVED*Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService.RegisterAsync(string! username, string? userId) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult!>!

@@ -117,9 +117,20 @@ public sealed class ConnectivityService : IConnectivityService, IDisposable
     public async Task<ConnectivityStatus> RecheckAsync(CancellationToken ct = default)
     {
         await InitializeAsync();
-        if (checkInProgress != null)
+        if (checkInProgress is { } inProgress)
         {
-            return await checkInProgress;
+            var result = await inProgress;
+            if (GetSwitchedOffReason(result.Reason) == GetSwitchedOffReason())
+            {
+                return result;
+            }
+
+            // Sync was switched off or on while that check ran, so its answer is already stale: check again (unless
+            // another caller has started to).
+            if (checkInProgress is { } restarted)
+            {
+                return await restarted;
+            }
         }
 
         checkInProgress = RunChecksAsync(ct);

@@ -352,6 +352,34 @@ public class E2eProtectedProfileManager(
         return localKeyStore.DeleteAsync(scope);
     }
 
+    /// <inheritdoc/>
+    public async Task<bool> TryRestoreToIndexAsync(E2eKeyScope scope, CancellationToken ct = default)
+    {
+        CheckProtected(scope);
+
+        try
+        {
+            if (await userKeysStore.GetAsync(scope, ct) == null)
+            {
+                return false;
+            }
+        }
+        catch (HttpRequestException)
+        {
+            // Offline: whether the keys are still there is not known, so the profile is kept.
+            return true;
+        }
+
+        var index = await ReadIndexAsync(ct);
+        if (!index.Profiles.Any(p => p.Id == scope.Id))
+        {
+            index.Profiles.Add(new E2eProfileIndexEntry { Id = scope.Id, Created = timeProvider.GetUtcNow().UtcDateTime });
+            await WriteIndexAsync(index, ct);
+        }
+
+        return true;
+    }
+
     private static void CheckProtected(E2eKeyScope scope)
     {
         ArgumentNullException.ThrowIfNull(scope);

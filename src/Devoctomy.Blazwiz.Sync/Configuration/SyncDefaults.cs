@@ -12,6 +12,12 @@ public static class SyncDefaults
     public const string ConfigurationSection = "Sync";
 
     /// <summary>
+    /// The largest remote file a pass downloads unless <c>UseMaxFileSize</c> says otherwise: 100 MiB. Files are held
+    /// whole in memory while they are synced, so one much larger than the app expects could bring the tab down.
+    /// </summary>
+    public const long MaxFileSize = 100L * 1024 * 1024;
+
+    /// <summary>
     /// The folder, in the user's prefix, holding a folder per protected profile, named by its id.
     /// </summary>
     public const string ProtectedProfilesFolder = "profiles";

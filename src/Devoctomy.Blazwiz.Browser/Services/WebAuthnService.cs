@@ -8,7 +8,9 @@ namespace Devoctomy.Blazwiz.Browser.Services;
 
 /// <summary>
 /// Implementation of <see cref="IWebAuthnService"/> via browser JavaScript interop. The PRF output arrives as bytes,
-/// goes straight to the <see cref="IPrfKeyDerivator"/> and is wiped, so nothing else in the app sees it.
+/// goes straight to the <see cref="IPrfKeyDerivator"/> and is wiped, so nothing else in the app sees it. Keys are only
+/// derived when the authenticator verified the user (fingerprint, face or PIN): a touch alone proves possession, not
+/// the user.
 /// </summary>
 public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDerivator)
     : IWebAuthnService
@@ -28,7 +30,8 @@ public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDeriva
             UserID = result.UserID,
             Username = result.Username,
             PrfEnabled = result.PrfEnabled,
-            KeysDerived = result.Success && DeriveKeys(result.PrfOutput),
+            UserVerified = result.UserVerified,
+            KeysDerived = DeriveKeys(result.Success && result.UserVerified, result.PrfOutput),
         };
     }
 
@@ -42,11 +45,12 @@ public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDeriva
             Error = result.Error,
             UserPresent = result.UserPresent,
             UserVerified = result.UserVerified,
-            KeysDerived = result.Success && DeriveKeys(result.PrfOutput),
+            KeysDerived = DeriveKeys(result.Success && result.UserVerified, result.PrfOutput),
         };
     }
 
-    private bool DeriveKeys(byte[]? prfOutput)
+    // Derives the keys when allowed; the PRF output is wiped either way.
+    private bool DeriveKeys(bool allowed, byte[]? prfOutput)
     {
         if (prfOutput == null || prfOutput.Length == 0)
         {
@@ -55,6 +59,11 @@ public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDeriva
 
         try
         {
+            if (!allowed)
+            {
+                return false;
+            }
+
             prfKeyDerivator.DeriveKeys(prfOutput);
             return true;
         }
@@ -77,6 +86,8 @@ public class WebAuthnService(IJSRuntime jsRuntime, IPrfKeyDerivator prfKeyDeriva
         public string? Username { get; set; }
 
         public bool PrfEnabled { get; set; }
+
+        public bool UserVerified { get; set; }
 
         public byte[]? PrfOutput { get; set; }
     }
