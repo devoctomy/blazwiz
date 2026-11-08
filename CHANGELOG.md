@@ -18,6 +18,9 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   in `cloudformation/README.md`, which shows how to create the policy from it.
 - The template's UI tests no longer build and start the portal with `MSBUILDDISABLENODEREUSE=1`. It worked around a
   build failure that no longer happens.
+- The template's UI tests derive passphrase keys with the lowest Argon2id costs (64 KiB, 1 iteration) instead of the
+  app's Development settings, so setting a passphrase no longer holds up the page long enough to time out on slow CI
+  runners. They run about a minute faster.
 
 ## 0.5.0
 
