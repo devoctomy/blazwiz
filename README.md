@@ -4,8 +4,7 @@ A framework for **Blazor WebAssembly PWAs** that sign in with **AWS Cognito**, s
 to end encrypted) and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
 that creates an app built on them, so apps take framework upgrades by changing one version number.
 
-> **Status:** in development, unreleased (0.x). The restructure into packages is planned and tracked in
-> [docs/reviews/2026-11-03-upgradeability-review.md](docs/reviews/2026-11-03-upgradeability-review.md).
+> **Status:** in development, unreleased (0.x).
 
 ## Repository layout
 
@@ -91,7 +90,7 @@ There is no option to sync without end to end encryption (yet). Whether an app m
 developer's choice, never its users', and it is not supported until it can be done with clear warnings: without
 encryption, files sit in S3 as plain text that anyone who can read the bucket (the AWS account's operators, leaked
 credentials, backups and old versions) can read, with access control as the only protection. See
-`docs/backlog/sync-without-encryption.md`.
+`docs/plans/backlog/sync-without-encryption.md`.
 
 In the template the app is called `MyApp`: `MyApp` in projects, namespaces and identifiers, `myapp` for AWS names and
 browser storage keys, `MYAPP_` for environment variables. Optional content uses comment markers

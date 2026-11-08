@@ -1,6 +1,6 @@
 # Self sign-up (the app developer's choice)
 
-Added 2026-11-03, from Phase 3 of `docs/reviews/2026-11-03-upgradeability-review.md` (optional there, not done).
+Added 2026-11-03, from Phase 3 of `docs/reviews/2026-11-03-upgradeability-review.md` (removed) (optional there, not done).
 
 The user pool is invite-only today. Whether people can create their own account is the app developer's choice,
 never something users switch.

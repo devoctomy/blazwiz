@@ -1,6 +1,6 @@
 # Edge cases: two devices writing the same secret at once
 
-**Related:** `docs/plans/2026-11-05-profile-passphrases-plan.md` (R10, D3)
+**Related:** `docs/plans/2026-11-05-profile-passphrases-plan.md` (removed) (R10, D3)
 
 Secrets Manager has no conditional write: every `PutSecretValue` creates a new version and makes it current, whatever
 the current version is (see the

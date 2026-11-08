@@ -1,10 +1,10 @@
 # Publishes every Devoctomy.Blazwiz package and the template package to nuget.org, all at one version, and on main
 # creates the GitHub release with its tag. It does not run the tests: it only publishes a commit the CI workflow (ci.yml)
-# has already passed. See docs/releasing.md.
+# has already passed.
 #
 # Run workflow works out what to publish from the branch:
 # - main: the version in Directory.Build.props (set with eng/bump-version.ps1): a release, tagged v<version>, with a
-#   GitHub release. Refused if that version is already released, or CHANGELOG.md has no section for it.
+#   GitHub release.
 # - any other branch: a beta, <version>-beta.<run number>, on nuget.org only. No tag or GitHub release: the branch is
 #   deleted when it is merged, and a tag or release pointing at its commits would be left behind. If the version in
 #   Directory.Build.props is already released, the beta is of the next minor version, so it sorts above that release.
@@ -69,14 +69,13 @@ jobs:
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
-      MSBUILDDISABLENODEREUSE: 1
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -126,7 +125,7 @@ jobs:
         shell: pwsh
         run: |
           $versionArgs = @('-p:VersionPrefix=${{ steps.version.outputs.prefix }}', '-p:VersionSuffix=${{ steps.version.outputs.suffix }}')
-          # From 1.0, packing fails on a binary breaking change against the latest release (docs/versioning.md).
+          # From 1.0, packing fails on a binary breaking change against the latest release.
           $baseline = ./eng/get-validation-baseline.ps1
           # @(...) around the if: PowerShell unwraps a one-element array output from an if, and splatting a string
           # passes it to a native command one character at a time.

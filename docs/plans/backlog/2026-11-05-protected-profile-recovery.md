@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-05
 **Status:** not planned
-**Related:** `docs/plans/2026-11-05-profile-passphrases-plan.md` (D6)
+**Related:** `docs/plans/2026-11-05-profile-passphrases-plan.md` (removed) (D6)
 
 ## What
 
