@@ -16,6 +16,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 ### Changed
 - The template's minimum IAM policy for deploying is now a file, `cloudformation/deploy-policy.json`, in place of a block
   in `cloudformation/README.md`, which shows how to create the policy from it.
+- The template's UI tests no longer build and start the portal with `MSBUILDDISABLENODEREUSE=1`. It worked around a
+  build failure that no longer happens.
 
 ## 0.5.0
 

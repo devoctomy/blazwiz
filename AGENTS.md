@@ -143,9 +143,6 @@ These are the steps CI runs (`.github/workflows/ci.yml`). Test namespaces must c
 - Each package lists its public API in `PublicAPI.Unshipped.txt` (PublicApiAnalyzers). A public API change fails the
   build until the list is updated, so it is reviewed: add or remove the lines the analyzer reports (RS0016, RS0017).
   Never edit `PublicAPI.Shipped.txt`; the maintainer moves entries there at a release.
-- If a build fails in the static web assets compression step ("An item with the same key has already been added"),
-  the cause is usually MSBuild node reuse: build again with `MSBUILDDISABLENODEREUSE=1`. The UI tests already start
-  the portal that way. See `docs/plans/active/2026-11-08-static-web-assets-compression-plan.md`.
 - `./templatepack/test-template.ps1` packs the packages (with a version unique to the run) and the template, creates
   apps with awkward names and every option, and checks each one has no `MyApp` left, builds against the packages and
   passes its tests. Run it after changing packages' public surface, template content or `.template.config/`.

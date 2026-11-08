@@ -305,10 +305,6 @@ public class TestBase : PageTest
             },
         };
         process.StartInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
-
-        // Build in fresh MSBuild processes. Reusing the ones left by building the tests intermittently fails the static
-        // web assets compression step ("An item with the same key has already been added").
-        process.StartInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
         process.OutputDataReceived += (_, e) => WriteServerLog(e.Data);
         process.ErrorDataReceived += (_, e) => WriteServerLog(e.Data);
         process.Start();

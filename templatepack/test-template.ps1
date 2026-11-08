@@ -111,7 +111,7 @@ function Test-Project([string]$Root, [string]$Solution, [bool]$UiTests, [string]
     # read as malformed), and passed when built again.
     dotnet build-server shutdown | Out-Null
 
-    if (-not (Invoke-Checked "$Label builds" { dotnet build (Join-Path $Root $Solution) --nologo -v q -m:1 @BuildArguments })) {
+    if (-not (Invoke-Checked "$Label builds" { dotnet build (Join-Path $Root $Solution) --nologo -v q @BuildArguments })) {
         return
     }
 
@@ -146,7 +146,7 @@ try {
     }
 
     Write-Step "Packing the framework packages ($version)"
-    if (-not (Invoke-Checked 'framework packs' { dotnet pack (Join-Path $repositoryRoot 'blazwiz.slnx') -c Release -o $feed --nologo -v q -m:1 -p:VersionSuffix=$versionSuffix @validation })) {
+    if (-not (Invoke-Checked 'framework packs' { dotnet pack (Join-Path $repositoryRoot 'blazwiz.slnx') -c Release -o $feed --nologo -v q -p:VersionSuffix=$versionSuffix @validation })) {
         throw 'Could not pack the framework.'
     }
 
