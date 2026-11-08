@@ -1,0 +1,10 @@
+@using Devoctomy.Blazwiz.UI.ViewModels
+@inherits MvvmComponentBase<AppUpdateIndicatorViewModel>
+
+@if (ViewModel.IsVisible)
+{
+    <div class="app-update-progress" role="status" id="app-update-progress">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span id="app-update-progress-text">@ViewModel.Message</span>
+    </div>
+}

@@ -8,7 +8,15 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
-## 0.6.0
+## 0.7.0
+
+### Added
+- A small indicator in the bottom corner while a new version of the app downloads in the background
+  (`AppUpdateIndicator`, in both layouts), with the percentage of files cached when the service worker reports it. On a
+  slow connection the download took minutes with nothing to show for it until the update banner appeared. The
+  template's `service-worker.published.js` now caches files a few at a time, posts `INSTALL_PROGRESS` to the open
+  pages after each, and keeps the files an earlier, failed attempt at the same version had cached. Apps copy it to get
+  the percentage; without it the indicator shows but no percentage.
 
 ### Security
 From the security review of 2026-11-08 (`docs/reviews/security-review-2026-11-08-01-Fable-5.1.md`), every finding
