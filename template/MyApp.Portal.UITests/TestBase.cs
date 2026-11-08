@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.Reflection;
+//#if (IncludeSync)
+using System.Text.Json.Nodes;
+//#endif
 using Microsoft.Playwright.MSTest;
 
 namespace MyApp.Portal.UITests;
@@ -33,6 +36,16 @@ public class TestBase : PageTest
     /// The passphrase the tests protect their files with.
     /// </summary>
     protected const string Passphrase = "correct horse battery staple";
+
+    /// <summary>
+    /// The Argon2id memory, in KiB, the portal derives passphrase keys with during the tests.
+    /// </summary>
+    protected const int TestArgon2idMemoryKib = 64;
+
+    /// <summary>
+    /// The Argon2id iterations the portal derives passphrase keys with during the tests.
+    /// </summary>
+    protected const int TestArgon2idIterations = 1;
 
 //#endif
     private static readonly string ResultsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
@@ -103,7 +116,11 @@ public class TestBase : PageTest
     }
 
     [TestInitialize]
+#if (IncludeSync)
+    public async Task BaseTestInitialize()
+#else
     public void BaseTestInitialize()
+#endif
     {
         screenshotCounter = 0;
         Directory.CreateDirectory(ScreenshotDirectory);
@@ -111,6 +128,18 @@ public class TestBase : PageTest
         // The app is small and served locally, so anything slower than this is a real problem.
         Page.SetDefaultTimeout(StepTimeoutMs);
         Assertions.SetDefaultExpectTimeout(StepTimeoutMs);
+//#if (IncludeSync)
+
+        // Argon2id runs on the page's only thread, so the tests derive keys with the lowest costs, not the Development
+        // settings.
+        await Context.RouteAsync("**/appsettings.Development.json", async route =>
+        {
+            var response = await route.FetchAsync();
+            var settings = JsonNode.Parse(await response.TextAsync())!.AsObject();
+            settings["Argon2id"] = new JsonObject { ["MemoryKib"] = TestArgon2idMemoryKib, ["Iterations"] = TestArgon2idIterations };
+            await route.FulfillAsync(new() { Response = response, Body = settings.ToJsonString() });
+        });
+//#endif
     }
 
     [TestCleanup]

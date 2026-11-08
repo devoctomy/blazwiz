@@ -121,13 +121,13 @@ public class E2eEncryptionTests : TestBase
     [TestMethod]
     public async Task GivenArgon2idConfigured_WhenOpeningSettings_ThenArgon2idPanelShowsTheConfiguredSettings()
     {
-        // The UI tests run the portal in the Development environment, whose appsettings lighten the Release settings.
+        // The tests serve the portal the lowest Argon2id costs (TestBase).
         await LoginAsync();
         await Page.Locator("#nav-settings").ClickAsync();
 
         await Expect(Page.Locator("#argon2id-card")).ToBeVisibleAsync();
-        await Expect(Page.Locator("#argon2id-memory")).ToHaveTextAsync("19 MiB");
-        await Expect(Page.Locator("#argon2id-iterations")).ToHaveTextAsync("2");
+        await Expect(Page.Locator("#argon2id-memory")).ToHaveTextAsync($"{TestArgon2idMemoryKib} KiB");
+        await Expect(Page.Locator("#argon2id-iterations")).ToHaveTextAsync($"{TestArgon2idIterations}");
         await Expect(Page.Locator("#argon2id-parallelism")).ToHaveTextAsync("1");
         await Expect(Page.Locator("#argon2id-key-length")).ToHaveTextAsync("32 bytes");
         await Expect(Page.Locator("#argon2id-benchmark")).ToBeEnabledAsync();
