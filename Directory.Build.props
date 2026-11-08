@@ -7,7 +7,7 @@
     <!-- Every security rule (CA3xxx, CA5xxx), not just the few on by default. -->
     <AnalysisModeSecurity>All</AnalysisModeSecurity>
     <!-- One version for every Devoctomy.Blazwiz package and the template (docs/versioning.md). -->
-    <VersionPrefix>0.7.0</VersionPrefix>
+    <VersionPrefix>0.7.1</VersionPrefix>
     <Authors>Nick Pateman</Authors>
     <Company>Devoctomy</Company>
     <Copyright>Copyright (c) Nick Pateman</Copyright>

@@ -134,6 +134,34 @@ Confirm-Action -Force:$Force -Message "This will create / update stack '$stackNa
 # 1. Infrastructure ---------------------------------------------------------------------------
 
 if (-not $SkipInfrastructure) {
+    # Applies stack-policy.json, naming only the protected resources the stack has: CloudFormation refuses a policy
+    # that names a resource the stack lacks, such as the audit log bucket, which is conditional. On failure the policy
+    # already on the stack stays, so it is a warning.
+    function Set-StackPolicy {
+        $resources = Invoke-Aws -Json -AllowFailure -Arguments @('cloudformation', 'describe-stack-resources', '--stack-name', $stackName)
+        if ($null -eq $resources) {
+            Write-Warn "Could not apply the stack policy: $script:LastAwsError"
+            return
+        }
+
+        $present = @($resources.StackResources | ForEach-Object { $_.LogicalResourceId })
+        $policy = Get-Content -Raw $stackPolicyPath | ConvertFrom-Json
+        foreach ($statement in @($policy.Statement | Where-Object { $_.Effect -eq 'Deny' })) {
+            $statement.Resource = @($statement.Resource | Where-Object { $present -contains ($_ -replace '^LogicalResourceId/', '') })
+        }
+
+        $policyFile = New-TempJsonFile $policy
+        try {
+            Invoke-Aws -AllowFailure -Arguments @('cloudformation', 'set-stack-policy', '--stack-name', $stackName, '--stack-policy-body', "file://$policyFile") | Out-Null
+            if ($null -ne $script:LastAwsError) {
+                Write-Warn "Could not apply the stack policy: $script:LastAwsError"
+            }
+        }
+        finally {
+            Remove-TempFile $policyFile
+        }
+    }
+
     $existingStack = Invoke-Aws -Json -AllowFailure -Arguments @('cloudformation', 'describe-stacks', '--stack-name', $stackName)
     if ($null -eq $existingStack -and $script:LastAwsError -notmatch 'does not exist') {
         throw "Could not describe stack $stackName`: $script:LastAwsError"
@@ -204,10 +232,7 @@ if (-not $SkipInfrastructure) {
         Invoke-Aws -Arguments @('cloudformation', 'delete-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName) | Out-Null
         Write-Ok "No infrastructure changes"
         # Still applied, in case an earlier run could not set it.
-        Invoke-Aws -AllowFailure -Arguments @('cloudformation', 'set-stack-policy', '--stack-name', $stackName, '--stack-policy-body', "file://$stackPolicyPath") | Out-Null
-        if ($null -ne $script:LastAwsError) {
-            Write-Warn "Could not apply the stack policy: $script:LastAwsError"
-        }
+        Set-StackPolicy
     }
     else {
         # Replacement creates a new resource and deletes the old one, losing its data and changing its id.
@@ -268,10 +293,7 @@ if (-not $SkipInfrastructure) {
         finally {
             if ($overrideFile) { Remove-Item -Force $overrideFile -ErrorAction SilentlyContinue }
             # Applied on every run so new stacks get it and -AllowStatefulReplacement's override is undone.
-            Invoke-Aws -AllowFailure -Arguments @('cloudformation', 'set-stack-policy', '--stack-name', $stackName, '--stack-policy-body', "file://$stackPolicyPath") | Out-Null
-            if ($null -ne $script:LastAwsError) {
-                Write-Warn "Could not apply the stack policy: $script:LastAwsError"
-            }
+            Set-StackPolicy
         }
     }
     Write-Ok "Stack is up to date"
