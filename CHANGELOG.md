@@ -211,7 +211,7 @@ by changing `BlazwizVersion` in their `Directory.Packages.props`.
 - `Devoctomy.Blazwiz.Testing`: `FrameworkText`, to test an app against the framework's real text and to check its
   text overrides still match it.
 - Template options `--Sync` and `--Notes`. Syncing without end to end encryption is not offered
-  (`docs/backlog/sync-without-encryption.md`).
+  (`docs/plans/backlog/sync-without-encryption.md`).
 
 ### Changed
 - In the template the app is called `MyApp` (`myapp`, `MYAPP_`), and everything it keeps in the browser is named

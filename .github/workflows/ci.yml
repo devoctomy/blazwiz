@@ -32,7 +32,7 @@ concurrency:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  # Fresh MSBuild processes for every build (docs/techdebt/static-web-assets-compression.md).
+  # Fresh MSBuild processes for every build (docs/plans/2026-11-08-static-web-assets-compression-plan.md).
   MSBUILDDISABLENODEREUSE: 1
 
 jobs:
