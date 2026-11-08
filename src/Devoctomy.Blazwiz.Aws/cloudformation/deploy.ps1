@@ -6,7 +6,9 @@ Deploys a blazwiz app to AWS: infrastructure (CloudFormation), portal (S3 + Clou
 The base stack and this script are released with the framework (Devoctomy.Blazwiz.Aws). Apps run it through
 their own cloudformation/deploy.ps1, which passes the app's name, folder and portal project.
 
-Safe to run repeatedly. Each run:
+Safe to run repeatedly. An optional parameter that is not given (-CustomDomainName, -CertificateArn,
+-LocalDevOrigins, -UserPoolDeletionProtection, -AuditLogging) keeps the value the stack already has, so an upgrade
+run need not repeat them. Each run:
   1. Creates / updates the CloudFormation stack "<AppName>-<Environment>" through a change set. The changes
      are listed first, replacements need confirming, and replacing the user pool, identity pool, data bucket,
      audit log bucket, CloudFront distribution or app client is refused unless -AllowStatefulReplacement is
@@ -59,7 +61,7 @@ param(
     # Password for the test user (min 12 chars, upper, lower and a number). Prompted for if needed and not supplied.
     [Security.SecureString]$TestUserPassword,
 
-    # Optional custom domain for the portal, e.g. app.example.com.
+    # Optional custom domain for the portal, e.g. app.example.com. Pass '' to remove one the stack has.
     [string]$CustomDomainName = '',
 
     # ACM certificate ARN (us-east-1) for the custom domain.
@@ -141,15 +143,35 @@ if (-not $SkipInfrastructure) {
     $changeSetName = "deploy-$(Get-Date -Format 'yyyyMMddHHmmss')"
 
     Write-Step "Working out changes to stack '$stackName'"
-    $parametersFile = New-TempJsonFile @(
+    # An optional parameter that is not given keeps the value the stack already has (e.g. the custom domain), so an
+    # upgrade run does not have to repeat every setting. The first deployment, or a stack from before the parameter
+    # existed, gets the default.
+    $previousKeys = if ($changeSetType -eq 'UPDATE') { @($existingStack.Stacks[0].Parameters | ForEach-Object { $_.ParameterKey }) } else { @() }
+    $kept = @()
+    $parameters = @(
         @{ ParameterKey = 'AppName'; ParameterValue = $AppName }
         @{ ParameterKey = 'Environment'; ParameterValue = $Environment }
-        @{ ParameterKey = 'CustomDomainName'; ParameterValue = $CustomDomainName }
-        @{ ParameterKey = 'CertificateArn'; ParameterValue = $CertificateArn }
-        @{ ParameterKey = 'LocalDevOrigins'; ParameterValue = ($LocalDevOrigins -join ',') }
-        @{ ParameterKey = 'UserPoolDeletionProtection'; ParameterValue = $UserPoolDeletionProtection }
-        @{ ParameterKey = 'AuditLogging'; ParameterValue = $AuditLogging }
     )
+    $optional = [ordered]@{
+        CustomDomainName           = $CustomDomainName
+        CertificateArn             = $CertificateArn
+        LocalDevOrigins            = ($LocalDevOrigins -join ',')
+        UserPoolDeletionProtection = $UserPoolDeletionProtection
+        AuditLogging               = $AuditLogging
+    }
+    foreach ($key in $optional.Keys) {
+        if (-not $PSBoundParameters.ContainsKey($key) -and $previousKeys -contains $key) {
+            $parameters += @{ ParameterKey = $key; UsePreviousValue = $true }
+            $kept += $key
+        }
+        else {
+            $parameters += @{ ParameterKey = $key; ParameterValue = $optional[$key] }
+        }
+    }
+    if ($kept.Count -gt 0) {
+        Write-Info "Keeping the stack's current $($kept -join ', ')"
+    }
+    $parametersFile = New-TempJsonFile $parameters
     $tagsFile = New-TempJsonFile @(
         @{ Key = 'app'; Value = $AppName }
         @{ Key = 'environment'; Value = $Environment }

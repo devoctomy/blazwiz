@@ -13,6 +13,9 @@ An app's own AWS resources go in its `cloudformation/app.yaml`, deployed after t
 `!ImportValue !Sub '${BaseStackName}-DataBucketName'`.
 
 Every script takes `-AppName`, `-Environment`, `-Region` and `-AwsProfile`; see each script's help for the rest.
+`deploy.ps1` keeps the stack's current value of any optional parameter it is not given (the custom domain and
+certificate, local development origins, deletion protection, audit logging), so an upgrade run need not repeat them;
+pass a value to change one (`-CustomDomainName ''` removes the custom domain).
 
 ## What protects the users' data
 

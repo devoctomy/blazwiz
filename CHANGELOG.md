@@ -91,6 +91,10 @@ And the review's smaller functional changes:
   then failed with AccessDenied on the app's stack. Add the action to policies made from the README.
 
 ### Changed
+- `deploy.ps1` keeps the stack's current value of any optional parameter it is not given (`-CustomDomainName`,
+  `-CertificateArn`, `-LocalDevOrigins`, `-UserPoolDeletionProtection`, `-AuditLogging`) instead of resetting it to the
+  default. Before, an upgrade run that left out `-CustomDomainName` removed the custom domain from the distribution and
+  from the data bucket's allowed origins, and the portal lost access to S3 (`Offline: S3 unreachable`).
 - The base stack's `stack-policy.json` also protects the audit log bucket, the CloudFront distribution and the app
   client from being replaced or removed, so `deploy.ps1` refuses a change set that would (losing the logs, changing the
   portal's address, or ending every session) unless `-AllowStatefulReplacement` is given, as it already did for the user
