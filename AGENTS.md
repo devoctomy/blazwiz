@@ -30,9 +30,9 @@ blazwiz is a framework for Blazor WebAssembly PWAs that sign in with AWS Cognito
 to end encryption, and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
 that creates an app built on them.
 
-The restructure from "a template you fork" into "a framework you upgrade" is planned in
-`docs/reviews/2026-11-03-upgradeability-review.md`, with the findings (U*, T*) and decisions (D*). Read it before
-structural work, and tick off its checkboxes as items are completed.
+Plans are in `docs/plans`: active plans in `docs/plans/active` (`<date>-<topic>-plan.md`), ideas not yet planned in
+`docs/plans/backlog`, and known technical debt in `docs/plans/techdebt`. Before working on an active plan, read it,
+and tick off its checkboxes as items are completed.
 
 - `src/Devoctomy.Blazwiz.<Package>`: the packages. `Core` (app identity, storage names, offline mode, text, coded
   errors), `Cryptography`, `Encryption` (E2E keys), `Browser` (storage, theme, navigation, WebAuthn and their JS),
@@ -143,9 +143,6 @@ These are the steps CI runs (`.github/workflows/ci.yml`). Test namespaces must c
 - Each package lists its public API in `PublicAPI.Unshipped.txt` (PublicApiAnalyzers). A public API change fails the
   build until the list is updated, so it is reviewed: add or remove the lines the analyzer reports (RS0016, RS0017).
   Never edit `PublicAPI.Shipped.txt`; the maintainer moves entries there at a release.
-- If a build fails in the static web assets compression step ("An item with the same key has already been added"),
-  the cause is usually MSBuild node reuse: build again with `MSBUILDDISABLENODEREUSE=1`. The UI tests already start
-  the portal that way. See `docs/techdebt/static-web-assets-compression.md`.
 - `./templatepack/test-template.ps1` packs the packages (with a version unique to the run) and the template, creates
   apps with awkward names and every option, and checks each one has no `MyApp` left, builds against the packages and
   passes its tests. Run it after changing packages' public surface, template content or `.template.config/`.

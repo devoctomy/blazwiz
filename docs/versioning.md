@@ -1,7 +1,8 @@
 # Versioning and public API
 
 This is the policy for the `Devoctomy.Blazwiz.*` packages. It says what an app can rely on across upgrades, and what
-counts as a breaking change. Finding U12 in `docs/reviews/2026-11-03-upgradeability-review.md` explains why it exists.
+counts as a breaking change. It exists so that a minor release never breaks an app: the public API is checked by
+PublicApiAnalyzers and package validation, and this policy says what else counts as public.
 
 ## Versions
 

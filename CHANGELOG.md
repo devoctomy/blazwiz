@@ -16,6 +16,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 ### Changed
 - The template's minimum IAM policy for deploying is now a file, `cloudformation/deploy-policy.json`, in place of a block
   in `cloudformation/README.md`, which shows how to create the policy from it.
+- The template's UI tests no longer build and start the portal with `MSBUILDDISABLENODEREUSE=1`. It worked around a
+  build failure that no longer happens.
 
 ## 0.5.0
 
@@ -211,7 +213,7 @@ by changing `BlazwizVersion` in their `Directory.Packages.props`.
 - `Devoctomy.Blazwiz.Testing`: `FrameworkText`, to test an app against the framework's real text and to check its
   text overrides still match it.
 - Template options `--Sync` and `--Notes`. Syncing without end to end encryption is not offered
-  (`docs/backlog/sync-without-encryption.md`).
+  (`docs/plans/backlog/sync-without-encryption.md`).
 
 ### Changed
 - In the template the app is called `MyApp` (`myapp`, `MYAPP_`), and everything it keeps in the browser is named

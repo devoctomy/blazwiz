@@ -2,7 +2,7 @@
 
 Suggestions for what the blazwiz template could add before v1, from a read of the repository on 2026-10-05
 (README, project layout, manifest, service worker, update script, `.csproj` and the code review in
-`docs/reviews/2026-10-03-code-review.md`). Nothing here has been built or run.
+`docs/reviews/2026-10-03-code-review.md` (removed)). Nothing here has been built or run.
 
 The foundations are already strong: SRP sign-in, an offline-first sync engine, E2E encryption with passkey unlock,
 an update banner, persistent storage and a CloudFormation deploy. These items are the gaps.
@@ -108,7 +108,7 @@ None of these appear to be present.
 
 ## Hardening items already identified
 
-From `docs/reviews/2026-10-03-code-review.md`, worth finishing before v1:
+From `docs/reviews/2026-10-03-code-review.md` (removed), worth finishing before v1:
 
 - **M8**: an offline token refresh signs the user out.
 - **M9**: edit conflicts silently drop the losing version and depend on device clocks. Custom time sync (NTP) is not

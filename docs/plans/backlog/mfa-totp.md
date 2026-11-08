@@ -1,6 +1,6 @@
 # MFA with an authenticator app (TOTP)
 
-Added 2026-11-03, from Phase 3 of `docs/reviews/2026-11-03-upgradeability-review.md` (optional there, not done).
+Added 2026-11-03, from Phase 3 of `docs/reviews/2026-11-03-upgradeability-review.md` (removed) (optional there, not done).
 
 Review item I4. Users can turn on a second factor: a code from an authenticator app (TOTP), asked for after the
 password. Same pattern as the password flows: a contract in Auth, the Cognito implementation in Auth.Cognito, a
