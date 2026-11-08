@@ -26,6 +26,12 @@ Add to the shell, or change it, with:
 
 Text comes from resources (`UiText`), so apps can reword and translate it.
 
+The package's JS initializer registers the app's service worker and, when a new version has downloaded, shows the
+`#app-update-banner` element of the app's `index.html`, whose button switches to it. While the new version downloads,
+`AppUpdateIndicator` (in both layouts) shows a small indicator in the corner, with the percentage of files cached when
+the service worker posts `{ type: 'INSTALL_PROGRESS', done, total }` to its pages as it caches each one, as the
+template's `service-worker.published.js` does.
+
 ## Versions
 
 Every `Devoctomy.Blazwiz.*` package and the `Devoctomy.Blazwiz.Templates` template are released together at one

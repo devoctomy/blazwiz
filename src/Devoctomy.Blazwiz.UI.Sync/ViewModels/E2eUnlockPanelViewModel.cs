@@ -188,10 +188,13 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         var remember = RememberBiometrics && Profile?.CanSetUpDeviceUnlock == true;
         return RunAsync(async scope =>
         {
+            // The passkey is asked for before the profile opens, so the prompt comes with the unlock rather than after
+            // it. Deriving the device key does not need the profile's keys; wrapping them with it does.
+            var deviceKeyReady = remember && await EnsureDeviceKeyAsync();
             await manager.UnlockAsync(scope, value);
             if (remember)
             {
-                await TurnOnBiometricsAsync(scope);
+                await TurnOnBiometricsAsync(scope, deviceKeyReady);
             }
         });
     }
@@ -262,11 +265,24 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         }
     }
 
-    private async Task TurnOnBiometricsAsync(E2eKeyScope scope)
+    private async Task<bool> EnsureDeviceKeyAsync()
     {
         try
         {
-            if (await passkeys.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey))
+            return await passkeys.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey);
+        }
+        catch (Exception)
+        {
+            // Said once the profile is unlocked; the passphrase still unlocks it.
+            return false;
+        }
+    }
+
+    private async Task TurnOnBiometricsAsync(E2eKeyScope scope, bool deviceKeyReady)
+    {
+        try
+        {
+            if (deviceKeyReady)
             {
                 await profiles.EnableDeviceUnlockAsync(scope);
                 RememberBiometrics = false;

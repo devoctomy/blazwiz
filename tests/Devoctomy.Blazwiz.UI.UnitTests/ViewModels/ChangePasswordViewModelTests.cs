@@ -85,7 +85,7 @@ public class ChangePasswordViewModelTests
     {
         // Arrange
         var users = Remembered("old-encrypted");
-        mockCrypto.Setup(x => x.EncryptAsync("new")).ReturnsAsync("new-encrypted");
+        mockCrypto.Setup(x => x.EncryptAsync("new", It.IsAny<string>())).ReturnsAsync("new-encrypted");
         var sut = CreateSut("old", "new", "new");
 
         // Act
@@ -102,7 +102,7 @@ public class ChangePasswordViewModelTests
     {
         // Arrange
         var users = Remembered("old-encrypted");
-        mockCrypto.Setup(x => x.EncryptAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("no key"));
+        mockCrypto.Setup(x => x.EncryptAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("no key"));
         var sut = CreateSut("old", "new", "new");
 
         // Act

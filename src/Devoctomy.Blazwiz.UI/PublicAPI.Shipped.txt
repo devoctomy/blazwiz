@@ -1,4 +1,6 @@
 #nullable enable
+Devoctomy.Blazwiz.UI.Components.AppUpdateIndicator
+Devoctomy.Blazwiz.UI.Components.AppUpdateIndicator.AppUpdateIndicator() -> void
 Devoctomy.Blazwiz.UI.Components.ChangePasswordForm
 Devoctomy.Blazwiz.UI.Components.ChangePasswordForm.ChangePasswordForm() -> void
 Devoctomy.Blazwiz.UI.Components.ErrorAlert
@@ -147,6 +149,15 @@ Devoctomy.Blazwiz.UI.Services.AppBuildInfo.BuildTime.get -> string?
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.FrameworkVersion.get -> string!
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.IsDebugBuild.get -> bool
 Devoctomy.Blazwiz.UI.Services.AppBuildInfo.Version.get -> string!
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.AppUpdateMonitor(Microsoft.JSInterop.IJSRuntime! jsRuntime) -> void
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.Changed -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.IsDownloading.get -> bool
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.OnDownloading(int done, int total) -> void
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.OnFinished() -> void
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.Progress.get -> double?
+Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.StartAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Services.CultureService
 Devoctomy.Blazwiz.UI.Services.CultureService.ApplySavedCultureAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Services.CultureService.ChangeCultureAsync(string! name) -> System.Threading.Tasks.Task!
@@ -158,6 +169,11 @@ Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.BuildTime.get -> string?
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.FrameworkVersion.get -> string!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.IsDebugBuild.get -> bool
 Devoctomy.Blazwiz.UI.Services.Interfaces.IAppBuildInfo.Version.get -> string!
+Devoctomy.Blazwiz.UI.Services.Interfaces.IAppUpdateMonitor
+Devoctomy.Blazwiz.UI.Services.Interfaces.IAppUpdateMonitor.Changed -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Services.Interfaces.IAppUpdateMonitor.IsDownloading.get -> bool
+Devoctomy.Blazwiz.UI.Services.Interfaces.IAppUpdateMonitor.Progress.get -> double?
+Devoctomy.Blazwiz.UI.Services.Interfaces.IAppUpdateMonitor.StartAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService
 Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService.ApplySavedCultureAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Services.Interfaces.ICultureService.ChangeCultureAsync(string! name) -> System.Threading.Tasks.Task!
@@ -275,6 +291,10 @@ Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText
 Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText.Describe(System.Exception! exception) -> string!
 Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText.Describe(string! code, System.Collections.Generic.IReadOnlyList<object!>! arguments) -> string!
 Devoctomy.Blazwiz.UI.Text.UiText
+Devoctomy.Blazwiz.UI.ViewModels.AppUpdateIndicatorViewModel
+Devoctomy.Blazwiz.UI.ViewModels.AppUpdateIndicatorViewModel.AppUpdateIndicatorViewModel(Devoctomy.Blazwiz.UI.Services.Interfaces.IAppUpdateMonitor! monitor, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>! text) -> void
+Devoctomy.Blazwiz.UI.ViewModels.AppUpdateIndicatorViewModel.IsVisible.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.AppUpdateIndicatorViewModel.Message.get -> string!
 Devoctomy.Blazwiz.UI.ViewModels.AppearanceSettingsViewModel
 Devoctomy.Blazwiz.UI.ViewModels.AppearanceSettingsViewModel.AppearanceSettingsViewModel(Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService! themeService) -> void
 Devoctomy.Blazwiz.UI.ViewModels.AppearanceSettingsViewModel.CurrentTheme.get -> string!
@@ -434,6 +454,7 @@ const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SupportedCul
 const Devoctomy.Blazwiz.UI.Models.AppSettings.DefaultLogoUrl = "images/icon.svg" -> string!
 const Devoctomy.Blazwiz.UI.Models.ThemeNames.Dark = "dark" -> string!
 const Devoctomy.Blazwiz.UI.Models.ThemeNames.Light = "light" -> string!
+const Devoctomy.Blazwiz.UI.Services.AppUpdateMonitor.ModulePath = "./_content/Devoctomy.Blazwiz.UI/js/app-update.js" -> string!
 const Devoctomy.Blazwiz.UI.Services.CultureService.StorageKey = "culture" -> string!
 const Devoctomy.Blazwiz.UI.Services.ToastService.MaximumToasts = 3 -> int
 const Devoctomy.Blazwiz.UI.Services.UserSettingsService.StorageKey = "user_settings" -> string!
@@ -447,6 +468,8 @@ const Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.SavedUsersStorageKey = "sav
 override Devoctomy.Blazwiz.UI.Components.ModalDialog.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.Components.Shell.BlazwizRouter.OnParametersSet() -> void
 override Devoctomy.Blazwiz.UI.Components.Shell.PageHost.OnParametersSet() -> void
+override Devoctomy.Blazwiz.UI.ViewModels.AppUpdateIndicatorViewModel.Dispose(bool disposing) -> void
+override Devoctomy.Blazwiz.UI.ViewModels.AppUpdateIndicatorViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.ViewModels.AppearanceSettingsViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.ViewModels.MainLayoutViewModel.Dispose(bool disposing) -> void
@@ -471,6 +494,7 @@ static Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.AddBlazwizU
 static readonly Devoctomy.Blazwiz.UI.Services.ToastService.DefaultDuration -> System.TimeSpan
 static readonly Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.ReadInterval -> System.TimeSpan
 static readonly Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.TickInterval -> System.TimeSpan
+~override Devoctomy.Blazwiz.UI.Components.AppUpdateIndicator.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Components.ChangePasswordForm.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Components.ErrorAlert.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Components.ForgotPasswordLink.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

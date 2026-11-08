@@ -63,7 +63,12 @@ public static class SyncModuleServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddBlazwizCognito(configuration);
+        // The app registers Cognito itself, saying whether the placeholder sign in may stand in (its host environment).
+        // An app that has not is given Cognito with no placeholder: nothing here can judge the environment.
+        if (!services.Any(d => d.ServiceType == typeof(AwsCognitoConfig)))
+        {
+            services.AddBlazwizCognito(configuration, allowPlaceholderSignIn: false);
+        }
 
         var s3Config = new AwsS3Config();
         configuration.GetSection(ConfigurationSection).Bind(s3Config);

@@ -26,13 +26,17 @@ public static class CognitoServiceCollectionExtensions
 
     /// <summary>
     /// Signs in with the Cognito user pool in the <c>AwsCognito</c> configuration section, and gets the session's AWS
-    /// credentials from its identity pool. When no user pool is configured (local development) the placeholder sign in
-    /// is kept. Needs <c>AddBlazwizApp</c> first.
+    /// credentials from its identity pool. When no user pool is configured, the placeholder sign in (any credentials)
+    /// is kept only where <paramref name="allowPlaceholderSignIn"/> says so: pass the host environment's
+    /// <c>IsDevelopment()</c>, so a deployed app whose settings are missing refuses to start rather than letting anyone
+    /// in. Needs <c>AddBlazwizApp</c> first.
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configuration">The app's configuration.</param>
+    /// <param name="allowPlaceholderSignIn">Whether the placeholder sign in may stand in for Cognito when it is not configured.</param>
     /// <returns>The service collection for method chaining.</returns>
-    public static IServiceCollection AddBlazwizCognito(this IServiceCollection services, IConfiguration configuration)
+    /// <exception cref="InvalidOperationException">Cognito is not configured and the placeholder is not allowed.</exception>
+    public static IServiceCollection AddBlazwizCognito(this IServiceCollection services, IConfiguration configuration, bool allowPlaceholderSignIn)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -41,6 +45,13 @@ public static class CognitoServiceCollectionExtensions
 
         var cognitoConfig = new AwsCognitoConfig();
         configuration.GetSection(ConfigurationSection).Bind(cognitoConfig);
+        if (!CognitoAuthenticationService.IsConfigured(cognitoConfig) && !allowPlaceholderSignIn)
+        {
+            throw new InvalidOperationException(
+                $"The {ConfigurationSection} settings (Region, UserPoolId and UserPoolClientId) are missing, and the placeholder sign in is not allowed here. " +
+                "Deploy with cloudformation/deploy.ps1, which writes them to appsettings.Production.json, or allow the placeholder for local development only.");
+        }
+
         services.AddSingleton(cognitoConfig);
 
         // The Cognito sign-in APIs are public, so the API client uses no AWS credentials.

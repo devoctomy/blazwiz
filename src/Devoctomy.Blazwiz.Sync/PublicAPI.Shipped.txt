@@ -22,6 +22,7 @@ Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseEmbeddedConfiguration(System
 Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseEventLog<T>() -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
 Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseEventLogRetention(System.TimeSpan maxAge, int maxEventsPerUser) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
 Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseIndexedDbEventLog(string! database, string! store) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
+Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseMaxFileSize(long bytes) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
 Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder.UseProfileDefaults(System.Action<Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings!>! configure) -> Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!
 Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults
 Devoctomy.Blazwiz.Sync.Configuration.SyncFileStoresBuilder
@@ -46,6 +47,8 @@ Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.EventLogMaxEventsPerUser.get ->
 Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.EventLogMaxEventsPerUser.set -> void
 Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.EventLogStore.get -> string!
 Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.EventLogStore.set -> void
+Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.MaxFileSize.get -> long
+Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.MaxFileSize.set -> void
 Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.ProfileDefaults.get -> Devoctomy.Blazwiz.Encryption.Models.E2eProfileSettings!
 Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.ProfileDefaults.set -> void
 Devoctomy.Blazwiz.Sync.Configuration.SyncOptions.Profiles.get -> System.Collections.Generic.List<Devoctomy.Blazwiz.Sync.Configuration.SyncProfileOptions!>!
@@ -204,7 +207,7 @@ Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.LocalSto
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eLocalProfileIndexStore.SaveAsync(string! value) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.GetAllAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<string!, string!>!>!
-Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.LocalStorageE2eProfileLabelStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Cryptography.Interfaces.ICryptoService! cryptoService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
+Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.LocalStorageE2eProfileLabelStore(Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Cryptography.Interfaces.IAeadCipher! cipher, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.RemoveAsync(string! profileId) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageE2eProfileLabelStore.SetAsync(string! profileId, string! label) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Sync.Encryption.LocalStorageUserKeysStore
@@ -425,6 +428,7 @@ Devoctomy.Blazwiz.Sync.Interfaces.IS3ReachabilityProbe.IsReachableAsync(Devoctom
 Devoctomy.Blazwiz.Sync.Interfaces.IS3SyncTargetProvider
 Devoctomy.Blazwiz.Sync.Interfaces.IS3SyncTargetProvider.GetTargetAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.S3SyncTarget?>!
 Devoctomy.Blazwiz.Sync.Interfaces.IS3SyncTargetProvider.Invalidate() -> void
+Devoctomy.Blazwiz.Sync.Interfaces.IS3SyncTargetProvider.IsConfigured.get -> bool
 Devoctomy.Blazwiz.Sync.Interfaces.IStorageDurabilityService
 Devoctomy.Blazwiz.Sync.Interfaces.IStorageDurabilityService.GetStatusAsync() -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Storage.StorageDurabilityStatus!>!
 Devoctomy.Blazwiz.Sync.Interfaces.IStorageDurabilityService.RequestPersistenceAsync() -> System.Threading.Tasks.Task<bool>!
@@ -915,7 +919,7 @@ Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.SetDeviceDefaultKindAsync(Dev
 Devoctomy.Blazwiz.Sync.Storage.SyncStorageResolver.SyncStorageResolver(System.IServiceProvider! services, Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Devoctomy.Blazwiz.Sync.Interfaces.ISyncStorageStateStore! stateStore, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.IOpfsClient! opfsClient, Devoctomy.Blazwiz.Sync.Interfaces.IFolderAccessClient! folderClient) -> void
 Devoctomy.Blazwiz.Sync.SyncEngine
 Devoctomy.Blazwiz.Sync.SyncEngine.SyncAsync(Devoctomy.Blazwiz.Sync.SyncProfile! profile, bool verify, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncResult!>!
-Devoctomy.Blazwiz.Sync.SyncEngine.SyncEngine(Devoctomy.Blazwiz.Sync.Interfaces.ISyncPlanner! planner, Devoctomy.Blazwiz.Sync.Interfaces.ISyncConflictResolver! conflictResolver, Devoctomy.Blazwiz.Sync.Interfaces.IContentHasher! contentHasher, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.ISyncEventLog! eventLog, System.TimeProvider! timeProvider, Devoctomy.Blazwiz.Encryption.Interfaces.IEncryptedFileFormat! encryptedFileFormat) -> void
+Devoctomy.Blazwiz.Sync.SyncEngine.SyncEngine(Devoctomy.Blazwiz.Sync.Interfaces.ISyncPlanner! planner, Devoctomy.Blazwiz.Sync.Interfaces.ISyncConflictResolver! conflictResolver, Devoctomy.Blazwiz.Sync.Interfaces.IContentHasher! contentHasher, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext, Devoctomy.Blazwiz.Sync.Interfaces.ISyncEventLog! eventLog, System.TimeProvider! timeProvider, Devoctomy.Blazwiz.Encryption.Interfaces.IEncryptedFileFormat! encryptedFileFormat, Devoctomy.Blazwiz.Sync.Configuration.SyncOptions! options) -> void
 Devoctomy.Blazwiz.Sync.SyncPlanner
 Devoctomy.Blazwiz.Sync.SyncPlanner.Plan(System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.Sync.Models.SyncFileInfo!>! local, System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.Sync.Models.RemoteObjectInfo!>! remote, System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.Sync.Models.SyncIndexRecord!>! index, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? localHashes) -> Devoctomy.Blazwiz.Sync.Models.SyncPlan!
 Devoctomy.Blazwiz.Sync.SyncPlanner.PlanItem(Devoctomy.Blazwiz.Sync.Models.SyncPlanItem! item) -> Devoctomy.Blazwiz.Sync.Models.SyncAction!
@@ -978,6 +982,7 @@ const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.FolderMetadataStoreSuffi
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.IndexDatabase = "sync" -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.LockChannelName = "e2e-lock" -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.LockNamePrefix = "sync-" -> string!
+const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.MaxFileSize = 104857600 -> long
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.OpfsMetadataStoreSuffix = "_opfs" -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.ProtectedProfilesFolder = "profiles" -> string!
 const Devoctomy.Blazwiz.Sync.Configuration.SyncDefaults.StorageChannelName = "sync-storage" -> string!
@@ -996,6 +1001,8 @@ const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.FolderNotChosen = "Sync.F
 const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.RemoteAccessDenied = "Sync.Remote.AccessDenied" -> string!
 const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.RemoteChanged = "Sync.Remote.Changed" -> string!
 const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.RemoteNoCredentials = "Sync.Remote.NoCredentials" -> string!
+const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.RemoteNotConfigured = "Sync.Remote.NotConfigured" -> string!
+const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.RemoteTooLarge = "Sync.Remote.TooLarge" -> string!
 const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.RemoteUnreachable = "Sync.Remote.Unreachable" -> string!
 const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.StorageCopyMismatch = "Sync.Storage.CopyMismatch" -> string!
 const Devoctomy.Blazwiz.Sync.Exceptions.SyncErrorCodes.StorageFolderNotEmpty = "Sync.Storage.FolderNotEmpty" -> string!
@@ -1047,3 +1054,4 @@ static Devoctomy.Blazwiz.Sync.IndexedDb.IndexedDbSyncFileStore.DescribeStore(str
 static Devoctomy.Blazwiz.Sync.IndexedDb.IndexedDbSyncIndexStore.DescribeStore(string! database, string! name) -> Devoctomy.Blazwiz.Sync.IndexedDb.IndexedDbStore!
 static Devoctomy.Blazwiz.Sync.IndexedDb.IndexedDbSyncStorageStateStore.DescribeStore(string! database, string! name) -> Devoctomy.Blazwiz.Sync.IndexedDb.IndexedDbStore!
 static Devoctomy.Blazwiz.Sync.Opfs.OpfsSyncFileStore.DescribeMetadataStore(string! database, string! name) -> Devoctomy.Blazwiz.Sync.IndexedDb.IndexedDbStore!
+static readonly Devoctomy.Blazwiz.Sync.Models.RemoteObjectInfo.MaxClockSkew -> System.TimeSpan

@@ -18,8 +18,8 @@ public class CognitoServiceCollectionExtensionsTests
     public void GivenNullArguments_WhenAddBlazwizCognito_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => CognitoServiceCollectionExtensions.AddBlazwizCognito(null!, Configuration()));
-        Assert.Throws<ArgumentNullException>(() => TestServices.Create().AddBlazwizCognito(null!));
+        Assert.Throws<ArgumentNullException>(() => CognitoServiceCollectionExtensions.AddBlazwizCognito(null!, Configuration(), true));
+        Assert.Throws<ArgumentNullException>(() => TestServices.Create().AddBlazwizCognito(null!, true));
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class CognitoServiceCollectionExtensionsTests
         var services = TestServices.Create();
 
         // Act
-        var result = services.AddBlazwizCognito(Configuration(configured: true));
+        var result = services.AddBlazwizCognito(Configuration(configured: true), allowPlaceholderSignIn: false);
 
         // Assert
         Assert.Same(services, result);
@@ -50,7 +50,7 @@ public class CognitoServiceCollectionExtensionsTests
         var services = TestServices.Create();
 
         // Act
-        services.AddBlazwizCognito(Configuration());
+        services.AddBlazwizCognito(Configuration(), allowPlaceholderSignIn: true);
 
         // Assert
         await using var provider = services.BuildValidated();
@@ -62,13 +62,24 @@ public class CognitoServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void GivenNoUserPoolAndNoPlaceholderAllowed_WhenAddBlazwizCognito_ThenThrows()
+    {
+        // Arrange: a deployed app whose settings went missing must refuse to start, not let anyone in.
+        var services = TestServices.Create();
+
+        // Act & Assert
+        var exception = Assert.Throws<InvalidOperationException>(() => services.AddBlazwizCognito(Configuration(), allowPlaceholderSignIn: false));
+        Assert.Contains("AwsCognito", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void GivenConfiguration_WhenAddBlazwizCognito_ThenSettingsAreBound()
     {
         // Arrange
         var services = TestServices.Create();
 
         // Act
-        services.AddBlazwizCognito(Configuration(configured: true));
+        services.AddBlazwizCognito(Configuration(configured: true), allowPlaceholderSignIn: false);
 
         // Assert
         using var provider = services.BuildServiceProvider();
@@ -86,7 +97,7 @@ public class CognitoServiceCollectionExtensionsTests
         var services = TestServices.Create();
 
         // Act
-        services.AddBlazwizCognito(Configuration(configured: true));
+        services.AddBlazwizCognito(Configuration(configured: true), allowPlaceholderSignIn: false);
 
         // Assert
         using var provider = services.BuildServiceProvider();

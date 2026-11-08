@@ -3,6 +3,8 @@
 
 # Binary files: never touch line endings or diff them as text.
 *.png binary
+# Vendored minified scripts: kept byte for byte as published, so their hashes match upstream (THIRD-PARTY-NOTICES.md).
+*.min.js binary
 *.jpg binary
 *.ico binary
 *.woff binary

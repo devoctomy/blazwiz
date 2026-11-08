@@ -86,6 +86,13 @@ public class SyncProtectedProfileService(
         var scopes = entries.Select(p => new E2eKeyScope(p.Id)).ToList();
         foreach (var gone in CreatedProfiles().Where(p => !scopes.Contains(p.KeyScope!)).ToList())
         {
+            if (await manager.TryRestoreToIndexAsync(gone.KeyScope!, ct))
+            {
+                // Its keys are still there (or cannot be reached): the index lost it, not the user. It stays.
+                scopes.Add(gone.KeyScope!);
+                continue;
+            }
+
             // Deleted on another device: nothing of it is kept here either.
             await manager.ForgetAsync(gone.KeyScope!);
             await labelStore.RemoveAsync(gone.KeyScope!.Id);
@@ -99,20 +106,20 @@ public class SyncProtectedProfileService(
 
         foreach (var entry in entries)
         {
-            // The settings chosen for the profile, on this device or another, over the app's defaults.
             var scope = new E2eKeyScope(entry.Id);
-            var settings = SettingsFor(entry);
             if (FindProfile(scope) is { } existing)
             {
-                if (existing.Settings.IdleTimeout != settings.IdleTimeout)
+                // Only the idle timeout chosen for the profile (on this device or another) is taken from the index; the
+                // profile's other settings are the app's, and stay as they are.
+                if (entry.TryGetIdleTimeout(out var idleTimeout) && existing.Settings.IdleTimeout != idleTimeout)
                 {
-                    existing.Settings = settings;
+                    existing.Settings = WithIdleTimeout(existing.Settings, idleTimeout);
                     idleLock.Refresh(scope);
                 }
             }
             else
             {
-                registry.Add(CreateOptions(scope, settings));
+                registry.Add(CreateOptions(scope, SettingsFor(entry)));
             }
         }
 
@@ -282,9 +289,11 @@ public class SyncProtectedProfileService(
         {
             return await syncProfile.RemoteStore.ListAsync(ct);
         }
-        catch (SyncAccessDeniedException ex) when (ex.Code == SyncErrorCodes.RemoteNoCredentials)
+        catch (SyncAccessDeniedException ex) when (ex.Code == SyncErrorCodes.RemoteNotConfigured)
         {
-            // No sync target in this session (e.g. local development without Cognito): nothing was synced from it.
+            // No sync target at all (e.g. local development without Cognito): nothing was ever synced from it. With a
+            // target but no credentials right now, the exception stands: deleting the keys would leave the files in S3
+            // with nothing to decrypt them.
             return [];
         }
     }

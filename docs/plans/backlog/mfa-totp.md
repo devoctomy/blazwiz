@@ -1,6 +1,15 @@
 # MFA with an authenticator app (TOTP)
 
 Added 2026-11-03, from Phase 3 of `docs/reviews/2026-11-03-upgradeability-review.md` (removed) (optional there, not done).
+Also SR6 of `docs/reviews/security-review-2026-11-08-01-Fable-5.1.md` (Medium).
+
+**Blocked by design (2026-11-08):** the refresh token is never stored, so a passkey sign in is a fresh Cognito sign in
+with the remembered password every time (see `docs/diagrams/prf-remember-me.md`). With MFA on, Cognito would ask for
+the second factor at every biometric sign in, which defeats the one-touch sign in. Before MFA can be turned on, decide
+how a passkey sign in satisfies it: for example by counting the passkey as the second factor (Cognito remembered
+devices, `ConfirmDevice` with `DeviceKey`, so a device that signed in with MFA once is not asked again), or by keeping
+the refresh token on the device encrypted under the passkey's PRF key, so a passkey sign in renews the session instead
+of signing in again. Either is a design change to the session model and needs its own plan.
 
 Review item I4. Users can turn on a second factor: a code from an authenticator app (TOTP), asked for after the
 password. Same pattern as the password flows: a contract in Auth, the Cognito implementation in Auth.Cognito, a

@@ -11,8 +11,9 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 
 /// <summary>
 /// Keeps the signed in user's profile labels in local storage, one entry per user: a JSON object of labels by profile
-/// id, encrypted (AES-GCM) with <see cref="E2eKeyNames.LabelKey"/>, the key derived from the user's passkey when they
-/// sign in with it. A label can say what the profile holds, so it is never kept in plain text.
+/// id, encrypted (AES-GCM, bound to the user) with <see cref="E2eKeyNames.LabelKey"/>, the key derived from the
+/// user's passkey when they sign in with it. A label can say what the profile holds, so it is never kept in plain
+/// text.
 /// </summary>
 /// <remarks>
 /// Without that key (signed in with a password, or after a reload) labels can't be read or kept, so profiles are shown
@@ -22,12 +23,12 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// </remarks>
 /// <param name="localStorageService">The local storage.</param>
 /// <param name="userContext">The signed in user.</param>
-/// <param name="cryptoService">Encrypts and decrypts the labels.</param>
+/// <param name="cipher">Encrypts and decrypts the labels.</param>
 /// <param name="keyStore">Holds the key derived from the passkey, if the user signed in with it.</param>
 public class LocalStorageE2eProfileLabelStore(
     ILocalStorageService localStorageService,
     ISyncUserContext userContext,
-    ICryptoService cryptoService,
+    IAeadCipher cipher,
     IDerivedKeyStore keyStore)
     : IE2eProfileLabelStore
 {
@@ -38,15 +39,27 @@ public class LocalStorageE2eProfileLabelStore(
 
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
     private readonly ISyncUserContext userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
-    private readonly ICryptoService cryptoService = cryptoService ?? throw new ArgumentNullException(nameof(cryptoService));
+    private readonly IAeadCipher cipher = cipher ?? throw new ArgumentNullException(nameof(cipher));
     private readonly IDerivedKeyStore keyStore = keyStore ?? throw new ArgumentNullException(nameof(keyStore));
 
     /// <inheritdoc/>
     public async Task<IReadOnlyDictionary<string, string>> GetAllAsync()
     {
-        var storageKey = await GetStorageKeyAsync();
+        var owner = await GetOwnerAsync();
         var key = GetKey();
-        return key == null ? new Dictionary<string, string>(StringComparer.Ordinal) : await ReadAsync(storageKey, key);
+        if (key == null)
+        {
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+
+        try
+        {
+            return await ReadAsync(owner, key);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
     }
 
     /// <inheritdoc/>
@@ -55,48 +68,18 @@ public class LocalStorageE2eProfileLabelStore(
         ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
         ArgumentNullException.ThrowIfNull(label);
 
-        var storageKey = await GetStorageKeyAsync();
+        var owner = await GetOwnerAsync();
         var key = GetKey();
         if (key == null)
         {
             return;
-        }
-
-        var labels = await ReadAsync(storageKey, key);
-        labels[profileId] = label;
-        await WriteAsync(storageKey, key, labels);
-    }
-
-    /// <inheritdoc/>
-    public async Task RemoveAsync(string profileId)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
-
-        var storageKey = await GetStorageKeyAsync();
-        var key = GetKey();
-        if (key == null)
-        {
-            await localStorageService.RemoveItemAsync(storageKey);
-            return;
-        }
-
-        var labels = await ReadAsync(storageKey, key);
-        if (labels.Remove(profileId))
-        {
-            await WriteAsync(storageKey, key, labels);
-        }
-    }
-
-    private string? GetKey()
-    {
-        if (!keyStore.TryGetKey(E2eKeyNames.LabelKey, out var key))
-        {
-            return null;
         }
 
         try
         {
-            return Convert.ToBase64String(key);
+            var labels = await ReadAsync(owner, key);
+            labels[profileId] = label;
+            await WriteAsync(owner, key, labels);
         }
         finally
         {
@@ -104,42 +87,95 @@ public class LocalStorageE2eProfileLabelStore(
         }
     }
 
-    private async Task<Dictionary<string, string>> ReadAsync(string storageKey, string key)
+    /// <inheritdoc/>
+    public async Task RemoveAsync(string profileId)
     {
-        var stored = await localStorageService.GetItemAsync(storageKey);
+        ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
+
+        var owner = await GetOwnerAsync();
+        var key = GetKey();
+        if (key == null)
+        {
+            await localStorageService.RemoveItemAsync(StorageKeyPrefix + owner);
+            return;
+        }
+
+        try
+        {
+            var labels = await ReadAsync(owner, key);
+            if (labels.Remove(profileId))
+            {
+                await WriteAsync(owner, key, labels);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+    }
+
+    // The user is the associated data, so one user's labels do not decrypt as another's.
+    private static byte[] Binding(string owner) => Encoding.UTF8.GetBytes(owner);
+
+    private byte[]? GetKey() => keyStore.TryGetKey(E2eKeyNames.LabelKey, out var key) ? key : null;
+
+    private async Task<Dictionary<string, string>> ReadAsync(string owner, byte[] key)
+    {
+        var stored = await localStorageService.GetItemAsync(StorageKeyPrefix + owner);
         if (string.IsNullOrEmpty(stored))
         {
             return new Dictionary<string, string>(StringComparer.Ordinal);
         }
 
+        byte[]? plaintext = null;
         try
         {
-            using var input = new MemoryStream(Convert.FromBase64String(stored));
-            using var output = new MemoryStream();
-            await cryptoService.DecryptAsync(input, output, key);
-            var labels = JsonSerializer.Deserialize<Dictionary<string, string>>(output.ToArray()) ?? [];
+            var bytes = Convert.FromBase64String(stored);
+            if (bytes.Length < cipher.NonceSize + cipher.TagSize)
+            {
+                throw new InvalidDataException("The stored labels are too short to be encrypted labels.");
+            }
+
+            plaintext = cipher.Decrypt(key, bytes.AsSpan(0, cipher.NonceSize), bytes.AsSpan(cipher.NonceSize), Binding(owner));
+            var labels = JsonSerializer.Deserialize<Dictionary<string, string>>(plaintext) ?? [];
             return new Dictionary<string, string>(labels, StringComparer.Ordinal);
         }
-        catch (Exception ex) when (ex is FormatException or JsonException or InvalidOperationException or CryptographicException)
+        catch (Exception ex) when (ex is FormatException or JsonException or InvalidDataException or CryptographicException)
         {
             // Only labels: unreadable ones (e.g. kept with another passkey) are dropped, and profiles are shown by their
             // ids until labelled again.
             return new Dictionary<string, string>(StringComparer.Ordinal);
         }
+        finally
+        {
+            if (plaintext != null)
+            {
+                CryptographicOperations.ZeroMemory(plaintext);
+            }
+        }
     }
 
-    private async Task WriteAsync(string storageKey, string key, Dictionary<string, string> labels)
+    private async Task WriteAsync(string owner, byte[] key, Dictionary<string, string> labels)
     {
-        using var input = new MemoryStream(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(labels)));
-        using var output = new MemoryStream();
-        await cryptoService.EncryptAsync(input, output, key);
-        await localStorageService.SetItemAsync(storageKey, Convert.ToBase64String(output.ToArray()));
+        var plaintext = JsonSerializer.SerializeToUtf8Bytes(labels);
+        try
+        {
+            var nonce = RandomNumberGenerator.GetBytes(cipher.NonceSize);
+            var ciphertext = cipher.Encrypt(key, nonce, plaintext, Binding(owner));
+            var output = new byte[nonce.Length + ciphertext.Length];
+            nonce.CopyTo(output, 0);
+            ciphertext.CopyTo(output, nonce.Length);
+            await localStorageService.SetItemAsync(StorageKeyPrefix + owner, Convert.ToBase64String(output));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(plaintext);
+        }
     }
 
-    private async Task<string> GetStorageKeyAsync()
+    private async Task<string> GetOwnerAsync()
     {
-        var owner = await userContext.GetUserIdAsync()
+        return await userContext.GetUserIdAsync()
             ?? throw new InvalidOperationException("Profile labels are only available when signed in.");
-        return StorageKeyPrefix + owner;
     }
 }

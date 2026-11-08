@@ -48,6 +48,9 @@ public static class AuthServiceCollectionExtensions
         // Packages' stored data migrations, run at sign in before modules start.
         services.AddSessionLifecycleHandler<DataMigrationRunner>();
 
+        // The keys derived from the passkey are wiped once signed out, after the modules have locked what they hold.
+        services.AddSessionLifecycleHandler<DerivedKeySessionHandler>();
+
         // Keys derived from the WebAuthn PRF output, kept in memory; features get them from IDerivedKeyStore by name.
         services.AddBlazwizPrfKeyDerivation(prf => prf
             .UseApplication(app.Name, app.Id)

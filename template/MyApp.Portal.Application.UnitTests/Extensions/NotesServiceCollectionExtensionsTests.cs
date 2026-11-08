@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Auth.Cognito.Extensions;
 using Devoctomy.Blazwiz.Core.Extensions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.UI.Extensions;
@@ -39,6 +40,7 @@ public class NotesServiceCollectionExtensionsTests
         services.AddSingleton(Mock.Of<INoteEditorInteropService>());
         services.AddBlazwizApp(AppIdentity.Name, AppIdentity.Id);
         services.AddBlazwizUi(configuration);
+        services.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
 
         // Act
         services.AddBlazwizSyncModule(configuration, sync => sync.AddProfilesFromAssemblyContaining<NotesSyncProfile>());

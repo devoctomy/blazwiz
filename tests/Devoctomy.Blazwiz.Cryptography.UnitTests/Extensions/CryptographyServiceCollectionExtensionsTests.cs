@@ -26,10 +26,8 @@ public class CryptographyServiceCollectionExtensionsTests
 
         // Assert
         Assert.Same(services, result);
-        Assert.Single(services, d => d.ServiceType == typeof(ICryptoService));
+        Assert.Single(services, d => d.ServiceType == typeof(IAeadCipher));
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
-        using var scope = provider.CreateScope();
-        Assert.IsType<BouncyCastleAesGcmCryptoService>(scope.ServiceProvider.GetRequiredService<ICryptoService>());
         Assert.IsType<BouncyCastleAesGcmAeadCipher>(provider.GetRequiredService<IAeadCipher>());
         Assert.IsType<AeadKeyWrapService>(provider.GetRequiredService<IKeyWrapService>());
         Assert.IsType<BouncyCastleArgon2idKeyDerivationService>(provider.GetRequiredService<IArgon2idKeyDerivationService>());

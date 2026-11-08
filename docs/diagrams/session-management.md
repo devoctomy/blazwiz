@@ -53,6 +53,7 @@ so a module failing (for example offline) never stops the others, the sign in or
 | `DataMigrationRunner` | Auth | `int.MinValue` | Shell loading: runs the packages' `IDataMigration`s, recording versions in `myapp_data_versions` |
 | `AwsCredentialsSessionHandler` | Auth.Cognito | 0 | Session started: fetches the AWS credentials in the background. Signed out: forgets them |
 | `SyncSessionHandler` | UI.Sync | 100 | Signed in: asks for persistent storage. Shell loading: reads "sync turned off". Session started: starts sync ([sync.md](sync.md), diagram 1). Signing out: stops sync and locks every profile |
+| `DerivedKeySessionHandler` | Auth | `int.MaxValue` | Signed out: wipes every key in `IDerivedKeyStore` (the passkey's `rememberme`, `e2e-kek` and `e2e-labels`), after the modules have locked what they hold, whatever page the app shows next |
 
 Apps add their own handlers the same way.
 

@@ -41,6 +41,17 @@ public static class SyncErrorCodes
     public const string RemoteNoCredentials = "Sync.Remote.NoCredentials";
 
     /// <summary>
+    /// No cloud target is set up to sync with (e.g. local development without a data bucket).
+    /// </summary>
+    public const string RemoteNotConfigured = "Sync.Remote.NotConfigured";
+
+    /// <summary>
+    /// A remote file is larger than the app syncs (<c>SyncOptions.MaxFileSize</c>). Arguments: its size and the limit,
+    /// in MB.
+    /// </summary>
+    public const string RemoteTooLarge = "Sync.Remote.TooLarge";
+
+    /// <summary>
     /// The remote store could not be reached.
     /// </summary>
     public const string RemoteUnreachable = "Sync.Remote.Unreachable";

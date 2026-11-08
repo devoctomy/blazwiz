@@ -14,6 +14,12 @@ public class SyncOptions
     public TimeSpan ChangeDebounce { get; set; } = TimeSpan.FromSeconds(2);
 
     /// <summary>
+    /// Gets or sets the largest remote file a pass downloads, in bytes. Larger ones are reported as failed and left
+    /// where they are (<see cref="SyncDefaults.MaxFileSize"/> by default).
+    /// </summary>
+    public long MaxFileSize { get; set; } = SyncDefaults.MaxFileSize;
+
+    /// <summary>
     /// Gets or sets the connectivity check timings.
     /// </summary>
     public ConnectivityTimings ConnectivityTimings { get; set; } = new ConnectivityTimings();

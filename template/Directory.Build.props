@@ -4,6 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Every security rule (CA3xxx, CA5xxx), not just the few on by default. -->
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>

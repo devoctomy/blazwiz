@@ -54,6 +54,12 @@
   <data name="Error.Sync.Remote.NoCredentials" xml:space="preserve">
     <value>There are no AWS credentials for sync.</value>
   </data>
+  <data name="Error.Sync.Remote.NotConfigured" xml:space="preserve">
+    <value>No cloud storage is set up for sync.</value>
+  </data>
+  <data name="Error.Sync.Remote.TooLarge" xml:space="preserve">
+    <value>The file is {0} MB, over the {1} MB limit for sync.</value>
+  </data>
   <data name="Error.Sync.Remote.Unreachable" xml:space="preserve">
     <value>S3 could not be reached.</value>
   </data>

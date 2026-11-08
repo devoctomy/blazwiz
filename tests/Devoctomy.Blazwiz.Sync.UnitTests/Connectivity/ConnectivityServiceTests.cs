@@ -50,6 +50,28 @@ public class ConnectivityServiceTests
     }
 
     [Fact]
+    public async Task GivenACheckInProgress_WhenSyncIsSwitchedOffMeanwhile_ThenTheStatusSaysSyncIsOff()
+    {
+        // Arrange: a check waiting on the credentials while the user turns sync off. Its answer ("no credentials") is
+        // stale by the time it comes, and must not be shown for the next half minute.
+        var credentials = new TaskCompletionSource<S3SyncTarget?>();
+        mockTargets.Setup(x => x.GetTargetAsync(It.IsAny<CancellationToken>())).Returns(credentials.Task);
+        using var sut = CreateSut();
+        var check = sut.CheckAsync();
+        var switchOff = sut.SetSyncEnabledAsync(false);
+
+        // Act
+        credentials.SetResult(null);
+        await check;
+        await switchOff;
+
+        // Assert
+        Assert.False(sut.Status.IsOnline);
+        Assert.Equal(OfflineReason.SyncDisabled, sut.Status.Reason);
+        Assert.False(sut.IsRecheckScheduled);
+    }
+
+    [Fact]
     public async Task GivenEverythingWorks_WhenCheckAsync_ThenOnline()
     {
         // Arrange

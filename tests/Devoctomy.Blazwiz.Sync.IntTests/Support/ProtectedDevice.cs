@@ -58,7 +58,7 @@ public sealed class ProtectedDevice
             new SyncOptions(),
             Mock.Of<IE2eIdleLock>(),
             Labels.Object);
-        engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), TimeProvider.System, format);
+        engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), TimeProvider.System, format, new SyncOptions());
     }
 
     public FakeE2eLocalKeyStore LocalKeys { get; } = new();

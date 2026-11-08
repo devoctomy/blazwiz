@@ -8,12 +8,108 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.7.0
+
+### Added
+- A small indicator in the bottom corner while a new version of the app downloads in the background
+  (`AppUpdateIndicator`, in both layouts), with the percentage of files cached when the service worker reports it. On a
+  slow connection the download took minutes with nothing to show for it until the update banner appeared. The
+  template's `service-worker.published.js` now caches files a few at a time, posts `INSTALL_PROGRESS` to the open
+  pages after each, and keeps the files an earlier, failed attempt at the same version had cached. Apps copy it to get
+  the percentage; without it the indicator shows but no percentage.
+
+### Security
+From the security review of 2026-11-08 (`docs/reviews/security-review-2026-11-08-01-Fable-5.1.md`), every finding
+whose fix needs no functional change:
+- Idle auto-lock now applies to profiles set up in code, such as the template's `files`: `E2eIdleLock` looked them up
+  by name with their key scope id, so only profiles users create were ever locked for being idle (SR2).
+- The passkey-derived keys (`rememberme`, `e2e-kek`, `e2e-labels`) are wiped on sign out by a new Auth session
+  lifecycle handler, `DerivedKeySessionHandler`, not only by the framework's login page, so an app with its own login
+  page no longer keeps them in memory (SR9).
+- The WebAuthn bridge hands the PRF output to .NET as bytes (wiped on both sides) instead of a hex string, reports the
+  real user presence and verification flags from the authenticator data (they were always false), and gives new
+  passkeys a random user handle instead of one holding the email address. `IWebAuthnService.RegisterAsync` lost its
+  unused `userId` parameter (SR10, SR32, part of SR1).
+- Remembered passwords and profile labels are encrypted with `IAeadCipher` and bound to the user they belong to
+  (`IPasswordCryptoService.EncryptAsync`/`DecryptAsync` take the email), in place of the stream-based `ICryptoService`,
+  which is removed with `BouncyCastleAesGcmCryptoService`. Passwords remembered and labels kept by earlier builds are
+  dropped; signing in with the password offers the passkey again (SR24).
+- A profile's master key wrapped for device unlock is bound to the profile, so one moved to another profile's entry
+  does not unwrap. Device unlock set up by earlier builds falls back to the passphrase (SR23).
+- A keys document's Argon2id settings are checked against upper bounds (`E2eKeysDocumentService.MaxMemoryKib`,
+  `MaxIterations`, `MaxParallelism`) and the cipher's key size (`IKeyWrapService.KeySize`) when parsed, so a tampered
+  document cannot exhaust the browser's memory (SR30).
+- An empty file in an encrypted profile is reported as not encrypted instead of read as empty content; folder markers
+  still pass through (SR19).
+- Loading the profile index no longer replaces a code-defined profile's whole settings with the defaults for created
+  profiles; only an idle timeout chosen for the profile is taken from the index (SR18).
+- The conflict resolver ignores a remote edit time more than `RemoteObjectInfo.MaxClockSkew` (5 minutes) after the
+  object's upload time, so S3-side metadata cannot make a version win every conflict (SR22).
+- `GlobSyncPathMatcher` never matches keys with empty, `.` or `..` segments or backslashes, which the glob library would
+  normalise and the stores would not (SR36).
+- The template's note editor refuses note keys from the URL with such segments or control characters (SR33).
+- `ChangePasswordViewModel` and `PasskeyKeysService` match the saved user with one rule, `SavedUser.IsFor` (SR42).
+- `Login.Passkey.Question` is plain text rendered with encoding, not markup (SR41).
+- The base stack: the data bucket is versioned (old versions kept 30 days), the user pool has deletion protection in
+  `prod` (`UserPoolDeletionProtection`), a CloudTrail trail records data bucket access in `prod` (`AuditLogging`), email
+  changes need verification and the app client's attributes are limited, the public client no longer allows
+  `USER_PASSWORD_AUTH` (`test-auth.ps1` signs in with the admin flow as the deployer), local development origins are
+  only in the data bucket's CORS where asked (`LocalDevOrigins`, none for `prod`), and the users' keys secrets are
+  tagged `app=<AppName>` so `remove.ps1` deletes them with the environment. The scripts keep passwords off the command
+  line, `test-auth.ps1` also checks that another user's prefix cannot be read or listed and no longer writes the real
+  index, and the deployer policy gained the actions these need (SR4, SR11, SR12, SR13, SR14, SR15, SR16, SR17 in part,
+  SR48, SR49). Deploy again after upgrading.
+- GitHub Actions are pinned to commits (Dependabot keeps them current), the branch name reaches the release scripts
+  through the environment, and checkouts do not keep the job token (SR7, SR25, SR26).
+- `templatepack/test-template.ps1` refuses a `-WorkRoot` that already exists instead of deleting it on failure (SR8).
+- Every .NET security analyzer rule is on (`AnalysisModeSecurity` `All`) (SR27).
+- `.gitignore` covers more secret-bearing files; a root `nuget.config` restores from nuget.org only; `LICENSE`,
+  `THIRD-PARTY-NOTICES.md` and the vendored libraries' licence files are added (SR28, SR44, SR45).
+- The template removes quotes, angle brackets, ampersands and backslashes from `--title` and `--description`, which
+  would have broken the generated app's JSON, HTML and tests (SR29).
+
+And the review's smaller functional changes:
+- Passkeys must verify the user (fingerprint, face or PIN): the WebAuthn ceremonies require it, and keys are derived
+  from the PRF output only when the authenticator reports it (`WebAuthnRegisterResult.UserVerified`). A passkey that
+  cannot verify the user is no longer offered for "remember me"; one set up without verification needs setting up
+  again (SR1).
+- A profile's keys secret is deleted with a 7 day recovery window (`SecretsManagerUserKeysStore.RecoveryWindowDays`),
+  and the base stack's role refuses forced deletion, so an operator can restore the keys of a profile deleted by a bug
+  or a hijacked session. The app treats them as gone (SR5).
+- A profile missing from the index of the user's profiles is only forgotten (and its local files deleted) once its
+  keys document is gone too; while the keys exist the entry is put back
+  (`IE2eProtectedProfileManager.TryRestoreToIndexAsync`). Two devices writing the index at once no longer lose a
+  profile (SR20).
+- Deleting a profile refuses while sync is set up but has no credentials right now, instead of deleting the keys and
+  leaving its files in S3 undecryptable. `IS3SyncTargetProvider.IsConfigured` tells the two apart, and the S3 store
+  reports `Sync.Remote.NotConfigured` when nothing is set up to sync with (SR21).
+- `AddBlazwizCognito(configuration, allowPlaceholderSignIn)`: the placeholder sign in (any credentials) now stands in
+  for Cognito only where the app allows it. The template and clypse pass the host environment's `IsDevelopment()`, so a
+  deployed app whose settings are missing fails to start instead of letting anyone in (SR34).
+- A pass downloads no remote file larger than `SyncOptions.MaxFileSize` (100 MiB by default, `UseMaxFileSize`); larger
+  ones are reported as failed (`Sync.Remote.TooLarge`, with the sizes) and left in the cloud (SR39). `SyncEngine` takes
+  the `SyncOptions`.
+
 ### Fixed
+- The sync status could say "Offline: no credentials" for up to half a minute after sync was turned off (or on), when
+  a connectivity check was already running at the time: its stale answer was kept. A check that finishes after the
+  switch changed now runs again. Seen as a flaky `GivenNoCloud_WhenSyncSwitchedOff_...` UI test in CI.
 - The minimum IAM policy in the template's `cloudformation/README.md` lacked `cloudformation:GetTemplateSummary`, which
   deploying the app's own stack (`aws cloudformation deploy`) needs. With that policy, a deploy updated the base stack,
   then failed with AccessDenied on the app's stack. Add the action to policies made from the README.
+- Unlocking a profile with the passphrase and "unlock with biometrics from now on" ticked asks for the passkey first,
+  then unlocks. Before, the profile unlocked and the biometric prompt appeared afterwards, as if unrelated. A wrong
+  passphrase does not prompt again on the retry: the device key derived the first time is kept.
 
 ### Changed
+- `deploy.ps1` keeps the stack's current value of any optional parameter it is not given (`-CustomDomainName`,
+  `-CertificateArn`, `-LocalDevOrigins`, `-UserPoolDeletionProtection`, `-AuditLogging`) instead of resetting it to the
+  default. Before, an upgrade run that left out `-CustomDomainName` removed the custom domain from the distribution and
+  from the data bucket's allowed origins, and the portal lost access to S3 (`Offline: S3 unreachable`).
+- The base stack's `stack-policy.json` also protects the audit log bucket, the CloudFront distribution and the app
+  client from being replaced or removed, so `deploy.ps1` refuses a change set that would (losing the logs, changing the
+  portal's address, or ending every session) unless `-AllowStatefulReplacement` is given, as it already did for the user
+  pool, identity pool and data bucket. A workflow run with `-Force` is refused the same way.
 - The template's minimum IAM policy for deploying is now a file, `cloudformation/deploy-policy.json`, in place of a block
   in `cloudformation/README.md`, which shows how to create the policy from it.
 - The template's UI tests no longer build and start the portal with `MSBUILDDISABLENODEREUSE=1`. It worked around a

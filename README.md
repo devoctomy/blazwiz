@@ -74,8 +74,8 @@ dotnet pack templatepack -c Release # the template package
 | Option | Default | Effect |
 |---|---|---|
 | `-n`, `--name` | output folder name | App name. Keeps your casing for projects, namespaces and the solution (`AcmePortal.Portal`). |
-| `--title` | the name | Shown in the browser tab, login page, PWA manifest and copyright. Avoid quotes. |
-| `--description` | `Sign in to continue.` | Shown under the title on the login page. |
+| `--title` | the name | Shown in the browser tab, login page, PWA manifest and copyright. Quotes, angle brackets, ampersands and backslashes are removed. |
+| `--description` | `Sign in to continue.` | Shown under the title on the login page. The same characters are removed. |
 | `--tests` | `true` | Include the unit and UI test projects. |
 | `--showcase` | `true` | Include the Showcase page of themed building blocks. |
 | `--sync` | `true` | Include the sync module (`Devoctomy.Blazwiz.UI.Sync`). |

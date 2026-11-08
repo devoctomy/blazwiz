@@ -131,9 +131,8 @@ public partial class ChangePasswordViewModel : ViewModelBase
     {
         var session = await authService.GetCurrentUserAsync();
         var users = await localStorageService.GetObjectAsync<SavedUsersData>(LoginViewModel.SavedUsersStorageKey);
-        var credential = users?.Users
-            .FirstOrDefault(u => session != null && string.Equals(u.Email, session.Username, StringComparison.OrdinalIgnoreCase))
-            ?.WebAuthnCredential;
+        var user = session == null ? null : users?.Users.FirstOrDefault(u => u.IsFor(session.Username, session.Email));
+        var credential = user?.WebAuthnCredential;
         if (users == null || credential == null || string.IsNullOrEmpty(credential.EncryptedPassword))
         {
             return true;
@@ -142,7 +141,7 @@ public partial class ChangePasswordViewModel : ViewModelBase
         var kept = true;
         try
         {
-            credential.EncryptedPassword = await passwordCryptoService.EncryptAsync(password);
+            credential.EncryptedPassword = await passwordCryptoService.EncryptAsync(password, user!.Email);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

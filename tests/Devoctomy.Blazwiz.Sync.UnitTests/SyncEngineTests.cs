@@ -3,6 +3,7 @@ using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync;
+using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.InMemory;
 using Devoctomy.Blazwiz.Sync.Interfaces;
@@ -80,13 +81,14 @@ public class SyncEngineTests
         var resolver = new NewestWinsConflictResolver();
 
         // Act & Assert
-        Assert.Equal("planner", Assert.Throws<ArgumentNullException>(() => new SyncEngine(null!, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format)).ParamName);
-        Assert.Equal("conflictResolver", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, null!, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format)).ParamName);
-        Assert.Equal("contentHasher", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, null!, mockUser.Object, mockLog.Object, mockClock.Object, format)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, null!, mockLog.Object, mockClock.Object, format)).ParamName);
-        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, null!, mockClock.Object, format)).ParamName);
-        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, null!, format)).ParamName);
-        Assert.Equal("encryptedFileFormat", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object, null!)).ParamName);
+        Assert.Equal("planner", Assert.Throws<ArgumentNullException>(() => new SyncEngine(null!, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions())).ParamName);
+        Assert.Equal("conflictResolver", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, null!, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions())).ParamName);
+        Assert.Equal("contentHasher", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, null!, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions())).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, null!, mockLog.Object, mockClock.Object, format, new SyncOptions())).ParamName);
+        Assert.Equal("eventLog", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, null!, mockClock.Object, format, new SyncOptions())).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, null!, format, new SyncOptions())).ParamName);
+        Assert.Equal("encryptedFileFormat", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object, null!, new SyncOptions())).ParamName);
+        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncEngine(planner, resolver, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, null!)).ParamName);
     }
 
     [Theory]
@@ -487,7 +489,7 @@ public class SyncEngineTests
                 TrackedWriteAsync(KeyA, "typed during the pass", Now).GetAwaiter().GetResult();
                 return plan;
             });
-        var sut = new SyncEngine(mockPlanner.Object, new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format);
+        var sut = new SyncEngine(mockPlanner.Object, new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions());
 
         // Act
         var result = await sut.SyncAsync(profile, false);
@@ -587,8 +589,29 @@ public class SyncEngineTests
 
     private static string Text(byte[] content) => Encoding.UTF8.GetString(content);
 
+    [Fact]
+    public async Task GivenARemoteFileOverTheSizeLimit_WhenSynced_ThenItIsReportedAndLeftInTheCloud()
+    {
+        // Arrange: files are held whole in memory while they sync, so one far larger than the app writes is not fetched.
+        remote.Seed(KeyA, Bytes("far too large for this profile"), Later);
+        var options = new SyncOptions { MaxFileSize = 8 };
+        var sut = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, options);
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(1, result.Failed);
+        Assert.Equal(0, result.Downloaded);
+        Assert.Null(await files.ReadAsync(KeyA));
+        var failed = Assert.Single(loggedEvents, e => e.Kind == SyncEventKind.Failed);
+        Assert.Equal(SyncEventCodes.DownloadFailed, failed.Code);
+        Assert.Equal([SyncErrorCodes.RemoteTooLarge, "1", "1"], failed.Arguments);
+        Assert.DoesNotContain("get", remote.Calls.Select(c => c.Split(' ')[0]), StringComparer.OrdinalIgnoreCase);
+    }
+
     private SyncEngine CreateSut() =>
-        new(new SyncPlanner(), new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format);
+        new(new SyncPlanner(), new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions());
 
     private SyncIndexRecord Record(string key) => index.GetAsync(Profile, Owner, key).Result!;
 

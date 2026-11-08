@@ -475,7 +475,7 @@ public partial class LoginViewModel : ViewModelBase
 
         try
         {
-            var result = await webAuthnService.RegisterAsync(Username, null);
+            var result = await webAuthnService.RegisterAsync(Username);
             if (result.Success && result.PrfEnabled && result.KeysDerived)
             {
                 var webAuthnCredential = new WebAuthnStoredCredential
@@ -483,7 +483,7 @@ public partial class LoginViewModel : ViewModelBase
                     CredentialID = result.CredentialID ?? string.Empty,
                     UserID = result.UserID ?? string.Empty,
                     CreatedAt = DateTime.UtcNow,
-                    EncryptedPassword = await passwordCryptoService.EncryptAsync(Password),
+                    EncryptedPassword = await passwordCryptoService.EncryptAsync(Password, Username),
                 };
 
                 await SaveUserAsync(Username, webAuthnCredential);
@@ -570,7 +570,7 @@ public partial class LoginViewModel : ViewModelBase
     {
         try
         {
-            var existingUser = savedUsers.FirstOrDefault(u => u.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            var existingUser = savedUsers.FirstOrDefault(u => u.IsFor(email));
 
             if (existingUser != null)
             {
@@ -607,7 +607,7 @@ public partial class LoginViewModel : ViewModelBase
             {
                 // Decrypting the remembered password proves the passkey (and the user's fingerprint or PIN) on this
                 // device, which is all an offline sign in has to go on.
-                var decryptedPassword = await passwordCryptoService.DecryptAsync(user.WebAuthnCredential.EncryptedPassword!);
+                var decryptedPassword = await passwordCryptoService.DecryptAsync(user.WebAuthnCredential.EncryptedPassword!, user.Email);
                 if (SignInOffline)
                 {
                     await SignInOfflineAsync(user.Email, OfflineEntryReason.Chosen);

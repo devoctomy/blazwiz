@@ -248,7 +248,7 @@ public class E2eUnlockPanelViewModelTests
     }
 
     [Fact]
-    public async Task GivenRememberBiometricsTicked_WhenUnlockedWithThePassphrase_ThenBiometricsAreTurnedOn()
+    public async Task GivenRememberBiometricsTicked_WhenUnlockedWithThePassphrase_ThenThePasskeyIsAskedForFirst_AndBiometricsAreTurnedOn()
     {
         // Arrange
         notes.CanSetUpDeviceUnlock = true;
@@ -264,7 +264,29 @@ public class E2eUnlockPanelViewModelTests
         await sut.UnlockCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.Equal(["unlock", "passkey", "biometrics on"], calls);
+        Assert.Equal(["passkey", "unlock", "biometrics on"], calls);
+        mockToasts.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GivenRememberBiometricsTicked_AndTheWrongPassphrase_WhenUnlocked_ThenBiometricsAreNotTurnedOn_AndItSaysThePassphraseIsWrong()
+    {
+        // Arrange
+        notes.CanSetUpDeviceUnlock = true;
+        mockManager.Setup(x => x.UnlockAsync(new E2eKeyScope(notes.Id), "wrong", It.IsAny<CancellationToken>())).ThrowsAsync(new E2eWrongPassphraseException());
+        mockPasskeys.Setup(x => x.EnsureKeyAsync("e2e-kek")).ReturnsAsync(true);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        sut.Passphrase = "wrong";
+        sut.RememberBiometrics = true;
+
+        // Act
+        await sut.UnlockCommand.ExecuteAsync(null);
+
+        // Assert
+        mockProfiles.Verify(x => x.EnableDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+        Assert.NotNull(sut.Error);
+        Assert.True(sut.RememberBiometrics);
         mockToasts.VerifyNoOtherCalls();
     }
 

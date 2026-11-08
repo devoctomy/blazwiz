@@ -168,4 +168,17 @@ public interface IE2eProtectedProfileManager
     /// <param name="scope">The profile's scope.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     Task ForgetAsync(E2eKeyScope scope);
+
+    /// <summary>
+    /// Checks whether a protected profile missing from the index still has its keys document, and puts it back in the
+    /// index if so. Two devices writing the index at once can lose an entry; the keys document is what makes a profile
+    /// real, so a profile is only forgotten once that is gone too.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>
+    /// True when the profile still has its keys (and is in the index again), or when the keys store could not be
+    /// reached, so nothing is known; false when its keys are gone and it can be forgotten.
+    /// </returns>
+    Task<bool> TryRestoreToIndexAsync(E2eKeyScope scope, CancellationToken ct = default);
 }

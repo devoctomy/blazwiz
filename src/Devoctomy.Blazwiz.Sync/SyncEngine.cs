@@ -1,6 +1,7 @@
 using System.Globalization;
 using Devoctomy.Blazwiz.Core.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Sync.Configuration;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -22,9 +23,12 @@ public class SyncEngine(
     ISyncUserContext userContext,
     ISyncEventLog eventLog,
     TimeProvider timeProvider,
-    IEncryptedFileFormat encryptedFileFormat)
+    IEncryptedFileFormat encryptedFileFormat,
+    SyncOptions options)
     : ISyncEngine
 {
+    private const long BytesPerMegabyte = 1024 * 1024;
+
     private readonly ISyncPlanner planner = planner ?? throw new ArgumentNullException(nameof(planner));
     private readonly ISyncConflictResolver conflictResolver = conflictResolver ?? throw new ArgumentNullException(nameof(conflictResolver));
     private readonly IContentHasher contentHasher = contentHasher ?? throw new ArgumentNullException(nameof(contentHasher));
@@ -32,6 +36,7 @@ public class SyncEngine(
     private readonly ISyncEventLog eventLog = eventLog ?? throw new ArgumentNullException(nameof(eventLog));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly IEncryptedFileFormat encryptedFileFormat = encryptedFileFormat ?? throw new ArgumentNullException(nameof(encryptedFileFormat));
+    private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
 
     /// <inheritdoc/>
     public async Task<SyncResult> SyncAsync(SyncProfile profile, bool verify, CancellationToken ct = default)
@@ -140,6 +145,19 @@ public class SyncEngine(
         }
     }
 
+    // Remote files are held whole in memory while they sync, so one far larger than the app writes is left where it is
+    // and reported, rather than brought down on the tab.
+    private void EnsureNotTooLarge(SyncAction action)
+    {
+        if (action.Remote is { } remote && remote.Size > options.MaxFileSize)
+        {
+            throw new BlazwizException(
+                SyncErrorCodes.RemoteTooLarge,
+                (remote.Size + BytesPerMegabyte - 1) / BytesPerMegabyte,
+                (options.MaxFileSize + BytesPerMegabyte - 1) / BytesPerMegabyte);
+        }
+    }
+
     private async Task<SyncAction> ReplanAsync(Pass pass, string key, CancellationToken ct)
     {
         var profile = pass.Profile;
@@ -192,6 +210,7 @@ public class SyncEngine(
     private async Task DownloadAsync(Pass pass, SyncAction action, SyncEventKind eventKind, string? conflictDetail, CancellationToken ct)
     {
         var profile = pass.Profile;
+        EnsureNotTooLarge(action);
         var remote = await profile.RemoteStore.GetAsync(action.Key, ct);
         if (remote == null)
         {
@@ -222,6 +241,7 @@ public class SyncEngine(
     private async Task CompareContentAsync(Pass pass, SyncAction action, CancellationToken ct)
     {
         var profile = pass.Profile;
+        EnsureNotTooLarge(action);
         var remote = await profile.RemoteStore.GetAsync(action.Key, ct);
         var file = await profile.FileStore.ReadAsync(action.Key, ct);
         if (remote == null || file == null)

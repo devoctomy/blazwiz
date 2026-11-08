@@ -14,6 +14,9 @@ public class AeadKeyWrapService(IAeadCipher cipher)
     private readonly IAeadCipher cipher = cipher ?? throw new ArgumentNullException(nameof(cipher));
 
     /// <inheritdoc/>
+    public int KeySize => cipher.KeySize;
+
+    /// <inheritdoc/>
     public byte[] CreateKey(int? length = null)
     {
         var size = length ?? cipher.KeySize;

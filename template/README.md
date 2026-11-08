@@ -180,7 +180,10 @@ theme.
 (region, user pool, client and identity pool ids) and `AwsS3` (region, data bucket).
 `appsettings.Development.json` overrides values when running locally and is not published; it lightens the Argon2id
 settings (`Argon2id`), so passphrases are quick to enter while developing and in the UI tests. When
-deploying, `deploy.ps1` generates `appsettings.Production.json` with the stack's ids (git ignored).
+deploying, `deploy.ps1` generates `appsettings.Production.json` with the stack's ids (git ignored). Without that
+override the Argon2id costs come from the framework packages, which are published as Release builds (512 MiB, 2
+passes); only a Debug build of the framework itself (as in the blazwiz repository) lowers them to 19 MiB. The costs are
+stored with each keys document, so raising them later never breaks existing data.
 <!--#if (IncludeSync)-->
 
 Sync profiles (what is synced, where it is kept on the device, and the id of its keys) are classes deriving
@@ -200,8 +203,9 @@ is kept) are in `MyApp.Portal/sync.json`, embedded in the app and read by `UseEm
 `AddBlazwizCognito` signs in with Cognito when `AwsCognito` has a region, user pool id and app client id (deployed
 builds get these from `appsettings.Production.json`), using SRP through AWS's
 [`Amazon.Extensions.CognitoAuthentication`](https://github.com/aws/aws-sdk-net-extensions-cognito), so the password
-is never sent. Otherwise it keeps the placeholder sign-in (any credentials), e.g. for local development and the UI
-tests.
+is never sent. Without those settings it keeps the placeholder sign-in (any credentials) only in the Development
+environment (`allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment()` in `Program.cs`), for local development
+and the UI tests; a published build whose settings are missing refuses to start instead.
 
 ## Deploying to AWS
 

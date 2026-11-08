@@ -5,7 +5,8 @@
 // So: check for a new version on load and whenever the app comes back to the foreground, and when one is ready, show
 // #app-update-banner. Its button tells the waiting service worker to take over, then the page reloads into it.
 // Nothing switches without the user asking: swapping files under a running app can break it, and a reload loses
-// things such as a picked folder's permission on some browsers.
+// things such as a picked folder's permission on some browsers. While the new version downloads, js/app-update.js
+// (AppUpdateMonitor) shows the app update indicator.
 
 export function afterStarted() {
     if (!('serviceWorker' in navigator)) {

@@ -39,7 +39,7 @@ public class GlobSyncPathMatcher : ISyncPathMatcher
     /// <inheritdoc/>
     public bool IsMatch(string key)
     {
-        if (string.IsNullOrEmpty(key) || key.StartsWith('/'))
+        if (string.IsNullOrEmpty(key) || key.StartsWith('/') || key.Contains('\\') || !HasPlainSegments(key))
         {
             return false;
         }
@@ -50,5 +50,21 @@ public class GlobSyncPathMatcher : ISyncPathMatcher
         }
 
         return matcher.Match(key).HasMatches;
+    }
+
+    // The glob library normalises "." and ".." segments and ignores empty ones, while the file stores take keys as they
+    // are, so two keys could name one path. Such keys are never written by the app, so they are not matched at all.
+    private static bool HasPlainSegments(string key)
+    {
+        var path = key.EndsWith('/') ? key[..^1] : key;
+        foreach (var segment in path.Split('/'))
+        {
+            if (segment.Length == 0 || segment == "." || segment == "..")
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

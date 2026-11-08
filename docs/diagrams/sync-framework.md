@@ -93,6 +93,7 @@ stores and services (`AddBlazwizE2eEncryption`, `IUserKeysStore`, `IE2eLocalKeyS
 | | `UseIndexedDbEventLog(db, store)` / `UseEventLog<T>()` | Where the sync log is kept |
 | | `UseEventLogRetention(maxAge, maxEventsPerUser)` | How long the log is kept |
 | | `UseChangeDebounce(delay)` | How long after a change a pass runs |
+| | `UseMaxFileSize(bytes)` | The largest remote file a pass downloads (100 MiB by default); larger ones are reported and left in the cloud |
 | | `UseConnectivityTimings(t => ...)` | Cache time, probe timeout, recheck backoff |
 | | `UseProfileDefaults(s => ...)` | The settings of the profiles users create |
 | `SyncProfileBuilder` | `UseRemote(glob, includeEmptyFolders)` | **Required.** Which keys belong to the profile: `*` stays within a folder, `**` crosses folders |

@@ -30,13 +30,41 @@ Parameters:
 
   LocalDevOrigins:
     Type: CommaDelimitedList
-    Default: 'https://localhost:7090,http://localhost:5090'
-    Description: Origins allowed to call the data bucket (CORS) in addition to the portal itself, for running the portal locally.
+    Default: ''
+    Description: >-
+      Origins allowed to call the data bucket (CORS) in addition to the portal itself, for running the portal locally
+      against this environment, e.g. https://localhost:7090,http://localhost:5090. Leave empty for production
+      (deploy.ps1 passes the local origins for every environment but prod).
+
+  UserPoolDeletionProtection:
+    Type: String
+    Default: auto
+    AllowedValues: [auto, ACTIVE, INACTIVE]
+    Description: >-
+      Whether Cognito refuses to delete the user pool, and every user with it, even when the stack is deleted. auto
+      turns it on when Environment is prod. remove.ps1 turns it off before deleting the stack.
+
+  AuditLogging:
+    Type: String
+    Default: auto
+    AllowedValues: [auto, 'true', 'false']
+    Description: >-
+      Whether a CloudTrail trail records every read, write and delete of an object in the data bucket, in an audit log
+      bucket of its own (kept a year), so after an incident there is a record of which credentials did what. auto turns
+      it on when Environment is prod. Data events are charged for by CloudTrail.
 
 Conditions:
   UseCustomDomain: !And
     - !Not [!Equals [!Ref CustomDomainName, '']]
     - !Not [!Equals [!Ref CertificateArn, '']]
+  HasLocalDevOrigins: !Not [!Equals [!Join [',', !Ref LocalDevOrigins], '']]
+  IsProd: !Equals [!Ref Environment, prod]
+  ProtectUserPool: !Or
+    - !Equals [!Ref UserPoolDeletionProtection, ACTIVE]
+    - !And [!Equals [!Ref UserPoolDeletionProtection, auto], !Condition IsProd]
+  LogDataAccess: !Or
+    - !Equals [!Ref AuditLogging, 'true']
+    - !And [!Equals [!Ref AuditLogging, auto], !Condition IsProd]
 
 Resources:
 
@@ -177,16 +205,29 @@ Resources:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: AES256
+      # Users (and anything holding their credentials for an hour) can only delete and overwrite their own objects, so
+      # every version is kept for a while: a delete leaves a marker and an overwrite keeps the old version, and only an
+      # operator can remove them. The role is not given s3:DeleteObjectVersion or s3:PutBucketVersioning.
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldVersions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
       CorsConfiguration:
         CorsRules:
-          - AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
+          - AllowedMethods: [GET, PUT, DELETE, HEAD]
             AllowedOrigins: !Split
               - ','
               - !Join
                 - ','
                 - - !Sub 'https://${PortalDistribution.DomainName}'
                   - !If [UseCustomDomain, !Sub 'https://${CustomDomainName}', !Ref AWS::NoValue]
-                  - !Join [',', !Ref LocalDevOrigins]
+                  - !If [HasLocalDevOrigins, !Join [',', !Ref LocalDevOrigins], !Ref AWS::NoValue]
             AllowedHeaders: ['*']
             # ETag drives sync; x-amz-meta-modified-at is the edit time compared when both sides changed.
             ExposedHeaders: [ETag, x-amz-meta-modified-at]
@@ -229,10 +270,15 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       UserPoolName: !Sub '${AppName}-${Environment}-users'
+      # Cognito itself refuses to delete the pool while this is ACTIVE (see the UserPoolDeletionProtection parameter).
+      DeletionProtection: !If [ProtectUserPool, ACTIVE, INACTIVE]
       UsernameAttributes: [email]
       AutoVerifiedAttributes: [email]
       UsernameConfiguration:
         CaseSensitive: false
+      # The email is the sign-in name, so a new one only takes over once the user has proved they can read it.
+      UserAttributeUpdateSettings:
+        AttributesRequireVerificationBeforeUpdate: [email]
       # Invite only - users are created by an administrator (see deploy.ps1), no self sign-up.
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: true
@@ -259,11 +305,16 @@ Resources:
       UserPoolId: !Ref UserPool
       # Public client (runs in the browser) so it must not have a secret.
       GenerateSecret: false
+      # SRP only from the browser: the password never leaves it. The admin flow needs AWS credentials with
+      # cognito-idp:AdminInitiateAuth, and is used by test-auth.ps1 to verify sign-in from the command line.
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
-        # Used by test-auth.ps1 to verify sign-in from the command line. Remove if not wanted.
-        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+      # What the portal may read (the ID token's claims) and change with the access token. Nothing writes attributes,
+      # and the email can only be changed by an administrator.
+      ReadAttributes: [email, email_verified, name]
+      WriteAttributes: [name]
       PreventUserExistenceErrors: ENABLED
       EnableTokenRevocation: true
       AccessTokenValidity: 60
@@ -348,6 +399,8 @@ Resources:
             Statement:
               # Only secrets under <user pool sub>/keys/: each profile's keys, and the index of them.
               # Secrets Manager appends a random 6 character suffix to every secret ARN, hence '-??????'.
+              # TagResource: the portal tags each secret with the app's name as it creates it, so remove.ps1 can find
+              # and delete the users' secrets with the environment.
               - Sid: ManageOwnKeysSecrets
                 Effect: Allow
                 Action:
@@ -358,7 +411,17 @@ Resources:
                   - secretsmanager:UpdateSecret
                   - secretsmanager:DeleteSecret
                   - secretsmanager:RestoreSecret
+                  - secretsmanager:TagResource
                 Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${!aws:PrincipalTag/userSub}/keys/*-??????'
+              # A deleted keys secret can be restored by an operator for at least 7 days (the portal asks for 7). A
+              # hijacked session, or a bug, cannot make it gone at once.
+              - Sid: NoForcedSecretDeletion
+                Effect: Deny
+                Action: secretsmanager:DeleteSecret
+                Resource: '*'
+                Condition:
+                  Bool:
+                    secretsmanager:ForceDeleteWithoutRecovery: 'true'
       Tags:
         - Key: app
           Value: !Ref AppName
@@ -371,6 +434,102 @@ Resources:
       IdentityPoolId: !Ref IdentityPool
       Roles:
         authenticated: !GetAtt AuthenticatedRole.Arn
+
+  # ---------------------------------------------------------------------------
+  # Audit log: every read, write and delete of an object in the data bucket (see the AuditLogging parameter)
+  # ---------------------------------------------------------------------------
+
+  AuditLogBucket:
+    Type: AWS::S3::Bucket
+    Condition: LogDataAccess
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub '${AppName}-${Environment}-audit-${AWS::AccountId}'
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldLogs
+            Status: Enabled
+            ExpirationInDays: 365
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+        - Key: environment
+          Value: !Ref Environment
+
+  AuditLogBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Condition: LogDataAccess
+    Properties:
+      Bucket: !Ref AuditLogBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt AuditLogBucket.Arn
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AppName}-${Environment}-data-access'
+          - Sid: AllowCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub '${AuditLogBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AppName}-${Environment}-data-access'
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: 's3:*'
+            Resource:
+              - !GetAtt AuditLogBucket.Arn
+              - !Sub '${AuditLogBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+
+  DataAccessTrail:
+    Type: AWS::CloudTrail::Trail
+    Condition: LogDataAccess
+    DependsOn: AuditLogBucketPolicy
+    Properties:
+      TrailName: !Sub '${AppName}-${Environment}-data-access'
+      S3BucketName: !Ref AuditLogBucket
+      IsLogging: true
+      IsMultiRegionTrail: false
+      IncludeGlobalServiceEvents: false
+      EnableLogFileValidation: true
+      EventSelectors:
+        - ReadWriteType: All
+          # Management events (Cognito, Secrets Manager, CloudFormation and so on) are in the account's own trail.
+          IncludeManagementEvents: false
+          DataResources:
+            - Type: AWS::S3::Object
+              Values:
+                - !Sub '${DataBucket.Arn}/'
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+        - Key: environment
+          Value: !Ref Environment
 
 # Every output is exported as <stack name>-<output>, for the app's own stack (cloudformation/app.yaml in the app) to
 # import. An exported value cannot change while another stack imports it.
@@ -425,3 +584,9 @@ Outputs:
     Value: !GetAtt AuthenticatedRole.Arn
     Export:
       Name: !Sub '${AWS::StackName}-AuthenticatedRoleArn'
+  AuditLogBucketName:
+    Condition: LogDataAccess
+    Description: Bucket the data bucket's access log is written to.
+    Value: !Ref AuditLogBucket
+    Export:
+      Name: !Sub '${AWS::StackName}-AuditLogBucketName'

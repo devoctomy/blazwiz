@@ -77,6 +77,20 @@ public class SyncBuilder(SyncOptions options)
     }
 
     /// <summary>
+    /// Sets the largest remote file a pass downloads. Larger ones are reported as failed and left in the cloud, so a
+    /// file far bigger than the app ever writes cannot exhaust the browser's memory.
+    /// </summary>
+    /// <param name="bytes">The limit in bytes, at least 1.</param>
+    /// <returns>The builder.</returns>
+    public SyncBuilder UseMaxFileSize(long bytes)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(bytes, 1);
+
+        Options.MaxFileSize = bytes;
+        return this;
+    }
+
+    /// <summary>
     /// Sets the connectivity check timings.
     /// </summary>
     /// <param name="configure">Changes the timings.</param>
