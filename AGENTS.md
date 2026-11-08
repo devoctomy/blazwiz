@@ -93,6 +93,22 @@ The project is in development and unreleased. Nobody uses it yet.
 - When adding or removing files that belong to an optional feature, update the matching `exclude` list in
   `template.json`. Files only for this repository must be excluded there too (as `Directory.Build.targets` is).
 
+## Keeping the documentation current
+
+After a change, update the documentation it affects in the same piece of work, if any is. Check:
+
+- `src/Devoctomy.Blazwiz.<Package>/README.md`: what the package does and how to use it (it ships in the NuGet
+  package), for any change to a package's setup, configuration or behaviour.
+- `template/README.md` and the root `README.md`: the template's options and what a generated app contains, the
+  package table, the build and test steps.
+- `docs/diagrams`: the flows, class names, paths, storage names and package structure they show
+  (`docs/diagrams/overview.md` lists them). Every class and path named must exist where it says, and every Mermaid
+  block must still render.
+- `docs/versioning.md` and `docs/releasing.md`: what counts as public API, and the release flow.
+- `CHANGELOG.md` and `UPGRADING.md`, as below.
+
+Say which documents were updated, or that none needed it.
+
 ## Build and test
 
 Prerequisites: .NET 10 SDK. The first time, install the Playwright browser:
