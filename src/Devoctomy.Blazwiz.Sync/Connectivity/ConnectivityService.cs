@@ -125,22 +125,28 @@ public sealed class ConnectivityService : IConnectivityService, IDisposable
                 return result;
             }
 
-            // Sync was switched off or on while that check ran, so its answer is already stale: check again (unless
-            // another caller has started to).
-            if (checkInProgress is { } restarted)
+            // Sync was switched off or on while that check ran, so its answer is already stale: check again, unless
+            // another caller has started a new check since (the finished one may still be recorded, depending on
+            // which caller resumed first).
+            if (checkInProgress is { } restarted && !ReferenceEquals(restarted, inProgress))
             {
                 return await restarted;
             }
         }
 
-        checkInProgress = RunChecksAsync(ct);
+        var check = RunChecksAsync(ct);
+        checkInProgress = check;
         try
         {
-            return await checkInProgress;
+            return await check;
         }
         finally
         {
-            checkInProgress = null;
+            // Only our own check is cleared: a later one started by another caller stays recorded.
+            if (ReferenceEquals(checkInProgress, check))
+            {
+                checkInProgress = null;
+            }
         }
     }
 
