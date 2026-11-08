@@ -16,6 +16,7 @@
         "cloudformation:GetTemplate",
         "cloudformation:GetTemplateSummary",
         "cloudformation:UpdateStack",
+        "cloudformation:ContinueUpdateRollback",
         "cloudformation:DeleteStack"
       ],
       "Resource": [

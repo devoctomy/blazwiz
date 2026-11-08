@@ -91,6 +91,10 @@ And the review's smaller functional changes:
   then failed with AccessDenied on the app's stack. Add the action to policies made from the README.
 
 ### Changed
+- The base stack's `stack-policy.json` also protects the audit log bucket, the CloudFront distribution and the app
+  client from being replaced or removed, so `deploy.ps1` refuses a change set that would (losing the logs, changing the
+  portal's address, or ending every session) unless `-AllowStatefulReplacement` is given, as it already did for the user
+  pool, identity pool and data bucket. A workflow run with `-Force` is refused the same way.
 - The template's minimum IAM policy for deploying is now a file, `cloudformation/deploy-policy.json`, in place of a block
   in `cloudformation/README.md`, which shows how to create the policy from it.
 - The template's UI tests no longer build and start the portal with `MSBUILDDISABLENODEREUSE=1`. It worked around a

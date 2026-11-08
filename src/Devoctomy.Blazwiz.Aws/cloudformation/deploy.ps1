@@ -8,8 +8,9 @@ their own cloudformation/deploy.ps1, which passes the app's name, folder and por
 
 Safe to run repeatedly. Each run:
   1. Creates / updates the CloudFormation stack "<AppName>-<Environment>" through a change set. The changes
-     are listed first, replacements need confirming, and replacing the user pool, identity pool or data
-     bucket is refused unless -AllowStatefulReplacement is given (see stack-policy.json). Then the app's own
+     are listed first, replacements need confirming, and replacing the user pool, identity pool, data bucket,
+     audit log bucket, CloudFront distribution or app client is refused unless -AllowStatefulReplacement is
+     given (see stack-policy.json). Then the app's own
      stack "<AppName>-<Environment>-app" (-AppStackTemplate), which imports the base stack's outputs.
   2. Writes the stack outputs into wwwroot/appsettings.Production.json, publishes the portal and adds its
      Content-Security-Policy (see Add-ContentSecurityPolicy in _common.ps1).
@@ -79,8 +80,9 @@ param(
     # Skip the CloudFormation deployment (just publish the portal / manage the user).
     [switch]$SkipInfrastructure,
 
-    # Let the deployment replace or remove resources protected by stack-policy.json (the user pool, identity
-    # pool and data bucket). This loses their users / data, only use it when that is intended.
+    # Let the deployment replace or remove resources protected by stack-policy.json: the user pool, identity pool,
+    # data bucket and audit log bucket (their users, data and logs would be lost), the CloudFront distribution (the
+    # portal's address would change) and the app client (every session would end). Only when that is intended.
     [switch]$AllowStatefulReplacement,
 
     # Skip publishing and uploading the portal.
@@ -212,7 +214,7 @@ if (-not $SkipInfrastructure) {
         $blocked = @($replacing | Where-Object { $protected -contains $_ })
         if ($blocked.Count -gt 0 -and -not $AllowStatefulReplacement) {
             Invoke-Aws -Arguments @('cloudformation', 'delete-change-set', '--stack-name', $stackName, '--change-set-name', $changeSetName) | Out-Null
-            throw ("This deployment would replace or remove $($blocked -join ', '), losing users and / or their data. Nothing was changed. " +
+            throw ("This deployment would replace or remove $($blocked -join ', '): users, data or logs would be lost, or the portal's address or app client would change. Nothing was changed. " +
                 'Revert the template change, or re-run with -AllowStatefulReplacement if that is really intended.')
         }
         if ($replacing.Count -gt 0) {

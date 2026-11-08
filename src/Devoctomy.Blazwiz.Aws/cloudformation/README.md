@@ -24,6 +24,11 @@ Every script takes `-AppName`, `-Environment`, `-Region` and `-AwsProfile`; see 
 - **Nothing a user's credentials can do is final.** The data bucket is versioned, so a delete leaves a marker and an
   overwrite keeps the old version for 30 days, and only an operator (not the role) can remove them. `remove.ps1`
   deletes every version when the environment goes.
+- **A deployment never replaces what cannot be rebuilt without asking.** `stack-policy.json` denies replacing or
+  removing the user pool, identity pool, data bucket and audit log bucket (their users, data and logs), the
+  CloudFront distribution (the portal's address) and the app client (every session). `deploy.ps1` refuses a change
+  set that would, interactive or not, unless `-AllowStatefulReplacement` is given. Other replacements are listed with a
+  warning and need confirming.
 - **The user pool is protected in production.** With `-UserPoolDeletionProtection auto` (the default) Cognito refuses
   to delete the pool when `-Environment` is `prod`, even through the stack; `remove.ps1` turns it off first. Pass
   `ACTIVE` or `INACTIVE` to choose for other environments.
