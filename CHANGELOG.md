@@ -36,7 +36,7 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   the percentage; without it the indicator shows but no percentage.
 
 ### Security
-From the security review of 2026-11-08 (`docs/reviews/security-review-2026-11-08-01-Fable-5.1.md`), every finding
+From the security review of 2026-11-08 (`docs/reviews/2026-11-08-security-review/security-review.md`), every finding
 whose fix needs no functional change:
 - Idle auto-lock now applies to profiles set up in code, such as the template's `files`: `E2eIdleLock` looked them up
   by name with their key scope id, so only profiles users create were ever locked for being idle (SR2).

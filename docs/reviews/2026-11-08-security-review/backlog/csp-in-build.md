@@ -1,6 +1,6 @@
 # Produce the Content-Security-Policy in the build, not only in deploy.ps1
 
-Added 2026-11-08, from SR31 of `docs/reviews/security-review-2026-11-08-01-Fable-5.1.md` (Low, not done: a design
+Added 2026-11-08, from SR31 of `docs/reviews/2026-11-08-security-review/security-review.md` (Low, not done: a design
 decision).
 
 ## The gap

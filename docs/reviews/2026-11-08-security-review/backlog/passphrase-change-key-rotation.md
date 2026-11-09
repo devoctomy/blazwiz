@@ -1,6 +1,6 @@
 # Rotate a profile's keys when its passphrase changes
 
-Added 2026-11-08, from SR3 of `docs/reviews/security-review-2026-11-08-01-Fable-5.1.md` (Medium, not done: a
+Added 2026-11-08, from SR3 of `docs/reviews/2026-11-08-security-review/security-review.md` (Medium, not done: a
 functional change).
 
 ## The gap

@@ -1,7 +1,8 @@
 # MFA with an authenticator app (TOTP)
 
 Added 2026-11-03, from Phase 3 of `docs/reviews/2026-11-03-upgradeability-review.md` (removed) (optional there, not done).
-Also SR6 of `docs/reviews/security-review-2026-11-08-01-Fable-5.1.md` (Medium).
+Also SR6 of `../security-review.md` (Medium), which is why it lives here rather than
+in `docs/plans/backlog` since 2026-11-09.
 
 **Blocked by design (2026-11-08):** the refresh token is never stored, so a passkey sign in is a fresh Cognito sign in
 with the remembered password every time (see `docs/diagrams/prf-remember-me.md`). With MFA on, Cognito would ask for
