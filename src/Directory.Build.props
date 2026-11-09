@@ -28,5 +28,6 @@
     <!-- Each package's own README.md, shown on nuget.org. Pack fails if a package has none (NU5039). -->
     <None Remove="README.md" />
     <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="$(MSBuildThisFileDirectory)..\NOTICE" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 </Project>

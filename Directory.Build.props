@@ -7,13 +7,13 @@
     <!-- Every security rule (CA3xxx, CA5xxx), not just the few on by default. -->
     <AnalysisModeSecurity>All</AnalysisModeSecurity>
     <!-- One version for every Devoctomy.Blazwiz package and the template (docs/versioning.md). -->
-    <VersionPrefix>0.7.1</VersionPrefix>
+    <VersionPrefix>0.7.2</VersionPrefix>
     <Authors>Nick Pateman</Authors>
     <Company>Devoctomy</Company>
     <Copyright>Copyright (c) Nick Pateman</Copyright>
     <RepositoryUrl>https://github.com/devoctomy/blazwiz</RepositoryUrl>
     <PackageProjectUrl>https://github.com/devoctomy/blazwiz</PackageProjectUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
