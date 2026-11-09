@@ -1,7 +1,26 @@
+---
+title: Rotate a profile's keys when its passphrase changes
+type: backlog
+status: not started
+added: 2026-11-08
+review: ../security-review.md
+finding: SR3
+severity: medium
+urgency: high
+before-1.0: yes
+reason: users will expect a passphrase change to revoke anyone who held the old passphrase; today it revokes nobody
+areas: [Encryption, UI.Sync, Sync]
+effort: large
+functional-change: yes
+blocked-by: none
+related:
+  - SR37 (nonce rotation belongs with this change)
+  - ../../../plans/backlog/user-events-appsync.md (tells other devices the keys changed)
+---
+
 # Rotate a profile's keys when its passphrase changes
 
-Added 2026-11-08, from SR3 of `docs/reviews/security-review-2026-11-08-01-Fable-5.1.md` (Medium, not done: a
-functional change).
+From SR3 of `../security-review.md`: a functional change, so not done with the review's fixes.
 
 ## The gap
 
@@ -33,6 +52,17 @@ locks the attacker out.
    the new one when the user turns device unlock on again. Say so in the UI.
 5. **Text.** In Settings, say what a passphrase change does: "Your files are encrypted again with new keys. Anyone who
    had your old passphrase and a copy of your keys can no longer read them." Until this is built, say the opposite.
+
+## Other devices
+
+Each device caches the keys document locally and holds the unwrapped keys in memory, so a device unlocked before the
+change does not know the new key id and fails to decrypt files written after it. Two things are needed: a durable
+check, where an unknown key id in a file header (or the next unlock) makes the device re-read the keys document and
+compare its version before asking for the passphrase again; and, optionally, a `keys-changed` event on the user event
+channel (`docs/plans/backlog/user-events-appsync.md`) so open devices do it at once. The check is required; the event
+only removes the lag. The keys document write itself is still unguarded against two devices writing at once, which matters more once a
+lost write can orphan files under a key nobody holds; `docs/plans/backlog/protected-profile-concurrent-writes.md`
+moves the documents to S3 with `If-Match` writes and should land first.
 
 ## Open questions
 

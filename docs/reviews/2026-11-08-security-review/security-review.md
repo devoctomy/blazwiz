@@ -1,8 +1,44 @@
+---
+title: "Security review 01: blazwiz"
+type: security-review
+number: 1
+date: 2026-11-08
+updated: 2026-11-09
+reviewer: Claude Fable 5.1
+model: claude-fable-5-1
+tool: Claude Code
+branch: security-review
+commit: 2e63f07
+scope:
+  - the packages (src/Devoctomy.Blazwiz.*)
+  - the template app (template/)
+  - the AWS stack and its scripts (src/Devoctomy.Blazwiz.Aws/cloudformation, template/cloudformation)
+  - the build, CI and dependencies
+method: static review of the source; no test suite, browser or deployed stack was exercised for the findings
+findings:
+  critical: 0
+  high: 0
+  medium: 8
+  low: 26
+  informational: 15
+status:
+  fixed: 39
+  fixed-in-part: 3
+  open: 4
+  not-applicable: 3
+fixes-applied: 2026-11-08
+fixes-merged: 963afec
+stack-deployed: true
+backlog:
+  - backlog/passphrase-change-key-rotation.md
+  - backlog/mfa-totp.md
+  - backlog/deployer-permissions-boundary.md
+  - backlog/csp-in-build.md
+---
+
 # Security review 01: blazwiz
 
-**Date:** 2026-11-08
 **Branch:** `security-review` at `2e63f07` (clean working tree, no changes from `main`)
-**Reviewer:** Claude Fable 5.1
 **Question:** what can go wrong, for users and for the project, in the framework, the template app and the AWS stack
 as they stand today?
 
@@ -432,7 +468,7 @@ hardening, not isolation.
 #### SR6 (Medium). No MFA and no threat protection on the user pool
 
 - **Where:** `stack.yaml:226-253` (no `MfaConfiguration`, `EnabledMfas` or `UserPoolAddOns`). In the backlog:
-  `docs/plans/backlog/mfa-totp.md`.
+  `docs/reviews/2026-11-08-security-review/backlog/mfa-totp.md`.
 - **What could result:** a phished or reused password gives the ID token, hence the AWS credentials, hence the wrapped
   keys and ciphertext and the power to destroy them (SR4, SR5). The profile passphrase is then the only barrier to
   reading files. Cognito's lockout on repeated failures still applies; there is no compromised-credential check.
@@ -795,7 +831,7 @@ section. How they were checked:
 | SR14 | Low | AWS | Email changes unverified; client write attributes unrestricted | An access-token holder changes the sign-in email and locks the user out of sign in and recovery | No | Yes, not deployed: email verified before update; client reads `email`, `email_verified`, `name` and writes `name` only |
 | SR15 | Low | Scripts | Test-user password on the CLI; plaintext temp files | Local exposure through process lists, transcripts, telemetry | No | Yes, not run: password via `--cli-input-json` from a user-only file, overwritten before deletion; the real index is no longer written to a file |
 | SR16 | Low | AWS | Localhost origins in production CORS | A localhost page with stolen credentials can reach the production bucket from the browser | No | Yes, not deployed: `LocalDevOrigins` defaults to none for `prod`; `POST` dropped from the CORS methods |
-| SR17 | Low | AWS | Deployer policy allows self-escalation; `AdminSetUserPassword` on every pool | Deployer identity gains admin on the account and can take over any user in any pool | No | Partly: duplicate action removed and new actions added with scoped resources or tag conditions. The permissions boundary needs the account administrator to create the boundary policy; the tag condition on `cognito-idp:Admin*` needs testing |
+| SR17 | Low | AWS | Deployer policy allows self-escalation; `AdminSetUserPassword` on every pool | Deployer identity gains admin on the account and can take over any user in any pool | No | Partly: duplicate action removed and new actions added with scoped resources or tag conditions. The permissions boundary needs the account administrator to create the boundary policy, planned in `docs/reviews/2026-11-08-security-review/backlog/deployer-permissions-boundary.md`; the tag condition on `cognito-idp:Admin*` needs testing |
 | SR18 | Low | Sync / E2E | Index load replaces a code profile's whole settings object with user-profile defaults | `AllowDeviceUnlock` and passphrase rules silently change for the main profile | No (bug fix) | Yes: only an idle timeout chosen in the index is applied, over the profile's own settings; two unit tests |
 | SR19 | Low | Sync / E2E | Zero-length content bypasses the encrypted-format check | S3-side truncation shows as an empty file with no error, where any other tamper is detected | No | Yes: empty non-folder content throws `InvalidDataException`; folder markers pass through |
 | SR20 | Low | Sync / E2E | Index lost updates and "missing from index" wipe local keys and files | A profile's local files and keys copy are deleted on every device; keys secret and ciphertext survive but cannot be re-attached | Yes (recovery behaviour) | Yes (later the same day): before forgetting, `TryRestoreToIndexAsync` checks the keys document; if it exists the entry is put back, if the store is unreachable the profile is kept; unit tests in Encryption and Sync. Guarding the index write itself is still open (`protected-profile-concurrent-writes.md`) |
@@ -860,7 +896,7 @@ suggests adding.
 
 **After the fixes of 2026-11-08** (see "What was fixed"), including the second pass that did the small functional
 changes (SR1, SR5, SR20, SR21, SR34, SR39), what remains open is: SR3 (key rotation on passphrase change, planned in
-`docs/plans/backlog/passphrase-change-key-rotation.md`), SR6 (MFA, blocked by the session model as
-`docs/plans/backlog/mfa-totp.md` explains), SR31 (where the CSP is produced, `docs/plans/backlog/csp-in-build.md`),
-SR17's permissions boundary (an account administrator's task), SR46 (test package churn), and the deploy that puts the
+`docs/reviews/2026-11-08-security-review/backlog/passphrase-change-key-rotation.md`), SR6 (MFA, blocked by the session model as
+`docs/reviews/2026-11-08-security-review/backlog/mfa-totp.md` explains), SR31 (where the CSP is produced, `docs/reviews/2026-11-08-security-review/backlog/csp-in-build.md`),
+SR17's permissions boundary (an account administrator's task, `docs/reviews/2026-11-08-security-review/backlog/deployer-permissions-boundary.md`), SR46 (test package churn), and the deploy that puts the
 stack changes into effect. The next review should start from this table.

@@ -35,7 +35,7 @@ push; `release.yml` publishes (see `docs/releasing.md`). Deploying is still by h
 
 ### Security headers and CSP
 Done: `deploy.ps1` adds a Content-Security-Policy to the published `index.html` (I1), and the data bucket is versioned
-(I2), both from the security review of 2026-11-08 (`docs/reviews/security-review-2026-11-08-01-Fable-5.1.md`). What is
+(I2), both from the security review of 2026-11-08 (`docs/reviews/2026-11-08-security-review/security-review.md`). What is
 left from that review is in its summary table.
 
 ### Real performance work
