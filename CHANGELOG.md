@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.7.2
+
 ### Changed
 - blazwiz is licensed under the Apache License 2.0 instead of MIT, from this version: the packages declare
   `Apache-2.0` and carry the `NOTICE` file. Versions already published stay under the licence they were published with.
