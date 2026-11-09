@@ -1,8 +1,25 @@
+---
+title: Cap the roles the deployer can create with a permissions boundary
+type: backlog
+status: not applicable for now
+added: 2026-11-09
+review: ../security-review.md
+finding: SR17
+severity: low
+urgency: low
+before-1.0: no
+reason: only matters once the deployer is a limited identity (an IAM user or a CI role); the maintainer deploys by hand as an account administrator
+trigger: the deployer becomes a limited identity, or deployment moves to CI
+areas: [AWS stack, deploy scripts, template/cloudformation]
+effort: small
+functional-change: no
+blocked-by: an account administrator creating the boundary policy outside the stack
+---
+
 # Cap the roles the deployer can create with a permissions boundary
 
-Added 2026-11-09, from SR17 of `docs/reviews/2026-11-08-security-review/security-review.md` (Low, done in part: the
-Cognito admin actions were scoped by the pool's `app` tag; the permissions boundary was not added because it needs a
-policy that only an account administrator may create).
+From SR17 of `../security-review.md`, done in part: the Cognito admin actions were scoped by the pool's `app` tag; the
+permissions boundary was not added because it needs a policy that only an account administrator may create.
 
 ## The gap
 

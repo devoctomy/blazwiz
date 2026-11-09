@@ -1,7 +1,23 @@
+---
+title: Produce the Content-Security-Policy in the build, not only in deploy.ps1
+type: backlog
+status: needs a decision
+added: 2026-11-08
+review: ../security-review.md
+finding: SR31
+severity: low
+urgency: medium
+before-1.0: recommended
+reason: an app published any way other than deploy.ps1 ships without the one control that limits what an XSS can do with the tokens and keys
+areas: [template/MyApp.Portal, Devoctomy.Blazwiz.Aws cloudformation scripts]
+effort: medium
+functional-change: no (a build change)
+blocked-by: choosing one of the three options; tightening style-src needs a browser check against a deployed app
+---
+
 # Produce the Content-Security-Policy in the build, not only in deploy.ps1
 
-Added 2026-11-08, from SR31 of `docs/reviews/2026-11-08-security-review/security-review.md` (Low, not done: a design
-decision).
+From SR31 of `../security-review.md`: a design decision, so not done with the review's fixes.
 
 ## The gap
 

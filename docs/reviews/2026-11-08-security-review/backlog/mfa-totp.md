@@ -1,8 +1,26 @@
+---
+title: MFA with an authenticator app (TOTP)
+type: backlog
+status: blocked
+added: 2026-11-03
+moved-here: 2026-11-09
+review: ../security-review.md
+finding: SR6
+severity: medium
+urgency: medium
+before-1.0: recommended
+reason: a phished or reused password alone yields the tokens, AWS credentials, wrapped keys and ciphertext
+areas: [Auth, Auth.Cognito, UI, AWS stack]
+effort: large
+functional-change: yes
+blocked-by: a decision on how a passkey sign in satisfies MFA (the session model never stores the refresh token)
+origin: Phase 3 of the upgradeability review of 2026-11-03 (removed)
+---
+
 # MFA with an authenticator app (TOTP)
 
-Added 2026-11-03, from Phase 3 of `docs/reviews/2026-11-03-upgradeability-review.md` (removed) (optional there, not done).
-Also SR6 of `../security-review.md` (Medium), which is why it lives here rather than
-in `docs/plans/backlog` since 2026-11-09.
+Raised by the upgradeability review of 2026-11-03 (removed) and again as SR6 of `../security-review.md`, which is
+why it lives beside that review.
 
 **Blocked by design (2026-11-08):** the refresh token is never stored, so a passkey sign in is a fresh Cognito sign in
 with the remembered password every time (see `docs/diagrams/prf-remember-me.md`). With MFA on, Cognito would ask for

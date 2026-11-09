@@ -1,7 +1,25 @@
+---
+title: Rotate a profile's keys when its passphrase changes
+type: backlog
+status: not started
+added: 2026-11-08
+review: ../security-review.md
+finding: SR3
+severity: medium
+urgency: high
+before-1.0: yes
+reason: users will expect a passphrase change to revoke anyone who held the old passphrase; today it revokes nobody
+areas: [Encryption, UI.Sync, Sync]
+effort: large
+functional-change: yes
+blocked-by: none
+related:
+  - SR37 (nonce rotation belongs with this change)
+---
+
 # Rotate a profile's keys when its passphrase changes
 
-Added 2026-11-08, from SR3 of `docs/reviews/2026-11-08-security-review/security-review.md` (Medium, not done: a
-functional change).
+From SR3 of `../security-review.md`: a functional change, so not done with the review's fixes.
 
 ## The gap
 
