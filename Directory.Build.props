@@ -13,7 +13,7 @@
     <Copyright>Copyright (c) Nick Pateman</Copyright>
     <RepositoryUrl>https://github.com/devoctomy/blazwiz</RepositoryUrl>
     <PackageProjectUrl>https://github.com/devoctomy/blazwiz</PackageProjectUrl>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>

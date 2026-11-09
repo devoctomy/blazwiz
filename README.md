@@ -100,4 +100,12 @@ builds with everything included.
 
 ## Contributing
 
-See [AGENTS.md](AGENTS.md) for the rules this repository follows.
+See [AGENTS.md](AGENTS.md) for the rules this repository follows. Contributions are accepted under the project's
+licence (Apache License 2.0, section 5).
+
+## Licence
+
+blazwiz is licensed under the [Apache License 2.0](LICENSE). Keep the [NOTICE](NOTICE) file with redistributed copies.
+Files from other projects kept in this repository have their own licences, listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Apps built with blazwiz are the authors' own, under whatever licence
+they choose.
