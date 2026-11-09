@@ -14,6 +14,7 @@ related:
   - ../../reviews/2026-11-08-security-review/backlog/passphrase-change-key-rotation.md (other devices must learn the keys changed)
   - ../../reviews/2026-11-08-security-review/backlog/mfa-totp.md
   - ../../reviews/2026-11-08-security-review/security-review.md (SR6, SR20)
+  - protected-profile-concurrent-writes.md (the race the channel narrows but does not close)
 ---
 
 # User events over AppSync Events, starting with "sign out everywhere"

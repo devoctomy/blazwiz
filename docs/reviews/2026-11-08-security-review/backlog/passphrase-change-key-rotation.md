@@ -60,9 +60,9 @@ change does not know the new key id and fails to decrypt files written after it.
 check, where an unknown key id in a file header (or the next unlock) makes the device re-read the keys document and
 compare its version before asking for the passphrase again; and, optionally, a `keys-changed` event on the user event
 channel (`docs/plans/backlog/user-events-appsync.md`) so open devices do it at once. The check is required; the event
-only removes the lag. The keys document write itself is still unguarded against two devices writing at once
-(`docs/plans/backlog/protected-profile-concurrent-writes.md`), which matters more once a lost write can orphan files
-under a key nobody holds.
+only removes the lag. The keys document write itself is still unguarded against two devices writing at once, which matters more once a
+lost write can orphan files under a key nobody holds; `docs/plans/backlog/protected-profile-concurrent-writes.md`
+moves the documents to S3 with `If-Match` writes and should land first.
 
 ## Open questions
 
