@@ -119,11 +119,6 @@ function Use-Packages([string]$App, [string]$Version, [string]$Feed) {
 }
 
 function Test-Project([string]$Root, [string]$Solution, [bool]$UiTests, [string]$Label, [string[]]$BuildArguments) {
-    # Build each app with fresh build servers, as on a machine that has only that app. On Linux, an app built with the
-    # compiler server left by the apps before it intermittently failed in the Razor source generator (its .razor files
-    # read as malformed), and passed when built again.
-    dotnet build-server shutdown | Out-Null
-
     if (-not (Invoke-Checked "$Label builds" { dotnet build (Join-Path $Root $Solution) --nologo -v q @BuildArguments })) {
         return
     }

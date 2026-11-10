@@ -133,6 +133,22 @@ dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UITests"
 These are the steps CI runs (`.github/workflows/ci.yml`). Test namespaces must contain the project's suffix
 (`.UnitTests`, `.IntTests`, `.UITests`), or the filters miss them.
 
+**Run them as written, and never work around a build failure:**
+
+- Run each command exactly as above: the whole solution, one command at a time, on its own line, with its full
+  output. Don't build single projects in its place, chain builds in one command line, or filter the output down to a
+  few lines.
+- If a build fails for a reason you don't understand, stop and show the maintainer the full error. Don't retry with
+  something changed until it passes: a failure that comes and goes will pass on a retry whatever was changed.
+- Never add a build flag, environment variable, clean-up step (deleting `bin`, `obj` or anything in them) or build
+  server shutdown to get past a failure: not in workflows, not in scripts, not in project files, not in your own
+  shell. `MSBUILDDISABLENODEREUSE` and `dotnet build-server shutdown` were added this way more than once and have
+  been removed; never add them back.
+- Don't copy settings from an existing workflow or script into a new one without knowing what each is for. Check
+  `CHANGELOG.md` first: something recorded there as removed stays out.
+- Make changes to files with the editing tools, so each one can be seen, not with `sed` or `perl` one-liners. Don't
+  read, list or search anything outside this repository without asking.
+
 - The UI tests start the portal themselves (`dotnet run -c Release` on a free port). They take about two minutes.
   The portal's output goes to `template/MyApp.Portal.UITests/bin/Debug/net10.0/TestResults/portal.log`. Don't build
   while they run.
