@@ -1,7 +1,7 @@
 ---
 title: Rotate a profile's keys when its passphrase changes
 type: active
-status: not started
+status: in progress
 added: 2026-11-08
 updated: 2026-11-10
 review: ../../reviews/2026-11-08-security-review/security-review.md
@@ -152,35 +152,45 @@ when the first part is working.
 
 ## Checklist
 
-- [ ] `Encryption`: a rotate operation on `IE2eKeysDocumentService` (new master key, new active file key, old keys
+- [x] `Encryption`: a rotate operation on `IE2eKeysDocumentService` (new master key, new active file key, old keys
       wrapped again and retired, the rotation-in-progress mark), used by
       `E2eProtectedProfileManager.ChangePassphraseAsync`; unit tests, including a retry after
       `E2eDocumentChangedException`, every old file key still unwrapping, and exactly one active key.
-- [ ] `Encryption`: this device's unlock copy wrapped again or cleared (step 4); unit tests.
-- [ ] `Encryption`: device unlock checks the store's document when online (step 6); unit tests for unchanged, changed
+- [x] `Encryption`: this device's unlock copy wrapped again or cleared (step 4); unit tests.
+- [x] `Encryption`: device unlock checks the store's document when online (step 6); unit tests for unchanged, changed
       with the same master key, changed with a new master key, and offline.
-- [ ] `Sync`: the sync before rotating, and refusing when offline or when it fails (step 1); unit tests.
-- [ ] `Sync`: the timing test with a throwaway file that sync never sees, deleted afterwards, and the estimate
+- [x] `Sync`: the sync before rotating, and refusing when offline or when it fails (step 1); unit tests.
+- [x] `Sync`: the timing test with a throwaway file that sync never sees, deleted afterwards, and the estimate
       (step 2); unit tests with `FakeTimeProvider`.
-- [ ] `Sync`: re-encrypt and push a profile's files, with progress, skipping files already under the active key
+- [x] `Sync`: re-encrypt and push a profile's files, with progress, skipping files already under the active key
       (step 5); unit tests, and an integration scenario in `Sync.IntTests` (rotate, re-encrypt, sync, read on a second
       device).
-- [ ] Finishing an interrupted rotation (step 8): unit tests for an interruption after step 3, part way through
+- [x] Finishing an interrupted rotation (step 8): unit tests for an interruption after step 3, part way through
       step 5, and after step 5 with the sign out still to do; finishing on a different device.
-- [ ] `Sync`: unknown key id runs the resume check (step 9); unit tests.
-- [ ] `UI.Sync`: the confirmation, estimate and warning, progress, sign out and its retry, and the interrupted
+- [x] `Sync`: unknown key id runs the resume check (step 9); unit tests.
+- [x] `UI.Sync`: the confirmation, estimate and warning, progress, sign out and its retry, and the interrupted
       rotation screen in `E2eProfilesViewModel` and the unlock panel; new `SyncUiText` entries; view model tests.
-- [ ] Template UI tests: change a passphrase, see the warning and the progress, be signed out, sign in again with the
+- [x] Template UI tests: change a passphrase, see the warning and the progress, be signed out, sign in again with the
       new passphrase, and read the old files; reload part way through and be made to finish.
-- [ ] Settle the files that arrive later under a retired key ("Other devices").
-- [ ] `PublicAPI.Unshipped.txt` for each changed package.
-- [ ] Docs: `src/Devoctomy.Blazwiz.Encryption/README.md`, `src/Devoctomy.Blazwiz.Sync/README.md` (and its SR37 nonce
+      - Done in `NotesTests`, with two limits. The progress bar is not asserted: with one small local file it is gone
+        before a test can see it (the view model tests cover it). The interruption is not a real reload part way
+        through: the test sets the rotation mark in the browser's copy of the keys document, reloads, and checks the
+        notes stay hidden until the change is finished.
+- [x] Settle the files that arrive later under a retired key ("Other devices"). Moved to its own backlog plan
+      (maintainer, 2026-11-10): `docs/reviews/2026-11-08-security-review/backlog/files-under-retired-keys.md`, which
+      also records the two "Later" items below.
+- [x] `PublicAPI.Unshipped.txt` for each changed package.
+- [x] Docs: `src/Devoctomy.Blazwiz.Encryption/README.md`, `src/Devoctomy.Blazwiz.Sync/README.md` (and its SR37 nonce
       note), `src/Devoctomy.Blazwiz.UI.Sync/README.md`, `docs/diagrams/user-events.md` and `docs/diagrams/sync.md`,
-      `CHANGELOG.md`.
-- [ ] Upgrade test (AGENTS.md): the keys document gains the rotation-in-progress field; before 1.0 no migration is
+      `CHANGELOG.md`. Also `docs/diagrams/prf-remember-me.md` (passkey unlock now checks the stored document) and
+      `template/README.md`.
+- [x] Upgrade test (AGENTS.md): the keys document gains the rotation-in-progress field; before 1.0 no migration is
       kept. Rotation changes what apps see in Settings and in sign out, so run
       `./templatepack/test-template.ps1 -UpgradeFrom latest`.
-- [ ] Mark SR3 fixed in the security review, and remove this plan.
+      - Run on 2026-11-10: all checks passed. An app created from 0.7.2 on nuget.org builds and passes its own unit
+        and UI tests after moving to the working tree's packages. Its UI tests are the 0.7.2 ones, so they do not
+        exercise the new passphrase change; the repository's and the freshly generated apps' UI tests do.
+- [ ] Mark SR3 fixed in the security review (done), and remove this plan (for the maintainer, once verified).
 
 ## Later, not in this plan
 

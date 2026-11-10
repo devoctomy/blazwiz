@@ -66,6 +66,21 @@ public class E2eProfilePresenterTests
     }
 
     [Fact]
+    public async Task GivenAnUnlockedProfileWithARotationInProgress_WhenDescribed_ThenItsPassphraseChangeMustBeFinished()
+    {
+        // Arrange
+        var profile = Add(Guid.NewGuid().ToString("D"), isSetUp: true, isCreatedByUser: true);
+        mockManager.Setup(x => x.IsUnlocked(profile.Scope)).Returns(true);
+        mockManager.Setup(x => x.IsRotationInProgress(profile.Scope)).Returns(true);
+
+        // Act
+        var row = await CreateSut().GetProfileAsync(profile.Name);
+
+        // Assert
+        Assert.Equal(E2eProfileState.RotationInProgress, row!.State);
+    }
+
+    [Fact]
     public async Task GivenAPasskeyAndBiometricsOnHere_WhenDescribed_ThenItCanBeUnlockedWithThem()
     {
         // Arrange: whether or not the passkey's key is in memory now (it is asked for when needed).

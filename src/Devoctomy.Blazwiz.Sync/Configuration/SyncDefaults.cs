@@ -35,6 +35,12 @@ public static class SyncDefaults
     public const string KeysIndexName = "index";
 
     /// <summary>
+    /// The folder, in the user's prefix, for short-lived objects the app writes and deletes again, such as the file
+    /// timed to estimate how long a passphrase change takes. Never synced: no profile may match it.
+    /// </summary>
+    public const string ScratchFolder = "scratch";
+
+    /// <summary>
     /// The name the storage chosen for the device is recorded under, among the profiles' storage states. Not a
     /// profile name: profiles cannot be called this.
     /// </summary>

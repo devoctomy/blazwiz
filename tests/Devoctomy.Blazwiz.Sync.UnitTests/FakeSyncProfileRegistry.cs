@@ -11,6 +11,7 @@ internal sealed class FakeSyncProfileRegistry : ISyncProfileRegistry
     private readonly List<SyncProfileOptions> configured;
     private readonly List<SyncProfileOptions> added = [];
     private readonly Dictionary<string, SyncProfile> syncProfiles = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (ISyncFileStore Store, ISyncFileStore Untracked)> fileStores = new(StringComparer.Ordinal);
 
     private FakeSyncProfileRegistry(List<SyncProfileOptions> configured)
     {
@@ -69,9 +70,14 @@ internal sealed class FakeSyncProfileRegistry : ISyncProfileRegistry
     public SyncProfile GetSyncProfile(string name) =>
         syncProfiles.TryGetValue(name, out var profile) ? profile : throw new ArgumentException($"There is no sync profile called '{name}'.", nameof(name));
 
-    public ISyncFileStore GetFileStore(string name) => throw new NotSupportedException();
+    // Gives a profile the stores app code and the engine use.
+    public void SetFileStores(string name, ISyncFileStore store, ISyncFileStore untracked) => fileStores[name] = (store, untracked);
 
-    public ISyncFileStore GetUntrackedFileStore(string name) => throw new NotSupportedException();
+    public ISyncFileStore GetFileStore(string name) =>
+        fileStores.TryGetValue(name, out var stores) ? stores.Store : throw new NotSupportedException();
+
+    public ISyncFileStore GetUntrackedFileStore(string name) =>
+        fileStores.TryGetValue(name, out var stores) ? stores.Untracked : throw new NotSupportedException();
 
     public ISyncIndexStore GetIndexStore(string name) => GetSyncProfile(name).IndexStore;
 

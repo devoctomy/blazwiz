@@ -810,6 +810,8 @@ section. How they were checked:
 - **Left for a decision, with the reason in the table:** SR17 (a permissions boundary needs the account's administrator
   to create the boundary policy first), SR31 (moving the CSP into the build is a design change, and `style-src` needs
   a browser check), SR45 (lock files) and SR46. SR3 and SR6 have backlog plans.
+- **2026-11-10:** SR3 was fixed by the key rotation plan. A passphrase change now rotates the profile's keys, encrypts
+  its files again and signs every device out. What it left open is in `backlog/files-under-retired-keys.md`.
 
 ## Summary
 
@@ -817,7 +819,7 @@ section. How they were checked:
 |---|---|---|---|---|---|---|
 | SR1 | Medium | Passkeys | User verification is `preferred`, never required or checked; the flags reporting it are always false | Possession of the device or security key alone decrypts the saved password, signs in offline, and unlocks device-unlock profiles | Small: authenticators that cannot verify stop being offered for remember-me | Yes (later the same day): the bridge reports the real UP and UV flags from the authenticator data, every ceremony requires verification, and keys are derived only when it was done (`WebAuthnRegisterResult.UserVerified`); unit tests with a fake JavaScript runtime |
 | SR2 | Medium | Sync / E2E | Idle auto-lock looks profiles up by name but is given the key scope id, so it never starts for code-defined profiles (the template's `files`) | Unlocked profile keys and plaintext stay available for the whole session, including on an unattended machine | No (restores documented behaviour) | Yes: lookup by key scope; unit test with a profile whose name is not its scope id |
-| SR3 | Medium | Key management | Passphrase change rewraps the same master key; file keys unchanged; old document kept as `AWSPREVIOUS` | Anyone holding an old keys document and old passphrase, or the master key, keeps reading all current and future files | Yes: key rotation on passphrase change, optional re-encryption, new text | No (functional) |
+| SR3 | Medium | Key management | Passphrase change rewraps the same master key; file keys unchanged; old document kept as `AWSPREVIOUS` | Anyone holding an old keys document and old passphrase, or the master key, keeps reading all current and future files | Yes: key rotation on passphrase change, optional re-encryption, new text | Yes (2026-11-10): a passphrase change makes a new master key and active file key, encrypts every file again and signs every device out; passkey unlock checks the stored keys document. Unit, integration and UI tests. Not tried against a deployed app. One follow-up: files that arrive later under a retired key (`backlog/files-under-retired-keys.md`) |
 | SR4 | Medium | AWS | Data bucket not versioned; role may delete and overwrite | Leaked one-hour credentials or an engine bug permanently destroys a user's files | No (infrastructure) | Yes, not deployed: versioning, old versions expire after 30 days, incomplete uploads after 7; `remove.ps1` deletes every version |
 | SR5 | Medium | AWS / UI.Sync | Keys secrets force-deleted with no recovery window; policy allows it | A hijacked session or a bug irrecoverably destroys a profile's keys, making all its files unreadable | Small: deleted keys linger unreadable for 7 days; test script changes | Yes (later the same day), not deployed: `RecoveryWindowInDays = 7` in the store, a `Deny` on forced deletion in the role, `test-auth.ps1` checks both. **Moved 2026-11-10** (`docs/plans/active/2026-11-10-protected-profile-concurrent-writes-plan.md`): the keys are now in the versioned data bucket; a delete only adds a marker, the role is denied `s3:DeleteObjectVersion` (`NoVersionPurge`), so a deleted keys document is restorable for 30 days; the deploy tests check it (`docs/plans/active/2026-11-10-deploy-tests-plan.md`) |
 | SR6 | Medium | AWS / Auth | No MFA, no threat protection (in backlog) | A phished or reused password yields the tokens, AWS credentials, wrapped keys and ciphertext, and the power to destroy them | Yes: a second sign-in step and Profile page set-up | No (functional, in the backlog) |
@@ -865,9 +867,9 @@ section. How they were checked:
 | SR48 | Info | AWS | No audit logging | No record of which credentials deleted or changed what after an incident | No | Yes, not deployed: `AuditLogging` (`auto` = on for `prod`) adds a CloudTrail trail of data bucket object events into an audit bucket kept a year |
 | SR49 | Info | Docs / AWS | Backlog says no CI and no CSP; README mechanism drift; cross-prefix read not tested end to end; TLS 1.0 with the default certificate; HSTS without `includeSubDomains` | Misleading docs; weaker TLS floor without a custom domain | Docs; no | Yes: backlog and READMEs corrected, TLS and HSTS stated; `test-auth.ps1` also checks reading and listing another prefix and the whole bucket |
 
-Counts: 0 Critical, 0 High, 8 Medium, 26 Low, 15 Informational. Fixed: 39 in full (33 in the first pass, then SR1,
-SR5, SR20, SR21, SR34 and SR39 later the same day), 3 in part (SR17, SR37, SR45), 4 left for a decision or a plan
-(SR3, SR6, SR31, SR46), 3 not applicable (SR38, SR43, SR47).
+Counts: 0 Critical, 0 High, 8 Medium, 26 Low, 15 Informational. Fixed: 40 in full (33 in the first pass, then SR1,
+SR5, SR20, SR21, SR34 and SR39 later the same day, and SR3 on 2026-11-10), 3 in part (SR17, SR37, SR45), 3 left for a
+decision or a plan (SR6, SR31, SR46), 3 not applicable (SR38, SR43, SR47).
 
 ## Closing assessment
 
@@ -895,8 +897,9 @@ batch, then plan SR3 and SR6. The Informational items are for the README and the
 suggests adding.
 
 **After the fixes of 2026-11-08** (see "What was fixed"), including the second pass that did the small functional
-changes (SR1, SR5, SR20, SR21, SR34, SR39), what remains open is: SR3 (key rotation on passphrase change, planned in
-`docs/plans/active/2026-11-10-key-rotation-plan.md`), SR6 (MFA, blocked by the session model as
+changes (SR1, SR5, SR20, SR21, SR34, SR39), and the key rotation of 2026-11-10 (SR3), what remains open is: SR3's
+follow-up (files that arrive later under a retired key,
+`docs/reviews/2026-11-08-security-review/backlog/files-under-retired-keys.md`), SR6 (MFA, blocked by the session model as
 `docs/reviews/2026-11-08-security-review/backlog/mfa-totp.md` explains), SR31 (where the CSP is produced, `docs/reviews/2026-11-08-security-review/backlog/csp-in-build.md`),
 SR17's permissions boundary (an account administrator's task, `docs/reviews/2026-11-08-security-review/backlog/deployer-permissions-boundary.md`), SR46 (test package churn), and the deploy that puts the
 stack changes into effect. The next review should start from this table.

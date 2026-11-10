@@ -3,6 +3,7 @@ using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.UI.Models;
 using Devoctomy.Blazwiz.UI.Services.Interfaces;
@@ -22,6 +23,8 @@ public class E2eUnlockPanelViewModelTests
     private readonly Mock<ISyncScheduler> mockScheduler = new();
     private readonly Mock<IPasskeyKeysService> mockPasskeys = new();
     private readonly Mock<IToastService> mockToasts = new();
+    private readonly Mock<ISyncKeyRotationService> mockRotation = new();
+    private readonly Mock<IE2eRotationSignOut> mockSignOut = new();
     private readonly List<string> calls = [];
     private readonly TestText testText = new();
     private readonly E2eProfileRow notes = new() { Name = "notes", Id = Guid.NewGuid().ToString("D"), DisplayName = "Notes", State = E2eProfileState.Locked };
@@ -36,15 +39,126 @@ public class E2eUnlockPanelViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(null!, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object)).ParamName);
-        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, null!, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object)).ParamName);
-        Assert.Equal("presenter", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, null!, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, null!, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object)).ParamName);
-        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, null!, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object)).ParamName);
-        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, null!, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object)).ParamName);
-        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, null!, mockPasskeys.Object, mockToasts.Object)).ParamName);
-        Assert.Equal("passkeys", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, null!, mockToasts.Object)).ParamName);
-        Assert.Equal("toasts", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, null!)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(null!, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, null!, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("presenter", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, null!, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, null!, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, null!, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, null!, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("scheduler", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, null!, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("passkeys", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, null!, mockToasts.Object, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("toasts", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, null!, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("rotation", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, null!, mockSignOut.Object)).ParamName);
+        Assert.Equal("rotationSignOut", Assert.Throws<ArgumentNullException>(() => new E2eUnlockPanelViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, null!)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenAnInterruptedPassphraseChange_WhenShown_ThenTheProfileIsNotShownAndFinishingIsOffered()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        using var sut = CreateSut();
+
+        // Act
+        await sut.SetProfileAsync("notes");
+
+        // Assert
+        Assert.True(sut.IsRotationInProgress);
+        Assert.False(sut.IsUnlocked);
+        Assert.False(sut.IsLocked);
+        Assert.Equal("A passphrase change of Notes was interrupted. It must be finished before Notes can be used, and it must not be interrupted again.", sut.Message);
+    }
+
+    [Fact]
+    public async Task GivenAnInterruptedPassphraseChange_WhenFinished_ThenTheFilesAreEncryptedAgainWithProgressAndEveryDeviceSignedOut()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        var percents = new List<int>();
+        mockRotation.Setup(x => x.FinishAsync(new E2eKeyScope(notes.Id), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback<E2eKeyScope, IProgress<E2eProgress>?, CancellationToken>((_, progress, _) =>
+            {
+                progress!.Report(new E2eProgress(E2eStep.ReencryptFiles, false, 0, 4));
+                progress.Report(new E2eProgress(E2eStep.ReencryptFiles, false, 1, 4));
+                progress.Report(new E2eProgress(E2eStep.ReencryptFiles, true, 4, 4));
+            })
+            .Returns(Task.CompletedTask);
+        mockSignOut.Setup(x => x.SignOutEverywhereAsync()).ReturnsAsync(true);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        sut.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(sut.FilesPercent))
+            {
+                percents.Add(sut.FilesPercent);
+            }
+        };
+
+        // Act
+        await sut.FinishRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal([0, 25, 100], percents);
+        Assert.False(sut.IsFinishingRotation);
+        Assert.False(sut.NeedsSignOut);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenOffline_WhenFinishingAPassphraseChange_ThenRefusedAndNobodyIsSignedOut()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        mockRotation.Setup(x => x.FinishAsync(It.IsAny<E2eKeyScope>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new SyncKeyRotationException(SyncErrorCodes.RotationOffline));
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.FinishRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.StartsWith("Changing a passphrase needs a connection", sut.Error);
+        Assert.True(sut.IsRotationInProgress);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenTheSignOutFails_WhenFinishingAPassphraseChange_ThenItIsOfferedUntilItSucceeds()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        mockSignOut.SetupSequence(x => x.SignOutEverywhereAsync()).ReturnsAsync(false).ReturnsAsync(true);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        await sut.FinishRotationCommand.ExecuteAsync(null);
+        var offered = sut.NeedsSignOut;
+
+        // Act
+        await sut.RetrySignOutCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(offered);
+        Assert.False(sut.NeedsSignOut);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenTheKeysWereRotatedElsewhere_WhenUnlockedWithThePasskey_ThenItSaysTheNewPassphraseIsNeeded()
+    {
+        // Arrange
+        notes.CanUnlockWithDevice = true;
+        mockProfiles.Setup(x => x.UnlockWithDeviceAsync(new E2eKeyScope(notes.Id)))
+            .ThrowsAsync(new E2ePassphraseRequiredException(E2eErrorCodes.KeysChanged));
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.UnlockWithDeviceCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("The passphrase of this profile was changed on another device, so your passkey can no longer unlock it here. Enter the new passphrase.", sut.Error);
+        Assert.True(sut.IsLocked);
     }
 
     [Fact]
@@ -331,5 +445,5 @@ public class E2eUnlockPanelViewModelTests
         mockProfiles.Verify(x => x.EnableDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
     }
 
-    private E2eUnlockPanelViewModel CreateSut() => new(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object);
+    private E2eUnlockPanelViewModel CreateSut() => new(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object);
 }

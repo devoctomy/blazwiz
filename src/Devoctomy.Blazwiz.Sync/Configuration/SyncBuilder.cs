@@ -300,6 +300,13 @@ public class SyncBuilder(SyncOptions options)
                 nameof(configure));
         }
 
+        if (profile.Overlaps(SyncDefaults.ScratchFolder + "/"))
+        {
+            throw new ArgumentException(
+                $"The remote pattern of sync profile '{name}' ('{profile.RemotePattern}') could match the app's short-lived objects, under '{SyncDefaults.ScratchFolder}/'.",
+                nameof(configure));
+        }
+
         Options.Profiles.Add(profile);
         return this;
     }

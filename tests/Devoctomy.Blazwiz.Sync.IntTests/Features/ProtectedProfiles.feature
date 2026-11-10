@@ -75,3 +75,40 @@ Scenario: The passphrase is changed on one device while another has the profile 
 	Then device "B" cannot unlock "Work" with the passphrase "old passphrase"
 	When device "B" unlocks "Work" with the passphrase "new passphrase"
 	Then device "B" reads "notes.md" in "Work" as "still unlocked"
+
+Scenario: Changing the passphrase encrypts every file again with new keys
+	Given device "A" creates a protected profile "Work" with the passphrase "old passphrase"
+	And device "A" writes "plan.md" containing "work plan" in "Work"
+	And device "A" writes "list.md" containing "groceries" in "Work"
+	And device "A" syncs
+	And device "B" loads its protected profiles
+	And device "B" syncs
+	And device "B" unlocks "Work" with the passphrase "old passphrase"
+	When device "A" changes the passphrase of "Work" from "old passphrase" to "new passphrase" and encrypts its files again
+	Then every file of "Work" in the bucket is encrypted with the active key of device "A"
+	And the old master key of "Work" on device "B" unwraps none of its keys
+	When device "A" completes its passphrase changes
+	Then the passphrase change of "Work" is finished
+	When device "B" locks "Work"
+	Then device "B" cannot unlock "Work" with the passphrase "old passphrase"
+	When device "B" syncs
+	And device "B" unlocks "Work" with the passphrase "new passphrase"
+	Then device "B" reads "plan.md" in "Work" as "work plan"
+	And device "B" reads "list.md" in "Work" as "groceries"
+	And the passphrase change of "Work" is not unfinished on device "B"
+
+Scenario: A passphrase change cut short is finished on another device
+	Given device "A" creates a protected profile "Work" with the passphrase "old passphrase"
+	And device "A" writes "plan.md" containing "work plan" in "Work"
+	And device "A" syncs
+	And device "B" loads its protected profiles
+	When device "A" changes the passphrase of "Work" from "old passphrase" to "new passphrase"
+	And device "B" syncs
+	And device "B" unlocks "Work" with the passphrase "new passphrase"
+	Then the passphrase change of "Work" is unfinished on device "B"
+	When device "B" finishes the passphrase change of "Work"
+	And device "B" completes its passphrase changes
+	Then every file of "Work" in the bucket is encrypted with the active key of device "B"
+	And the passphrase change of "Work" is finished
+	When device "A" syncs
+	Then device "A" reads "plan.md" in "Work" as "work plan"

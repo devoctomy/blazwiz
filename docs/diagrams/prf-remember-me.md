@@ -262,17 +262,27 @@ sequenceDiagram
     Mgr->>LS: GET myapp_e2e_keys_{profile id}_{user}
     Mgr->>DKS: TryGetKey("e2e-kek")
     alt Wrapped key and kek present, and the kek unwraps it
-        Mgr->>Mgr: Unwrap the master key, then each file key in the cached document
-        Mgr->>Ring: Load(master key, file keys, active key id)
-        Ring->>DKS: SetKey("e2e:{profile id}:master"), SetKey("e2e:{profile id}:file:{key id}")
-        Mgr->>Mgr: Zero the kek and master key copies
-        Note over Panel: Unlocked: the profile's files read and write
+        Mgr->>Mgr: Unwrap the master key
+        Mgr->>Mgr: Read the keys document from the store when it can be reached; use it if its ETag differs from the copy's
+        alt The master key unwraps the document's file keys
+            Mgr->>Ring: Load(master key, file keys, active key id)
+            Ring->>DKS: SetKey("e2e:{profile id}:master"), SetKey("e2e:{profile id}:file:{key id}")
+            Mgr->>Mgr: Zero the kek and master key copies
+            Note over Panel: Unlocked: the profile's files read and write
+        else The keys were rotated on another device (its passphrase changed)
+            Mgr->>LS: SET myapp_e2e_keys_{profile id}_{user} (the new document, the wrapped master key removed)
+            Mgr-->>Panel: E2ePassphraseRequiredException (E2e.KeysChanged)
+            Panel->>User: Says the passphrase was changed, and asks for the new one
+        end
     else No device key, or wrapped by another passkey (registered again)
         Mgr-->>Panel: E2ePassphraseRequiredException
         Panel->>User: Asks for the passphrase
     end
     end
 ```
+
+Offline, the store cannot be reached and the copy on this device is used, as before. Files edited that way after a
+passphrase change elsewhere are written under the retired key, which the keys document keeps, so they stay readable.
 
 `SyncProtectedProfileService.DisableDeviceUnlockAsync` turns it off: it empties the wrapped master key and keeps the
 document copy, which still unlocks with the passphrase while offline. Nothing in the UI calls it yet.

@@ -162,7 +162,7 @@ public class SyncStorageMigrationService(
             progress?.Report(new SyncStorageMigrationProgress(profile, 0, 0, isSyncing: true));
             if ((await connectivityService.CheckAsync(ct)).IsOnline)
             {
-                await syncService.SyncAsync(profile, verify: false, ct);
+                await syncService.SyncAsync(profile, verify: false, ct: ct);
             }
 
             var source = resolver.GetStore(profile, from);

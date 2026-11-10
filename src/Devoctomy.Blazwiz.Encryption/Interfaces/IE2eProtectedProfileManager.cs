@@ -101,12 +101,16 @@ public interface IE2eProtectedProfileManager
     Task<bool> CanUnlockWithDeviceAsync(E2eKeyScope scope);
 
     /// <summary>
-    /// Unlocks a protected profile with the passkey, from this device's copy of its keys document.
+    /// Unlocks a protected profile with the passkey. Its keys document is read from the store when it can be reached;
+    /// if it has changed since this device last read it and the master key kept here no longer unwraps it (the keys
+    /// were rotated on another device), device unlock is turned off here and the new passphrase is needed. When the
+    /// store cannot be reached, this device's copy of the document is used.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     /// <exception cref="Exceptions.E2ePassphraseRequiredException">Device unlock is off here, or the passkey cannot
-    /// unlock it; the passphrase is needed.</exception>
+    /// unlock it; the passphrase is needed. Its code is <see cref="Exceptions.E2eErrorCodes.KeysChanged"/> when the
+    /// keys were rotated on another device.</exception>
     Task UnlockWithDeviceAsync(E2eKeyScope scope);
 
     /// <summary>
@@ -115,6 +119,16 @@ public interface IE2eProtectedProfileManager
     /// <param name="scope">The profile's scope.</param>
     /// <returns>True when unlocked.</returns>
     bool IsUnlocked(E2eKeyScope scope);
+
+    /// <summary>
+    /// Gets whether an unlocked protected profile's keys document says a passphrase change has not finished: its keys
+    /// were rotated, but its files may not all be encrypted with the new key yet, or every device not yet signed out.
+    /// The profile must not be used until the change is finished. Known from the document read when it was unlocked or
+    /// its passphrase changed; false while it is locked.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <returns>True when the passphrase change must be finished first.</returns>
+    bool IsRotationInProgress(E2eKeyScope scope);
 
     /// <summary>
     /// Locks a protected profile: its keys are wiped from memory and its files can no longer be read or written.
@@ -128,19 +142,37 @@ public interface IE2eProtectedProfileManager
     void LockAll();
 
     /// <summary>
-    /// Changes a protected profile's passphrase. Its files are not encrypted again. Needs the keys document to be
-    /// reached; the last write wins.
+    /// Changes a protected profile's passphrase and rotates its keys: a new master key, wrapped by the new passphrase,
+    /// and a new active file key. The earlier file keys are kept, retired, so files not yet encrypted again still
+    /// decrypt. The document is marked <see cref="UserKeysDocument.RotationInProgress"/> until
+    /// <see cref="CompleteRotationAsync"/>, once every file is encrypted with the new key and every device signed
+    /// out. The profile is unlocked with the new keys. This device's passkey copy of the master key is replaced when the
+    /// passkey's key is in memory, and otherwise removed. Needs the keys document to be reached; a write by another
+    /// device in between starts it again, with new keys, from their version.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>
     /// <param name="currentPassphrase">The current passphrase.</param>
     /// <param name="newPassphrase">The new passphrase.</param>
     /// <param name="settings">The profile's settings: its passphrase rules and Argon2id costs apply here.</param>
+    /// <param name="progress">Told about each step.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     /// <exception cref="Exceptions.E2eWrongPassphraseException">The current passphrase is wrong.</exception>
     /// <exception cref="Exceptions.E2eProfileNotFoundException">The user has no such protected profile.</exception>
     /// <exception cref="Exceptions.E2ePassphraseTooShortException">The new passphrase is too short.</exception>
-    Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, E2eProfileSettings settings, CancellationToken ct = default);
+    Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, E2eProfileSettings settings, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears the <see cref="UserKeysDocument.RotationInProgress"/> mark of an unlocked protected profile, once its
+    /// files are all encrypted with the new key. Does nothing when the document's active key is no longer the one this
+    /// device holds (rotated again elsewhere since), so that rotation is still finished.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="Exceptions.E2eLockedException">The profile is locked.</exception>
+    /// <exception cref="Exceptions.E2eProfileNotFoundException">The user has no such protected profile.</exception>
+    Task CompleteRotationAsync(E2eKeyScope scope, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a protected profile's keys: locks it, deletes its keys document and this device's copy, and removes it

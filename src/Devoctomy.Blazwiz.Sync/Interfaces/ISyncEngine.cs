@@ -12,9 +12,10 @@ public interface ISyncEngine
     /// </summary>
     /// <param name="profile">The profile.</param>
     /// <param name="verify">True to hash every local file against the index (the first pass after sign in).</param>
+    /// <param name="progress">Told how many of the planned changes are done, once planned and after each one.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>The result.</returns>
     /// <exception cref="Exceptions.SyncNetworkException">The remote could not be reached. The pass stops.</exception>
     /// <exception cref="Exceptions.SyncAccessDeniedException">The credentials were refused. The pass stops.</exception>
-    Task<SyncResult> SyncAsync(SyncProfile profile, bool verify, CancellationToken ct = default);
+    Task<SyncResult> SyncAsync(SyncProfile profile, bool verify, IProgress<SyncPassProgress>? progress = null, CancellationToken ct = default);
 }

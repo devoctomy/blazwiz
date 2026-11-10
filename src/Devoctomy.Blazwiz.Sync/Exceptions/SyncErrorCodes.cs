@@ -70,4 +70,14 @@ public static class SyncErrorCodes
     /// Some files could not be synced. Argument: how many.
     /// </summary>
     public const string FilesFailed = "Sync.FilesFailed";
+
+    /// <summary>
+    /// A passphrase change needs the profile synced first, and this device is offline.
+    /// </summary>
+    public const string RotationOffline = "Sync.Rotation.Offline";
+
+    /// <summary>
+    /// A passphrase change needs the profile synced, and the sync did not succeed.
+    /// </summary>
+    public const string RotationSyncFailed = "Sync.Rotation.SyncFailed";
 }

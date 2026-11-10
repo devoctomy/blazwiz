@@ -49,6 +49,7 @@ public class E2eProfilePresenter(
     private async Task<E2eProfileRow> DescribeAsync(SyncProtectedProfile profile)
     {
         var state = !profile.IsSetUp ? E2eProfileState.NotSetUp
+            : manager.IsUnlocked(profile.Scope) && manager.IsRotationInProgress(profile.Scope) ? E2eProfileState.RotationInProgress
             : manager.IsUnlocked(profile.Scope) ? E2eProfileState.Unlocked
             : E2eProfileState.Locked;
         var offered = profile.Settings.AllowDeviceUnlock && state != E2eProfileState.NotSetUp && await passkeys.IsAvailableAsync();

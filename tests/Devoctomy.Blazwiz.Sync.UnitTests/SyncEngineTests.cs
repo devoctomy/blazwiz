@@ -112,6 +112,34 @@ public class SyncEngineTests
     }
 
     [Fact]
+    public async Task GivenTwoNewLocalFiles_WhenSyncAsyncWithProgress_ThenEachUploadIsReported()
+    {
+        // Arrange
+        await TrackedWriteAsync(KeyA, "hello", Later);
+        await TrackedWriteAsync(KeyB, "world", Later);
+        var reported = new List<(int Done, int Total)>();
+
+        // Act
+        await CreateSut().SyncAsync(profile, false, new PassReporter(p => reported.Add((p.Done, p.Total))));
+
+        // Assert
+        Assert.Equal([(0, 2), (1, 2), (2, 2)], reported);
+    }
+
+    [Fact]
+    public async Task GivenNothingToDo_WhenSyncAsyncWithProgress_ThenNoChangesAreReported()
+    {
+        // Arrange
+        var reported = new List<(int Done, int Total)>();
+
+        // Act
+        await CreateSut().SyncAsync(profile, false, new PassReporter(p => reported.Add((p.Done, p.Total))));
+
+        // Assert
+        Assert.Equal([(0, 0)], reported);
+    }
+
+    [Fact]
     public async Task GivenNewLocalFile_WhenSyncAsync_ThenUploadedIfNoneMatchAndIndexRecordsBase()
     {
         // Arrange
@@ -697,5 +725,10 @@ public class SyncEngineTests
                 remote.Objects.Remove(KeyA);
                 break;
         }
+    }
+
+    private sealed class PassReporter(Action<SyncPassProgress> report) : IProgress<SyncPassProgress>
+    {
+        public void Report(SyncPassProgress value) => report(value);
     }
 }

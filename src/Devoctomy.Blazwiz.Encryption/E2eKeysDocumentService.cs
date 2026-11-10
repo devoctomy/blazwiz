@@ -187,23 +187,72 @@ public class E2eKeysDocumentService(
     }
 
     /// <inheritdoc/>
-    public async Task RewrapMasterKeyAsync(UserKeysDocument document, byte[] masterKey, string passphrase, Argon2idParameters? parameters = null, CancellationToken ct = default)
+    public async Task<E2eNewKeys> RotateAsync(UserKeysDocument document, byte[] masterKey, string passphrase, Argon2idParameters? parameters = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(document);
         ArgumentNullException.ThrowIfNull(masterKey);
         ArgumentException.ThrowIfNullOrEmpty(passphrase);
 
-        var salt = RandomNumberGenerator.GetBytes(SaltLength);
-        parameters = (parameters ?? argon2Options.Parameters).Clone();
-        var passphraseKey = await argon2.DeriveKeyAsync(passphrase, salt, parameters, ct);
+        byte[]? passphraseKey = null;
+        byte[]? newMasterKey = null;
+        byte[]? newFileKey = null;
+        var oldFileKeys = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         try
         {
+            // Every file key is unwrapped first, so a document whose keys do not all belong to the master key is left
+            // as it was.
+            foreach (var (id, entry) in document.Keys)
+            {
+                try
+                {
+                    oldFileKeys[id] = keyWrapService.Unwrap(masterKey, entry, Encoding.UTF8.GetBytes(id));
+                }
+                catch (CryptographicException ex)
+                {
+                    throw new InvalidDataException($"File key '{id}' does not belong to this master key.", ex);
+                }
+            }
+
+            progress?.Report(new E2eProgress(E2eStep.DeriveKey, false));
+            var salt = RandomNumberGenerator.GetBytes(SaltLength);
+            parameters = (parameters ?? argon2Options.Parameters).Clone();
+            passphraseKey = await argon2.DeriveKeyAsync(passphrase, salt, parameters, ct);
+            progress?.Report(new E2eProgress(E2eStep.DeriveKey, true));
+
+            progress?.Report(new E2eProgress(E2eStep.CreateKeys, false));
+            newMasterKey = keyWrapService.CreateKey();
+            newFileKey = keyWrapService.CreateKey();
+            var keyId = CreateKeyId();
+            var keys = new Dictionary<string, FileKeyEntry>(StringComparer.Ordinal);
+            foreach (var (id, entry) in document.Keys)
+            {
+                var rewrapped = keyWrapService.Wrap(newMasterKey, oldFileKeys[id], Encoding.UTF8.GetBytes(id));
+                keys[id] = new FileKeyEntry
+                {
+                    Algorithm = rewrapped.Algorithm,
+                    Nonce = rewrapped.Nonce,
+                    Wrapped = rewrapped.Wrapped,
+                    Created = entry.Created,
+                    Status = FileKeyEntry.RetiredStatus,
+                };
+            }
+
+            keys[keyId] = CreateFileKeyEntry(keyWrapService.Wrap(newMasterKey, newFileKey, Encoding.UTF8.GetBytes(keyId)));
             document.Kdf = KdfSettings.Create(salt, parameters);
-            document.MasterKey = keyWrapService.Wrap(passphraseKey, masterKey);
+            document.MasterKey = keyWrapService.Wrap(passphraseKey, newMasterKey);
+            document.Keys = keys;
+            document.RotationInProgress = true;
+            progress?.Report(new E2eProgress(E2eStep.CreateKeys, true));
+
+            var result = new E2eNewKeys(document, newMasterKey, keyId, newFileKey);
+            newMasterKey = null;
+            newFileKey = null;
+            return result;
         }
         finally
         {
-            CryptographicOperations.ZeroMemory(passphraseKey);
+            Wipe(passphraseKey, newMasterKey, newFileKey);
+            Wipe([.. oldFileKeys.Values]);
         }
     }
 

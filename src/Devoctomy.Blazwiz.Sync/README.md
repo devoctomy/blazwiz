@@ -111,9 +111,39 @@ Each profile's files are encrypted with its own keys (AES-256-GCM, bound to the 
 nobody with access to the bucket, the device's storage or a backup can read their content or move a file to another
 path or profile without the passphrase. What stays visible to anyone with that access is the **metadata**: file names
 and folder structure (the S3 keys), sizes, edit times (`x-amz-meta-modified-at`) and the sync log's keys and error
-messages. Keep anything secret inside files, not in their names. A new random nonce is used for every write; the
-profile's file key is never rotated by the framework (the format allows retired keys, but nothing retires one yet), and
-changing the passphrase keeps the same master and file keys.
+messages. Keep anything secret inside files, not in their names.
+
+A new random nonce is used for every write. The file key is only replaced when the passphrase changes: there is no
+rotation on a schedule or after a number of writes, so a profile whose passphrase never changes keeps one file key for
+all its writes.
+
+### Changing a passphrase
+
+Changing a profile's passphrase locks out anyone who had the old one. `ISyncKeyRotationService` runs it:
+
+1. `PrepareAsync(scope)` syncs the profile, so this device holds every file, then times encrypting and uploading one
+   throwaway file to estimate how long the change will take. The file is random bytes under a random key, written to
+   `scratch/` in the user's prefix (`ISyncScratchStore`, `SyncDefaults.ScratchFolder`) and deleted again. No profile
+   may match `scratch/`, so sync never sees it. Offline, or if the sync fails, it throws `SyncKeyRotationException` and
+   nothing has changed.
+2. `RotateAsync(scope, current, new, progress)` rotates the keys (see `Devoctomy.Blazwiz.Encryption`), encrypts every
+   file again on this device with the new key, then uploads them in one sync pass. Progress is reported as
+   `E2eStep.ReencryptFiles` and `E2eStep.UploadFiles`, with counts.
+3. The caller signs the user out on every device. While it does, `CompleteAsync()` clears the rotation mark of each
+   profile in `ReadyToComplete`. The sync module's UI does this.
+
+A change cut short is finished with `FinishAsync(scope, progress)`, on any device that unlocks the profile with the
+new passphrase: it syncs, then encrypts again and uploads only the files not yet under the active key. Files encrypted
+again but not uploaded are still marked to upload.
+
+`ISyncService.SyncAsync` and `ISyncEngine.SyncAsync` take an optional `IProgress<SyncPassProgress>`, told how many of
+a pass's planned changes are done.
+
+When an unlocked profile meets a file under a key it does not hold, every registered `ISyncKeyMissingHandler` is told
+before the read fails with `E2e.CannotDecrypt`. The sync module registers one that checks the session, so a device
+that missed the sign out finds out.
+
+Without a sync target (local development) nothing is synced or uploaded: the files on the device are encrypted again.
 
 ## Versions
 

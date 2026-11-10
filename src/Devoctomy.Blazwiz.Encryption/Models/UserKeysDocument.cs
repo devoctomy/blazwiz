@@ -14,6 +14,7 @@ namespace Devoctomy.Blazwiz.Encryption.Models;
 /// <item><see cref="MasterKey"/>: the master key, wrapped by the passphrase key. A failed unwrap means a wrong passphrase.</item>
 /// <item><see cref="Keys"/>: the file keys by id, each wrapped by the master key with its id as associated data, so
 /// entries cannot be swapped.</item>
+/// <item><see cref="RotationInProgress"/>: set while a passphrase change is still encrypting the files again.</item>
 /// </list>
 /// </remarks>
 public class UserKeysDocument
@@ -46,4 +47,12 @@ public class UserKeysDocument
     /// </summary>
     [JsonPropertyName("keys")]
     public Dictionary<string, FileKeyEntry> Keys { get; set; } = new Dictionary<string, FileKeyEntry>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the keys were rotated (a passphrase change) and the profile's files have
+    /// not all been encrypted again with the new active key yet, or every device has not been signed out yet. The
+    /// profile is not used until the rotation is finished.
+    /// </summary>
+    [JsonPropertyName("rotation_in_progress")]
+    public bool RotationInProgress { get; set; }
 }
