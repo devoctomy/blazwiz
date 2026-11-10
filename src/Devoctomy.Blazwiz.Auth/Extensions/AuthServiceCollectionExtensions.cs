@@ -44,9 +44,15 @@ public static class AuthServiceCollectionExtensions
         services.TryAddScoped<IAuthenticationService, LocalAuthenticationService>();
         services.TryAddScoped<IPasswordService, LocalPasswordService>();
         services.TryAddScoped<ISessionLifecycle, SessionLifecycle>();
+        services.TryAddScoped<ISignOutEverywhereNotifier, SignOutEverywhereNotifier>();
+        services.TryAddScoped<ISessionResumeMonitor, SessionResumeMonitor>();
 
         // Packages' stored data migrations, run at sign in before modules start.
         services.AddSessionLifecycleHandler<DataMigrationRunner>();
+
+        // The session is checked with the sign-in service whenever the app resumes, so a device that slept through a
+        // sign out everywhere signs itself out as it wakes.
+        services.AddSessionLifecycleHandler<SessionResumeSessionHandler>();
 
         // The keys derived from the passkey are wiped once signed out, after the modules have locked what they hold.
         services.AddSessionLifecycleHandler<DerivedKeySessionHandler>();
@@ -69,6 +75,20 @@ public static class AuthServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IDataMigration, TMigration>());
+        return services;
+    }
+
+    /// <summary>
+    /// Adds a handler called when the user signs out on every device (see <see cref="ISignOutEverywhereHandler"/>).
+    /// </summary>
+    /// <typeparam name="THandler">The handler.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for method chaining.</returns>
+    public static IServiceCollection AddSignOutEverywhereHandler<THandler>(this IServiceCollection services)
+        where THandler : class, ISignOutEverywhereHandler
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<ISignOutEverywhereHandler, THandler>());
         return services;
     }
 

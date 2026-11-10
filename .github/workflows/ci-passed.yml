@@ -1,0 +1,47 @@
+# Used by the deploy and upgrade workflows: succeeds only if the CI workflow (ci.yml) has passed for this exact commit,
+# waiting for a run still in progress. Nothing is deployed that has not passed the tests.
+name: CI passed
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ci-passed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check CI passed for ${{ github.sha }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $sha = '${{ github.sha }}'
+          $deadline = (Get-Date).AddMinutes(110)
+          while ($true) {
+            $runs = (gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=$sha&per_page=50" | ConvertFrom-Json).workflow_runs
+            # A run counts only if its jobs ran and passed: CI skips them for a push that only creates a branch, and
+            # such a run can still end as a success.
+            $passed = $runs | Where-Object { $_.status -eq 'completed' -and $_.conclusion -eq 'success' } | Where-Object {
+              $jobs = @((gh api "repos/${{ github.repository }}/actions/runs/$($_.id)/jobs" | ConvertFrom-Json).jobs)
+              $jobs.Count -gt 0 -and -not ($jobs | Where-Object { $_.conclusion -ne 'success' })
+            }
+            if ($passed) {
+              Write-Host "CI passed for $sha."
+              break
+            }
+
+            if (-not ($runs | Where-Object { $_.status -ne 'completed' })) {
+              throw "CI has not passed for $sha (runs: $(@($runs).Count)). Push the commit and let CI pass, then run this again."
+            }
+
+            if ((Get-Date) -gt $deadline) {
+              throw "CI for $sha did not finish in time."
+            }
+
+            Write-Host 'CI is still running for this commit; waiting.'
+            Start-Sleep -Seconds 60
+          }

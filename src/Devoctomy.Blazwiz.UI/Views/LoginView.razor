@@ -23,6 +23,13 @@
         }
     </div>
 
+    @if (!string.IsNullOrEmpty(ViewModel.SessionEndedMessage))
+    {
+        <div class="alert alert-info py-2 small" role="status" id="session-ended-notice">
+            <i class="bi bi-info-circle me-1"></i>@ViewModel.SessionEndedMessage
+        </div>
+    }
+
     @if (ViewModel.IsNewPasswordRequired)
     {
         <EditForm Model="ViewModel" OnSubmit="() => ViewModel.CompleteNewPasswordCommand.ExecuteAsync(null)" FormName="new-password">

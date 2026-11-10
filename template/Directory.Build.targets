@@ -12,7 +12,7 @@
     repository compiles the code for every option.
   -->
   <PropertyGroup>
-    <DefineConstants>$(DefineConstants);IncludeSync;IncludeNotes;IncludeShowcase;IncludeTests</DefineConstants>
+    <DefineConstants>$(DefineConstants);IncludeSync;IncludeNotes;IncludeShowcase;IncludeTests;IncludeEvents</DefineConstants>
   </PropertyGroup>
 
   <!--
@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(UseBlazwizPackages)' != 'true'">
-    <_BlazwizKnownPackage Include="Devoctomy.Blazwiz.Core;Devoctomy.Blazwiz.Cryptography;Devoctomy.Blazwiz.Encryption;Devoctomy.Blazwiz.Browser;Devoctomy.Blazwiz.Auth;Devoctomy.Blazwiz.Auth.Cognito;Devoctomy.Blazwiz.Sync;Devoctomy.Blazwiz.UI;Devoctomy.Blazwiz.UI.Sync;Devoctomy.Blazwiz.Testing" />
+    <_BlazwizKnownPackage Include="Devoctomy.Blazwiz.Core;Devoctomy.Blazwiz.Cryptography;Devoctomy.Blazwiz.Encryption;Devoctomy.Blazwiz.Browser;Devoctomy.Blazwiz.Auth;Devoctomy.Blazwiz.Auth.Cognito;Devoctomy.Blazwiz.Events;Devoctomy.Blazwiz.Events.AppSync;Devoctomy.Blazwiz.Sync;Devoctomy.Blazwiz.UI;Devoctomy.Blazwiz.UI.Sync;Devoctomy.Blazwiz.Testing" />
     <_BlazwizUnusedPackage Include="@(_BlazwizKnownPackage)" Exclude="@(PackageReference)" />
     <_BlazwizPackage Include="@(_BlazwizKnownPackage)" Exclude="@(_BlazwizUnusedPackage)" />
     <PackageReference Remove="@(_BlazwizPackage)" />

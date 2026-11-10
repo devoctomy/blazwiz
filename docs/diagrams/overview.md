@@ -13,6 +13,7 @@ each part:
 | [sync-framework.md](sync-framework.md) | How an app sets up sync profiles, and what the framework asks of it |
 | [extension-points.md](extension-points.md) | Where modules and apps plug into the shell |
 | [text.md](text.md) | How text is found, overridden, translated and checked |
+| [user-events.md](user-events.md) | User events: signing out everywhere, the resume check, and the device's name |
 
 ## 1. The packages
 
@@ -25,9 +26,11 @@ flowchart BT
     Core["Core<br/>app identity, storage names,<br/>offline mode, text, coded errors"]
     Crypto["Cryptography<br/>AES-GCM, Argon2id, HKDF,<br/>key wrapping, PRF keys"]
     Enc["Encryption<br/>end to end keys, key rings,<br/>encrypted file format"]
-    Browser["Browser<br/>local storage, theme,<br/>navigation, WebAuthn"]
+    Browser["Browser<br/>local storage, theme,<br/>navigation, WebAuthn,<br/>device name, resume"]
     Auth["Auth<br/>sign-in contract, sessions,<br/>lifecycle, offline sign in"]
     Cognito["Auth.Cognito<br/>Cognito sign in (SRP),<br/>AWS credentials"]
+    Events["Events<br/>user events, local channel"]
+    EventsAppSync["Events.AppSync<br/>user events over<br/>AppSync Events"]
     Sync["Sync<br/>the sync engine"]
     UI["UI<br/>the app shell, its pages,<br/>extension points"]
     UISync["UI.Sync<br/>the sync module:<br/>UI and wiring"]
@@ -39,6 +42,9 @@ flowchart BT
     Browser --> Crypto
     Auth --> Browser
     Cognito --> Auth
+    Events --> Auth
+    EventsAppSync --> Events
+    EventsAppSync --> Cognito
     Sync --> Enc
     Sync --> Browser
     UI --> Auth
@@ -53,6 +59,10 @@ The engine (`Sync`) knows nothing of Cognito or the UI: `UI.Sync` joins them, gi
 (`SecretsManagerUserKeysStore`). The shell (`UI`) knows nothing of sync: the sync module plugs into its extension
 points ([extension-points.md](extension-points.md)).
 
+Nothing depends on `Events` but the app. `Auth` defines the hooks (`ISignOutEverywhereHandler`, `EndSessionAsync`,
+the reason on `SessionEnded`), `Events` implements them, and `UI` talks only to `Auth`
+([user-events.md](user-events.md)).
+
 ## 2. How an app is composed
 
 The template's `template/MyApp.Portal/Program.cs`, without the optional parts' markers. Each `Add*` method registers
@@ -63,6 +73,7 @@ its package's services, view models and configuration section, and calls the met
 builder.Services.AddBlazwizApp(AppIdentity.Name, AppIdentity.Id);   // "myapp": names everything kept in the browser
 builder.Services.AddBlazwizUi(builder.Configuration);               // the shell and its pages, AppSettings and Text settings
 builder.Services.AddBlazwizCognito(builder.Configuration);          // Cognito sign in once AwsCognito is configured
+builder.Services.AddBlazwizAppSyncEvents(builder.Configuration, allowLocalChannel: ...); // user events, once Events is configured
 builder.Services.AddBlazwizSyncModule(builder.Configuration, sync => sync
     .UseEmbeddedConfiguration(typeof(Program).Assembly, "sync.json")
     .AddProfilesFromAssemblyContaining<Program>());                 // sync, end to end encryption, the Sync page
@@ -112,6 +123,7 @@ flowchart LR
 | `AddBlazwizApp(name, id)` | Core | None: the name (lower case letters and digits) prefixes every storage name, the id salts the passkey keys |
 | `AddBlazwizUi(configuration)` | UI | `AppSettings`, `Text:SupportedCultures`, `Text:PseudoLocalization` |
 | `AddBlazwizCognito(configuration)` | Auth.Cognito | `AwsCognito` (region, user pool, app client, identity pool) |
+| `AddBlazwizAppSyncEvents(configuration, allowLocalChannel)` | Events.AppSync | `Events` (the AppSync Events API's HTTP and real-time hosts) |
 | `AddBlazwizSyncModule(configuration, sync => ...)` | UI.Sync | `AwsS3`, `Argon2id`, and `Sync` through the builder (`UseConfiguration` / `UseEmbeddedConfiguration`) |
 
 `AddBlazwizApp` must come first: the packages read the app's name and id from it, and refuse to start without it

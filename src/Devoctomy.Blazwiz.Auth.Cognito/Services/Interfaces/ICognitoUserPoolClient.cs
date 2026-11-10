@@ -48,6 +48,26 @@ public interface ICognitoUserPoolClient
     Task RevokeAsync(string refreshToken);
 
     /// <summary>
+    /// Signs the user out on every device: revokes all their refresh tokens, and the access and ID tokens issued from
+    /// them.
+    /// </summary>
+    /// <param name="accessToken">The session's access token.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="Exceptions.CognitoException">Cognito rejected the request, e.g. the token is already revoked.</exception>
+    /// <exception cref="HttpRequestException">Cognito could not be reached.</exception>
+    Task GlobalSignOutAsync(string accessToken);
+
+    /// <summary>
+    /// Checks an access token is still accepted (Cognito's <c>GetUser</c>): refused once the user signed out
+    /// everywhere.
+    /// </summary>
+    /// <param name="accessToken">The session's access token.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    /// <exception cref="Exceptions.CognitoException">Cognito refused the token (<c>NotAuthorizedException</c>) or the request.</exception>
+    /// <exception cref="HttpRequestException">Cognito could not be reached.</exception>
+    Task CheckAccessTokenAsync(string accessToken);
+
+    /// <summary>
     /// Changes a signed-in user's password.
     /// </summary>
     /// <param name="username">The user's username.</param>

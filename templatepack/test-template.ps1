@@ -66,7 +66,8 @@ $cases = @(
     @{ Name = '1stApp'; Options = @('--showcase', 'false'); Tests = $true; UiTests = $false },
     @{ Name = 'NoNotes'; Options = @('--notes', 'false'); Tests = $true; UiTests = $true },
     @{ Name = 'NoSync'; Options = @('--sync', 'false'); Tests = $true; UiTests = $true },
-    @{ Name = 'Minimal'; Options = @('--tests', 'false', '--showcase', 'false', '--sync', 'false'); Tests = $false; UiTests = $false }
+    @{ Name = 'NoEvents'; Options = @('--events', 'false'); Tests = $true; UiTests = $true },
+    @{ Name = 'Minimal'; Options = @('--tests', 'false', '--showcase', 'false', '--sync', 'false', '--events', 'false'); Tests = $false; UiTests = $false }
 )
 
 if ($Only) {

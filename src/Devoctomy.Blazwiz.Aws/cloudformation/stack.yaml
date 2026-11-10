@@ -53,6 +53,15 @@ Parameters:
       bucket of its own (kept a year), so after an incident there is a record of which credentials did what. auto turns
       it on when Environment is prod. Data events are charged for by CloudTrail.
 
+  Events:
+    Type: String
+    Default: enabled
+    AllowedValues: [enabled, disabled]
+    Description: >-
+      Whether to create the user events API (AWS AppSync Events), which lets a user's open devices tell each other
+      something changed, e.g. "sign out everywhere". Charged per use: connection minutes and event operations. Apps
+      created without events pass disabled.
+
 Conditions:
   UseCustomDomain: !And
     - !Not [!Equals [!Ref CustomDomainName, '']]
@@ -65,6 +74,7 @@ Conditions:
   LogDataAccess: !Or
     - !Equals [!Ref AuditLogging, 'true']
     - !And [!Equals [!Ref AuditLogging, auto], !Condition IsProd]
+  EventsEnabled: !Equals [!Ref Events, enabled]
 
 Resources:
 
@@ -531,6 +541,69 @@ Resources:
         - Key: environment
           Value: !Ref Environment
 
+  # ---------------------------------------------------------------------------
+  # User events: an AppSync Events API through which a user's open devices tell each other something changed (e.g.
+  # sign out everywhere). Pub/sub only: nothing is stored, and events carry no secrets. Connecting, publishing and
+  # subscribing all need the user pool's tokens; the identity pool's AWS credentials cannot reach it (no IAM auth).
+  # ---------------------------------------------------------------------------
+
+  EventsApi:
+    Type: AWS::AppSync::Api
+    Condition: EventsEnabled
+    Properties:
+      Name: !Sub '${AppName}-${Environment}-events'
+      EventConfig:
+        AuthProviders:
+          - AuthType: AMAZON_COGNITO_USER_POOLS
+            CognitoConfig:
+              AwsRegion: !Ref AWS::Region
+              UserPoolId: !Ref UserPool
+              AppIdClientRegex: !Sub '^${UserPoolClient}$'
+        ConnectionAuthModes:
+          - AuthType: AMAZON_COGNITO_USER_POOLS
+        DefaultPublishAuthModes:
+          - AuthType: AMAZON_COGNITO_USER_POOLS
+        DefaultSubscribeAuthModes:
+          - AuthType: AMAZON_COGNITO_USER_POOLS
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+        - Key: environment
+          Value: !Ref Environment
+
+  # Each user's channel is /users/<sub>. The handlers refuse any other channel, so a user can neither listen to nor
+  # write to another user's.
+  EventsUsersNamespace:
+    Type: AWS::AppSync::ChannelNamespace
+    Condition: EventsEnabled
+    Properties:
+      ApiId: !GetAtt EventsApi.ApiId
+      Name: users
+      CodeHandlers: |
+        import { util } from '@aws-appsync/utils';
+
+        function ownChannel(ctx) {
+          return ctx.identity && ctx.identity.sub && ctx.info.channel.path === `/users/${ctx.identity.sub}`;
+        }
+
+        export function onSubscribe(ctx) {
+          if (!ownChannel(ctx)) {
+            util.unauthorized();
+          }
+        }
+
+        export function onPublish(ctx) {
+          if (!ownChannel(ctx)) {
+            util.unauthorized();
+          }
+          return ctx.events;
+        }
+      Tags:
+        - Key: app
+          Value: !Ref AppName
+        - Key: environment
+          Value: !Ref Environment
+
 # Every output is exported as <stack name>-<output>, for the app's own stack (cloudformation/app.yaml in the app) to
 # import. An exported value cannot change while another stack imports it.
 Outputs:
@@ -590,3 +663,15 @@ Outputs:
     Value: !Ref AuditLogBucket
     Export:
       Name: !Sub '${AWS::StackName}-AuditLogBucketName'
+  EventsHttpEndpoint:
+    Condition: EventsEnabled
+    Description: Host of the user events API, which events are published to (Events:HttpEndpoint).
+    Value: !GetAtt EventsApi.Dns.Http
+    Export:
+      Name: !Sub '${AWS::StackName}-EventsHttpEndpoint'
+  EventsRealtimeEndpoint:
+    Condition: EventsEnabled
+    Description: Real-time host of the user events API, which devices connect to (Events:RealtimeEndpoint).
+    Value: !GetAtt EventsApi.Dns.Realtime
+    Export:
+      Name: !Sub '${AWS::StackName}-EventsRealtimeEndpoint'

@@ -67,6 +67,13 @@
       "displayName": "Notes example",
       "description": "Include the notes example: notebooks of markdown pages, each with its own passphrase, and an editor, synced by the sync module. Needs --sync: with --sync false it is left out."
     },
+    "Events": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "true",
+      "displayName": "User events",
+      "description": "Include user events (Devoctomy.Blazwiz.Events.AppSync): a user's open devices tell each other at once when they sign out everywhere or their passphrase changes, and the Profile page offers \"Sign out everywhere\". Adds an AWS AppSync Events API to the stack, charged per use (connection minutes and event operations). Without it, \"Sign out everywhere\" is not offered, and other devices find out about a passphrase change only when they are next opened or come back online."
+    },
     "skipRestore": {
       "type": "parameter",
       "datatype": "bool",
@@ -80,6 +87,24 @@
     "IncludeNotes": {
       "type": "computed",
       "value": "(Sync && Notes)"
+    },
+    "IncludeEvents": {
+      "type": "computed",
+      "value": "(Events)"
+    },
+    "eventsStackValue": {
+      "type": "generated",
+      "generator": "switch",
+      "datatype": "string",
+      "replaces": "enabled",
+      "onlyIf": [ { "after": "$events = '" } ],
+      "parameters": {
+        "cases": [
+          { "condition": "(IncludeEvents)", "value": "enabled" },
+          { "condition": "(!IncludeEvents)", "value": "disabled" }
+        ]
+      },
+      "description": "The base stack's Events parameter, passed by cloudformation/deploy.ps1."
     },
     "appNamespace": {
       "type": "derived",
@@ -235,6 +260,12 @@
           ]
         },
         {
+          "condition": "(!IncludeEvents)",
+          "exclude": [
+            "MyApp.Portal.UITests/UserEventsTests.cs"
+          ]
+        },
+        {
           "condition": "(!IncludeNotes)",
           "exclude": [
             "MyApp.Portal.Models/Notes/**",
@@ -305,6 +336,13 @@
       "manualInstructions": [ { "text": "Run 'dotnet restore'" } ],
       "condition": "(!skipRestore)",
       "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "continueOnError": true
+    },
+    {
+      "description": "Explain what leaving user events out means.",
+      "manualInstructions": [ { "text": "This app was created without user events (--events false). \"Sign out everywhere\" is not offered, and when a user's passphrase changes, their other devices find out only when they are next opened or come back online. To add events later, see \"User events\" in the README." } ],
+      "condition": "(!IncludeEvents)",
+      "actionId": "AC1156F7-BB77-4DB8-B28F-24EEBCCA1E5C",
       "continueOnError": true
     }
   ]

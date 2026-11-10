@@ -29,4 +29,57 @@
     </div>
 
     <ChangePasswordForm />
+
+    @if (ViewModel.CanSignOutEverywhere)
+    {
+        <div class="panel mt-4" id="sign-out-everywhere">
+            <h2 class="panel-title">@Text["Profile.SignOutEverywhere.Title"]</h2>
+            <p class="panel-text">@Text["Profile.SignOutEverywhere.Text"]</p>
+
+            @if (!string.IsNullOrEmpty(ViewModel.SignOutEverywhereError))
+            {
+                <div class="alert alert-danger py-2 small" role="alert" id="sign-out-everywhere-error">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.SignOutEverywhereError
+                </div>
+            }
+
+            <button type="button" class="btn btn-outline-danger" id="sign-out-everywhere-button"
+                    disabled="@ViewModel.IsSigningOutEverywhere"
+                    @onclick="() => ViewModel.AskSignOutEverywhereCommand.Execute(null)">
+                @Text["Profile.SignOutEverywhere.Button"]
+            </button>
+        </div>
+    }
+
+    @if (ViewModel.IsConfirmingSignOutEverywhere)
+    {
+        <ModalDialog Id="sign-out-everywhere-dialog"
+                     Title="@Text["Profile.SignOutEverywhere.Confirm.Title"]"
+                     Icon="bi-box-arrow-right"
+                     OnClose="() => ViewModel.CancelSignOutEverywhereCommand.Execute(null)">
+            <ChildContent>
+                <p class="mb-0">@Text["Profile.SignOutEverywhere.Confirm.Text"]</p>
+            </ChildContent>
+            <Footer>
+                <button type="button" class="btn btn-secondary" id="sign-out-everywhere-cancel"
+                        disabled="@ViewModel.IsSigningOutEverywhere"
+                        @onclick="() => ViewModel.CancelSignOutEverywhereCommand.Execute(null)">
+                    @Text["Common.Cancel"]
+                </button>
+                <button type="button" class="btn btn-danger" id="sign-out-everywhere-confirm"
+                        disabled="@ViewModel.IsSigningOutEverywhere"
+                        @onclick="() => ViewModel.SignOutEverywhereCommand.ExecuteAsync(null)">
+                    @if (ViewModel.IsSigningOutEverywhere)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        <span>@Text["Profile.SignOutEverywhere.Signing"]</span>
+                    }
+                    else
+                    {
+                        <span>@Text["Profile.SignOutEverywhere.Confirm.Button"]</span>
+                    }
+                </button>
+            </Footer>
+        </ModalDialog>
+    }
 }

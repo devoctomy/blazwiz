@@ -21,9 +21,11 @@ that creates an app built on them, so apps take framework upgrades by changing o
 | `Devoctomy.Blazwiz.Core` | | App identity and browser storage names, offline mode, overridable and translatable text, coded errors. |
 | `Devoctomy.Blazwiz.Cryptography` | Core | AES-GCM, Argon2id, HKDF, key wrapping, keys derived from the WebAuthn PRF output (BouncyCastle). |
 | `Devoctomy.Blazwiz.Encryption` | Cryptography | End to end encryption keys: master and file keys, the key ring and the encrypted file format. |
-| `Devoctomy.Blazwiz.Browser` | Cryptography | Local storage, theme, navigation and WebAuthn passkeys. |
-| `Devoctomy.Blazwiz.Auth` | Browser | The sign-in contract, sessions and their lifecycle, offline sign in, remembered passwords. |
+| `Devoctomy.Blazwiz.Browser` | Cryptography | Local storage, theme, navigation, WebAuthn passkeys, the device's name and page resume events. |
+| `Devoctomy.Blazwiz.Auth` | Browser | The sign-in contract, sessions and their lifecycle, offline sign in, remembered passwords, signing out everywhere and the resume check. |
 | `Devoctomy.Blazwiz.Auth.Cognito` | Auth | Cognito sign in (SRP) and the session's AWS credentials. |
+| `Devoctomy.Blazwiz.Events` | Auth | User events: a channel the user's open devices share (e.g. "signed out everywhere"), with a local channel between one browser's tabs. |
+| `Devoctomy.Blazwiz.Events.AppSync` | Events, Auth.Cognito | User events over AWS AppSync Events, reaching every device. |
 | `Devoctomy.Blazwiz.Sync` | Encryption, Browser | The offline-first sync engine: IndexedDB, OPFS or a local folder, synced with S3. |
 | `Devoctomy.Blazwiz.UI` | Auth | The app shell, its pages, theme and extension points. |
 | `Devoctomy.Blazwiz.UI.Sync` | UI, Auth.Cognito, Sync | The sync module's UI and wiring. |
@@ -31,6 +33,9 @@ that creates an app built on them, so apps take framework upgrades by changing o
 | `Devoctomy.Blazwiz.Aws` | | The AWS base stack and its deploy scripts (content only), released with the framework. |
 
 Versions are in lockstep (one version for every package and the template), see [docs/versioning.md](docs/versioning.md).
+
+The template app can be deployed to AWS from GitHub (the Deploy, Upgrade and Destroy workflows, through OIDC), built
+from the framework's source: see [docs/deploying.md](docs/deploying.md).
 
 ## Build and test
 
@@ -80,11 +85,12 @@ dotnet pack templatepack -c Release # the template package
 | `--showcase` | `true` | Include the Showcase page of themed building blocks. |
 | `--sync` | `true` | Include the sync module (`Devoctomy.Blazwiz.UI.Sync`). |
 | `--notes` | `true` | Include the notes example (notebooks of markdown pages, each with its own passphrase). Needs the sync module: left out with `--sync false`. |
+| `--events` | `true` | Include user events (`Devoctomy.Blazwiz.Events.AppSync`): "Sign out everywhere" on the Profile page, and the user's other open devices told at once. Adds an AppSync Events API to the stack, charged per use. |
 | `--no-restore` | `false` | Don't restore the app's packages after creating it. |
 
 The command-line names are set in `template/.template.config/dotnetcli.host.json`; `template.json` and the
-`#if` markers use the symbol names (`IncludeTests`, `IncludeShowcase`, `Sync`, `Notes`, `IncludeSync`,
-`IncludeNotes`).
+`#if` markers use the symbol names (`IncludeTests`, `IncludeShowcase`, `Sync`, `Notes`, `Events`, `IncludeSync`,
+`IncludeNotes`, `IncludeEvents`).
 
 There is no option to sync without end to end encryption (yet). Whether an app may do that will be the app
 developer's choice, never its users', and it is not supported until it can be done with clear warnings: without

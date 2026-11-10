@@ -25,6 +25,8 @@
     <Project Path="src/Devoctomy.Blazwiz.Auth/Devoctomy.Blazwiz.Auth.csproj" />
     <Project Path="src/Devoctomy.Blazwiz.Aws/Devoctomy.Blazwiz.Aws.csproj" />
     <Project Path="src/Devoctomy.Blazwiz.Auth.Cognito/Devoctomy.Blazwiz.Auth.Cognito.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Events/Devoctomy.Blazwiz.Events.csproj" />
+    <Project Path="src/Devoctomy.Blazwiz.Events.AppSync/Devoctomy.Blazwiz.Events.AppSync.csproj" />
     <Project Path="src/Devoctomy.Blazwiz.Sync/Devoctomy.Blazwiz.Sync.csproj" />
     <Project Path="src/Devoctomy.Blazwiz.UI/Devoctomy.Blazwiz.UI.csproj" />
     <Project Path="src/Devoctomy.Blazwiz.UI.Sync/Devoctomy.Blazwiz.UI.Sync.csproj" />
@@ -37,6 +39,8 @@
     <Project Path="tests/Devoctomy.Blazwiz.Core.UnitTests/Devoctomy.Blazwiz.Core.UnitTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Cryptography.UnitTests/Devoctomy.Blazwiz.Cryptography.UnitTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Encryption.UnitTests/Devoctomy.Blazwiz.Encryption.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Events.AppSync.UnitTests/Devoctomy.Blazwiz.Events.AppSync.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.Events.UnitTests/Devoctomy.Blazwiz.Events.UnitTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Sync.IntTests/Devoctomy.Blazwiz.Sync.IntTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Sync.UnitTests/Devoctomy.Blazwiz.Sync.UnitTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.TestSupport/Devoctomy.Blazwiz.TestSupport.csproj" />

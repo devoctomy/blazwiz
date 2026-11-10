@@ -13,5 +13,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Whether the stack has the user events API: 'enabled' when the app was created with user events (the template's
+# Events option), 'disabled' when not. -Events on the command line overrides it.
+$events = 'enabled'
+$named = @{}
+if (-not ($args -contains '-Events')) {
+    $named['Events'] = $events
+}
+
 $base = & (Join-Path $PSScriptRoot 'base-stack.ps1')
-& (Join-Path $base 'deploy.ps1') -AppName $AppName -AppRoot (Split-Path -Parent $PSScriptRoot) -PortalProject 'MyApp.Portal/MyApp.Portal.csproj' -AppStackTemplate (Join-Path $PSScriptRoot 'app.yaml') @args
+& (Join-Path $base 'deploy.ps1') -AppName $AppName -AppRoot (Split-Path -Parent $PSScriptRoot) -PortalProject 'MyApp.Portal/MyApp.Portal.csproj' -AppStackTemplate (Join-Path $PSScriptRoot 'app.yaml') @named @args

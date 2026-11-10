@@ -27,6 +27,11 @@ While no user pool is configured, the placeholder sign in (any credentials) stay
 `AddBlazwizCognito(configuration, allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment())`. Anywhere else,
 missing settings stop the app from starting rather than letting anyone in.
 
+Signing out everywhere (`IAuthenticationService.SignOutEverywhereAsync`) calls Cognito's `GlobalSignOut`, which
+revokes every refresh token the user has and, because the app client has `EnableTokenRevocation`, their access tokens
+too. The resume check (`CheckSessionAsync`) calls `GetUser` with the session's access token, so a device that missed
+the news finds out as soon as it resumes. In offline mode neither calls Cognito.
+
 ## Versions
 
 Every `Devoctomy.Blazwiz.*` package and the `Devoctomy.Blazwiz.Templates` template are released together at one

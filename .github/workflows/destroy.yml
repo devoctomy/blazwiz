@@ -1,0 +1,80 @@
+# Destroys an environment of the template app ("myapp") on AWS: the app's own stack, the users' keys secrets, then the
+# base stack, its buckets and every object in them, and all its Cognito users. Run by hand (Actions > Destroy > Run
+# workflow). This cannot be undone.
+#
+# The environment's name must be typed again to confirm. Uses the same GitHub environment settings as the Deploy
+# workflow (AWS_DEPLOY_ROLE_ARN, AWS_REGION). It does not need CI to have passed: it deploys nothing. See
+# docs/deploying.md.
+name: Destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment name, e.g. test (the stacks myapp-<environment>).'
+        required: true
+      confirm:
+        description: 'Type the environment name again to confirm. Everything in it is deleted for good.'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  destroy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      # An OIDC token from GitHub, exchanged for short-lived AWS credentials.
+      id-token: write
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      # Through the environment, never into the script: an input can hold quotes and $( ).
+      ENVIRONMENT_NAME: ${{ inputs.environment }}
+      CONFIRMATION: ${{ inputs.confirm }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      AWS_DEPLOY_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Check the confirmation
+        shell: pwsh
+        run: |
+          if ($env:ENVIRONMENT_NAME -notmatch '^[a-z][a-z0-9]{0,9}$') { throw "The environment name must be lowercase letters and numbers, starting with a letter (max 10): '$env:ENVIRONMENT_NAME'." }
+          if ($env:CONFIRMATION -cne $env:ENVIRONMENT_NAME) { throw "The confirmation '$env:CONFIRMATION' is not the environment name '$env:ENVIRONMENT_NAME'. Nothing was deleted." }
+          if (-not $env:AWS_DEPLOY_ROLE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_DEPLOY_ROLE_ARN variable." }
+          if (-not $env:AWS_DEPLOY_REGION) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_REGION variable." }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # What GitHub's OIDC token says, so a refused sign-in can be matched against the role's trust policy. Prints
+      # the token's claims only, never the token, which is short-lived and only accepted with this audience.
+      - name: Show the OIDC token's claims
+        shell: pwsh
+        run: |
+          $response = Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" -Headers @{ Authorization = "bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }
+          $payload = $response.value.Split('.')[1].Replace('-', '+').Replace('_', '/')
+          $payload += '=' * ((4 - $payload.Length % 4) % 4)
+          $claims = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json
+          Write-Host "sub:         $($claims.sub)"
+          Write-Host "aud:         $($claims.aud)"
+          Write-Host "iss:         $($claims.iss)"
+          Write-Host "repository:  $($claims.repository)"
+          Write-Host "environment: $($claims.environment)"
+          Write-Host "ref:         $($claims.ref)"
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Destroy
+        shell: pwsh
+        run: ./template/cloudformation/remove.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -Force

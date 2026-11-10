@@ -22,6 +22,43 @@ public class AuthServiceCollectionExtensionsTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => AuthServiceCollectionExtensions.AddBlazwizAuth(null!));
         Assert.Throws<ArgumentNullException>(() => AuthServiceCollectionExtensions.AddSessionLifecycleHandler<TestHandler>(null!));
+        Assert.Throws<ArgumentNullException>(() => AuthServiceCollectionExtensions.AddSignOutEverywhereHandler<TestSignOutHandler>(null!));
+    }
+
+    [Fact]
+    public async Task GivenApp_WhenAddBlazwizAuth_ThenSignOutEverywhereAndResumeServicesAreResolvable_AndTheResumeCheckRunsWithTheSession()
+    {
+        // Arrange
+        var services = TestServices.Create();
+
+        // Act
+        services.AddBlazwizAuth();
+
+        // Assert
+        await using var provider = services.BuildValidated();
+        await using var scope = provider.CreateAsyncScope();
+        var notifier = Assert.IsType<SignOutEverywhereNotifier>(scope.ServiceProvider.GetRequiredService<ISignOutEverywhereNotifier>());
+        Assert.False(notifier.HasHandlers);
+        Assert.IsType<SessionResumeMonitor>(scope.ServiceProvider.GetRequiredService<ISessionResumeMonitor>());
+        Assert.Contains(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>(), h => h is SessionResumeSessionHandler);
+    }
+
+    [Fact]
+    public async Task GivenHandlerAddedTwice_WhenAddSignOutEverywhereHandler_ThenRegisteredOnce_AndTheNotifierHasHandlers()
+    {
+        // Arrange
+        var services = TestServices.Create();
+        services.AddBlazwizAuth();
+
+        // Act
+        services.AddSignOutEverywhereHandler<TestSignOutHandler>();
+        services.AddSignOutEverywhereHandler<TestSignOutHandler>();
+
+        // Assert
+        await using var provider = services.BuildValidated();
+        await using var scope = provider.CreateAsyncScope();
+        Assert.Single(scope.ServiceProvider.GetServices<ISignOutEverywhereHandler>());
+        Assert.True(scope.ServiceProvider.GetRequiredService<ISignOutEverywhereNotifier>().HasHandlers);
     }
 
     [Fact]
@@ -151,5 +188,10 @@ public class AuthServiceCollectionExtensionsTests
 
     private sealed class TestHandler : ISessionLifecycleHandler
     {
+    }
+
+    private sealed class TestSignOutHandler : ISignOutEverywhereHandler
+    {
+        public Task OnSigningOutEverywhereAsync(Devoctomy.Blazwiz.Auth.Models.UserSession session, Devoctomy.Blazwiz.Auth.Models.SignOutReason reason, string deviceName) => Task.CompletedTask;
     }
 }

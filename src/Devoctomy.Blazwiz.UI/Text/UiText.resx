@@ -426,4 +426,61 @@
   <data name="AppUpdate.DownloadingPercent" xml:space="preserve">
     <value>Downloading update… {0}%</value>
   </data>
+  <data name="Login.SignedOut.Everywhere" xml:space="preserve">
+    <value>You were signed out from {0}.</value>
+  </data>
+  <data name="Login.SignedOut.EverywhereUnknownDevice" xml:space="preserve">
+    <value>You were signed out from another device.</value>
+  </data>
+  <data name="Login.SignedOut.KeysRotated" xml:space="preserve">
+    <value>Your passphrase was changed on {0}. Sign in and unlock with the new one.</value>
+  </data>
+  <data name="Login.SignedOut.KeysRotatedUnknownDevice" xml:space="preserve">
+    <value>Your passphrase was changed on another device. Sign in and unlock with the new one.</value>
+  </data>
+  <data name="Login.SignedOut.Revoked" xml:space="preserve">
+    <value>You were signed out.</value>
+  </data>
+  <data name="Profile.SignOutEverywhere.Button" xml:space="preserve">
+    <value>Sign out everywhere</value>
+  </data>
+  <data name="Profile.SignOutEverywhere.Confirm.Button" xml:space="preserve">
+    <value>Sign out everywhere</value>
+  </data>
+  <data name="Profile.SignOutEverywhere.Confirm.Text" xml:space="preserve">
+    <value>You'll be signed out on every device where you're signed in, including this one. Devices that are open sign out straight away. Devices that are closed, offline or in the background sign out the next time they're opened or come back online.</value>
+  </data>
+  <data name="Profile.SignOutEverywhere.Confirm.Title" xml:space="preserve">
+    <value>Sign out everywhere?</value>
+  </data>
+  <data name="Profile.SignOutEverywhere.Failed" xml:space="preserve">
+    <value>Couldn't reach the sign-in service, so nothing was changed. Check your connection and try again.</value>
+  </data>
+  <data name="Profile.SignOutEverywhere.Signing" xml:space="preserve">
+    <value>Signing out...</value>
+  </data>
+  <data name="Profile.SignOutEverywhere.Text" xml:space="preserve">
+    <value>Signs you out on all your devices, including this one. Use it if you've lost a device or signed in somewhere you shouldn't stay signed in.</value>
+  </data>
+  <data name="Profile.SignOutEverywhere.Title" xml:space="preserve">
+    <value>Sign out everywhere</value>
+  </data>
+  <data name="Settings.Device.Invalid" xml:space="preserve">
+    <value>Enter a name of 1 to {0} characters.</value>
+  </data>
+  <data name="Settings.Device.Label" xml:space="preserve">
+    <value>Device name</value>
+  </data>
+  <data name="Settings.Device.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Settings.Device.Saved" xml:space="preserve">
+    <value>Saved.</value>
+  </data>
+  <data name="Settings.Device.Text" xml:space="preserve">
+    <value>Your other devices show this name when this one signs you out of them. It's kept only in this browser.</value>
+  </data>
+  <data name="Settings.Device.Title" xml:space="preserve">
+    <value>This device</value>
+  </data>
 </root>

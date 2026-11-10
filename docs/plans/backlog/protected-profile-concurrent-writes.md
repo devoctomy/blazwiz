@@ -14,7 +14,7 @@ blocked-by: none
 decision: move to S3 (2026-11-09); keep IUserKeysStore as the contract
 related:
   - ../../reviews/2026-11-08-security-review/backlog/passphrase-change-key-rotation.md (makes the lost write dangerous)
-  - user-events-appsync.md (shrinks the race window; does not close it)
+  - ../active/2026-11-10-user-events-appsync-plan.md (shrinks the race window; does not close it)
   - ../../reviews/2026-11-08-security-review/security-review.md (SR5, SR12, SR20)
 ---
 

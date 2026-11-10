@@ -41,6 +41,7 @@ public partial class LoginViewModel : ViewModelBase
     private readonly AppSettings appSettings;
     private readonly IStringLocalizer<UiText> text;
     private readonly IErrorText errorText;
+    private readonly ISessionEndedNoticeService sessionEndedNoticeService;
 
     private string username = string.Empty;
     private string password = string.Empty;
@@ -49,6 +50,7 @@ public partial class LoginViewModel : ViewModelBase
     private bool isNewPasswordRequired;
     private bool isBusy;
     private string? errorMessage;
+    private string? sessionEndedMessage;
     private SavedUser? loadingUser;
     private List<SavedUser> savedUsers = [];
     private bool showUsersList;
@@ -79,6 +81,7 @@ public partial class LoginViewModel : ViewModelBase
     /// <param name="appSettings">The application settings.</param>
     /// <param name="text">The UI's text.</param>
     /// <param name="errorText">Describes errors.</param>
+    /// <param name="sessionEndedNoticeService">Says why the last session ended, if it ended by itself.</param>
     public LoginViewModel(
         IAuthenticationService authService,
         INavigationService navigationService,
@@ -93,7 +96,8 @@ public partial class LoginViewModel : ViewModelBase
         ISessionLifecycle sessionLifecycle,
         AppSettings appSettings,
         IStringLocalizer<UiText> text,
-        IErrorText errorText)
+        IErrorText errorText,
+        ISessionEndedNoticeService sessionEndedNoticeService)
     {
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
@@ -114,6 +118,7 @@ public partial class LoginViewModel : ViewModelBase
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
         this.text = text ?? throw new ArgumentNullException(nameof(text));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
+        this.sessionEndedNoticeService = sessionEndedNoticeService ?? throw new ArgumentNullException(nameof(sessionEndedNoticeService));
     }
 
     /// <summary>
@@ -182,6 +187,16 @@ public partial class LoginViewModel : ViewModelBase
     {
         get => errorMessage;
         private set => SetProperty(ref errorMessage, value);
+    }
+
+    /// <summary>
+    /// Gets why the last session ended, when it ended because of something elsewhere (e.g. another device signed the
+    /// user out everywhere), or null.
+    /// </summary>
+    public string? SessionEndedMessage
+    {
+        get => sessionEndedMessage;
+        private set => SetProperty(ref sessionEndedMessage, value);
     }
 
     /// <summary>Gets or sets the user currently being authenticated, or <see langword="null"/> when no user-specific load is in progress.</summary>
@@ -265,6 +280,7 @@ public partial class LoginViewModel : ViewModelBase
 
         // Nobody is signed in (signed out, or the session expired), so no keys should be held.
         keyStore.Clear();
+        SessionEndedMessage = DescribeSessionEnd(sessionEndedNoticeService.Take());
 
         // Still in offline mode (e.g. its session expired): offer signing in offline again.
         SignInOffline = offlineModeService.IsOffline;
@@ -716,5 +732,23 @@ public partial class LoginViewModel : ViewModelBase
         NewPassword = string.Empty;
         ConfirmNewPassword = string.Empty;
         IsNewPasswordRequired = false;
+    }
+
+    // Says why the session ended when the user did not sign out here. An expired session needs no explanation. The
+    // device name comes from another device: it is shown as plain text.
+    private string? DescribeSessionEnd(SessionEndedEventArgs? ended)
+    {
+        var device = string.IsNullOrWhiteSpace(ended?.DeviceName) ? null : ended.DeviceName;
+        return ended?.Reason switch
+        {
+            SessionEndedReason.SignedOutEverywhere => device == null
+                ? text["Login.SignedOut.EverywhereUnknownDevice"].Value
+                : text["Login.SignedOut.Everywhere", device].Value,
+            SessionEndedReason.KeysRotated => device == null
+                ? text["Login.SignedOut.KeysRotatedUnknownDevice"].Value
+                : text["Login.SignedOut.KeysRotated", device].Value,
+            SessionEndedReason.Revoked => text["Login.SignedOut.Revoked"].Value,
+            _ => null,
+        };
     }
 }

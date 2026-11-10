@@ -154,6 +154,24 @@
       "Resource": "*"
     },
     {
+      "Sid": "AppSyncEvents",
+      "Effect": "Allow",
+      "Action": [
+        "appsync:CreateApi",
+        "appsync:GetApi",
+        "appsync:UpdateApi",
+        "appsync:DeleteApi",
+        "appsync:CreateChannelNamespace",
+        "appsync:GetChannelNamespace",
+        "appsync:UpdateChannelNamespace",
+        "appsync:DeleteChannelNamespace",
+        "appsync:TagResource",
+        "appsync:UntagResource",
+        "appsync:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:appsync:*:ACCOUNT_ID:apis/*"
+    },
+    {
       "Sid": "UsersSecretsList",
       "Effect": "Allow",
       "Action": "secretsmanager:ListSecrets",

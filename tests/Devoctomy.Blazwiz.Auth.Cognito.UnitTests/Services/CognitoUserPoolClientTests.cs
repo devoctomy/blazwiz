@@ -95,6 +95,59 @@ public class CognitoUserPoolClientTests
     }
 
     [Fact]
+    public async Task GivenAccessToken_WhenGlobalSignOutAsync_ThenSignsOutWithIt()
+    {
+        // Arrange
+        mockProvider.Setup(x => x.GlobalSignOutAsync(It.IsAny<GlobalSignOutRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new GlobalSignOutResponse());
+
+        // Act
+        await CreateSut().GlobalSignOutAsync("access");
+
+        // Assert
+        mockProvider.Verify(x => x.GlobalSignOutAsync(It.Is<GlobalSignOutRequest>(r => r.AccessToken == "access"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAccessToken_WhenCheckAccessTokenAsync_ThenGetsTheUserWithIt()
+    {
+        // Arrange
+        mockProvider.Setup(x => x.GetUserAsync(It.IsAny<GetUserRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new GetUserResponse());
+
+        // Act
+        await CreateSut().CheckAccessTokenAsync("access");
+
+        // Assert
+        mockProvider.Verify(x => x.GetUserAsync(It.Is<GetUserRequest>(r => r.AccessToken == "access"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenRevokedToken_WhenCheckAccessTokenAsync_ThenThrowsCognitoExceptionWithErrorCode()
+    {
+        // Arrange
+        mockProvider
+            .Setup(x => x.GetUserAsync(It.IsAny<GetUserRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotAuthorizedException("Access Token has been revoked") { ErrorCode = "NotAuthorizedException" });
+
+        // Act
+        var exception = await Assert.ThrowsAsync<CognitoException>(() => CreateSut().CheckAccessTokenAsync("access"));
+
+        // Assert
+        Assert.Equal("NotAuthorizedException", exception.ErrorType);
+    }
+
+    [Fact]
+    public async Task GivenNetworkFailureWrappedBySdk_WhenGlobalSignOutAsync_ThenThrowsHttpRequestException()
+    {
+        // Arrange
+        mockProvider
+            .Setup(x => x.GlobalSignOutAsync(It.IsAny<GlobalSignOutRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AmazonServiceException("Network failure", new HttpRequestException("offline")));
+
+        // Act & Assert
+        await Assert.ThrowsAsync<HttpRequestException>(() => CreateSut().GlobalSignOutAsync("access"));
+    }
+
+    [Fact]
     public async Task GivenNetworkFailureWrappedBySdk_WhenRevokeAsync_ThenThrowsHttpRequestException()
     {
         // Arrange

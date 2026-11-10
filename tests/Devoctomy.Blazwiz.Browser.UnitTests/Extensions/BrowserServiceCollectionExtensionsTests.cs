@@ -35,5 +35,7 @@ public class BrowserServiceCollectionExtensionsTests
         Assert.IsType<BrowserInteropService>(scope.ServiceProvider.GetRequiredService<IBrowserInteropService>());
         Assert.IsType<WebAuthnService>(scope.ServiceProvider.GetRequiredService<IWebAuthnService>());
         Assert.IsType<ClipboardService>(scope.ServiceProvider.GetRequiredService<IClipboardService>());
+        Assert.IsType<DeviceNameService>(scope.ServiceProvider.GetRequiredService<IDeviceNameService>());
+        Assert.IsType<PageResumeService>(scope.ServiceProvider.GetRequiredService<IPageResumeService>());
     }
 }

@@ -1,0 +1,37 @@
+@using Devoctomy.Blazwiz.UI.Text
+@using Devoctomy.Blazwiz.UI.ViewModels
+@inherits MvvmComponentBase<DeviceSettingsViewModel>
+@inject IStringLocalizer<UiText> Text
+
+@if (ViewModel.IsVisible)
+{
+    <div class="panel mb-4" id="device-settings">
+        <h2 class="panel-title">@Text["Settings.Device.Title"]</h2>
+        <p class="panel-text">@Text["Settings.Device.Text"]</p>
+        <EditForm Model="ViewModel" OnSubmit="() => ViewModel.SaveCommand.ExecuteAsync(null)" FormName="device-name">
+            <label class="form-label" for="device-name">@Text["Settings.Device.Label"]</label>
+            <div class="d-flex gap-2">
+                <InputText id="device-name"
+                           class="form-control"
+                           maxlength="@ViewModel.MaxLength"
+                           autocomplete="off"
+                           @bind-Value="ViewModel.Name" />
+                <button type="submit" class="btn btn-primary" id="device-name-save">@Text["Settings.Device.Save"]</button>
+            </div>
+        </EditForm>
+
+        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+        {
+            <div class="alert alert-danger py-2 small mt-3" role="alert" id="device-name-error">
+                <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(ViewModel.SavedMessage))
+        {
+            <div class="alert alert-success py-2 small mt-3" role="status" id="device-name-saved">
+                <i class="bi bi-check-circle me-1"></i>@ViewModel.SavedMessage
+            </div>
+        }
+    </div>
+}

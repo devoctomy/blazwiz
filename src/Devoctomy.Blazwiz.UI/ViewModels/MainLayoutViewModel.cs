@@ -27,6 +27,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     private readonly ISessionLifecycle sessionLifecycle;
     private readonly IShellRegistry shellRegistry;
     private readonly IShellContentService shellContentService;
+    private readonly ISessionEndedNoticeService sessionEndedNoticeService;
     private readonly AppSettings appSettings;
 
     private bool isReady;
@@ -48,6 +49,7 @@ public partial class MainLayoutViewModel : ViewModelBase
     /// <param name="sessionLifecycle">Lets modules start and stop their work with the session.</param>
     /// <param name="shellRegistry">The components modules add to the shell.</param>
     /// <param name="shellContentService">Lets modules ask for the page to be shown again from scratch.</param>
+    /// <param name="sessionEndedNoticeService">Tells the login page why the session ended.</param>
     /// <param name="appSettings">The application settings.</param>
     public MainLayoutViewModel(
         IAuthenticationService authService,
@@ -59,6 +61,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         ISessionLifecycle sessionLifecycle,
         IShellRegistry shellRegistry,
         IShellContentService shellContentService,
+        ISessionEndedNoticeService sessionEndedNoticeService,
         AppSettings appSettings)
     {
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
@@ -70,6 +73,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         this.sessionLifecycle = sessionLifecycle ?? throw new ArgumentNullException(nameof(sessionLifecycle));
         this.shellRegistry = shellRegistry ?? throw new ArgumentNullException(nameof(shellRegistry));
         this.shellContentService = shellContentService ?? throw new ArgumentNullException(nameof(shellContentService));
+        this.sessionEndedNoticeService = sessionEndedNoticeService ?? throw new ArgumentNullException(nameof(sessionEndedNoticeService));
         this.appSettings = appSettings ?? throw new ArgumentNullException(nameof(appSettings));
 
         this.themeService.ThemeChanged += OnThemeChanged;
@@ -268,15 +272,17 @@ public partial class MainLayoutViewModel : ViewModelBase
         ContentVersion++;
     }
 
-    // The session expired or could not be renewed, and the auth service has signed out: finish signing out here
-    // (modules stop their work and forget what they hold) and return to the login page, which wipes the keys.
-    private async void OnSessionEnded(object? sender, EventArgs e)
+    // The session expired, could not be renewed, was revoked, or another device signed the user out everywhere, and
+    // the auth service has signed out: finish signing out here (modules stop their work and forget what they hold)
+    // and return to the login page, which wipes the keys and says why.
+    private async void OnSessionEnded(object? sender, SessionEndedEventArgs e)
     {
         if (isEndingSession)
         {
             return;
         }
 
+        sessionEndedNoticeService.Set(e);
         isEndingSession = true;
         try
         {

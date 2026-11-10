@@ -1,0 +1,30 @@
+#nullable enable
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.AppSyncUserEventChannel(Microsoft.JSInterop.IJSRuntime! jsRuntime, Devoctomy.Blazwiz.Events.AppSync.Models.AppSyncEventsConfig! config) -> void
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.ConnectAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.DisconnectAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.Dispose() -> void
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.InstanceId.get -> string!
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.OnClosed() -> void
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.OnMessage(string! json) -> void
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.PublishAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session, Devoctomy.Blazwiz.Events.Models.UserEvent! userEvent) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.Received -> System.EventHandler<Devoctomy.Blazwiz.Events.Models.UserEvent!>?
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.State.get -> Devoctomy.Blazwiz.Events.Models.UserEventConnectionState
+Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.StateChanged -> System.EventHandler?
+Devoctomy.Blazwiz.Events.AppSync.Extensions.AppSyncEventsServiceCollectionExtensions
+Devoctomy.Blazwiz.Events.AppSync.Models.AppSyncEventsConfig
+Devoctomy.Blazwiz.Events.AppSync.Models.AppSyncEventsConfig.AppSyncEventsConfig() -> void
+Devoctomy.Blazwiz.Events.AppSync.Models.AppSyncEventsConfig.HttpEndpoint.get -> string!
+Devoctomy.Blazwiz.Events.AppSync.Models.AppSyncEventsConfig.HttpEndpoint.set -> void
+Devoctomy.Blazwiz.Events.AppSync.Models.AppSyncEventsConfig.RealtimeEndpoint.get -> string!
+Devoctomy.Blazwiz.Events.AppSync.Models.AppSyncEventsConfig.RealtimeEndpoint.set -> void
+Devoctomy.Blazwiz.Events.AppSync.Sessions.MissingEventsConfigurationWarning
+Devoctomy.Blazwiz.Events.AppSync.Sessions.MissingEventsConfigurationWarning.MissingEventsConfigurationWarning(Microsoft.Extensions.Logging.ILogger<Devoctomy.Blazwiz.Events.AppSync.Sessions.MissingEventsConfigurationWarning!>! logger) -> void
+Devoctomy.Blazwiz.Events.AppSync.Sessions.MissingEventsConfigurationWarning.OnSessionStartedAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+const Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.ModulePath = "./_content/Devoctomy.Blazwiz.Events.AppSync/js/appsync-events.js" -> string!
+const Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.Namespace = "users" -> string!
+const Devoctomy.Blazwiz.Events.AppSync.Extensions.AppSyncEventsServiceCollectionExtensions.ConfigurationSection = "Events" -> string!
+static Devoctomy.Blazwiz.Events.AppSync.Channels.AppSyncUserEventChannel.GetChannelPath(string? accessToken) -> string?
+static Devoctomy.Blazwiz.Events.AppSync.Extensions.AppSyncEventsServiceCollectionExtensions.AddBlazwizAppSyncEvents(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, bool allowLocalChannel) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Devoctomy.Blazwiz.Events.AppSync.Extensions.AppSyncEventsServiceCollectionExtensions.IsConfigured(Devoctomy.Blazwiz.Events.AppSync.Models.AppSyncEventsConfig? config) -> bool

@@ -2,6 +2,7 @@ using Devoctomy.Blazwiz.Auth.Exceptions;
 using Devoctomy.Blazwiz.Auth.Models;
 using Devoctomy.Blazwiz.Auth.Services;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
+using Devoctomy.Blazwiz.Auth.Sessions.Interfaces;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Core.Offline;
 using Devoctomy.Blazwiz.Core.Offline.Models;
@@ -16,6 +17,7 @@ public class LocalAuthenticationServiceTests
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<IUserDisplayService> mockUserDisplay = new();
     private readonly Mock<TimeProvider> mockTimeProvider = new();
+    private readonly Mock<ISignOutEverywhereNotifier> mockNotifier = new();
     private readonly OfflineModeService offlineMode = new();
     private readonly InMemoryOfflineSessionStore offlineSessions;
     private DateTimeOffset now = Now;
@@ -31,7 +33,7 @@ public class LocalAuthenticationServiceTests
     public void GivenNullLocalStorage_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(null!, mockUserDisplay.Object, offlineMode, offlineSessions, mockTimeProvider.Object));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(null!, mockUserDisplay.Object, offlineMode, offlineSessions, mockNotifier.Object, mockTimeProvider.Object));
         Assert.Equal("localStorageService", exception.ParamName);
     }
 
@@ -39,7 +41,7 @@ public class LocalAuthenticationServiceTests
     public void GivenNullTimeProvider_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, null!));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, mockNotifier.Object, null!));
         Assert.Equal("timeProvider", exception.ParamName);
     }
 
@@ -47,7 +49,7 @@ public class LocalAuthenticationServiceTests
     public void GivenNullUserDisplayService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, null!, offlineMode, offlineSessions, mockTimeProvider.Object));
+        var exception = Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, null!, offlineMode, offlineSessions, mockNotifier.Object, mockTimeProvider.Object));
         Assert.Equal("userDisplayService", exception.ParamName);
     }
 
@@ -55,8 +57,8 @@ public class LocalAuthenticationServiceTests
     public void GivenNullOfflineDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockTimeProvider.Object)).ParamName);
-        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockTimeProvider.Object)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockNotifier.Object, mockTimeProvider.Object)).ParamName);
+        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockNotifier.Object, mockTimeProvider.Object)).ParamName);
     }
 
     [Fact]
@@ -319,6 +321,125 @@ public class LocalAuthenticationServiceTests
         Assert.Equal(1, ended);
     }
 
+    [Fact]
+    public void GivenNullNotifier_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("signOutEverywhereNotifier", Assert.Throws<ArgumentNullException>(() => new LocalAuthenticationService(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, null!, mockTimeProvider.Object)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenExpiredSession_WhenGetCurrentUserAsync_ThenSessionEndedSaysExpired()
+    {
+        // Arrange
+        SetupStoredSession(new UserSession { Username = "bob", ExpiresAt = Now.AddMinutes(-1) });
+        var sut = CreateSut();
+        SessionEndedEventArgs? args = null;
+        sut.SessionEnded += (_, e) => args = e;
+
+        // Act
+        await sut.GetCurrentUserAsync();
+
+        // Assert
+        Assert.Equal(SessionEndedReason.Expired, args?.Reason);
+        Assert.Null(args?.DeviceName);
+    }
+
+    [Fact]
+    public async Task GivenSignedIn_WhenSignOutEverywhereAsync_ThenHandlersToldAndSignedOut_AndSessionEndedNotRaised()
+    {
+        // Arrange
+        SetupStoredSession(new UserSession { Username = "bob", ExpiresAt = Now.AddHours(1) });
+        var sut = CreateSut();
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+
+        // Act
+        var result = await sut.SignOutEverywhereAsync(SignOutReason.KeysRotated);
+
+        // Assert
+        Assert.True(result);
+        mockNotifier.Verify(x => x.NotifyAsync(It.IsAny<UserSession>(), SignOutReason.KeysRotated), Times.Once);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(LocalAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(0, ended);
+    }
+
+    [Fact]
+    public async Task GivenNobodySignedIn_WhenSignOutEverywhereAsync_ThenFalse_AndNobodyTold()
+    {
+        // Arrange
+        SetupStoredSession(null);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.SignOutEverywhereAsync(SignOutReason.UserRequested);
+
+        // Assert
+        Assert.False(result);
+        mockNotifier.Verify(x => x.NotifyAsync(It.IsAny<UserSession>(), It.IsAny<SignOutReason>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOfflineMode_WhenSignOutEverywhereAsync_ThenFalse_AndNobodyTold()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob@example.com", OfflineEntryReason.Chosen);
+
+        // Act
+        var result = await sut.SignOutEverywhereAsync(SignOutReason.UserRequested);
+
+        // Assert
+        Assert.False(result);
+        mockNotifier.Verify(x => x.NotifyAsync(It.IsAny<UserSession>(), It.IsAny<SignOutReason>()), Times.Never);
+        Assert.NotNull(offlineSessions.Session);
+    }
+
+    [Fact]
+    public async Task GivenSignedIn_WhenEndSessionAsync_ThenSignedOut_AndSessionEndedRaisedWithReasonAndDevice()
+    {
+        // Arrange
+        var sut = CreateSut();
+        SessionEndedEventArgs? args = null;
+        sut.SessionEnded += (_, e) => args = e;
+
+        // Act
+        await sut.EndSessionAsync(SessionEndedReason.SignedOutEverywhere, "Android-Edge-624834");
+
+        // Assert
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(LocalAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(SessionEndedReason.SignedOutEverywhere, args?.Reason);
+        Assert.Equal("Android-Edge-624834", args?.DeviceName);
+    }
+
+    [Fact]
+    public async Task GivenSignedIn_WhenCheckSessionAsync_ThenTrue()
+    {
+        // Arrange
+        SetupStoredSession(new UserSession { Username = "bob", ExpiresAt = Now.AddHours(1) });
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.CheckSessionAsync();
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task GivenNobodySignedIn_WhenCheckSessionAsync_ThenFalse()
+    {
+        // Arrange
+        SetupStoredSession(null);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.CheckSessionAsync();
+
+        // Assert
+        Assert.False(result);
+    }
+
     private void SetupStoredSession(UserSession? session)
     {
         mockLocalStorage
@@ -326,5 +447,5 @@ public class LocalAuthenticationServiceTests
             .ReturnsAsync(session);
     }
 
-    private LocalAuthenticationService CreateSut() => new(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, mockTimeProvider.Object);
+    private LocalAuthenticationService CreateSut() => new(mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, mockNotifier.Object, mockTimeProvider.Object);
 }
