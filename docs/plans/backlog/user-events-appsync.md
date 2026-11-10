@@ -131,9 +131,8 @@ stays open and in use but has silently lost its socket. It finds out at its next
 
 ### Optional in the template
 
-Events cost money per connection minute and message, so apps can opt out. They are on by default: the AppSync API has
-no fixed charge, so an app with few users pays very little, and an app that does not want them turns the option off
-and creates nothing.
+Events add AWS resources that are charged per connection minute and message. The template never forces that expense
+on an app: the developer decides. They are on by default, and turning the option off creates nothing.
 
 - **Template option `Events`** (bool, default `true`, computed `IncludeEvents`, like `Sync`). Its description says
   what it adds and what it costs. When it is off, a post-action (manual instructions) warns the developer at creation:
