@@ -1,6 +1,6 @@
 # Deploying the template app from GitHub
 
-Three workflows deploy the repository's template app (`template/`, as `myapp`) to AWS from GitHub. This tests the
+Four workflows deploy and check the repository's template app (`template/`, as `myapp`) to AWS from GitHub. This tests the
 framework as it stands, before it is released:
 
 - The base stack and its scripts come from `src/Devoctomy.Blazwiz.Aws`.
@@ -10,12 +10,13 @@ Each workflow is run by hand: Actions, then the workflow, then **Run workflow**.
 
 | Workflow | What it does |
 | --- | --- |
-| **Deploy** (`deploy.yml`) | Creates a new environment: the base stack (`myapp-<environment>`), the app's stack (`myapp-<environment>-app`), the portal, and optionally a test user. Refused if the environment already exists. |
-| **Upgrade** (`upgrade.yml`) | Updates an existing environment to the commit it is run on: both stacks, then the portal (or only the portal). Refused if the environment does not exist. |
+| **Deploy** (`deploy.yml`) | Creates a new environment: the base stack (`myapp-<environment>`), the app's stack (`myapp-<environment>-app`), the portal, and optionally the deploy tests' user and the deploy tests. Refused if the environment already exists. |
+| **Upgrade** (`upgrade.yml`) | Updates an existing environment to the commit it is run on: both stacks, then the portal (or only the portal), and optionally the deploy tests' user and the deploy tests. Refused if the environment does not exist. |
+| **Deploy tests** (`deploy-tests.yml`) | Runs the deploy tests against an existing environment (below). Also run by Deploy and Upgrade when "Run the deploy tests afterwards" is ticked. |
 | **Destroy** (`destroy.yml`) | Deletes an environment, once its name is typed again. |
 
 Deploy and Upgrade only run on a commit the CI workflow (`ci.yml`, on every push) has passed, waiting for it if it is
-still running (`ci-passed.yml`). All three run `template/cloudformation/deploy.ps1` or `remove.ps1` with `-Force`,
+still running (`ci-passed.yml`). Deploy, Upgrade and Destroy run `template/cloudformation/deploy.ps1` or `remove.ps1` with `-Force`,
 because a workflow can't answer prompts. That has two consequences:
 
 - **Replaced resources.** Resources a change replaces are replaced without asking. The resources the stack policy
@@ -83,7 +84,8 @@ In the repository's **Settings, Environments**, add one GitHub environment for e
 | --- | --- | --- |
 | `AWS_DEPLOY_ROLE_ARN` | Variable | The role's ARN, e.g. `arn:aws:iam::ACCOUNT_ID:role/blazwiz-github-deploy`. |
 | `AWS_REGION` | Variable | The environment's region, e.g. `eu-west-2`. |
-| `TEST_USER_PASSWORD` | Secret | Only for a Deploy that creates a test user: at least 12 characters, with upper case, lower case and a number. |
+| `TEST_USER_EMAIL` | Variable | For the deploy tests: the test user's email. |
+| `TEST_USER_PASSWORD` | Secret | For the deploy tests: the test user's password, at least 12 characters, with upper case, lower case and a number. |
 | `CUSTOM_DOMAIN_NAME` | Variable | Optional: the portal's own address. Set it with `CERTIFICATE_ARN`. |
 | `CERTIFICATE_ARN` | Variable | Optional: an ACM certificate in **us-east-1** covering that address. |
 
@@ -94,7 +96,8 @@ Route 53 alias.
 
 Under **Deployment protection rules** on each environment:
 
-- **Required reviewers:** every Deploy, Upgrade or Destroy run waits for one of them to approve it before it starts.
+- **Required reviewers:** every Deploy, Upgrade, Deploy tests or Destroy run waits for one of them to approve it
+  before it starts. Deploy tests run by Deploy or Upgrade are a job of their own, so they are approved separately.
 - **Deployment branches and tags:** choose **Selected branches and tags** and add `main`. A run from any other branch
   then gets neither the environment's variables nor the AWS role. Leave this open if you deploy feature branches to a
   test environment.
@@ -102,13 +105,30 @@ Under **Deployment protection rules** on each environment:
 These rules hold the job back before it starts: the OIDC token is only issued, and AWS only reached, once they pass.
 Deploy and Upgrade check CI first, so an approval is only asked for once CI has passed.
 
-## Checking a deployed environment
+## Checking a deployed environment: the deploy tests
 
-The workflows don't run `test-auth.ps1`. To check an environment end to end, run it locally with credentials for the
-account:
+The unit, integration and UI tests run before anything is deployed. The deploy tests
+(`tests/Devoctomy.Blazwiz.DeployTests`, Reqnroll) run after, against the deployed environment: what only AWS can show.
 
-```powershell
-./template/cloudformation/test-auth.ps1 -Region eu-west-2 -Environment test -Email <test user>
-```
+| Feature | What it checks |
+| --- | --- |
+| Portal | The home page and a deep link are served (index.html); the portal serves its settings. |
+| Signing in | The test user signs in with SRP, as the portal does, and gets AWS credentials from the identity pool. |
+| The user's data | Read, write, list and delete in their own prefix; refused another user's prefix and listing the whole bucket. |
+| The user's keys | A keys document is created only once and replaced only at the version read; a delete only adds a delete marker; no version can be deleted; another user's keys are refused. |
+| User events | Publishing to the user's own channel is accepted, and to another user's refused. Skipped when the stack has no events API. |
+| Signing out everywhere | Revokes the access token. Only when asked: it signs the test user out on every device. |
 
-Its last check signs the test user out on every device; `-SkipSignOutEverywhere` leaves it out.
+Run them with the **Deploy tests** workflow, or tick "Run the deploy tests afterwards" on Deploy or Upgrade. They need
+the environment deployed, and the test user: set `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` on the GitHub
+environment, then tick "Create or update the deploy tests' user" on a Deploy or Upgrade run once (again whenever the
+password changes).
+
+The workflow uses the deploy role only to read the portal's address from the stack. The tests run with no AWS
+credentials: they read everything else from the portal's public `appsettings.Production.json` and act only as the
+test user, so they need nothing more on AWS. They leave behind only old versions of their test keys document (the
+user cannot delete versions, by design), which the bucket's lifecycle rule removes after 30 days.
+
+To run them from your own machine, set `BLAZWIZ_DEPLOYTEST_PORTAL_URL`, `BLAZWIZ_DEPLOYTEST_EMAIL` and
+`BLAZWIZ_DEPLOYTEST_PASSWORD` (and `BLAZWIZ_DEPLOYTEST_SIGN_OUT_EVERYWHERE=true` to include signing out everywhere),
+then `dotnet test tests/Devoctomy.Blazwiz.DeployTests`. Without them every scenario is skipped.

@@ -249,9 +249,6 @@ for the target account.
 # Deploy (asks for confirmation, then for the test user's password)
 ./cloudformation/deploy.ps1 -Region eu-west-2 -TestUserEmail me@example.com
 
-# Check it all works
-./cloudformation/test-auth.ps1 -Region eu-west-2 -Email me@example.com
-
 # Re-publish just the portal after code changes
 ./cloudformation/deploy.ps1 -Region eu-west-2 -SkipInfrastructure
 

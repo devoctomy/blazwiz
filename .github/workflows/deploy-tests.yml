@@ -1,0 +1,106 @@
+# Runs the deploy tests (tests/Devoctomy.Blazwiz.DeployTests) against an environment already deployed with the Deploy
+# workflow: the portal, signing in, the user's data and keys, user events and, if asked, signing out everywhere. Run by
+# hand (Actions > Deploy tests > Run workflow), or by Deploy and Upgrade when "Run the deploy tests afterwards" is
+# ticked.
+#
+# The deploy role is used only to read the portal's address from the stack. The tests themselves run with no AWS
+# credentials: they sign in as the test user, as the portal does, and use only what the identity pool gives that user.
+#
+# Uses the GitHub environment's AWS_DEPLOY_ROLE_ARN and AWS_REGION, and the test user: variable TEST_USER_EMAIL and
+# secret TEST_USER_PASSWORD (created with Deploy or Upgrade's "Create or update the deploy tests' user"). See
+# docs/deploying.md.
+name: Deploy tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment name, e.g. test (the stacks myapp-<environment>).'
+        required: true
+        default: test
+      sign_out_everywhere:
+        description: 'Also test signing out everywhere (signs the test user out on every device).'
+        type: boolean
+        required: false
+        default: false
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      sign_out_everywhere:
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-tests-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      # An OIDC token from GitHub, exchanged for short-lived AWS credentials, used only to read the stack's outputs.
+      id-token: write
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      MSBUILDDISABLENODEREUSE: 1
+      # Through the environment, never into the script: an input can hold quotes and $( ).
+      ENVIRONMENT_NAME: ${{ inputs.environment }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      AWS_DEPLOY_REGION: ${{ vars.AWS_REGION }}
+      TEST_USER_EMAIL: ${{ vars.TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+    steps:
+      - name: Check the inputs
+        shell: pwsh
+        run: |
+          if ($env:ENVIRONMENT_NAME -notmatch '^[a-z][a-z0-9]{0,9}$') { throw "The environment name must be lowercase letters and numbers, starting with a letter (max 10): '$env:ENVIRONMENT_NAME'." }
+          if (-not $env:AWS_DEPLOY_ROLE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_DEPLOY_ROLE_ARN variable." }
+          if (-not $env:AWS_DEPLOY_REGION) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_REGION variable." }
+          if (-not $env:TEST_USER_EMAIL) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no TEST_USER_EMAIL variable." }
+          if (-not $env:TEST_USER_PASSWORD) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no TEST_USER_PASSWORD secret." }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Find the deployed portal
+        id: stack
+        shell: pwsh
+        run: |
+          $stack = "myapp-$env:ENVIRONMENT_NAME"
+          $url = aws cloudformation describe-stacks --stack-name $stack --region $env:AWS_DEPLOY_REGION --query "Stacks[0].Outputs[?OutputKey=='PortalUrl'].OutputValue" --output text 2>$null
+          if ($LASTEXITCODE -ne 0 -or -not $url -or $url -eq 'None') { throw "Stack $stack does not exist, or has no portal. Deploy it first." }
+          Write-Host "Portal: $url"
+          "portal_url=$url" >> $env:GITHUB_OUTPUT
+
+      # No AWS credentials from here on: the tests use only the test user's.
+      - name: Deploy tests
+        shell: pwsh
+        env:
+          AWS_ACCESS_KEY_ID: ''
+          AWS_SECRET_ACCESS_KEY: ''
+          AWS_SESSION_TOKEN: ''
+          BLAZWIZ_DEPLOYTEST_PORTAL_URL: ${{ steps.stack.outputs.portal_url }}
+          BLAZWIZ_DEPLOYTEST_EMAIL: ${{ vars.TEST_USER_EMAIL }}
+          BLAZWIZ_DEPLOYTEST_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          BLAZWIZ_DEPLOYTEST_SIGN_OUT_EVERYWHERE: ${{ inputs.sign_out_everywhere }}
+        run: dotnet test tests/Devoctomy.Blazwiz.DeployTests --logger "console;verbosity=normal"

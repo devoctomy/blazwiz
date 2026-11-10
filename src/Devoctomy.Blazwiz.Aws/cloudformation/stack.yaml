@@ -315,12 +315,10 @@ Resources:
       UserPoolId: !Ref UserPool
       # Public client (runs in the browser) so it must not have a secret.
       GenerateSecret: false
-      # SRP only from the browser: the password never leaves it. The admin flow needs AWS credentials with
-      # cognito-idp:AdminInitiateAuth, and is used by test-auth.ps1 to verify sign-in from the command line.
+      # SRP only: the password never leaves the browser (or the deploy tests, which sign in the same way).
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
-        - ALLOW_ADMIN_USER_PASSWORD_AUTH
       # What the portal may read (the ID token's claims) and change with the access token. Nothing writes attributes,
       # and the email can only be changed by an administrator.
       ReadAttributes: [email, email_verified, name]

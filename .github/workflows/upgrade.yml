@@ -2,14 +2,17 @@
 # app's own stack (template/cloudformation/app.yaml), then the portal, all from this commit's source. Run by hand
 # (Actions > Upgrade > Run workflow), on a commit the CI workflow has passed.
 #
-# Refused if the environment does not exist: use the Deploy workflow to create one. The test user is left as it is.
+# Refused if the environment does not exist: use the Deploy workflow to create one. The deploy tests' user is left as
+# it is unless "Create or update the deploy tests' user" is ticked; "Run the deploy tests afterwards" runs
+# deploy-tests.yml once the upgrade is done.
 #
 # Resources protected by the stack policy (the user pool, identity pool, data and audit log buckets, the CloudFront
 # distribution and the app client) are never replaced: a change that would replace one fails the upgrade, with nothing
 # lost. Other resources a change replaces are replaced without asking (the run cannot ask).
 #
 # Uses the same GitHub environment settings as the Deploy workflow (AWS_DEPLOY_ROLE_ARN, AWS_REGION, and the optional
-# CUSTOM_DOMAIN_NAME and CERTIFICATE_ARN, kept on every upgrade). See docs/deploying.md.
+# CUSTOM_DOMAIN_NAME and CERTIFICATE_ARN, kept on every upgrade, and TEST_USER_EMAIL and TEST_USER_PASSWORD for the
+# deploy tests). See docs/deploying.md.
 name: Upgrade
 
 on:
@@ -21,6 +24,16 @@ on:
         default: test
       portal_only:
         description: 'Only publish the portal (skip the CloudFormation stacks).'
+        type: boolean
+        required: false
+        default: false
+      create_test_user:
+        description: "Create or update the deploy tests' user (TEST_USER_EMAIL, with the password TEST_USER_PASSWORD)."
+        type: boolean
+        required: false
+        default: false
+      run_deploy_tests:
+        description: 'Run the deploy tests afterwards.'
         type: boolean
         required: false
         default: false
@@ -54,6 +67,9 @@ jobs:
       # Through the environment, never into the script: an input can hold quotes and $( ).
       ENVIRONMENT_NAME: ${{ inputs.environment }}
       PORTAL_ONLY: ${{ inputs.portal_only }}
+      CREATE_TEST_USER: ${{ inputs.create_test_user }}
+      TEST_USER_EMAIL: ${{ vars.TEST_USER_EMAIL }}
+      TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
       # Optional: the portal's own address and its ACM certificate (in us-east-1). Passed on every run, as the stack
       # drops the address when they are not.
       CUSTOM_DOMAIN_NAME: ${{ vars.CUSTOM_DOMAIN_NAME }}
@@ -68,6 +84,7 @@ jobs:
           if (-not $env:AWS_DEPLOY_ROLE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_DEPLOY_ROLE_ARN variable." }
           if (-not $env:AWS_DEPLOY_REGION) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_REGION variable." }
           if ([bool]$env:CUSTOM_DOMAIN_NAME -ne [bool]$env:CERTIFICATE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' must have both CUSTOM_DOMAIN_NAME and CERTIFICATE_ARN, or neither." }
+          if ($env:CREATE_TEST_USER -eq 'true' -and -not ($env:TEST_USER_EMAIL -and $env:TEST_USER_PASSWORD)) { throw "The deploy tests' user was asked for, but the GitHub environment '$env:ENVIRONMENT_NAME' lacks the TEST_USER_EMAIL variable or the TEST_USER_PASSWORD secret." }
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -115,9 +132,29 @@ jobs:
       - name: Upgrade
         shell: pwsh
         run: |
-          if ($env:PORTAL_ONLY -eq 'true') {
+          if ($env:CREATE_TEST_USER -eq 'true') {
+            $password = ConvertTo-SecureString $env:TEST_USER_PASSWORD -AsPlainText -Force
+            if ($env:PORTAL_ONLY -eq 'true') {
+              ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipInfrastructure -TestUserEmail $env:TEST_USER_EMAIL -TestUserPassword $password -Aot -Force
+            }
+            else {
+              ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -TestUserEmail $env:TEST_USER_EMAIL -TestUserPassword $password -Aot -Force
+            }
+          }
+          elseif ($env:PORTAL_ONLY -eq 'true') {
             ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipInfrastructure -SkipTestUser -Aot -Force
           }
           else {
             ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipTestUser -Aot -Force
           }
+
+  deploy-tests:
+    needs: upgrade
+    if: ${{ inputs.run_deploy_tests }}
+    uses: ./.github/workflows/deploy-tests.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit

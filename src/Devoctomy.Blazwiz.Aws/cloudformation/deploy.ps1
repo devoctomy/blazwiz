@@ -494,6 +494,3 @@ Write-Info "User pool     : $($outputs['UserPoolId'])"
 Write-Info "App client    : $($outputs['UserPoolClientId'])"
 Write-Info "Identity pool : $($outputs['IdentityPoolId'])"
 Write-Info "Data bucket   : $($outputs['DataBucketName'])"
-Write-Host ''
-Write-Info "Verify sign-in and per-user AWS access with:"
-Write-Info "  ./cloudformation/test-auth.ps1 -Environment $Environment -Region $script:AwsRegion -Email <user>"

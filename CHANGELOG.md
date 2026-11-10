@@ -34,14 +34,21 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
     events existed passes nothing, so upgrading it creates no API.
   - `deploy.ps1` takes `-Events`, writes the endpoints to `appsettings.Production.json` and adds them to the
     Content-Security-Policy.
-  - `test-auth.ps1` checks the channel's isolation and that signing out everywhere revokes the session
-    (`-SkipSignOutEverywhere` leaves that out).
   - `deploy-policy.json` gains an `AppSyncEvents` statement.
 - **The template's new `--events` option** (on by default) adds user events. Apps created with `--events false` are
   told at creation what that leaves out, and deploy with `-Events disabled`.
 - **`deploy.ps1 -Aot`** publishes the portal compiled ahead of time to WebAssembly, with SIMD: the optimal build, several
   times faster at run time (Argon2id key derivation most of all). It needs `dotnet workload install wasm-tools`. The
   app's README ("The optimal build") explains it, and how to turn it on in the portal's project file instead.
+
+### Removed
+- **`cloudformation/test-auth.ps1`**, from the base stack and from apps. It was run only by hand, with the deployer's
+  credentials. The repository checks its deployed template app with Reqnroll deploy tests instead
+  (`tests/Devoctomy.Blazwiz.DeployTests`, run by a Deploy tests workflow; `docs/deploying.md`), which sign in as a test
+  user with SRP and need no AWS credentials of their own.
+- **The app client's `ALLOW_ADMIN_USER_PASSWORD_AUTH` flow,** which only `test-auth.ps1` used: the portal's client
+  allows SRP and token refresh only. `deploy-policy.json` loses `cognito-idp:AdminInitiateAuth`. Redeploy with
+  `deploy.ps1`.
 
 ### Changed
 - `IAuthenticationService.SessionEnded` is now `EventHandler<SessionEndedEventArgs>`, with the reason
@@ -71,9 +78,7 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
     `sts:TagSession`, and is now denied `s3:DeleteObjectVersion`, `s3:PutBucketVersioning` and
     `s3:PutLifecycleConfiguration` (`NoVersionPurge`), so a deleted or replaced keys document can be restored by an
     operator for 30 days. The Content-Security-Policy no longer allows Secrets Manager. `remove.ps1` no longer deletes
-    users' secrets, and `deploy-policy.json` loses its Secrets Manager statements. `test-auth.ps1` checks the
-    conditional writes, that the user cannot delete a version, and that another user's keys are refused. Redeploy with
-    `deploy.ps1`.
+    users' secrets, and `deploy-policy.json` loses its Secrets Manager statements. Redeploy with `deploy.ps1`.
   - Keys documents already in Secrets Manager are not moved: set the profiles up again, or copy each secret once into
     `<identity id>/keys/` with the AWS CLI. The stack deletes nothing in Secrets Manager, so they stay restorable until
     you delete them.

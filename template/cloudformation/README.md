@@ -11,7 +11,6 @@ The infrastructure is in two stacks:
 | Script | What it does |
 | --- | --- |
 | `deploy.ps1` | Creates or updates the base stack, then the app's stack, publishes the portal to S3, invalidates CloudFront and sets up a test user in Cognito. |
-| `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials, per-user S3 access (and that other users' prefixes are refused), per-user keys documents (created and replaced only conditionally, never purged by the user, and refused for other users), the user events channel (own channel only), and that signing out everywhere revokes the session (which signs the test user out everywhere; `-SkipSignOutEverywhere` leaves it out). |
 | `remove.ps1` | Deletes the app's stack, then empties the buckets (every version, including the users' keys) and deletes the base stack, turning the user pool's deletion protection off first. |
 | `app.yaml` | The app's own CloudFormation template. |
 | `base-stack.ps1` | Finds the base stack and its scripts. |
@@ -29,7 +28,7 @@ All three scripts use the AWS CLI v2 with your normal credential chain. Pass `-A
 
 `deploy.ps1` deploys the base stack through a change set (and the app's stack with `aws cloudformation deploy`) without a CloudFormation service role, so CloudFormation creates the resources using **your** credentials. The deploying identity needs permission for every resource type in the template, as well as for the S3 upload, the CloudFront invalidation, and the Cognito user admin calls.
 
-[`deploy-policy.json`](deploy-policy.json) covers `deploy.ps1`, `test-auth.ps1` and `remove.ps1`, and nothing more.
+[`deploy-policy.json`](deploy-policy.json) covers `deploy.ps1` and `remove.ps1`, and nothing more.
 Before you use it:
 
 - Replace `ACCOUNT_ID` with your 12-digit AWS account id.
@@ -48,7 +47,7 @@ paste the file into the policy's JSON editor in the IAM console.
 
 Notes:
 
-- **You don't need permissions for some calls.** `sts:GetCallerIdentity` is always allowed. The identity pool calls in `test-auth.ps1` (`get-id`, `get-credentials-for-identity`) are public APIs; the sign-in itself uses `admin-initiate-auth` as you, because the portal's client only allows SRP from the browser. The S3 checks in that script run as the signed-in test user, not as you, except the last: as you, it checks and removes the versions its test keys document left.
+- **You don't need permissions for some calls.** `sts:GetCallerIdentity` is always allowed.
 - **`IamPassRoleToIdentityPool` has no `iam:PassedToService` condition.** A condition of `cognito-identity.amazonaws.com` doesn't match when the role is attached to the identity pool, and the deploy fails at `IdentityPoolRoleAttachment`. It is limited by the `myapp-*` role name instead.
 - **`CustomDomainCertificate`** is only needed when you pass `-CustomDomainName` / `-CertificateArn`. You can drop it otherwise.
 - **IAM is the sensitive part.** The template creates an IAM role, so this identity can create and edit any role whose name starts with `myapp-`. In principle that lets it create a more powerful role for itself. For throwaway testing that is usually fine. For stronger isolation, use a dedicated sandbox account, or add a permissions boundary condition (`iam:PermissionsBoundary`) to `CreateRole` / `PutRolePolicy`.
@@ -68,7 +67,6 @@ Notes:
 
    ```powershell
    ./cloudformation/deploy.ps1   -AwsProfile myapp-deploy -Region eu-west-2 -TestUserEmail me@example.com
-   ./cloudformation/test-auth.ps1 -AwsProfile myapp-deploy -Region eu-west-2 -Email me@example.com
    ./cloudformation/remove.ps1   -AwsProfile myapp-deploy -Region eu-west-2
    ```
 

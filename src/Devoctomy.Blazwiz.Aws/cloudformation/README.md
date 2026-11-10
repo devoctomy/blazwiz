@@ -4,7 +4,7 @@ The AWS infrastructure every blazwiz app runs on, released with the framework at
 (`Devoctomy.Blazwiz.Aws`): CloudFront and S3 for the portal, the Cognito user pool and identity pool, the per-user data
 bucket and the IAM role for signed-in users (`stack.yaml`), and the scripts that deploy, test and remove it.
 
-Apps do not copy these files. Each app has its own `cloudformation/deploy.ps1`, `test-auth.ps1` and `remove.ps1`,
+Apps do not copy these files. Each app has its own `cloudformation/deploy.ps1` and `remove.ps1`,
 which find this package at the app's `BlazwizVersion` and run its scripts with the app's name, folder and portal
 project. Upgrading the framework upgrades the stack; deploy after upgrading.
 
@@ -33,9 +33,8 @@ Content-Security-Policy's `connect-src` (`https:` and `wss:`).
 
 - **Each user reaches only their own data.** The identity pool's role allows S3 only under `<identity id>/` in the data
   bucket (listing included): their files, and under `<identity id>/keys/` each protected profile's keys document and
-  the index of them. `test-auth.ps1` checks it, including that another user's prefix and keys are refused.
-- **The password never leaves the browser.** The portal's app client allows SRP and token refresh only. The admin
-  password flow is on for `test-auth.ps1`, which runs as the deployer, not as the browser.
+  the index of them.
+- **The password never leaves the browser.** The portal's app client allows SRP and token refresh only.
 - **Nothing a user's credentials can do is final.** The data bucket is versioned, so a delete leaves a marker and an
   overwrite keeps the old version for 30 days, and only an operator can remove them: the role is denied
   `s3:DeleteObjectVersion`, `s3:PutBucketVersioning` and `s3:PutLifecycleConfiguration`. So a deleted or overwritten
@@ -43,8 +42,7 @@ Content-Security-Policy's `connect-src` (`https:` and `wss:`).
   `remove.ps1` deletes every version when the environment goes.
 - **Two devices cannot both change a user's keys.** The portal writes keys documents and the index only conditionally
   (`If-None-Match: *` to create, `If-Match` with the version read to replace), so of two writes made from the same
-  version, S3 refuses the second (412) and the portal reads it again and reapplies its change. `test-auth.ps1` checks
-  both conditions.
+  version, S3 refuses the second (412) and the portal reads it again and reapplies its change.
 - **A deployment never replaces what cannot be rebuilt without asking.** `stack-policy.json` denies replacing or
   removing the user pool, identity pool, data bucket and audit log bucket (their users, data and logs), the
   CloudFront distribution (the portal's address) and the app client (every session). `deploy.ps1` refuses a change
@@ -59,8 +57,7 @@ Content-Security-Policy's `connect-src` (`https:` and `wss:`).
   environments. Management events (Cognito, CloudFormation) are in the account's own trail, if it has one.
 - **A user's events reach only their own devices.** The events API takes only the user pool's tokens (no IAM, so the
   identity pool's AWS credentials cannot reach it), and the `users` namespace's handlers refuse any channel but the
-  caller's own `/users/<sub>`. Events carry no secrets. `test-auth.ps1` checks that another user's channel is
-  refused.
+  caller's own `/users/<sub>`. Events carry no secrets.
 - **Email changes need verification.** A new email address only takes over once the user has proved they can read it,
   and the app client can read `email`, `email_verified` and `name` and write nothing but `name`.
 - **Local development origins are only allowed where asked.** `-LocalDevOrigins` defaults to the portal's local URLs

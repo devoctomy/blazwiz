@@ -130,8 +130,7 @@
         "cognito-idp:ListUsers",
         "cognito-idp:AdminGetUser",
         "cognito-idp:AdminCreateUser",
-        "cognito-idp:AdminSetUserPassword",
-        "cognito-idp:AdminInitiateAuth"
+        "cognito-idp:AdminSetUserPassword"
       ],
       "Resource": "arn:aws:cognito-idp:*:ACCOUNT_ID:userpool/*"
     },

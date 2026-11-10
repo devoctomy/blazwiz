@@ -116,8 +116,8 @@ clean-up from the project.
 - [x] Documentation and changelog as listed; review rows SR5, SR12, SR20 annotated.
 - [x] All four suites and `./templatepack/test-template.ps1 -SkipRepositoryTests`; then
       `./templatepack/test-template.ps1 -UpgradeFrom latest`, since the stack and role policy change.
-- [ ] Deploy (`deploy.ps1`), run `test-auth.ps1` and the `@aws` scenarios (`UserKeys.feature`), and move or set up
-      again the existing profiles: the maintainer's.
+- [ ] Deploy, run the deploy tests (`2026-11-10-deploy-tests-plan.md`, which replaced `test-auth.ps1`), and move or set
+      up again the existing profiles: the maintainer's.
 
 ## Decisions taken while building it
 
@@ -138,5 +138,6 @@ clean-up from the project.
   CloudFormation updates the stack, the role loses `sts:TagSession` before the tag mapping is removed (deletions come
   last), so sign-ins may fail for that minute or so. `deploy-policy.json` keeps the `cognito-identity` principal tag
   actions, which deleting the mapping needs.
-- **Version clean-up in `test-auth.ps1`** runs as the deployer: users cannot list or delete versions, so the script
-  checks the test keys document's two versions and delete marker with your credentials, then removes them.
+- **The deployed checks moved to the deploy tests** (`2026-11-10-deploy-tests-plan.md`), and `test-auth.ps1` went: it
+  was run only by hand. The deploy tests act only as the test user, so they leave the test keys document's old versions
+  to the lifecycle rule.
