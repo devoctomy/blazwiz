@@ -86,16 +86,9 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddSessionLifecycleHandler<SyncSessionHandler>();
         services.AddErrorText<SyncUiText>();
 
-        // End to end encryption: the user's keys in their own Secrets Manager secrets (<user pool sub>/keys, and
-        // <user pool sub>/keys/<id> for each protected profile, listed in <user pool sub>/keys/index), and this
-        // device's copy of the master key wrapped by a key derived from the passkey PRF.
-        services.AddSingleton<ISecretsManagerClientFactory, SecretsManagerClientFactory>();
-
-        // Without Cognito (local development) there is no Secrets Manager: the keys are kept in the browser instead.
-        services.AddScoped<SecretsManagerUserKeysStore>();
-        services.AddScoped<LocalStorageUserKeysStore>();
-        services.AddScoped<IUserKeysStore>(sp => UsesSecretsManager(sp) ? sp.GetRequiredService<SecretsManagerUserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
-        services.AddScoped<IE2eProfileIndexStore>(sp => UsesSecretsManager(sp) ? sp.GetRequiredService<SecretsManagerUserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
+        // End to end encryption: the user's keys in their prefix of the data bucket (<identity id>/keys/<id> for each
+        // protected profile, listed in <identity id>/keys/index; registered by AddBlazwizSync), and this device's copy
+        // of the master key wrapped by a key derived from the passkey PRF.
         services.AddBlazwizPrfKeyDerivation(prf => prf.AddKey(E2eKeyNames.KeyEncryptionKey).AddKey(E2eKeyNames.LabelKey));
         services.AddBlazwizE2eEncryption(argon2 => configuration.GetSection(Argon2idConfigurationSection).Bind(argon2.Parameters));
         services.AddScoped<IE2eLocalKeyStore, LocalStorageE2eLocalKeyStore>();
@@ -139,7 +132,4 @@ public static class SyncModuleServiceCollectionExtensions
         });
         return services;
     }
-
-    private static bool UsesSecretsManager(IServiceProvider services) =>
-        CognitoAuthenticationService.IsConfigured(services.GetService<AwsCognitoConfig>());
 }

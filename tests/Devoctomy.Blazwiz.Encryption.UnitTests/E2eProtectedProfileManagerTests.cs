@@ -15,7 +15,7 @@ public class E2eProtectedProfileManagerTests
 
     private static readonly E2eProfileSettings Settings = new();
 
-    // What every device of the user shares: the keys documents and the index (Secrets Manager).
+    // What every device of the user shares: the keys documents and the index (the data bucket).
     private readonly FakeUserKeysStore userKeys = new();
     private readonly FakeE2eProfileIndexStore index = new();
     private readonly FakeTimeProvider clock = new(new DateTimeOffset(2026, 11, 5, 12, 0, 0, TimeSpan.Zero));
@@ -635,6 +635,158 @@ public class E2eProtectedProfileManagerTests
         await Assert.ThrowsAsync<ArgumentNullException>(() => device.Manager.UnlockAsync(null!, Passphrase));
         Assert.Throws<ArgumentNullException>(() => device.Manager.IsUnlocked(null!));
         await Assert.ThrowsAnyAsync<ArgumentException>(() => device.Manager.CreateAsync(string.Empty, Settings));
+    }
+
+    [Fact]
+    public async Task GivenAnotherDeviceAddsAProfileAtTheSameTime_WhenCreated_ThenBothAreInTheIndex()
+    {
+        // Arrange: the other device's profile lands in the index between this device reading and writing it.
+        var other = new Device(this);
+        var theirs = await other.Manager.CreateAsync(Passphrase, Settings);
+        var withTheirs = index.Value;
+        index.Value = null;
+        index.BeforeWrite = () =>
+        {
+            index.BeforeWrite = null;
+            index.Value = withTheirs;
+        };
+
+        // Act
+        var mine = await device.Manager.CreateAsync(Passphrase, Settings);
+
+        // Assert
+        Assert.Equal(1, index.ConflictCount);
+        Assert.Equal([theirs.Id, mine.Id], (await device.Manager.GetProfilesAsync()).Select(p => p.Id));
+        Assert.Equal(index.Value, device.LocalIndex.Value);
+    }
+
+    [Fact]
+    public async Task GivenAProfileDeletedOnAnotherDeviceAtTheSameTime_WhenItsIdleTimeoutIsSet_ThenThrowsNotFoundAndTheDeletionStands()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var other = new Device(this);
+        index.BeforeWrite = () =>
+        {
+            index.BeforeWrite = null;
+            other.Manager.DeleteAsync(scope).GetAwaiter().GetResult();
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<E2eProfileNotFoundException>(() => device.Manager.SetIdleTimeoutAsync(scope, TimeSpan.FromMinutes(5)));
+        Assert.Equal(1, index.ConflictCount);
+        Assert.Empty(await device.Manager.GetProfilesAsync());
+    }
+
+    [Fact]
+    public async Task GivenTheIndexKeepsChangingElsewhere_WhenItsIdleTimeoutIsSet_ThenThrowsDocumentChangedAfterTheLastAttempt()
+    {
+        // Arrange: every write meets an index changed since it was read.
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var before = index.SetCount;
+        index.BeforeWrite = () => index.Value += " ";
+
+        // Act & Assert
+        await Assert.ThrowsAsync<E2eDocumentChangedException>(() => device.Manager.SetIdleTimeoutAsync(scope, TimeSpan.FromMinutes(5)));
+        Assert.Equal(E2eProtectedProfileManager.MaxWriteAttempts, index.SetCount - before);
+        Assert.Equal(E2eProtectedProfileManager.MaxWriteAttempts, index.ConflictCount);
+        Assert.Null(Assert.Single(await device.Manager.GetProfilesAsync()).IdleTimeoutSeconds);
+    }
+
+    [Fact]
+    public async Task GivenTheKeysDocumentRewrittenElsewhereWithTheSamePassphrase_WhenThePassphraseIsChanged_ThenTheChangeIsMadeToTheNewVersion()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        userKeys.BeforeWrite = s =>
+        {
+            userKeys.BeforeWrite = null;
+            userKeys.Values[s.Id] += " ";
+        };
+
+        // Act
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+
+        // Assert
+        Assert.Equal(1, userKeys.ConflictCount);
+        var other = new Device(this);
+        await Assert.ThrowsAsync<E2eWrongPassphraseException>(() => other.Manager.UnlockAsync(scope, Passphrase));
+        await other.Manager.UnlockAsync(scope, "battery staple");
+        Assert.True(other.Manager.IsUnlocked(scope));
+    }
+
+    [Fact]
+    public async Task GivenThePassphraseChangedOnAnotherDeviceAtTheSameTime_WhenChanged_ThenThrowsWrongPassphraseAndTheirsStands()
+    {
+        // Arrange: the other device's change lands between this device reading and writing the keys document.
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var original = userKeys.Values[scope.Id];
+        var other = new Device(this);
+        await other.Manager.ChangePassphraseAsync(scope, Passphrase, "their passphrase", Settings);
+        var theirs = userKeys.Values[scope.Id];
+        userKeys.Values[scope.Id] = original;
+        userKeys.BeforeWrite = s =>
+        {
+            userKeys.BeforeWrite = null;
+            userKeys.Values[s.Id] = theirs;
+        };
+
+        // Act & Assert
+        await Assert.ThrowsAsync<E2eWrongPassphraseException>(() => device.Manager.ChangePassphraseAsync(scope, Passphrase, "my passphrase", Settings));
+        Assert.Equal(theirs, userKeys.Values[scope.Id]);
+        device.Manager.Lock(scope);
+        await device.Manager.UnlockAsync(scope, "their passphrase");
+        Assert.True(device.Manager.IsUnlocked(scope));
+    }
+
+    [Fact]
+    public async Task GivenTheKeysDocumentKeepsChangingElsewhere_WhenThePassphraseIsChanged_ThenThrowsDocumentChangedAfterTheLastAttempt()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        userKeys.BeforeWrite = s => userKeys.Values[s.Id] += " ";
+
+        // Act & Assert
+        await Assert.ThrowsAsync<E2eDocumentChangedException>(() => device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings));
+        Assert.Equal(E2eProtectedProfileManager.MaxWriteAttempts, userKeys.ConflictCount);
+    }
+
+    [Fact]
+    public async Task GivenAProfile_WhenCreatedUnlockedOrItsPassphraseChanged_ThenThisDevicesCopyKeepsTheStoresVersion()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var created = device.LocalKeys.Get(scope)!.CachedDocumentETag;
+        var other = new Device(this);
+
+        // Act
+        await other.Manager.UnlockAsync(scope, Passphrase);
+        var unlocked = other.LocalKeys.Get(scope)!.CachedDocumentETag;
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+
+        // Assert
+        Assert.NotNull(created);
+        Assert.Equal(created, unlocked);
+        Assert.Equal(FakeUserKeysStore.ETagOf(userKeys.Values[scope.Id]), device.LocalKeys.Get(scope)!.CachedDocumentETag);
+        Assert.NotEqual(created, device.LocalKeys.Get(scope)!.CachedDocumentETag);
+        Assert.Equal(created, other.LocalKeys.Get(scope)!.CachedDocumentETag);
+    }
+
+    [Fact]
+    public async Task GivenOffline_WhenUnlockedFromThisDevicesCopy_ThenItsVersionIsKept()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var etag = device.LocalKeys.Get(scope)!.CachedDocumentETag;
+        device.Manager.Lock(scope);
+        userKeys.Failure = new HttpRequestException("offline");
+
+        // Act
+        await device.Manager.UnlockAsync(scope, Passphrase);
+
+        // Assert
+        Assert.True(device.Manager.IsUnlocked(scope));
+        Assert.Equal(etag, device.LocalKeys.Get(scope)!.CachedDocumentETag);
     }
 
     /// <summary>

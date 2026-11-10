@@ -1,9 +1,9 @@
 ---
 title: Move the keys documents and profile index from Secrets Manager to S3, with conditional writes
-type: backlog
-status: decided, not started
+type: active
+status: in progress
 added: 2026-11-05
-updated: 2026-11-09
+updated: 2026-11-10
 urgency: high
 before-1.0: yes
 reason: two devices writing the keys document or the index at once lose one write; Secrets Manager has no conditional write, S3 does, and once keys rotate a lost write can orphan files under a key nobody holds
@@ -107,19 +107,36 @@ clean-up from the project.
 
 ## Steps
 
-- [ ] Contract changes in `Encryption` and the development store, with tests.
-- [ ] `S3UserKeysStore` and the reserved `keys/` prefix in `Sync`, with tests.
-- [ ] The retry loop and cached ETag in `E2eProtectedProfileManager`, with tests.
-- [ ] Remove the Secrets Manager store, factory and package from `UI.Sync`.
-- [ ] Stack, `remove.ps1`, `test-auth.ps1`, `deploy-policy.json`, CSP; parse-check here, deploy and run is the
+- [x] Contract changes in `Encryption` and the development store, with tests.
+- [x] `S3UserKeysStore` and the reserved `keys/` prefix in `Sync`, with tests.
+- [x] The retry loop and cached ETag in `E2eProtectedProfileManager`, with tests.
+- [x] Remove the Secrets Manager store, factory and package from `UI.Sync`.
+- [x] Stack, `remove.ps1`, `test-auth.ps1`, `deploy-policy.json`, CSP; parse-check here, deploy and run is the
       maintainer's.
-- [ ] Documentation and changelog as listed; review rows SR5, SR12, SR20 annotated.
-- [ ] All four suites and `./templatepack/test-template.ps1 -SkipRepositoryTests`; then
+- [x] Documentation and changelog as listed; review rows SR5, SR12, SR20 annotated.
+- [x] All four suites and `./templatepack/test-template.ps1 -SkipRepositoryTests`; then
       `./templatepack/test-template.ps1 -UpgradeFrom latest`, since the stack and role policy change.
+- [ ] Deploy (`deploy.ps1`), run `test-auth.ps1` and the `@aws` scenarios (`UserKeys.feature`), and move or set up
+      again the existing profiles: the maintainer's.
 
-## Open questions
+## Decisions taken while building it
 
-- Keep the keys documents' local cache as it is (whole document in localStorage with its ETag), or drop the cache now
-  that a read is a cheap S3 `GetObject`? Offline unlock needs the cache, so probably keep it.
-- `SyncPreconditionFailedException` lives in `Sync`; `Encryption` cannot reference it. Move it to `Core` as a general
-  precondition failure, or give `Encryption` its own.
+- **Local cache kept**, with its ETag (`E2eLocalKeys.CachedDocumentETag`): offline unlock needs it.
+- **`Encryption` has its own exception**, `E2eDocumentChangedException` (code `E2e.DocumentChanged`, with text in
+  `SyncUiText`), rather than moving `SyncPreconditionFailedException` to `Core`: the stores' callers are in
+  `Encryption`, and the sync engine's exception stays as it is.
+- **`StoredDocument` is a class**, not a positional record: StyleCop (SA1313) refuses the record's parameter names.
+- **The index's write takes `ifMatch: null` to mean "create only"** (`If-None-Match: *`), so a first index written by
+  two devices at once is guarded too. A keys document's `SetAsync` always takes an ETag: it is created only with
+  `TryCreateAsync`, which now returns the new ETag (null when keys exist).
+- **The manager's loop** reads the index from the store (never the device's copy) before each change, and gives up
+  after `MaxWriteAttempts` (3). A passphrase change is retried from the new version too, so when another device changed
+  the passphrase in between, the current passphrase no longer unwraps it and the user is told it is wrong.
+- **Which store is used** depends on whether a data bucket is configured (`IS3SyncTargetProvider.IsConfigured`), no
+  longer on whether a user pool is: without a bucket there is nothing to sync the keys with.
+- **The `userSub` principal tag and `sts:TagSession` went too.** They existed only for the Secrets Manager policy. While
+  CloudFormation updates the stack, the role loses `sts:TagSession` before the tag mapping is removed (deletions come
+  last), so sign-ins may fail for that minute or so. `deploy-policy.json` keeps the `cognito-identity` principal tag
+  actions, which deleting the mapping needs.
+- **Version clean-up in `test-auth.ps1`** runs as the deployer: users cannot list or delete versions, so the script
+  checks the test keys document's two versions and delete marker with your credentials, then removes them.

@@ -17,4 +17,11 @@ public class E2eLocalKeys
     /// it is already wrapped, so it is kept as it is.
     /// </summary>
     public string? CachedDocument { get; set; }
+
+    /// <summary>
+    /// Gets or sets the store's version (<see cref="StoredDocument.ETag"/>) of <see cref="CachedDocument"/>, so this
+    /// device can tell whether the keys document has changed since it last read it. Null when the copy was not read
+    /// from the store with a version.
+    /// </summary>
+    public string? CachedDocumentETag { get; set; }
 }

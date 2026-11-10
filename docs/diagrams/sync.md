@@ -25,7 +25,7 @@ Main classes (all in `src/Devoctomy.Blazwiz.Sync/` unless noted):
 - `SwitchableSyncFileStore` and `SyncStorageResolver` (`Storage/`): the storage chosen on this device (IndexedDB, OPFS or a folder), and `SyncStorageMigrationService` to move between them
 - `S3SyncRemoteStore` (`S3/`), with `CognitoS3TargetProvider` (`src/Devoctomy.Blazwiz.UI.Sync/Services/`) for the client
 - `WebLockSyncLockService`: one pass per profile across all tabs
-- `SecretsManagerUserKeysStore` (`src/Devoctomy.Blazwiz.UI.Sync/Services/`): the keys documents in Secrets Manager
+- `S3UserKeysStore` (`S3/`): the keys documents and the index, in the data bucket under `keys/`, written conditionally (`LocalStorageUserKeysStore`, in `Encryption/`, without a data bucket)
 
 The wiring is `AddBlazwizSyncModule` (`src/Devoctomy.Blazwiz.UI.Sync/Extensions/SyncModuleServiceCollectionExtensions.cs`),
 which adds the module's UI and Cognito parts and calls `AddBlazwizSync` (`src/Devoctomy.Blazwiz.Sync/Extensions/SyncServiceCollectionExtensions.cs`).
@@ -49,8 +49,8 @@ The template's `Program.cs` passes it the settings in `sync.json` and the `SyncP
 | Sync status (state, last error, pending count, last synced), worked out from each profile's last pass | Memory | `SyncService.status`, `SyncService.outcomes` | Shown in the status pill |
 | AWS credentials and S3 client | Memory | see [authentication.md](authentication.md) | |
 | A profile's master and file keys | Memory | `IDerivedKeyStore` `e2e:{profile id}:master`, `e2e:{profile id}:file:{key id}`, through its `E2eKeyRing` (`E2eKeyRings`, one ring per profile) | Only while the profile is unlocked |
-| Each profile's keys document | Secrets Manager (localStorage `myapp_e2e_browser_keys_{profile id}_{user}` without Cognito) | `{sub}/keys/{profile id}` | Master key wrapped by the passphrase (Argon2id), file keys wrapped by the master key |
-| Index of the user's profiles (ids, idle timeouts) | Secrets Manager (localStorage `myapp_e2e_browser_index_{user}` without Cognito) | `{sub}/keys/index` | This device keeps a copy in `myapp_e2e_index_{user}` |
+| Each profile's keys document | S3 data bucket (localStorage `myapp_e2e_browser_keys_{profile id}_{user}` without a data bucket) | `{identityId}/keys/{profile id}` | Master key wrapped by the passphrase (Argon2id), file keys wrapped by the master key |
+| Index of the user's profiles (ids, idle timeouts) | S3 data bucket (localStorage `myapp_e2e_browser_index_{user}` without a data bucket) | `{identityId}/keys/index` | This device keeps a copy in `myapp_e2e_index_{user}` |
 | This device's copy of each keys document, and the master key wrapped by the passkey where allowed | localStorage | `myapp_e2e_keys_{profile id}_{user}` | For unlocking offline, and with the passkey ([prf-remember-me.md](prf-remember-me.md), diagram 4) |
 | Labels of the profiles the user created | localStorage | `myapp_e2e_labels_{user}` | Encrypted with the passkey's `e2e-labels` key |
 | Remote copy | S3 | `{identityId}/files/**` | `x-amz-meta-modified-at` holds the edit time |
@@ -92,7 +92,7 @@ sequenceDiagram
         participant IDB as IndexedDB
     end
     box rgb(235,250,235) AWS
-        participant SM as Secrets Manager
+        participant KS as S3 data bucket (keys/)
     end
 
     Note over H: OnShellLoadingAsync
@@ -107,7 +107,7 @@ sequenceDiagram
     H->>Prof: LoadAsync()
     Prof->>Prof: Start the idle lock and the lock channel (myapp_e2e-lock)
     Prof->>Mgr: GetProfilesAsync()
-    Mgr->>SM: GetSecretValue "{sub}/keys/index"
+    Mgr->>KS: GetObject "{identityId}/keys/index"
     alt Reached
         Mgr->>LS: SET myapp_e2e_index_{user} (this device's copy)
     else Offline
@@ -149,44 +149,44 @@ sequenceDiagram
         participant LS as localStorage
     end
     box rgb(235,250,235) AWS
-        participant SM as Secrets Manager
+        participant KS as S3 data bucket (keys/)
     end
 
     rect rgb(245,245,245)
-    Note over User,SM: Setting the passphrase (or creating a profile)
+    Note over User,KS: Setting the passphrase (or creating a profile)
     User->>UI: Passphrase (at least 12 characters by default)
     UI->>Prof: SetUpAsync(scope, passphrase) / CreateAsync(passphrase)
     Prof->>Mgr: CreateKeysAsync / CreateAsync (a new GUID for a new profile)
     Mgr->>Doc: CreateAsync(passphrase, Argon2id costs)
     Doc->>Doc: New master key and file key, the master key wrapped by Argon2id(passphrase)
-    Mgr->>SM: CreateSecret "{sub}/keys/{profile id}" (never replaces existing keys)
-    Mgr->>SM: PutSecretValue "{sub}/keys/index" (adds the profile)
+    Mgr->>KS: PutObject "{identityId}/keys/{profile id}", If-None-Match: * (never replaces existing keys)
+    Mgr->>KS: GetObject, then PutObject "{identityId}/keys/index" with If-Match (adds the profile, and on 412 reads again and retries)
     Mgr->>LS: SET myapp_e2e_keys_{profile id}_{user} (copy of the document)
     Mgr->>Ring: Load(master key, file key)
     Note over Mgr: Unlocked. A created profile is added to the registry and syncs straight away
     end
 
     rect rgb(245,245,245)
-    Note over User,SM: Unlocking with the passphrase
+    Note over User,KS: Unlocking with the passphrase
     User->>UI: Passphrase, Unlock
     UI->>UI: Sync the profile first (SyncProfileAsync, skipped offline)
     UI->>Mgr: UnlockAsync(scope, passphrase)
     alt Online
-        Mgr->>SM: GetSecretValue "{sub}/keys/{profile id}"
+        Mgr->>KS: GetObject "{identityId}/keys/{profile id}" (with its ETag)
     else Offline (HttpRequestException)
         Mgr->>LS: GET myapp_e2e_keys_{profile id}_{user} (this device's copy)
     end
     Mgr->>Doc: UnwrapMasterKeyAsync (Argon2id, wrong passphrase fails the AES-GCM check)
     Mgr->>Ring: LoadFileKeys (each file key unwrapped by the master key)
     Mgr->>Mgr: Zero the master key copy
-    opt The document was fetched from Secrets Manager
-        Mgr->>LS: SET myapp_e2e_keys_{profile id}_{user} (new copy)
+    opt The document was fetched from the bucket
+        Mgr->>LS: SET myapp_e2e_keys_{profile id}_{user} (new copy, with its ETag)
     end
     Note over Mgr: LockStateChanged, pages reload
     end
 
     rect rgb(245,245,245)
-    Note over User,SM: Locking: by the user, after the idle timeout, from another tab, or at sign out
+    Note over User,KS: Locking: by the user, after the idle timeout, from another tab, or at sign out
     alt User locks it in Settings, or all of them with the lock indicator
         UI->>Mgr: Lock(scope) / LockAll()
     else No read or write for IdleTimeout (15 min by default)

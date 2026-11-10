@@ -293,6 +293,13 @@ public class SyncBuilder(SyncOptions options)
                 nameof(configure));
         }
 
+        if (profile.Overlaps(SyncDefaults.KeysFolder + "/"))
+        {
+            throw new ArgumentException(
+                $"The remote pattern of sync profile '{name}' ('{profile.RemotePattern}') could match the user's keys, under '{SyncDefaults.KeysFolder}/'.",
+                nameof(configure));
+        }
+
         Options.Profiles.Add(profile);
         return this;
     }

@@ -11,14 +11,16 @@ Checks, and reports PASS / FAIL for each:
   - The ID token can be exchanged for temporary AWS credentials via the identity pool.
   - Those credentials can read / write / list the user's own prefix in the data bucket, and are denied writing,
     reading and listing anyone else's prefix, and listing the whole bucket.
-  - They can create (tagged, as the portal does), read and delete a profile's keys secret (<sub>/keys/<id>), read the
-    index (<sub>/keys/index) if there is one, and are denied another user's secrets.
+  - They can create a profile's keys document (<identity id>/keys/<id>) only if there is none, replace it only at the
+    version read (If-Match), delete it (which only adds a delete marker) but not delete any version of it, read the
+    index (<identity id>/keys/index) if there is one, and are denied another user's keys. Then, as you, the test
+    document's two versions and delete marker are checked and removed.
   - When the stack has the user events API: the user can publish to their own channel (/users/<sub>) and is refused
     another user's.
   - Last, signing out everywhere (Cognito GlobalSignOut) revokes the session: the access token is refused afterwards.
     This signs the test user out on every device; -SkipSignOutEverywhere leaves it out.
 
-It creates a small test object under the user's own prefix and a test profile secret, and deletes both again. The
+It creates a small test object under the user's own prefix and a test keys document, and deletes both again. The
 user's real index is only read, never written. The event it publishes is a test event, which the portal ignores.
 Subscriptions are not tested from here: the UI tests cover the browser side against the local channel.
 Exits with code 1 if any check fails.
@@ -70,7 +72,21 @@ function Test-Check([string]$Name, [scriptblock]$Check) {
     }
 }
 
+function Write-ConditionalObject([string]$Key, [hashtable]$Condition) {
+    # Writes the test file to a key on a condition (IfMatch or IfNoneMatch), as the portal writes keys documents, with
+    # the signed-in user's credentials. The condition is passed in a file: ETags are quoted, and quotes do not survive
+    # every shell's command line. Returns the response, or null with the error in $script:LastAwsError.
+    $conditionFile = New-TempJsonFile $Condition
+    try {
+        return Invoke-Aws -NoProfile -Json -AllowFailure -Arguments @('s3api', 'put-object', '--bucket', $bucket, '--key', $Key, '--body', $localFile, '--cli-input-json', "file://$conditionFile")
+    }
+    finally {
+        Remove-TempFile $conditionFile
+    }
+}
+
 $stackName = Get-StackName $AppName $Environment
+$keysKey = $null
 
 Write-Step "Checking AWS access"
 Initialize-AwsContext -Region $Region -AwsProfile $AwsProfile | Out-Null
@@ -244,57 +260,85 @@ if ($credentials) {
             Invoke-Aws -NoProfile -Arguments @('s3', 'rm', "s3://$bucket/$ownKey", '--only-show-errors') | Out-Null
         } | Out-Null
 
-        Write-Step "Keys secrets as the signed-in user"
+        Write-Step "Keys documents as the signed-in user"
 
-        $sub = Get-TokenSubject $idToken
-        $profileSecret = "$sub/keys/$([Guid]::NewGuid().ToString('D'))"
-        $indexSecret = "$sub/keys/index"
-        $secretText = "$AppName test-auth"
+        # The portal keeps each protected profile's keys document at <identity id>/keys/<profile id> and the index of
+        # them at <identity id>/keys/index, and writes them only conditionally. A made-up profile id is used here, so
+        # the user's real keys and index are only read.
+        $script:keysKey = "$identityId/keys/$([Guid]::NewGuid().ToString('D'))"
+        $indexKey = "$identityId/keys/index"
 
-        Test-Check 'Can create a profile secret, tagged with the app' {
-            # Tagged as the portal tags them (secretsmanager:TagResource), so remove.ps1 can find them.
-            Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'create-secret', '--name', $profileSecret, '--secret-string', $secretText, '--tags', "Key=app,Value=$AppName") | Out-Null
-            $profileSecret
+        Test-Check 'Can create a keys document only if there is none (If-None-Match: *)' {
+            $created = Write-ConditionalObject $keysKey @{ IfNoneMatch = '*' }
+            if ($null -eq $created) { throw $script:LastAwsError }
+            $script:keysETag = $created.ETag
+            $script:keysFirstVersion = $created.VersionId
+            $keysKey
         } | Out-Null
 
-        Test-Check 'Can read a profile secret' {
-            $secret = Invoke-Aws -NoProfile -Json -Arguments @('secretsmanager', 'get-secret-value', '--secret-id', $profileSecret)
-            if ($secret.SecretString -ne $secretText) { throw 'Unexpected content' }
+        Test-Check 'Cannot create it again (412)' {
+            $result = Write-ConditionalObject $keysKey @{ IfNoneMatch = '*' }
+            if ($null -ne $result -or $script:LastAwsError -notmatch 'PreconditionFailed|412') {
+                throw 'Expected PreconditionFailed creating an existing keys document'
+            }
+            'PreconditionFailed, as expected'
         } | Out-Null
 
-        Test-Check 'Can delete a profile secret with a recovery window, but not at once (clean up)' {
-            # The role refuses forced deletion, so a deleted profile's keys can be restored for a week.
-            $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $profileSecret, '--force-delete-without-recovery')
-            if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied') {
-                throw 'Expected AccessDenied deleting without a recovery window'
-            }
-            Invoke-Aws -NoProfile -Arguments @('secretsmanager', 'delete-secret', '--secret-id', $profileSecret, '--recovery-window-in-days', '7') | Out-Null
-            'Scheduled for deletion in 7 days, as the portal does'
+        Test-Check 'Can replace it at the version read (If-Match)' {
+            $replaced = Write-ConditionalObject $keysKey @{ IfMatch = $keysETag }
+            if ($null -eq $replaced) { throw $script:LastAwsError }
+            if ($replaced.ETag -eq $keysETag) { throw 'Expected a new ETag' }
         } | Out-Null
 
-        # The index lists the user's real profiles, so it is only read: writing is already shown by the profile secret.
-        Test-Check 'Can read the index secret' {
-            $index = Invoke-Aws -NoProfile -Json -AllowFailure -Arguments @('secretsmanager', 'get-secret-value', '--secret-id', $indexSecret)
-            if ($null -ne $index) {
-                'Existing index read'
+        Test-Check 'Cannot replace it at an older version (412)' {
+            $result = Write-ConditionalObject $keysKey @{ IfMatch = $keysETag }
+            if ($null -ne $result -or $script:LastAwsError -notmatch 'PreconditionFailed|412') {
+                throw 'Expected PreconditionFailed replacing with a stale ETag'
             }
-            elseif ($script:LastAwsError -match 'ResourceNotFoundException') {
-                'No index yet (the user has no protected profiles); reading it is allowed'
-            }
-            else {
-                throw $script:LastAwsError
-            }
+            'PreconditionFailed, as expected'
         } | Out-Null
 
-        Test-Check "Is denied another user's secrets" {
-            foreach ($otherSecret in @("someone-else/keys/$([Guid]::NewGuid().ToString('D'))", 'someone-else/keys/index')) {
-                $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('secretsmanager', 'create-secret', '--name', $otherSecret, '--secret-string', $secretText)
-                if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied') {
-                    throw "Expected AccessDenied creating $otherSecret"
+        Test-Check 'Can delete it, which only adds a delete marker' {
+            $deleted = Invoke-Aws -NoProfile -Json -Arguments @('s3api', 'delete-object', '--bucket', $bucket, '--key', $keysKey)
+            if (-not (Get-OptionalProperty $deleted 'DeleteMarker')) { throw 'Expected a delete marker' }
+        } | Out-Null
+
+        Test-Check 'Cannot delete a version of it' {
+            $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('s3api', 'delete-object', '--bucket', $bucket, '--key', $keysKey, '--version-id', $keysFirstVersion)
+            if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied|Forbidden|403') {
+                throw 'Expected AccessDenied deleting a version'
+            }
+            'AccessDenied, as expected'
+        } | Out-Null
+
+        Test-Check 'Can read the index' {
+            $indexFile = Join-Path ([IO.Path]::GetTempPath()) "$AppName-test-auth-index-$([Guid]::NewGuid().ToString('N')).json"
+            try {
+                $index = Invoke-Aws -NoProfile -Json -AllowFailure -Arguments @('s3api', 'get-object', '--bucket', $bucket, '--key', $indexKey, $indexFile)
+                if ($null -ne $index) {
+                    'Existing index read'
                 }
-                $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('secretsmanager', 'get-secret-value', '--secret-id', $otherSecret)
-                if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied') {
-                    throw "Expected AccessDenied reading $otherSecret"
+                elseif ($script:LastAwsError -match 'NoSuchKey|404') {
+                    'No index yet (the user has no protected profiles); reading it is allowed'
+                }
+                else {
+                    throw $script:LastAwsError
+                }
+            }
+            finally {
+                Remove-TempFile $indexFile
+            }
+        } | Out-Null
+
+        Test-Check "Is denied another user's keys" {
+            foreach ($otherKeys in @("someone-else/keys/$([Guid]::NewGuid().ToString('D'))", 'someone-else/keys/index')) {
+                $result = Write-ConditionalObject $otherKeys @{ IfNoneMatch = '*' }
+                if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied|Forbidden|403') {
+                    throw "Expected AccessDenied creating $otherKeys"
+                }
+                $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('s3api', 'get-object', '--bucket', $bucket, '--key', $otherKeys, (Join-Path ([IO.Path]::GetTempPath()) "$AppName-test-auth-other-$([Guid]::NewGuid().ToString('N')).json"))
+                if ($null -ne $result -or $script:LastAwsError -notmatch 'AccessDenied|Forbidden|403') {
+                    throw "Expected AccessDenied reading $otherKeys"
                 }
             }
             'AccessDenied, as expected'
@@ -305,6 +349,23 @@ if ($credentials) {
             [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process')
         }
         Remove-Item -Force $localFile -ErrorAction SilentlyContinue
+    }
+
+    if ($keysKey) {
+        Write-Step "The test keys document's versions, as you"
+
+        Test-Check 'Its versions and delete marker are kept (then removed, to clean up)' {
+            $versions = Invoke-Aws -Json -Arguments @('s3api', 'list-object-versions', '--bucket', $bucket, '--prefix', $keysKey)
+            $kept = @(Get-OptionalProperty $versions 'Versions' | Where-Object { $_ -and $_.Key -eq $keysKey })
+            $markers = @(Get-OptionalProperty $versions 'DeleteMarkers' | Where-Object { $_ -and $_.Key -eq $keysKey })
+            foreach ($version in $kept + $markers) {
+                Invoke-Aws -AllowFailure -Arguments @('s3api', 'delete-object', '--bucket', $bucket, '--key', $keysKey, '--version-id', $version.VersionId) | Out-Null
+            }
+            if ($kept.Count -ne 2 -or $markers.Count -ne 1) {
+                throw "Expected 2 versions and 1 delete marker, found $($kept.Count) and $($markers.Count)"
+            }
+            '2 versions and a delete marker'
+        } | Out-Null
     }
 }
 

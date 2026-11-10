@@ -2,7 +2,7 @@ namespace MyApp.Portal.UITests;
 
 /// <summary>
 /// The UI tests use the placeholder sign-in with no AWS, so the keys are kept in the browser and there is no passkey
-/// PRF. Keeping them in Secrets Manager, and unlocking with the passkey, are tested on a deployed portal.
+/// PRF. Keeping them in the data bucket, and unlocking with the passkey, are tested on a deployed portal.
 /// </summary>
 [TestClass]
 public class E2eEncryptionTests : TestBase

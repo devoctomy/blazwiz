@@ -139,6 +139,27 @@ public class SyncBuilderTests
         Assert.Contains("profiles users create", ex.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("keys/**/*")]
+    [InlineData("keys/*")]
+    [InlineData("keys/index")]
+    public void GivenARemotePatternOverTheUsersKeys_WhenAddProfile_ThenThrows(string pattern)
+    {
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => new SyncBuilder(options).AddProfile("one", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote(pattern)));
+        Assert.Contains("the user's keys", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GivenAFolderNamedLikeTheKeysFolder_WhenAddProfile_ThenAdded()
+    {
+        // Act
+        new SyncBuilder(options).AddProfile("keyring", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote("keyring/**/*"));
+
+        // Assert
+        Assert.Equal("keyring", Assert.Single(options.Profiles).Name);
+    }
+
     [Fact]
     public void GivenSeparateFolders_WhenAddProfile_ThenBothAdded()
     {

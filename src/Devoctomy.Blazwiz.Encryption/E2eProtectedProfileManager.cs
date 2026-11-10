@@ -36,6 +36,12 @@ public class E2eProtectedProfileManager(
     IKeyWrapService keyWrapService)
     : IE2eProtectedProfileManager
 {
+    /// <summary>
+    /// How many times a change to a keys document or to the index is tried when another device or tab keeps writing it
+    /// at the same time, before <see cref="E2eDocumentChangedException"/> is let through.
+    /// </summary>
+    public const int MaxWriteAttempts = 3;
+
     private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions();
 
     private readonly IUserKeysStore userKeysStore = userKeysStore ?? throw new ArgumentNullException(nameof(userKeysStore));
@@ -89,19 +95,27 @@ public class E2eProtectedProfileManager(
         var json = keysDocuments.Serialize(keys.Document);
 
         progress?.Report(new E2eProgress(E2eStep.SaveKeys, false));
-        if (!await userKeysStore.TryCreateAsync(scope, json, ct))
-        {
-            // Never replace a profile's keys: its files would be lost.
-            throw new InvalidOperationException($"Protected profile {scope} already has keys.");
-        }
 
-        var index = await ReadIndexAsync(ct);
-        index.Profiles.Add(new E2eProfileIndexEntry { Id = scope.Id, Created = timeProvider.GetUtcNow().UtcDateTime });
-        await WriteIndexAsync(index, ct);
+        // Never replace a profile's keys: its files would be lost.
+        var etag = await userKeysStore.TryCreateAsync(scope, json, ct)
+            ?? throw new InvalidOperationException($"Protected profile {scope} already has keys.");
+
+        await UpdateIndexAsync(
+            index =>
+            {
+                if (index.Profiles.Any(p => p.Id == scope.Id))
+                {
+                    return false;
+                }
+
+                index.Profiles.Add(new E2eProfileIndexEntry { Id = scope.Id, Created = timeProvider.GetUtcNow().UtcDateTime });
+                return true;
+            },
+            ct);
         progress?.Report(new E2eProgress(E2eStep.SaveKeys, true));
 
         progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, false));
-        await localKeyStore.SaveAsync(scope, new E2eLocalKeys { CachedDocument = json });
+        await localKeyStore.SaveAsync(scope, new E2eLocalKeys { CachedDocument = json, CachedDocumentETag = etag });
         keyRings.Get(scope).Load(keys.MasterKey, new Dictionary<string, byte[]>(StringComparer.Ordinal) { [keys.FileKeyId] = keys.FileKey }, keys.FileKeyId);
         progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, true));
         SetUnlocked(scope, true);
@@ -114,16 +128,16 @@ public class E2eProtectedProfileManager(
         ArgumentException.ThrowIfNullOrEmpty(passphrase);
 
         string? json;
-        var reached = true;
+        StoredDocument? stored = null;
         try
         {
-            json = await userKeysStore.GetAsync(scope, ct);
+            stored = await userKeysStore.GetAsync(scope, ct);
+            json = stored?.Value;
         }
         catch (HttpRequestException)
         {
             // Offline: this device's copy, if it has one.
             json = (await localKeyStore.GetAsync(scope))?.CachedDocument;
-            reached = false;
         }
 
         if (json == null)
@@ -142,9 +156,9 @@ public class E2eProtectedProfileManager(
             CryptographicOperations.ZeroMemory(masterKey);
         }
 
-        if (reached)
+        if (stored != null)
         {
-            await SaveCachedDocumentAsync(scope, json);
+            await SaveCachedDocumentAsync(scope, stored);
         }
 
         SetUnlocked(scope, true);
@@ -294,22 +308,34 @@ public class E2eProtectedProfileManager(
         ArgumentException.ThrowIfNullOrEmpty(currentPassphrase);
         CheckPassphrase(newPassphrase, settings);
 
-        var json = await userKeysStore.GetAsync(scope, ct)
-            ?? throw new E2eProfileNotFoundException(scope.Id);
-        var document = keysDocuments.Parse(json);
-        var masterKey = await keysDocuments.UnwrapMasterKeyAsync(document, currentPassphrase, ct);
-        try
+        for (var attempt = 1; ; attempt++)
         {
-            await keysDocuments.RewrapMasterKeyAsync(document, masterKey, newPassphrase, settings.Argon2, ct);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(masterKey);
-        }
+            var stored = await userKeysStore.GetAsync(scope, ct)
+                ?? throw new E2eProfileNotFoundException(scope.Id);
+            var document = keysDocuments.Parse(stored.Value);
+            var masterKey = await keysDocuments.UnwrapMasterKeyAsync(document, currentPassphrase, ct);
+            try
+            {
+                await keysDocuments.RewrapMasterKeyAsync(document, masterKey, newPassphrase, settings.Argon2, ct);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(masterKey);
+            }
 
-        var updated = keysDocuments.Serialize(document);
-        await userKeysStore.SetAsync(scope, updated, ct);
-        await SaveCachedDocumentAsync(scope, updated);
+            var updated = keysDocuments.Serialize(document);
+            try
+            {
+                var etag = await userKeysStore.SetAsync(scope, updated, stored.ETag, ct);
+                await SaveCachedDocumentAsync(scope, new StoredDocument(updated, etag));
+                return;
+            }
+            catch (E2eDocumentChangedException) when (attempt < MaxWriteAttempts)
+            {
+                // Changed on another device since it was read (its passphrase too, perhaps, in which case the current
+                // passphrase no longer unwraps it): start again from the new version.
+            }
+        }
     }
 
     /// <inheritdoc/>
@@ -320,11 +346,7 @@ public class E2eProtectedProfileManager(
         Lock(scope);
         await userKeysStore.DeleteAsync(scope, ct);
         await localKeyStore.DeleteAsync(scope);
-        var index = await ReadIndexAsync(ct);
-        if (index.Profiles.RemoveAll(p => p.Id == scope.Id) > 0)
-        {
-            await WriteIndexAsync(index, ct);
-        }
+        await UpdateIndexAsync(index => index.Profiles.RemoveAll(p => p.Id == scope.Id) > 0, ct);
     }
 
     /// <inheritdoc/>
@@ -336,11 +358,16 @@ public class E2eProtectedProfileManager(
             throw new ArgumentOutOfRangeException(nameof(idleTimeout), "An idle timeout must be at least a second.");
         }
 
-        var index = await ReadIndexAsync(ct);
-        var entry = index.Profiles.FirstOrDefault(p => p.Id == scope.Id)
-            ?? throw new E2eProfileNotFoundException(scope.Id);
-        entry.IdleTimeoutSeconds = idleTimeout is { } after ? (int)Math.Min(int.MaxValue, Math.Round(after.TotalSeconds)) : 0;
-        await WriteIndexAsync(index, ct);
+        var seconds = idleTimeout is { } after ? (int)Math.Min(int.MaxValue, Math.Round(after.TotalSeconds)) : 0;
+        await UpdateIndexAsync(
+            index =>
+            {
+                var entry = index.Profiles.FirstOrDefault(p => p.Id == scope.Id)
+                    ?? throw new E2eProfileNotFoundException(scope.Id);
+                entry.IdleTimeoutSeconds = seconds;
+                return true;
+            },
+            ct);
     }
 
     /// <inheritdoc/>
@@ -370,13 +397,18 @@ public class E2eProtectedProfileManager(
             return true;
         }
 
-        var index = await ReadIndexAsync(ct);
-        if (!index.Profiles.Any(p => p.Id == scope.Id))
-        {
-            index.Profiles.Add(new E2eProfileIndexEntry { Id = scope.Id, Created = timeProvider.GetUtcNow().UtcDateTime });
-            await WriteIndexAsync(index, ct);
-        }
+        await UpdateIndexAsync(
+            index =>
+            {
+                if (index.Profiles.Any(p => p.Id == scope.Id))
+                {
+                    return false;
+                }
 
+                index.Profiles.Add(new E2eProfileIndexEntry { Id = scope.Id, Created = timeProvider.GetUtcNow().UtcDateTime });
+                return true;
+            },
+            ct);
         return true;
     }
 
@@ -430,10 +462,11 @@ public class E2eProtectedProfileManager(
         return index;
     }
 
-    private async Task SaveCachedDocumentAsync(E2eKeyScope scope, string json)
+    private async Task SaveCachedDocumentAsync(E2eKeyScope scope, StoredDocument stored)
     {
         var local = await localKeyStore.GetAsync(scope) ?? new E2eLocalKeys();
-        local.CachedDocument = json;
+        local.CachedDocument = stored.Value;
+        local.CachedDocumentETag = stored.ETag;
         await localKeyStore.SaveAsync(scope, local);
     }
 
@@ -442,7 +475,7 @@ public class E2eProtectedProfileManager(
         string? json;
         try
         {
-            json = await indexStore.GetIndexAsync(ct);
+            json = (await indexStore.GetIndexAsync(ct))?.Value;
             if (json != null)
             {
                 await localIndexStore.SaveAsync(json);
@@ -457,11 +490,37 @@ public class E2eProtectedProfileManager(
         return json == null ? new E2eProfileIndex() : ParseIndex(json);
     }
 
-    private async Task WriteIndexAsync(E2eProfileIndex index, CancellationToken ct)
+    // Reads the index from the store (never this device's copy: a change must start from the current version), applies
+    // the change and writes it back only if nobody wrote it in between. If someone did, the change is applied again to
+    // their version, up to MaxWriteAttempts times. The change returns false when there is nothing to write.
+    private async Task UpdateIndexAsync(Func<E2eProfileIndex, bool> change, CancellationToken ct)
     {
-        var json = JsonSerializer.Serialize(index, JsonOptions);
-        await indexStore.SetIndexAsync(json, ct);
-        await localIndexStore.SaveAsync(json);
+        for (var attempt = 1; ; attempt++)
+        {
+            var stored = await indexStore.GetIndexAsync(ct);
+            if (stored != null)
+            {
+                await localIndexStore.SaveAsync(stored.Value);
+            }
+
+            var index = stored == null ? new E2eProfileIndex() : ParseIndex(stored.Value);
+            if (!change(index))
+            {
+                return;
+            }
+
+            var json = JsonSerializer.Serialize(index, JsonOptions);
+            try
+            {
+                await indexStore.SetIndexAsync(json, stored?.ETag, ct);
+                await localIndexStore.SaveAsync(json);
+                return;
+            }
+            catch (E2eDocumentChangedException) when (attempt < MaxWriteAttempts)
+            {
+                // Written by another device or tab since it was read: apply the change to their version.
+            }
+        }
     }
 
     private void SetUnlocked(E2eKeyScope scope, bool value)

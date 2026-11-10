@@ -172,26 +172,6 @@
       "Resource": "arn:aws:appsync:*:ACCOUNT_ID:apis/*"
     },
     {
-      "Sid": "UsersSecretsList",
-      "Effect": "Allow",
-      "Action": "secretsmanager:ListSecrets",
-      "Resource": "*"
-    },
-    {
-      "Sid": "UsersSecretsDelete",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:DeleteSecret"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "secretsmanager:ResourceTag/app": "myapp"
-        }
-      }
-    },
-    {
       "Sid": "IamAuthenticatedRole",
       "Effect": "Allow",
       "Action": [

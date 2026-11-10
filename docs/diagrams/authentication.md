@@ -1,7 +1,7 @@
 # Authentication (Cognito) and AWS credentials
 
 How a typed email and password becomes a signed-in session, how that session becomes temporary AWS credentials for
-S3 and Secrets Manager, and how passwords are changed and reset.
+the data bucket in S3 (the user's files and their end to end keys), and how passwords are changed and reset.
 
 Main classes:
 
@@ -151,7 +151,7 @@ sequenceDiagram
 
 When the shell starts a session it runs every session lifecycle handler. `AwsCredentialsSessionHandler` fetches the
 credentials in the background, so the first call to AWS does not wait for them. After that, anything calling AWS
-(sync's S3 client, the end to end keys in Secrets Manager) asks `IAwsCredentialsProvider`, which returns the cached set
+(sync's S3 client, which also reaches the end to end keys) asks `IAwsCredentialsProvider`, which returns the cached set
 until it is within 5 minutes of expiry.
 
 ```mermaid
@@ -206,23 +206,23 @@ sequenceDiagram
 The user pool and identity pool calls are public APIs, so their clients are built with `AnonymousAWSCredentials`. The
 ID token is the only proof. The identity id names the user's prefix in the data bucket (`{identityId}/...`).
 
-## 4. Using the credentials: S3 and Secrets Manager
+## 4. Using the credentials: the data bucket
 
-`CognitoS3TargetProvider` and `SecretsManagerUserKeysStore` are in UI.Sync, which joins sync to Cognito.
+`CognitoS3TargetProvider` is in UI.Sync, which joins sync to Cognito. Sync (`S3SyncRemoteStore`) and the end to end
+keys (`S3UserKeysStore`, in Sync) both get the same target from it.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Sync as SyncService / ConnectivityService
+    participant Keys as S3UserKeysStore
     participant Target as CognitoS3TargetProvider
-    participant Keys as SecretsManagerUserKeysStore
     participant Creds as CognitoAwsCredentialsProvider
     box rgb(240,240,255) In memory
         participant Mem as Memory (.NET fields)
     end
     box rgb(235,250,235) AWS
         participant S3 as S3 data bucket
-        participant SM as Secrets Manager
     end
 
     Sync->>Target: GetTargetAsync()
@@ -248,10 +248,13 @@ sequenceDiagram
         Note over Sync: SyncService runs the profile's pass once more with new credentials
     end
 
-    Keys->>Creds: GetCredentialsAsync()
-    Creds-->>Keys: Credentials
-    Keys->>Keys: Read the "sub" claim from the ID token
-    Keys->>SM: GetSecretValue / CreateSecret / PutSecretValue / DeleteSecret "{sub}/keys/{profile id}" and "{sub}/keys/index"
+    Keys->>Target: GetTargetAsync()
+    Target-->>Keys: S3SyncTarget (the same client)
+    Keys->>S3: GetObject / PutObject (If-Match or If-None-Match: *) / DeleteObject "{identityId}/keys/{profile id}" and "{identityId}/keys/index"
+    alt 412 Precondition Failed (changed on another device since it was read)
+        S3-->>Keys: E2eDocumentChangedException
+        Note over Keys: E2eProtectedProfileManager reads it again and reapplies its change (up to 3 attempts)
+    end
 ```
 
 ## 5. Sign out

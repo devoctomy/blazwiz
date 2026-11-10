@@ -23,6 +23,18 @@ public static class SyncDefaults
     public const string ProtectedProfilesFolder = "profiles";
 
     /// <summary>
+    /// The folder, in the user's prefix, holding the keys document of each protected profile (named by the profile's
+    /// key scope id) and the index of them (<see cref="KeysIndexName"/>). Never synced: no profile may match it.
+    /// </summary>
+    public const string KeysFolder = "keys";
+
+    /// <summary>
+    /// The name of the index of protected profiles in <see cref="KeysFolder"/>. Key scope ids of protected profiles
+    /// are GUIDs, so it cannot clash with a keys document.
+    /// </summary>
+    public const string KeysIndexName = "index";
+
+    /// <summary>
     /// The name the storage chosen for the device is recorded under, among the profiles' storage states. Not a
     /// profile name: profiles cannot be called this.
     /// </summary>

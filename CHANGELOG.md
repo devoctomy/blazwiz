@@ -48,6 +48,32 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 - `LocalAuthenticationService`, `CognitoAuthenticationService`, `MainLayoutViewModel`, `LoginViewModel` and
   `ProfileViewModel` take new constructor parameters. This only matters to code that constructs them itself, such as
   tests; dependency injection supplies them.
+- **The keys of protected profiles moved from Secrets Manager to the data bucket, and are written conditionally.** Each
+  profile's keys document is now `<identity id>/keys/<profile id>` and the index of them `<identity id>/keys/index`,
+  beside the user's files (`S3UserKeysStore`, in Sync). Every write is conditional (`If-None-Match: *` to create,
+  `If-Match` to replace), so two devices changing a profile's passphrase, or adding, deleting or changing profiles, at
+  the same time can no longer silently undo one another: `E2eProtectedProfileManager` reads the document again and
+  reapplies its change (up to `MaxWriteAttempts`, then `E2eDocumentChangedException`, code `E2e.DocumentChanged`,
+  shown with the new `Error.E2e.DocumentChanged` text). Users see no difference.
+  - `IUserKeysStore` and `IE2eProfileIndexStore` return a `StoredDocument` (value and ETag), take the ETag when
+    writing and return the new one; `TryCreateAsync` returns the ETag, or null when the keys exist. Implementations
+    of them change accordingly. `E2eLocalKeys` keeps the version of its copy (`CachedDocumentETag`).
+  - `AddBlazwizSync` now registers the keys stores: in the data bucket when `IS3SyncTargetProvider.IsConfigured`,
+    otherwise in local storage (local development; keyed on the data bucket, no longer on the user pool). It needs
+    `ILocalStorageService` (`AddBlazwizBrowser`).
+  - No sync profile's remote pattern may reach `keys/`: `AddProfile` refuses it, as it does `profiles/`.
+  - Removed: `SecretsManagerUserKeysStore`, `ISecretsManagerClientFactory` and `SecretsManagerClientFactory` (UI.Sync),
+    and the `AWSSDK.SecretsManager` dependency.
+  - **The base stack:** the role loses the `per-user-keys` policy (Secrets Manager), the `userSub` principal tag and
+    `sts:TagSession`, and is now denied `s3:DeleteObjectVersion`, `s3:PutBucketVersioning` and
+    `s3:PutLifecycleConfiguration` (`NoVersionPurge`), so a deleted or replaced keys document can be restored by an
+    operator for 30 days. The Content-Security-Policy no longer allows Secrets Manager. `remove.ps1` no longer deletes
+    users' secrets, and `deploy-policy.json` loses its Secrets Manager statements. `test-auth.ps1` checks the
+    conditional writes, that the user cannot delete a version, and that another user's keys are refused. Redeploy with
+    `deploy.ps1`.
+  - Keys documents already in Secrets Manager are not moved: set the profiles up again, or copy each secret once into
+    `<identity id>/keys/` with the AWS CLI. The stack deletes nothing in Secrets Manager, so they stay restorable until
+    you delete them.
 
 ## 0.7.2
 

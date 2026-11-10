@@ -70,12 +70,13 @@ passphrase. The app does not call the scheduler itself.
 | Connectivity check | Reused for 30 s, S3 probe timeout 5 s, rechecks after 30 s, 1 min, 2 min, then every 5 min |
 | Conflicts | Newest edit wins (`NewestWinsConflictResolver`) |
 | Cross-tab | One pass per profile at a time, using the Web Locks API (`myapp_sync-todos`) |
-| Keys | Its own master and file keys, in Secrets Manager as `{sub}/keys/{id}`, behind a passphrase of at least 12 characters (Argon2id) |
+| Keys | Its own master and file keys, in the data bucket as `{identityId}/keys/{id}`, behind a passphrase of at least 12 characters (Argon2id) |
 | Locking | Locks itself after 15 minutes without a read or write. No passkey unlock |
 
 IndexedDB stores are created the first time they are used, so there is no schema to set up. A new profile can share
 an existing database. Profiles must not clash (same name, id, stores or overlapping remote patterns), and no remote
-pattern may reach `profiles/`, where the profiles users create are kept: `AddProfile` refuses them at startup.
+pattern may reach `profiles/`, where the profiles users create are kept, or `keys/`, where their keys are kept:
+`AddProfile` refuses them at startup.
 
 `AddBlazwizSync` registers all of its own services with `TryAdd`. An app can replace the conflict resolver, hasher and
 so on by registering its own first. To use the engine without the module, call `AddBlazwizSync` and provide what the
