@@ -109,8 +109,8 @@ stays open and in use but has silently lost its socket. It finds out at its next
   `aws-appsync-event-ws`, the token in the header-encoded subprotocol, `/event/realtime`) and publishes over HTTPS
   `POST /event`. No Amplify dependency: the protocol is small and documented, and vendoring Amplify for it would be
   most of the app's JavaScript. `AddBlazwizAppSyncEvents(configuration)` registers it when `Events:HttpEndpoint` and
-  `Events:RealtimeEndpoint` are set, and falls back to the local channel otherwise, the way `AddBlazwizCognito` falls
-  back to the placeholder in development.
+  `Events:RealtimeEndpoint` are set. Without them it registers the local channel in development (the way
+  `AddBlazwizCognito` falls back to the placeholder) and no channel at all otherwise (see "Optional in the template").
 - The package table in the README and `docs/diagrams/overview.md` gain both packages. `Sync` does not depend on
   `Events`. Key rotation reuses the session-ending event, so `UI.Sync` needs no listener of its own.
 - **Nothing depends on `Events` except the app.** `Auth` and `UI` never reference it; the two directions meet in
@@ -125,8 +125,34 @@ stays open and in use but has silently lost its socket. It finds out at its next
   - **Device name** is `IDeviceNameService` in `Browser`, a fact about the browser rather than about events.
   - **UI** (which already depends on `Auth` and `Browser`) holds the Profile button, the messages and the "This
     device" Settings section.
-  - Without `Events`, sign out everywhere still works: `GlobalSignOut` revokes every device and the resume check signs
-    the others out when they next wake. The event only makes it immediate.
+  - Without `Events`, `SignOutEverywhereAsync` still works: `GlobalSignOut` revokes every device and the resume check
+    signs the others out when they next wake. Key rotation relies on this. Only the Profile page button needs
+    `Events` (see "Optional in the template").
+
+### Optional in the template
+
+Events cost money per connection minute and message, so apps can opt out. They are on by default: the AppSync API has
+no fixed charge, so an app with few users pays very little, and an app that does not want them turns the option off
+and creates nothing.
+
+- **Template option `Events`** (bool, default `true`, computed `IncludeEvents`, like `Sync`). Its description says
+  what it adds and what it costs. When it is off, a post-action (manual instructions) warns the developer at creation:
+  without events, "Sign out everywhere" is not offered, and after a passphrase change other devices sign out only when
+  they are next opened or come back online, not at once.
+- **What the option controls:** the `Events` and `Events.AppSync` package references, `AddBlazwizAppSyncEvents` in
+  `Program.cs`, the `Events` section of `appsettings.json`, and the stack parameter below. Markers as usual
+  (`//#if (IncludeEvents)` in `Program.cs`, project files and the deploy settings), with the `exclude` lists in
+  `template.json` updated and `template/Directory.Build.targets` defining the option for the repository build.
+- **Stack:** the base stack gains a parameter `Events` (`enabled` / `disabled`, default `enabled`) and a condition
+  on the API, the channel namespace and their outputs. The app's `template/cloudformation` deploy settings pass
+  `disabled` when the app was created without events. `deploy.ps1` writes the `Events` section and the CSP entries only when
+  the outputs exist.
+- **Missing infrastructure:** an app that includes events but has no endpoints configured outside development (the
+  stack was deployed with events disabled, or the settings were not written) registers no channel, logs one warning
+  naming the missing settings, and runs as an app without events. It never falls back to the local channel in
+  production, which would look like it works while reaching nobody.
+- **The button:** the Profile page shows "Sign out everywhere" only when an `ISignOutEverywhereHandler` is registered,
+  that is, when a channel is. `SignOutEverywhereAsync` itself stays available for key rotation either way.
 
 ### First feature: sign out everywhere
 
@@ -149,8 +175,9 @@ stays open and in use but has silently lost its socket. It finds out at its next
   (user requested), "Your passphrase was changed on {device}. Sign in and unlock with the new one" (keys rotated), or
   "You were signed out" (a refused resume check, which never saw the event and so knows no reason or device). The
   "This device" Settings section renames the device. Text in `UiText`; `PseudoLocalizationTests` covers it.
-- **Stack (`stack.yaml`):** `AWS::AppSync::Api` with `EventConfig` (auth provider `AMAZON_COGNITO_USER_POOLS` on the
-  stack's user pool and client, as the connection, default publish and default subscribe modes), an
+- **Stack (`stack.yaml`, all under the `Events` condition):** `AWS::AppSync::Api` with `EventConfig` (auth provider
+  `AMAZON_COGNITO_USER_POOLS` on the stack's user pool and client, as the connection, default publish and default
+  subscribe modes), an
   `AWS::AppSync::ChannelNamespace` `users` with the handler code inline, and outputs `EventsHttpEndpoint` and
   `EventsRealtimeEndpoint`. `deploy.ps1` writes them into `appsettings.Production.json` under `Events`, and
   `Add-ContentSecurityPolicy` adds both endpoints (`https:` and `wss:`) to `connect-src`. `deploy-policy.json` gains
@@ -179,7 +206,11 @@ stays open and in use but has silently lost its socket. It finds out at its next
       and sees the other return to sign in.
 - [ ] Stack, `deploy.ps1`, `deploy-policy.json`, CSP, `test-auth.ps1`; parse-check them here. Deploying and running
       `test-auth.ps1` is the maintainer's, as always.
-- [ ] Template: `AddBlazwizAppSyncEvents` in `Program.cs`, `Events` section in `appsettings.json` (empty), README.
+- [ ] Template: the `Events` option and its creation warning, `AddBlazwizAppSyncEvents` in `Program.cs` and the
+      `Events` section in `appsettings.json` behind `IncludeEvents`, the stack parameter in the deploy settings,
+      `exclude` lists, README. `test-template.ps1` creates apps with events on and off.
+- [ ] Missing infrastructure: no channel and one warning when endpoints are missing outside development; the Profile
+      button hidden without a handler; unit tests for both.
 - [ ] Documentation: package table (root README, `docs/diagrams/overview.md`), a `docs/diagrams/user-events.md`
       sequence of sign out everywhere, `template/cloudformation/README.md` (the API, its cost, the deployer actions),
       `CHANGELOG.md`.
@@ -195,7 +226,8 @@ stays open and in use but has silently lost its socket. It finds out at its next
   full sign out everywhere (`GlobalSignOut` and the event, reason `keys-rotated`), so every instance, the rotating one
   included, drops its old keys, and an instance that misses the event is caught by the resume check. A stronger
   "forget this user on every device" level is left out: a device that misses the event would sign in again with what
-  it remembers, so that level would need a durable marker (a Cognito attribute or a file in S3) checked at sign in. Revisit only if a "lost device" feature is asked for.
+  it remembers, so that level would need a durable marker (a Cognito attribute or a file in S3) checked at sign in.
+  Revisit only if a "lost device" feature is asked for.
 - **One API per stack.** Each stack is already per environment and keeps its own resources. The API name
   `${AppName}-${Environment}-events` is at most 39 characters (AppName max 21, Environment max 10), within AppSync's
   limit of 50 (`[A-Za-z0-9_\- ]+`). The default limit is 50 Event APIs per region and can be raised, so several
