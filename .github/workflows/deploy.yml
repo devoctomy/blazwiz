@@ -60,8 +60,6 @@ jobs:
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
-      # Fresh MSBuild processes for every build (static web assets compression).
-      MSBUILDDISABLENODEREUSE: 1
       # Through the environment, never into the script: an input can hold quotes and $( ).
       ENVIRONMENT_NAME: ${{ inputs.environment }}
       # Optional: the portal's own address and its ACM certificate (in us-east-1). Passed on every run, as the stack

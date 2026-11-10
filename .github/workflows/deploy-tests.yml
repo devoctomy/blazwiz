@@ -52,7 +52,6 @@ jobs:
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
-      MSBUILDDISABLENODEREUSE: 1
       # Through the environment, never into the script: an input can hold quotes and $( ).
       ENVIRONMENT_NAME: ${{ inputs.environment }}
       AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}

@@ -42,7 +42,7 @@ public sealed class UserDataStepDefinitions(DeployTestContext context) : IDispos
     public async Task ThenTheyCanDeleteIt()
     {
         await S3.DeleteObjectAsync(Bucket, OwnKey);
-        var gone = await Assert.ThrowsAsync<AmazonS3Exception>(() => S3.GetObjectAsync(Bucket, OwnKey));
+        var gone = await Assert.ThrowsAnyAsync<AmazonS3Exception>(() => S3.GetObjectAsync(Bucket, OwnKey));
         Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
     }
 
@@ -84,7 +84,7 @@ public sealed class UserDataStepDefinitions(DeployTestContext context) : IDispos
 
     internal static async Task AssertDenied(Func<Task> call)
     {
-        var refused = await Assert.ThrowsAsync<AmazonS3Exception>(call);
+        var refused = await Assert.ThrowsAnyAsync<AmazonS3Exception>(call);
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
     }
 }
