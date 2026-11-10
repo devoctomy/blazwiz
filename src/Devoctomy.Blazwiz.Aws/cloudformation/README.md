@@ -17,8 +17,8 @@ Every script takes `-AppName`, `-Environment`, `-Region` and `-AwsProfile`; see 
 certificate, local development origins, deletion protection, audit logging, events), so an upgrade run need not
 repeat them; pass a value to change one (`-CustomDomainName ''` removes the custom domain).
 
-With `-Events enabled` (the default; apps created without user events pass `disabled`) the stack has a user events
-API: an AWS AppSync Events API (`<AppName>-<Environment>-events`) with one channel namespace, `users`. A user's open
+With `-Events enabled` (passed by apps created with user events; the default is `disabled`, so an app that does not
+use events, including one made before they existed, never gets the resource) the stack has a user events API: an AWS AppSync Events API (`<AppName>-<Environment>-events`) with one channel namespace, `users`. A user's open
 devices use it to tell each other at once when they sign out everywhere. It is charged per use (connection minutes and
 event operations), with no fixed charge. `deploy.ps1` writes its hosts (`EventsHttpEndpoint`,
 `EventsRealtimeEndpoint`) to the `Events` section of `appsettings.Production.json`, and adds them to the

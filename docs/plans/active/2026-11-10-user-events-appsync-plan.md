@@ -142,7 +142,8 @@ on an app: the developer decides. They are on by default, and turning the option
   `Program.cs`, the `Events` section of `appsettings.json`, and the stack parameter below. Markers as usual
   (`//#if (IncludeEvents)` in `Program.cs`, project files and the deploy settings), with the `exclude` lists in
   `template.json` updated and `template/Directory.Build.targets` defining the option for the repository build.
-- **Stack:** the base stack gains a parameter `Events` (`enabled` / `disabled`, default `enabled`) and a condition
+- **Stack:** the base stack gains a parameter `Events` (`enabled` / `disabled`, default `disabled`, so apps made
+  before events existed get nothing new; apps created with events pass `enabled`) and a condition
   on the API, the channel namespace and their outputs. The app's `template/cloudformation` deploy settings pass
   `disabled` when the app was created without events. `deploy.ps1` writes the `Events` section and the CSP entries only when
   the outputs exist.
@@ -213,7 +214,7 @@ on an app: the developer decides. They are on by default, and turning the option
 - [x] Documentation: package table (root README, `docs/diagrams/overview.md`), a `docs/diagrams/user-events.md`
       sequence of sign out everywhere, `template/cloudformation/README.md` (the API, its cost, the deployer actions),
       `CHANGELOG.md`.
-- [ ] Upgrade test: `./templatepack/test-template.ps1 -UpgradeFrom latest`, since the stack, a configuration section
+- [x] Upgrade test: `./templatepack/test-template.ps1 -UpgradeFrom latest`, since the stack, a configuration section
       and `Program.cs` change.
 - [ ] Later events, each its own small change once the channel exists: `mfa-changed`, `profile-deleted`. Key rotation
       needs no new event: it calls `SignOutEverywhereAsync(SignOutReason.KeysRotated)`.
@@ -237,10 +238,12 @@ Where the build differs from the design above, or settled what it left open:
 - **The UI handover:** `SessionEndedNoticeService` (UI) carries the reason from the shell to the sign-in page. An
   expired session shows no message, as before.
 - **`test-auth.ps1`** takes `-SkipSignOutEverywhere`, because its last check signs the test user out on every device.
-- **To verify on the deployed stack (maintainer):** that AppSync accepts the publish made just after `GlobalSignOut`,
-  with the access token Cognito has just revoked. AppSync is expected to check the token's signature and expiry, not
-  its revocation. If it refuses, other devices still sign out at their next resume, but not at once, and the publish
-  must move to before `GlobalSignOut`. The two-browser manual test shows which.
+- **Verified on the deployed stack** (`myapp-test`, two browsers): signing out everywhere on one signed the other out
+  at once, naming the device. AppSync accepts the publish made just after `GlobalSignOut`, with the access token
+  Cognito has just revoked, so the publish stays after it.
+- **The upgrade test** (`test-template.ps1 -UpgradeFrom latest`, from release 0.7.2) passed. It also showed that an
+  app made before events, whose `deploy.ps1` passes no `-Events`, would have got the API on its next deploy from the
+  base stack's default. The default is now `disabled`; apps created with events pass `enabled`.
 
 ## Decided
 
