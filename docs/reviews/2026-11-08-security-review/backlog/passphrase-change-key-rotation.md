@@ -9,13 +9,13 @@ severity: medium
 urgency: high
 before-1.0: yes
 reason: users will expect a passphrase change to revoke anyone who held the old passphrase; today it revokes nobody
-areas: [Encryption, UI.Sync, Sync]
+areas: [Encryption, UI.Sync, Sync, Auth]
 effort: large
 functional-change: yes
-blocked-by: none
+blocked-by: ../../../plans/backlog/user-events-appsync.md (SignOutEverywhereAsync and the resume check)
 related:
   - SR37 (nonce rotation belongs with this change)
-  - ../../../plans/backlog/user-events-appsync.md (tells other devices the keys changed)
+  - ../../../plans/backlog/user-events-appsync.md (rotation ends with sign out everywhere, which this plan builds on)
 ---
 
 # Rotate a profile's keys when its passphrase changes
@@ -44,23 +44,40 @@ locks the attacker out.
    were made for this). Vault secrets are small JSON files, so this takes seconds; the template's `files` profile may
    hold larger files, so the step runs in the background with the profile unlocked and a progress bar, and a reload
    part way through just leaves some files under the retired key (still readable; a later "re-encrypt everything"
-   action, or the next passphrase change, finishes them).
+   action, or the next passphrase change, finishes them). The sign out in step 6 ends the session, and with it any
+   re-encryption still running; the files it did not reach are left the same way.
 3. **Drop the retired key** once no file uses it: list the index records' `KeyId`s; when none names the retired key,
    remove it from the document. Until then it stays, so nothing becomes unreadable.
 4. **Device unlock copies.** `E2eLocalKeys.WrappedMasterKey` on each device wraps the old master key; it no longer
    matches and falls back to the passphrase (as `UnlockWithDeviceAsync` already does), after which the device wraps
    the new one when the user turns device unlock on again. Say so in the UI.
 5. **Text.** In Settings, say what a passphrase change does: "Your files are encrypted again with new keys. Anyone who
-   had your old passphrase and a copy of your keys can no longer read them." Until this is built, say the opposite.
+   had your old passphrase and a copy of your keys can no longer read them. Every device, this one included, is
+   signed out and must sign in again." Until this is built, say the opposite. Ask for confirmation before starting,
+   since it signs out every device.
+6. **Sign out everywhere.** Once the new keys document is written (and re-encryption has finished or been started),
+   call `IAuthenticationService.SignOutEverywhereAsync(SignOutReason.KeysRotated)` from
+   `docs/plans/backlog/user-events-appsync.md`. Every device, this one included, ends its session, wipes its
+   unwrapped keys and unlocks again with the new passphrase, reading the new keys document. If `GlobalSignOut` fails
+   (offline), the keys have already changed: report it and keep offering the sign out until it succeeds, since other
+   devices still hold the old keys in memory.
 
 ## Other devices
 
 Each device caches the keys document locally and holds the unwrapped keys in memory, so a device unlocked before the
-change does not know the new key id and fails to decrypt files written after it. Two things are needed: a durable
-check, where an unknown key id in a file header (or the next unlock) makes the device re-read the keys document and
-compare its version before asking for the passphrase again; and, optionally, a `keys-changed` event on the user event
-channel (`docs/plans/backlog/user-events-appsync.md`) so open devices do it at once. The check is required; the event
-only removes the lag. The keys document write itself is still unguarded against two devices writing at once, which matters more once a
+change does not know the new key id and fails to decrypt files written after it. Step 6 deals with this by ending
+every session, so there is no separate key-version mechanism:
+
+- **Open and connected devices** receive the session-ending event (reason `keys-rotated`) and sign out at once.
+- **Closed, offline or backgrounded devices** miss the event. `GlobalSignOut` has revoked their tokens, so the resume
+  check (when the app becomes visible or comes back online) is refused by Cognito and they sign out before they sync.
+  Edits a device made offline with the old keys are encrypted under the now-retired key, which stays in the document,
+  so they remain readable.
+- **Open devices whose socket dropped silently** keep their session until the next token renewal. As a safety net,
+  meeting an unknown key id in a file header runs the resume check at once, so such a device signs out the first time
+  it sees a file written under the new key.
+
+The keys document write itself is still unguarded against two devices writing at once, which matters more once a
 lost write can orphan files under a key nobody holds; `docs/plans/backlog/protected-profile-concurrent-writes.md`
 moves the documents to S3 with `If-Match` writes and should land first.
 

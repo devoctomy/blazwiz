@@ -6,7 +6,7 @@ added: 2026-11-09
 urgency: medium
 before-1.0: recommended
 reason: an instance of the app has no way to tell the user's other instances that something changed; sign-out, key rotation and MFA all need one
-areas: [AWS stack, Auth, Auth.Cognito, UI, a new Events package, template]
+areas: [AWS stack, Auth, Auth.Cognito, Browser, UI, new Events and Events.AppSync packages, template]
 effort: medium (the channel and the first feature); each later event is small
 functional-change: yes
 blocked-by: none
@@ -27,16 +27,19 @@ and uses it first for the simplest, most testable feature: signing out everywher
 
 ## Principle: push is an accelerator, never the source of truth
 
-blazwiz is offline-first, so an instance that is closed or offline when an event is published never receives it.
-Every feature built on the channel therefore needs a durable fallback that works with no channel at all, and the
-event carries only "something changed, check now", never the change itself and never a secret. The receiving instance
-does what it would have done anyway, just sooner.
+AppSync Events delivers an event only to the instances connected when it is published. It keeps no history and replays
+nothing on reconnect. An instance that is closed, offline, or in the background (mobile browsers freeze a backgrounded
+PWA within minutes and drop its socket) never receives it. Every feature built on the channel therefore needs a durable
+fallback that works with no channel at all, and the event carries only "something changed, check now", never the
+change itself and never a secret. The receiving instance does what it would have done anyway, just sooner.
 
 For sign out, the durable fallback already exists: Cognito's `GlobalSignOut` revokes the user's refresh tokens and,
-with `EnableTokenRevocation` on (it is), their access tokens. An instance that misses the event finds out at its next
-token use. The lag is bounded by `AccessTokenValidity` (60 minutes in `stack.yaml`; Cognito allows 5) and by the
-identity pool's AWS credentials, which last an hour and cannot be shortened. The event removes that lag while the
-instance is open.
+with `EnableTokenRevocation` on (it is), their access tokens. An instance that misses the event finds out when it next
+asks Cognito. To make that happen as soon as it matters, every instance checks its session with Cognito when it
+resumes (see "Resume check" below), so a frozen or offline instance signs itself out the moment it wakes, before it
+syncs anything. A frozen instance runs no code, so it is no risk while it sleeps. What remains is an instance that
+stays open and in use but has silently lost its socket. It finds out at its next token renewal, at most
+`AccessTokenValidity` (60 minutes) less the 5-minute renewal margin. That is accepted (see "Decided").
 
 ## Why AppSync Events
 
@@ -63,13 +66,35 @@ instance is open.
   `onSubscribe` and `onPublish` handlers reject any channel whose path is not `/users/` followed by `ctx.identity.sub`
   (`util.unauthorized()`), so a user can neither listen to nor write to another user's channel. No IAM auth is
   enabled on the API, so the identity pool's AWS credentials cannot reach it.
-- **Event shape:** a small JSON object, `{ "type": "signed-out-everywhere", "at": "<ISO 8601>", "from": "<instance id>" }`.
-  `from` is a random id the instance makes when it connects, so it can ignore its own events. Nothing else: no tokens,
-  no keys, no file names.
+- **Event shape:** a small JSON object:
+
+  ```json
+  { "type": "signed-out-everywhere", "reason": "user-requested", "device": "Android-Edge-624834",
+    "at": "<ISO 8601>", "from": "<instance id>" }
+  ```
+
+  `reason` is `user-requested` or `keys-rotated` and only chooses the message the receiving instance shows; every
+  reason ends the session the same way. `device` is the sending device's name (below), shown in that message. `from`
+  is a random id the instance makes when it connects, so it can ignore its own events. Nothing else: no tokens, no
+  keys, no file names.
+- **Device name:** each browser has a name, kept by `IDeviceNameService` in `Browser`, stored only in its local
+  storage (short name `device_name`, prefixed by the storage client) and never sent anywhere but in events on the
+  user's own channel. Until the user sets one it is made on first use as `<Platform>-<Browser>-<6 random digits>`,
+  e.g. `Android-Edge-624834`. The app name is left out: every event comes from the same app. Platform and browser are
+  a best guess, used only to make the name recognisable: `navigator.userAgentData` where it exists (Chromium),
+  otherwise the user-agent string (Firefox, Safari; on iOS `CriOS` and `EdgiOS` still name Chrome and Edge), and
+  `Unknown` for anything not recognised. Nothing relies on the guess being right. A "This device" section in Settings
+  (in `UI`) renames it: trimmed, 1 to 32 characters. Receivers show it as plain text and cut it to 32 characters,
+  since it comes from another instance.
 - **Connection lifecycle:** connect in `ISessionLifecycleHandler.OnShellLoadedAsync` (the background hook), reconnect
   with backoff when the socket drops or the device comes back online (`Sync`'s `network.js` already watches this),
   re-authenticate when the token is renewed, disconnect on sign out and when the session ends. Never connect while
   offline or with the placeholder sign in.
+- **Resume check:** when the page becomes visible again (`visibilitychange`) or the device comes back online, the
+  instance checks its session with Cognito before it reconnects to the channel or syncs: `GetUser` with the current
+  access token, or a renewal if the token is due. Cognito refuses both after `GlobalSignOut`, and the instance then ends
+  its session as an expired one does. This lives in `Auth` / `Auth.Cognito` and works with no channel at all; the
+  placeholder sign in skips it. It is what closes the gap for missed events, on every platform.
 
 ### Packages
 
@@ -87,23 +112,43 @@ instance is open.
   `Events:RealtimeEndpoint` are set, and falls back to the local channel otherwise, the way `AddBlazwizCognito` falls
   back to the placeholder in development.
 - The package table in the README and `docs/diagrams/overview.md` gain both packages. `Sync` does not depend on
-  `Events`; a later plan may have `UI.Sync` listen for a `keys-changed` event.
+  `Events`. Key rotation reuses the session-ending event, so `UI.Sync` needs no listener of its own.
+- **Nothing depends on `Events` except the app.** `Auth` and `UI` never reference it; the two directions meet in
+  `Auth`:
+  - **Sending:** `Auth` defines `ISignOutEverywhereHandler` (`OnSigningOutEverywhereAsync(SignOutReason, string
+    deviceName)`), which `SignOutEverywhereAsync` runs after `GlobalSignOut` succeeds and before the local session
+    ends. `Events` registers the handler that publishes the event.
+  - **Receiving:** `Events` ends the session through `IAuthenticationService.EndSessionAsync(SessionEndedReason,
+    string? deviceName)`. `SessionEnded` becomes `EventHandler<SessionEndedEventArgs>` (`Reason`, `DeviceName`), so
+    the UI picks the message without knowing where it came from. This changes the shipped `SessionEnded` signature
+    (allowed before 1.0; the analyzer's `*REMOVED*` line and a `CHANGELOG.md` entry record it).
+  - **Device name** is `IDeviceNameService` in `Browser`, a fact about the browser rather than about events.
+  - **UI** (which already depends on `Auth` and `Browser`) holds the Profile button, the messages and the "This
+    device" Settings section.
+  - Without `Events`, sign out everywhere still works: `GlobalSignOut` revokes every device and the resume check signs
+    the others out when they next wake. The event only makes it immediate.
 
 ### First feature: sign out everywhere
 
-- **Auth:** `IAuthenticationService.SignOutEverywhereAsync()`. The Cognito implementation calls `GlobalSignOut` with
-  the access token (`CognitoUser.GlobalSignOutAsync` in `Amazon.Extensions.CognitoAuthentication`), then ends the
-  local session as `SignOutAsync` does. The placeholder implementation just ends the local session. If `GlobalSignOut`
-  fails because the device is offline, the button reports it and does nothing else: a local sign out that pretends to
-  be global would be worse than an error.
-- **Events:** after a successful `GlobalSignOut` and before the local session ends, publish `signed-out-everywhere`.
-  On receiving it, an instance ends its session the way an expired one does (`SessionEnded` fires, the shell returns
-  to the sign-in page, and every `ISessionLifecycleHandler` runs its sign-out work: the PRF-derived keys are wiped by
-  `DerivedKeySessionHandler`, protected profiles lock). It shows `UiText` saying the user signed out from another
-  device.
+- **Auth:** `IAuthenticationService.SignOutEverywhereAsync(SignOutReason reason)`, with `SignOutReason.UserRequested`
+  (the Profile page button) and `SignOutReason.KeysRotated` (the last step of a passphrase change, from
+  `docs/reviews/2026-11-08-security-review/backlog/passphrase-change-key-rotation.md`). The Cognito implementation
+  calls `GlobalSignOut` with the access token (`CognitoUser.GlobalSignOutAsync` in
+  `Amazon.Extensions.CognitoAuthentication`), runs every `ISignOutEverywhereHandler`, then ends the local session as
+  `SignOutAsync` does. The placeholder implementation runs the handlers and ends the local session. If `GlobalSignOut`
+  fails because the device is offline, the button reports it and does nothing else: a local sign out that pretends
+  to be global would be worse than an error.
+- **Events:** the `ISignOutEverywhereHandler` publishes `signed-out-everywhere` with the reason and the device name.
+  On receiving it, an instance calls `EndSessionAsync` with the reason and the sender's device name, and the session
+  ends the way an expired one does (`SessionEnded` fires, the shell returns to the sign-in page, and every
+  `ISessionLifecycleHandler` runs its sign-out work: the PRF-derived keys are wiped by `DerivedKeySessionHandler`,
+  protected profiles lock).
 - **UI:** a "Sign out everywhere" button on the Profile page, under the existing sign out, with a confirmation that
-  says what it does and that other devices may take up to an hour to notice if they are offline. Text in `UiText`;
-  `PseudoLocalizationTests` covers it.
+  says what it does and that devices which are closed or offline sign out the next time they are opened or come back
+  online. On `SessionEnded` the sign-in page shows the message for the reason: "You were signed out from {device}"
+  (user requested), "Your passphrase was changed on {device}. Sign in and unlock with the new one" (keys rotated), or
+  "You were signed out" (a refused resume check, which never saw the event and so knows no reason or device). The
+  "This device" Settings section renames the device. Text in `UiText`; `PseudoLocalizationTests` covers it.
 - **Stack (`stack.yaml`):** `AWS::AppSync::Api` with `EventConfig` (auth provider `AMAZON_COGNITO_USER_POOLS` on the
   stack's user pool and client, as the connection, default publish and default subscribe modes), an
   `AWS::AppSync::ChannelNamespace` `users` with the handler code inline, and outputs `EventsHttpEndpoint` and
@@ -116,20 +161,20 @@ instance is open.
   Subscriptions are not tested from PowerShell; the UI tests cover the browser side against the local channel, and
   the maintainer tests the deployed channel by hand with two browsers.
 
-### Access token validity
-
-Lower `AccessTokenValidity` and `IdTokenValidity` from 60 to 15 minutes in the same change, so the fallback lag for an
-instance that misses the event is a quarter of what it is now. The portal renews with the in-memory refresh token
-while a tab is open, so users see no difference. Going to 5 minutes is possible but means a renewal every few minutes
-on every open tab; decide after watching the deployed app.
-
 ## Steps
 
 - [ ] `Events` package: contract, model, options, local `BroadcastChannel` implementation, lifecycle handler, unit
       tests with a fake JavaScript runtime, `PublicAPI.Unshipped.txt`, README.
+- [ ] Browser: `IDeviceNameService` (reads, makes the default and saves the name in local storage), unit tests.
+- [ ] UI: the "This device" Settings section and its view model, text in `UiText`, unit tests, and a Playwright test
+      that renames the device and sees the new name in the other page's sign-out message.
 - [ ] `Events.AppSync` package: the ES module and channel, token renewal and reconnect, unit tests, README.
-- [ ] Auth: `SignOutEverywhereAsync` in the contract, Cognito and placeholder implementations, unit tests.
-- [ ] UI: the Profile page button, confirmation and the "signed out from another device" message, in `UiText`; view
+- [ ] Auth: `SignOutEverywhereAsync(SignOutReason)`, `SignOutReason`, `ISignOutEverywhereHandler`, `EndSessionAsync`,
+      `SessionEndedReason` and `SessionEndedEventArgs` in the contract, Cognito and placeholder implementations, the
+      existing `SessionEnded` subscribers moved to the new signature, unit tests.
+- [ ] Auth: the resume check (on `visibilitychange` to visible and on coming back online, check the session with
+      Cognito before reconnecting or syncing; end the session if it is refused), unit tests with `FakeTimeProvider`.
+- [ ] UI: the Profile page button, confirmation and the per-reason "signed out" messages, in `UiText`; view
       model tests; a Playwright test that signs in on two pages of one browser context, signs out everywhere on one,
       and sees the other return to sign in.
 - [ ] Stack, `deploy.ps1`, `deploy-policy.json`, CSP, `test-auth.ps1`; parse-check them here. Deploying and running
@@ -140,14 +185,25 @@ on every open tab; decide after watching the deployed app.
       `CHANGELOG.md`.
 - [ ] Upgrade test: `./templatepack/test-template.ps1 -UpgradeFrom latest`, since the stack, a configuration section
       and `Program.cs` change.
-- [ ] Later events, each its own small change once the channel exists: `keys-changed` (from the key rotation plan),
-      `mfa-changed`, `profile-deleted`.
+- [ ] Later events, each its own small change once the channel exists: `mfa-changed`, `profile-deleted`. Key rotation
+      needs no new event: it calls `SignOutEverywhereAsync(SignOutReason.KeysRotated)`.
 
-## Open questions
+## Decided
 
-- Should the event also tell a receiving instance to clear its remembered password and passkey (`saved_users`), or
-  only end the session? Ending the session matches "sign out"; clearing more is "I lost this device", which may want
-  its own button and event.
-- One API per stack or one per environment? A stack is already per environment (`AppName-Environment`), so one per
-  stack. Confirm the API name length limit allows `${AppName}-${Environment}-events`.
-- Whether to keep `AccessTokenValidity` at 15 minutes or go lower, after seeing renewal traffic in the deployed app.
+- **The event only ends the session.** It does not clear remembered passwords or passkeys (`saved_users`). It is
+  sent for two reasons only: the user asks to sign out everywhere, or the keys are rotated. Key rotation ends with a
+  full sign out everywhere (`GlobalSignOut` and the event, reason `keys-rotated`), so every instance, the rotating one
+  included, drops its old keys, and an instance that misses the event is caught by the resume check. A stronger
+  "forget this user on every device" level is left out: a device that misses the event would sign in again with what
+  it remembers, so that level would need a durable marker (a Cognito attribute or a file in S3) checked at sign in. Revisit only if a "lost device" feature is asked for.
+- **One API per stack.** Each stack is already per environment and keeps its own resources. The API name
+  `${AppName}-${Environment}-events` is at most 39 characters (AppName max 21, Environment max 10), within AppSync's
+  limit of 50 (`[A-Za-z0-9_\- ]+`). The default limit is 50 Event APIs per region and can be raised, so several
+  environments in one account are fine. A `sub` (36 characters) fits the 50-character channel segment limit.
+- **Missed events are caught by a resume check, and token lifetimes stay as they are.** AppSync Events does not
+  replay, and mobile browsers freeze backgrounded PWAs, so many instances will miss the event. Rather than deliver it
+  to a sleeping instance (Web Push would need a Lambda and a visible notification for every message), every instance
+  checks its session with Cognito when it resumes or comes back online. `AccessTokenValidity` and `IdTokenValidity`
+  stay at 60 minutes: shortening them would only narrow the remaining case (an instance open and in use whose socket
+  dropped silently), they are independent of events, and 5 minutes would not work anyway with the 5-minute renewal
+  margin (`CognitoAuthenticationService.TokenRefreshMargin`).
