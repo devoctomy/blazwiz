@@ -13,9 +13,14 @@ Checks, and reports PASS / FAIL for each:
     reading and listing anyone else's prefix, and listing the whole bucket.
   - They can create (tagged, as the portal does), read and delete a profile's keys secret (<sub>/keys/<id>), read the
     index (<sub>/keys/index) if there is one, and are denied another user's secrets.
+  - When the stack has the user events API: the user can publish to their own channel (/users/<sub>) and is refused
+    another user's.
+  - Last, signing out everywhere (Cognito GlobalSignOut) revokes the session: the access token is refused afterwards.
+    This signs the test user out on every device; -SkipSignOutEverywhere leaves it out.
 
 It creates a small test object under the user's own prefix and a test profile secret, and deletes both again. The
-user's real index is only read, never written.
+user's real index is only read, never written. The event it publishes is a test event, which the portal ignores.
+Subscriptions are not tested from here: the UI tests cover the browser side against the local channel.
 Exits with code 1 if any check fails.
 
 .EXAMPLE
@@ -33,7 +38,10 @@ param(
     [string]$Email,
 
     # Prompted for if not supplied.
-    [Security.SecureString]$Password
+    [Security.SecureString]$Password,
+
+    # Leave out the last check, which signs the test user out on every device.
+    [switch]$SkipSignOutEverywhere
 )
 
 $ErrorActionPreference = 'Stop'
@@ -108,6 +116,7 @@ Write-Step "Cognito"
 
 $tempFiles = New-Object System.Collections.Generic.List[string]
 $idToken = $null
+$accessToken = $null
 $identityId = $null
 $credentials = $null
 $loginsFile = $null
@@ -137,6 +146,7 @@ try {
         }
 
         $script:idToken = $auth.AuthenticationResult.IdToken
+        $script:accessToken = $auth.AuthenticationResult.AccessToken
         'Received ID token'
     } | Out-Null
 
@@ -296,6 +306,59 @@ if ($credentials) {
         }
         Remove-Item -Force $localFile -ErrorAction SilentlyContinue
     }
+}
+
+# User events (as the signed-in user) ---------------------------------------------------------
+
+function Send-UserEvent([string]$Channel) {
+    # Publishes one test event over HTTPS, as the portal does. Returns the HTTP status, or 0 when the API refused it in
+    # the response body.
+    $body = @{ channel = $Channel; events = @((@{ type = 'test-auth'; from = 'test-auth' } | ConvertTo-Json -Compress)) } | ConvertTo-Json -Compress
+    try {
+        $response = Invoke-WebRequest -Method Post -Uri "https://$($outputs['EventsHttpEndpoint'])/event" `
+            -Headers @{ Authorization = $accessToken } -ContentType 'application/json' -Body $body -UseBasicParsing
+        $result = $response.Content | ConvertFrom-Json
+        $failed = $result.PSObject.Properties['failed']
+        if ($null -ne $failed -and @($failed.Value).Count -gt 0) { return 0 }
+        return [int]$response.StatusCode
+    }
+    catch {
+        $status = $_.Exception.Response.StatusCode
+        if ($null -ne $status) { return [int]$status }
+        throw
+    }
+}
+
+if ($accessToken -and $outputs['EventsHttpEndpoint']) {
+    Write-Step "User events as the signed-in user"
+    $subject = Get-TokenSubject $accessToken
+
+    Test-Check "Publish to own channel /users/$subject" {
+        $status = Send-UserEvent "/users/$subject"
+        if ($status -ne 200) { throw "Expected HTTP 200, got $status" }
+        'HTTP 200'
+    } | Out-Null
+
+    Test-Check 'Refused publishing to another user''s channel' {
+        $status = Send-UserEvent '/users/someone-else'
+        if ($status -eq 200) { throw 'Expected the channel handler to refuse it' }
+        "Refused (HTTP $status)"
+    } | Out-Null
+}
+elseif (-not $outputs['EventsHttpEndpoint']) {
+    Write-Info 'The stack has no user events API (Events=disabled): skipping its checks.'
+}
+
+if ($accessToken -and -not $SkipSignOutEverywhere) {
+    Write-Step "Sign out everywhere"
+    Test-Check 'Global sign-out revokes the access token' {
+        Invoke-Aws -NoProfile -Arguments @('cognito-idp', 'global-sign-out', '--access-token', $accessToken) | Out-Null
+        $result = Invoke-Aws -NoProfile -AllowFailure -Arguments @('cognito-idp', 'get-user', '--access-token', $accessToken)
+        if ($null -ne $result -or $script:LastAwsError -notmatch 'NotAuthorized') {
+            throw 'Expected NotAuthorizedException for the revoked access token'
+        }
+        'Refused afterwards (NotAuthorizedException), as expected'
+    } | Out-Null
 }
 
 Write-Host ''

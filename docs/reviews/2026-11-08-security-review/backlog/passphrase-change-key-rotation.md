@@ -12,10 +12,10 @@ reason: users will expect a passphrase change to revoke anyone who held the old 
 areas: [Encryption, UI.Sync, Sync, Auth]
 effort: large
 functional-change: yes
-blocked-by: ../../../plans/backlog/user-events-appsync.md (SignOutEverywhereAsync and the resume check)
+blocked-by: ../../../plans/active/2026-11-10-user-events-appsync-plan.md (SignOutEverywhereAsync and the resume check)
 related:
   - SR37 (nonce rotation belongs with this change)
-  - ../../../plans/backlog/user-events-appsync.md (rotation ends with sign out everywhere, which this plan builds on)
+  - ../../../plans/active/2026-11-10-user-events-appsync-plan.md (rotation ends with sign out everywhere, which this plan builds on)
 ---
 
 # Rotate a profile's keys when its passphrase changes
@@ -57,7 +57,7 @@ locks the attacker out.
    since it signs out every device.
 6. **Sign out everywhere.** Once the new keys document is written (and re-encryption has finished or been started),
    call `IAuthenticationService.SignOutEverywhereAsync(SignOutReason.KeysRotated)` from
-   `docs/plans/backlog/user-events-appsync.md`. Every device, this one included, ends its session, wipes its
+   `docs/plans/active/2026-11-10-user-events-appsync-plan.md`. Every device, this one included, ends its session, wipes its
    unwrapped keys and unlocks again with the new passphrase, reading the new keys document. If `GlobalSignOut` fails
    (offline), the keys have already changed: report it and keep offering the sign out until it succeeds, since other
    devices still hold the old keys in memory.

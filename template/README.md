@@ -27,6 +27,9 @@ plugs into it, so it can be upgraded without touching your code:
 | `Devoctomy.Blazwiz.Auth.Cognito` | Signing in with AWS Cognito, and the session's AWS credentials. |
 <!--#if (IncludeSync)-->
 | `Devoctomy.Blazwiz.UI.Sync` | The sync module: files kept in the browser or a folder, synced with S3, end to end encryption, the Sync page. |
+<!--#if (IncludeEvents)-->
+| `Devoctomy.Blazwiz.Events.AppSync` | User events: the user's open devices told at once when they sign out everywhere, over AWS AppSync Events. |
+<!--#endif-->
 <!--#endif-->
 | `Devoctomy.Blazwiz.Testing` | Test helpers: the framework's real text, and checks that your text overrides still match it. |
 
@@ -206,6 +209,33 @@ builds get these from `appsettings.Production.json`), using SRP through AWS's
 is never sent. Without those settings it keeps the placeholder sign-in (any credentials) only in the Development
 environment (`allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment()` in `Program.cs`), for local development
 and the UI tests; a published build whose settings are missing refuses to start instead.
+
+## User events
+
+<!--#if (IncludeEvents)-->
+The app has user events (`AddBlazwizAppSyncEvents` in `Program.cs`). The Profile page offers "Sign out everywhere".
+Each device has a name the user can change under Settings, This device, and the user's other open devices sign out at
+once, naming the device that did it. Deployed, events go through the base stack's AWS AppSync Events API. AppSync
+Events is charged per use (connection minutes and event operations) with no fixed charge. `deploy.ps1` writes its
+endpoints to the `Events` section of `appsettings.Production.json`. In development, without them, the browser's other
+tabs stand in. To leave events out, remove the `AddBlazwizAppSyncEvents` call and the
+`Devoctomy.Blazwiz.Events.AppSync` package, and change `$events = 'enabled'` in `cloudformation/deploy.ps1` to
+`'disabled'`, so the next deployment removes the API.
+<!--#else-->
+The app was created without user events (`--events false`), so it does not create the AWS AppSync Events API, which is
+charged per use. Without events, "Sign out everywhere" is not offered. When a user's passphrase changes, their other
+devices find out only when they are next opened or come back online. To add events:
+
+1. Add the `Devoctomy.Blazwiz.Events.AppSync` package to `MyApp.Portal.Application` (and its `PackageVersion` to
+   `Directory.Packages.props`).
+2. Call
+   `builder.Services.AddBlazwizAppSyncEvents(builder.Configuration, allowLocalChannel: builder.HostEnvironment.IsDevelopment());`
+   after `AddBlazwizCognito` in `Program.cs`.
+3. Change `$events = 'disabled'` in `cloudformation/deploy.ps1` to `'enabled'`, and deploy.
+<!--#endif-->
+
+Devices that are closed, offline or in the background miss an event. They sign out when they next open or come back
+online, because the app checks its session with Cognito whenever it resumes.
 
 ## Deploying to AWS
 

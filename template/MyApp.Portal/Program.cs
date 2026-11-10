@@ -10,6 +10,9 @@ using MyApp.Portal;
 using MyApp.Portal.Application;
 using MyApp.Portal.Application.Extensions;
 using MyApp.Portal.Application.ViewModels;
+//#if (IncludeEvents)
+using Devoctomy.Blazwiz.Events.AppSync.Extensions;
+//#endif
 //#if (IncludeSync)
 using Devoctomy.Blazwiz.UI.Sync.Extensions;
 //#endif
@@ -31,6 +34,13 @@ builder.Services.AddBlazwizApp(AppIdentity.Name, AppIdentity.Id);
 // (+ appsettings.{Environment}.json), signing in with Cognito once a user pool is configured.
 builder.Services.AddBlazwizUi(builder.Configuration);
 builder.Services.AddBlazwizCognito(builder.Configuration, allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment());
+//#if (IncludeEvents)
+
+// User events: the user's open devices tell each other at once when they sign out everywhere, over the stack's AppSync
+// Events API (the Events section, written by cloudformation/deploy.ps1). In development, without it, the browser's
+// other tabs stand in.
+builder.Services.AddBlazwizAppSyncEvents(builder.Configuration, allowLocalChannel: builder.HostEnvironment.IsDevelopment());
+//#endif
 //#if (IncludeSync)
 
 // Sync and end to end encryption, and the Sync page: the settings from sync.json (embedded in this project), and the

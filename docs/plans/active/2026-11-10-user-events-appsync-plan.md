@@ -1,7 +1,7 @@
 ---
 title: User events over AppSync Events, starting with "sign out everywhere"
-type: backlog
-status: not started
+type: active
+status: in progress
 added: 2026-11-09
 urgency: medium
 before-1.0: recommended
@@ -14,7 +14,7 @@ related:
   - ../../reviews/2026-11-08-security-review/backlog/passphrase-change-key-rotation.md (other devices must learn the keys changed)
   - ../../reviews/2026-11-08-security-review/backlog/mfa-totp.md
   - ../../reviews/2026-11-08-security-review/security-review.md (SR6, SR20)
-  - protected-profile-concurrent-writes.md (the race the channel narrows but does not close)
+  - ../backlog/protected-profile-concurrent-writes.md (the race the channel narrows but does not close)
 ---
 
 # User events over AppSync Events, starting with "sign out everywhere"
@@ -189,34 +189,58 @@ on an app: the developer decides. They are on by default, and turning the option
 
 ## Steps
 
-- [ ] `Events` package: contract, model, options, local `BroadcastChannel` implementation, lifecycle handler, unit
+- [x] `Events` package: contract, model, options, local `BroadcastChannel` implementation, lifecycle handler, unit
       tests with a fake JavaScript runtime, `PublicAPI.Unshipped.txt`, README.
-- [ ] Browser: `IDeviceNameService` (reads, makes the default and saves the name in local storage), unit tests.
-- [ ] UI: the "This device" Settings section and its view model, text in `UiText`, unit tests, and a Playwright test
+- [x] Browser: `IDeviceNameService` (reads, makes the default and saves the name in local storage), unit tests.
+- [x] UI: the "This device" Settings section and its view model, text in `UiText`, unit tests, and a Playwright test
       that renames the device and sees the new name in the other page's sign-out message.
-- [ ] `Events.AppSync` package: the ES module and channel, token renewal and reconnect, unit tests, README.
-- [ ] Auth: `SignOutEverywhereAsync(SignOutReason)`, `SignOutReason`, `ISignOutEverywhereHandler`, `EndSessionAsync`,
+- [x] `Events.AppSync` package: the ES module and channel, token renewal and reconnect, unit tests, README.
+- [x] Auth: `SignOutEverywhereAsync(SignOutReason)`, `SignOutReason`, `ISignOutEverywhereHandler`, `EndSessionAsync`,
       `SessionEndedReason` and `SessionEndedEventArgs` in the contract, Cognito and placeholder implementations, the
       existing `SessionEnded` subscribers moved to the new signature, unit tests.
-- [ ] Auth: the resume check (on `visibilitychange` to visible and on coming back online, check the session with
+- [x] Auth: the resume check (on `visibilitychange` to visible and on coming back online, check the session with
       Cognito before reconnecting or syncing; end the session if it is refused), unit tests with `FakeTimeProvider`.
-- [ ] UI: the Profile page button, confirmation and the per-reason "signed out" messages, in `UiText`; view
+- [x] UI: the Profile page button, confirmation and the per-reason "signed out" messages, in `UiText`; view
       model tests; a Playwright test that signs in on two pages of one browser context, signs out everywhere on one,
       and sees the other return to sign in.
-- [ ] Stack, `deploy.ps1`, `deploy-policy.json`, CSP, `test-auth.ps1`; parse-check them here. Deploying and running
+- [x] Stack, `deploy.ps1`, `deploy-policy.json`, CSP, `test-auth.ps1`; parse-check them here. Deploying and running
       `test-auth.ps1` is the maintainer's, as always.
 - [ ] Template: the `Events` option and its creation warning, `AddBlazwizAppSyncEvents` in `Program.cs` and the
       `Events` section in `appsettings.json` behind `IncludeEvents`, the stack parameter in the deploy settings,
       `exclude` lists, README. `test-template.ps1` creates apps with events on and off.
-- [ ] Missing infrastructure: no channel and one warning when endpoints are missing outside development; the Profile
+- [x] Missing infrastructure: no channel and one warning when endpoints are missing outside development; the Profile
       button hidden without a handler; unit tests for both.
-- [ ] Documentation: package table (root README, `docs/diagrams/overview.md`), a `docs/diagrams/user-events.md`
+- [x] Documentation: package table (root README, `docs/diagrams/overview.md`), a `docs/diagrams/user-events.md`
       sequence of sign out everywhere, `template/cloudformation/README.md` (the API, its cost, the deployer actions),
       `CHANGELOG.md`.
 - [ ] Upgrade test: `./templatepack/test-template.ps1 -UpgradeFrom latest`, since the stack, a configuration section
       and `Program.cs` change.
 - [ ] Later events, each its own small change once the channel exists: `mfa-changed`, `profile-deleted`. Key rotation
       needs no new event: it calls `SignOutEverywhereAsync(SignOutReason.KeysRotated)`.
+
+## As built
+
+Where the build differs from the design above, or settled what it left open:
+
+- **The session is passed down, not looked up.** `ISignOutEverywhereHandler.OnSigningOutEverywhereAsync` and
+  `IUserEventChannel.PublishAsync` take the `UserSession`. The AppSync channel getting it from
+  `IAuthenticationService` made a dependency cycle (auth service, notifier, handler, channel, auth service).
+  `ISignOutEverywhereNotifier` (Auth) runs the handlers, and its `HasHandlers` is what shows the Profile button.
+- **The resume check** is `ISessionResumeMonitor` (Auth). It is started with the session by
+  `SessionResumeSessionHandler`, listens to `IPageResumeService` (Browser), and raises `SessionResumed` when the check
+  passes. `UserEventsSessionHandler` reconnects on that. The check uses Cognito `GetUser` (`CheckAccessTokenAsync`). A
+  sync started by the same resume runs alongside the check, not after it: one pass can run before a revoked instance
+  signs out, syncing the user's own files under keys they still hold.
+- **Configuration:** `AppSyncEventsConfig` (in `Events.AppSync`, section `Events`) holds the API's hosts as the stack
+  outputs give them (`Dns.Http`, `Dns.Realtime`), not URLs. `appsettings.json` has no `Events` section: without one,
+  development uses the local channel, and `deploy.ps1` writes it to `appsettings.Production.json`.
+- **The UI handover:** `SessionEndedNoticeService` (UI) carries the reason from the shell to the sign-in page. An
+  expired session shows no message, as before.
+- **`test-auth.ps1`** takes `-SkipSignOutEverywhere`, because its last check signs the test user out on every device.
+- **To verify on the deployed stack (maintainer):** that AppSync accepts the publish made just after `GlobalSignOut`,
+  with the access token Cognito has just revoked. AppSync is expected to check the token's signature and expiry, not
+  its revocation. If it refuses, other devices still sign out at their next resume, but not at once, and the publish
+  must move to before `GlobalSignOut`. The two-browser manual test shows which.
 
 ## Decided
 

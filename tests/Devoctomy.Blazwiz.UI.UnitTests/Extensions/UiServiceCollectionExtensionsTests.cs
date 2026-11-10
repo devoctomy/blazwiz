@@ -59,6 +59,10 @@ public class UiServiceCollectionExtensionsTests
         Assert.Contains(typeof(ToastHost), scope.ServiceProvider.GetRequiredService<IShellRegistry>().GetComponents(ShellRegion.Overlays));
         Assert.IsType<CultureService>(scope.ServiceProvider.GetRequiredService<ICultureService>());
         Assert.Empty(scope.ServiceProvider.GetRequiredService<ICultureService>().SupportedCultures);
+        Assert.IsType<SessionEndedNoticeService>(scope.ServiceProvider.GetRequiredService<ISessionEndedNoticeService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ProfileViewModel>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<DeviceSettingsViewModel>());
+        Assert.Contains(typeof(Components.Settings.DeviceSettingsSection), scope.ServiceProvider.GetRequiredService<ISettingsSectionRegistry>().GetSections());
     }
 
     [Fact]

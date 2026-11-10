@@ -5,6 +5,9 @@
   <ItemGroup>
     <PackageReference Include="Devoctomy.Blazwiz.UI" />
     <PackageReference Include="Devoctomy.Blazwiz.Auth.Cognito" />
+<!--#if (IncludeEvents)-->
+    <PackageReference Include="Devoctomy.Blazwiz.Events.AppSync" />
+<!--#endif-->
 <!--#if (IncludeSync)-->
     <PackageReference Include="Devoctomy.Blazwiz.UI.Sync" />
 <!--#endif-->

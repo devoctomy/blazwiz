@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <Description>User events for blazwiz apps: a channel each user's open devices share, so one can tell the others something changed (e.g. sign out everywhere). Comes with a local channel between the tabs of one browser; Devoctomy.Blazwiz.Events.AppSync reaches every device.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Core\Devoctomy.Blazwiz.Core.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Browser\Devoctomy.Blazwiz.Browser.csproj" />
+    <ProjectReference Include="..\Devoctomy.Blazwiz.Auth\Devoctomy.Blazwiz.Auth.csproj" />
+  </ItemGroup>
+</Project>

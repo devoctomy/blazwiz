@@ -7,6 +7,7 @@ using Devoctomy.Blazwiz.Auth.Exceptions;
 using Devoctomy.Blazwiz.Auth.Models;
 using Devoctomy.Blazwiz.Auth.Services;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
+using Devoctomy.Blazwiz.Auth.Sessions.Interfaces;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Core.Offline;
 using Devoctomy.Blazwiz.Core.Offline.Models;
@@ -25,6 +26,7 @@ public class CognitoAuthenticationServiceTests
     private readonly Mock<ILocalStorageService> mockLocalStorage = new();
     private readonly Mock<IUserDisplayService> mockUserDisplay = new();
     private readonly Mock<TimeProvider> mockTimeProvider = new();
+    private readonly Mock<ISignOutEverywhereNotifier> mockNotifier = new();
     private readonly OfflineModeService offlineMode = new();
     private readonly InMemoryOfflineSessionStore offlineSessions;
     private readonly string idToken = CreateJwt("""{"email":"bob.hoskins@example.com","cognito:username":"5f2c1a7e"}""");
@@ -43,16 +45,16 @@ public class CognitoAuthenticationServiceTests
     {
         // Act & Assert
         Assert.Equal("cognitoClient", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(null!, mockLocalStorage.Object, mockUserDisplay.Object,
-            offlineMode, offlineSessions,
+            offlineMode, offlineSessions, mockNotifier.Object,
             mockTimeProvider.Object)).ParamName);
         Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, null!, mockUserDisplay.Object,
-            offlineMode, offlineSessions,
+            offlineMode, offlineSessions, mockNotifier.Object,
             mockTimeProvider.Object)).ParamName);
         Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, null!,
-            offlineMode, offlineSessions,
+            offlineMode, offlineSessions, mockNotifier.Object,
             mockTimeProvider.Object)).ParamName);
         Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
-            offlineMode, offlineSessions,
+            offlineMode, offlineSessions, mockNotifier.Object,
             null!)).ParamName);
     }
 
@@ -226,8 +228,8 @@ public class CognitoAuthenticationServiceTests
     public void GivenNullOfflineDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockTimeProvider.Object)).ParamName);
-        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockTimeProvider.Object)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, null!, offlineSessions, mockNotifier.Object, mockTimeProvider.Object)).ParamName);
+        Assert.Equal("offlineSessionStore", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, null!, mockNotifier.Object, mockTimeProvider.Object)).ParamName);
     }
 
     [Fact]
@@ -722,6 +724,205 @@ public class CognitoAuthenticationServiceTests
         Assert.Equal(0, ended);
     }
 
+    public static TheoryData<Exception> CognitoFailures => new()
+    {
+        new HttpRequestException("offline"),
+        new TaskCanceledException("timed out"),
+        new CognitoException("TooManyRequestsException", "slow down"),
+    };
+
+    [Fact]
+    public void GivenNullNotifier_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("signOutEverywhereNotifier", Assert.Throws<ArgumentNullException>(() => new CognitoAuthenticationService(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object, offlineMode, offlineSessions, null!, mockTimeProvider.Object)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenSignedIn_WhenSignOutEverywhereAsync_ThenGlobalSignOutThenHandlersThenSignedOut()
+    {
+        // Arrange (RevokeAsync is not set up: the strict mock fails if the revoked refresh token is revoked again)
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(ValidSession());
+        var calls = new List<string>();
+        mockCognito.Setup(x => x.GlobalSignOutAsync("access")).Callback(() => calls.Add("global")).Returns(Task.CompletedTask);
+        mockNotifier.Setup(x => x.NotifyAsync(It.IsAny<UserSession>(), SignOutReason.UserRequested)).Callback(() => calls.Add("notify")).Returns(Task.CompletedTask);
+        mockLocalStorage.Setup(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey)).Callback(() => calls.Add("removed")).Returns(Task.CompletedTask);
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+
+        // Act
+        var result = await sut.SignOutEverywhereAsync(SignOutReason.UserRequested);
+
+        // Assert
+        Assert.True(result);
+        Assert.Equal(["global", "notify", "removed"], calls);
+        Assert.Equal(0, ended);
+    }
+
+    [Fact]
+    public async Task GivenTokenAlreadyRevoked_WhenSignOutEverywhereAsync_ThenStillSignedOutEverywhere()
+    {
+        // Arrange
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(ValidSession());
+        mockCognito.Setup(x => x.GlobalSignOutAsync("access")).ThrowsAsync(new CognitoException("NotAuthorizedException", "Access Token has been revoked"));
+
+        // Act
+        var result = await sut.SignOutEverywhereAsync(SignOutReason.KeysRotated);
+
+        // Assert
+        Assert.True(result);
+        mockNotifier.Verify(x => x.NotifyAsync(It.IsAny<UserSession>(), SignOutReason.KeysRotated), Times.Once);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+    }
+
+    [Theory]
+    [MemberData(nameof(CognitoFailures))]
+    public async Task GivenGlobalSignOutFails_WhenSignOutEverywhereAsync_ThenFalse_AndNothingChanges(Exception failure)
+    {
+        // Arrange
+        var sut = await CreateSignedInSutAsync();
+        SetupStoredSession(ValidSession());
+        mockCognito.Setup(x => x.GlobalSignOutAsync("access")).ThrowsAsync(failure);
+
+        // Act
+        var result = await sut.SignOutEverywhereAsync(SignOutReason.UserRequested);
+
+        // Assert
+        Assert.False(result);
+        mockNotifier.Verify(x => x.NotifyAsync(It.IsAny<UserSession>(), It.IsAny<SignOutReason>()), Times.Never);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOfflineMode_WhenSignOutEverywhereAsync_ThenFalse_AndCognitoNotCalled()
+    {
+        // Arrange (the strict Cognito mock fails on any call)
+        var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob@example.com", OfflineEntryReason.Chosen);
+
+        // Act
+        var result = await sut.SignOutEverywhereAsync(SignOutReason.UserRequested);
+
+        // Assert
+        Assert.False(result);
+        mockNotifier.Verify(x => x.NotifyAsync(It.IsAny<UserSession>(), It.IsAny<SignOutReason>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNobodySignedIn_WhenSignOutEverywhereAsync_ThenFalse()
+    {
+        // Arrange
+        SetupStoredSession(null);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.SignOutEverywhereAsync(SignOutReason.UserRequested);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task GivenSignedIn_WhenEndSessionAsync_ThenSignedOut_AndSessionEndedRaisedWithReasonAndDevice()
+    {
+        // Arrange
+        var sut = await CreateSignedInSutAsync();
+        mockCognito.Setup(x => x.RevokeAsync("refresh")).Returns(Task.CompletedTask);
+        SessionEndedEventArgs? args = null;
+        sut.SessionEnded += (_, e) => args = e;
+
+        // Act
+        await sut.EndSessionAsync(SessionEndedReason.KeysRotated, "Android-Edge-624834");
+
+        // Assert
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(SessionEndedReason.KeysRotated, args?.Reason);
+        Assert.Equal("Android-Edge-624834", args?.DeviceName);
+    }
+
+    [Fact]
+    public async Task GivenSessionAccepted_WhenCheckSessionAsync_ThenTrue_AndKept()
+    {
+        // Arrange
+        SetupStoredSession(ValidSession());
+        mockCognito.Setup(x => x.CheckAccessTokenAsync("access")).Returns(Task.CompletedTask);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.CheckSessionAsync();
+
+        // Assert
+        Assert.True(result);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenSessionRevoked_WhenCheckSessionAsync_ThenFalse_AndSessionEndedSaysRevoked()
+    {
+        // Arrange
+        SetupStoredSession(ValidSession());
+        mockCognito.Setup(x => x.CheckAccessTokenAsync("access")).ThrowsAsync(new CognitoException("NotAuthorizedException", "Access Token has been revoked"));
+        var sut = CreateSut();
+        SessionEndedEventArgs? args = null;
+        sut.SessionEnded += (_, e) => args = e;
+
+        // Act
+        var result = await sut.CheckSessionAsync();
+
+        // Assert
+        Assert.False(result);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+        Assert.Equal(SessionEndedReason.Revoked, args?.Reason);
+        Assert.Null(args?.DeviceName);
+    }
+
+    [Theory]
+    [MemberData(nameof(CognitoFailures))]
+    public async Task GivenCheckFails_WhenCheckSessionAsync_ThenTrue_AndKept(Exception failure)
+    {
+        // Arrange
+        SetupStoredSession(ValidSession());
+        mockCognito.Setup(x => x.CheckAccessTokenAsync("access")).ThrowsAsync(failure);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.CheckSessionAsync();
+
+        // Assert
+        Assert.True(result);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNobodySignedIn_WhenCheckSessionAsync_ThenFalse()
+    {
+        // Arrange
+        SetupStoredSession(null);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.CheckSessionAsync();
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task GivenOfflineSession_WhenCheckSessionAsync_ThenTrue_AndCognitoNotCalled()
+    {
+        // Arrange (the strict Cognito mock fails on any call)
+        var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob@example.com", OfflineEntryReason.Chosen);
+
+        // Act
+        var result = await sut.CheckSessionAsync();
+
+        // Assert
+        Assert.True(result);
+    }
+
     private static string CreateJwt(string payloadJson) => new JsonWebTokenHandler().CreateToken(payloadJson);
 
     private static CognitoSignInResult Tokens(string idToken)
@@ -740,6 +941,8 @@ public class CognitoAuthenticationServiceTests
         return sut;
     }
 
+    private UserSession ValidSession() => new() { Username = "bob.hoskins@example.com", IdToken = idToken, AccessToken = "access", ExpiresAt = Now.AddHours(1) };
+
     private void SetupStoredSession(UserSession? session)
     {
         mockLocalStorage
@@ -757,6 +960,6 @@ public class CognitoAuthenticationServiceTests
     }
 
     private CognitoAuthenticationService CreateSut() => new(mockCognito.Object, mockLocalStorage.Object, mockUserDisplay.Object,
-        offlineMode, offlineSessions,
+        offlineMode, offlineSessions, mockNotifier.Object,
         mockTimeProvider.Object);
 }

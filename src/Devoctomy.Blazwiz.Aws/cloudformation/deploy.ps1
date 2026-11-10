@@ -7,7 +7,7 @@ The base stack and this script are released with the framework (Devoctomy.Blazwi
 their own cloudformation/deploy.ps1, which passes the app's name, folder and portal project.
 
 Safe to run repeatedly. An optional parameter that is not given (-CustomDomainName, -CertificateArn,
--LocalDevOrigins, -UserPoolDeletionProtection, -AuditLogging) keeps the value the stack already has, so an upgrade
+-LocalDevOrigins, -UserPoolDeletionProtection, -AuditLogging, -Events) keeps the value the stack already has, so an upgrade
 run need not repeat them. Each run:
   1. Creates / updates the CloudFormation stack "<AppName>-<Environment>" through a change set. The changes
      are listed first, replacements need confirming, and replacing the user pool, identity pool, data bucket,
@@ -78,6 +78,11 @@ param(
     # Whether every read, write and delete of an object in the data bucket is recorded by CloudTrail. auto: on for prod.
     [ValidateSet('auto', 'true', 'false')]
     [string]$AuditLogging = 'auto',
+
+    # Whether to create the user events API (AppSync Events) that tells a user's open devices about a sign out
+    # everywhere. Apps created without events pass disabled through their own deploy.ps1.
+    [ValidateSet('enabled', 'disabled')]
+    [string]$Events = 'enabled',
 
     # Skip the CloudFormation deployment (just publish the portal / manage the user).
     [switch]$SkipInfrastructure,
@@ -186,6 +191,7 @@ if (-not $SkipInfrastructure) {
         LocalDevOrigins            = ($LocalDevOrigins -join ',')
         UserPoolDeletionProtection = $UserPoolDeletionProtection
         AuditLogging               = $AuditLogging
+        Events                     = $Events
     }
     foreach ($key in $optional.Keys) {
         if (-not $PSBoundParameters.ContainsKey($key) -and $previousKeys -contains $key) {
@@ -340,6 +346,16 @@ if (-not $SkipPortal) {
         }
     }
 
+    # The user events API, when the stack has one (Events=enabled). Without it the app runs without events.
+    $eventsHttp = $outputs['EventsHttpEndpoint']
+    $eventsRealtime = $outputs['EventsRealtimeEndpoint']
+    if ($eventsHttp -and $eventsRealtime) {
+        $productionSettings['Events'] = [ordered]@{
+            HttpEndpoint     = $eventsHttp
+            RealtimeEndpoint = $eventsRealtime
+        }
+    }
+
     # Written before publishing (not patched afterwards) so the service worker's asset hashes stay valid.
     # Blazor loads appsettings.Production.json on top of appsettings.json when hosted (Production environment).
     [IO.File]::WriteAllText(
@@ -357,7 +373,7 @@ if (-not $SkipPortal) {
     }
 
     $wwwroot = Join-Path $publishDirectory 'wwwroot'
-    Add-ContentSecurityPolicy -WwwRoot $wwwroot -Region $outputs['Region'] -DataBucketName $outputs['DataBucketName']
+    Add-ContentSecurityPolicy -WwwRoot $wwwroot -Region $outputs['Region'] -DataBucketName $outputs['DataBucketName'] -EventsHttpEndpoint $eventsHttp -EventsRealtimeEndpoint $eventsRealtime
     Write-Ok "Content-Security-Policy added to index.html"
 
     $bucketUri = "s3://$($outputs['PortalBucketName'])"

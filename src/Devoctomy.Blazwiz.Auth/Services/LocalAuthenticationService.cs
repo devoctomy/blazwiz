@@ -1,6 +1,7 @@
 using Devoctomy.Blazwiz.Auth.Exceptions;
 using Devoctomy.Blazwiz.Auth.Models;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
+using Devoctomy.Blazwiz.Auth.Sessions.Interfaces;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Core.Offline.Interfaces;
 using Devoctomy.Blazwiz.Core.Offline.Models;
@@ -17,6 +18,7 @@ public class LocalAuthenticationService(
     IUserDisplayService userDisplayService,
     IOfflineModeService offlineModeService,
     IOfflineSessionStore offlineSessionStore,
+    ISignOutEverywhereNotifier signOutEverywhereNotifier,
     TimeProvider timeProvider)
     : IAuthenticationService, IDisposable
 {
@@ -34,12 +36,13 @@ public class LocalAuthenticationService(
     private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
     private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
     private readonly IOfflineSessionStore offlineSessionStore = offlineSessionStore ?? throw new ArgumentNullException(nameof(offlineSessionStore));
+    private readonly ISignOutEverywhereNotifier signOutEverywhereNotifier = signOutEverywhereNotifier ?? throw new ArgumentNullException(nameof(signOutEverywhereNotifier));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     private bool isListening;
 
     /// <inheritdoc/>
-    public event EventHandler? SessionEnded;
+    public event EventHandler<SessionEndedEventArgs>? SessionEnded;
 
     /// <inheritdoc/>
     public bool IsPlaceholder => true;
@@ -166,6 +169,35 @@ public class LocalAuthenticationService(
     }
 
     /// <inheritdoc/>
+    /// <remarks>There is no sign-in service to revoke anything: the other handlers run, then this device signs out.</remarks>
+    public async Task<bool> SignOutEverywhereAsync(SignOutReason reason)
+    {
+        var session = offlineModeService.IsOffline ? null : await GetCurrentUserAsync();
+        if (session == null)
+        {
+            return false;
+        }
+
+        await signOutEverywhereNotifier.NotifyAsync(session, reason);
+        await LogoutAsync();
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task EndSessionAsync(SessionEndedReason reason, string? deviceName)
+    {
+        await LogoutAsync();
+        SessionEnded?.Invoke(this, new SessionEndedEventArgs(reason, deviceName));
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>There is no sign-in service to ask: true while the session is there and has not expired.</remarks>
+    public async Task<bool> CheckSessionAsync()
+    {
+        return await GetCurrentUserAsync() != null;
+    }
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         if (isListening)
@@ -177,11 +209,7 @@ public class LocalAuthenticationService(
         GC.SuppressFinalize(this);
     }
 
-    private async Task EndSessionAsync()
-    {
-        await LogoutAsync();
-        SessionEnded?.Invoke(this, EventArgs.Empty);
-    }
+    private Task EndSessionAsync() => EndSessionAsync(SessionEndedReason.Expired, null);
 
     private void ListenForOfflineModeChanges()
     {

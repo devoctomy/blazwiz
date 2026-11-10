@@ -8,6 +8,46 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+### Added
+- **Sign out everywhere.** `IAuthenticationService.SignOutEverywhereAsync(reason)` revokes every session the user
+  has (Cognito `GlobalSignOut`), runs every `ISignOutEverywhereHandler` (`AddSignOutEverywhereHandler<T>()`), then
+  signs out here. When Cognito cannot be reached, or in offline mode, it returns false and nothing changes. The Profile
+  page offers it, with a confirmation, when a handler is registered.
+- **User events**, in two new packages:
+  - **`Devoctomy.Blazwiz.Events`:** a channel the user's open devices share (`IUserEventChannel`), with a local
+    channel between one browser's tabs for development and tests.
+  - **`Devoctomy.Blazwiz.Events.AppSync`:** the channel over AWS AppSync Events, reaching every device, with no Amplify.
+  When a device signs out everywhere, the others end their sessions at once, and the sign-in page says which device
+  did it. `AddBlazwizAppSyncEvents(configuration, allowLocalChannel)` reads the new `Events` configuration section.
+  Outside development, without it, the app runs without events and logs a warning.
+- **The resume check.** Whenever the page becomes visible again or the browser comes back online, the session is
+  checked with Cognito (`CheckSessionAsync`, `GetUser`). A device that was closed, offline or asleep when the user
+  signed out everywhere signs itself out as soon as it wakes. `IPageResumeService` (Browser) raises the event, and
+  `ISessionResumeMonitor` (Auth) runs the check.
+- **The device's name** (`IDeviceNameService`, Browser), kept in local storage (`device_name`). It defaults to
+  `<Platform>-<Browser>-<6 digits>` (e.g. `Android-Edge-624834`), and can be renamed under Settings, This device. The
+  section is shown when user events are on.
+- **The base stack:**
+  - A new `Events` parameter (`enabled` by default) creates an AppSync Events API, `<AppName>-<Environment>-events`,
+    with a `users` namespace whose handlers allow each user only their own channel. It also adds the outputs
+    `EventsHttpEndpoint` and `EventsRealtimeEndpoint`.
+  - `deploy.ps1` takes `-Events`, writes the endpoints to `appsettings.Production.json` and adds them to the
+    Content-Security-Policy.
+  - `test-auth.ps1` checks the channel's isolation and that signing out everywhere revokes the session
+    (`-SkipSignOutEverywhere` leaves that out).
+  - `deploy-policy.json` gains an `AppSyncEvents` statement.
+- **The template's new `--events` option** (on by default) adds user events. Apps created with `--events false` are
+  told at creation what that leaves out, and deploy with `-Events disabled`.
+
+### Changed
+- `IAuthenticationService.SessionEnded` is now `EventHandler<SessionEndedEventArgs>`, with the reason
+  (`SessionEndedReason`) and the device that ended the session. `IAuthenticationService` also gains
+  `SignOutEverywhereAsync`, `EndSessionAsync` and `CheckSessionAsync`. Handlers of `SessionEnded` take the new
+  arguments, and implementations of `IAuthenticationService` add the new members.
+- `LocalAuthenticationService`, `CognitoAuthenticationService`, `MainLayoutViewModel`, `LoginViewModel` and
+  `ProfileViewModel` take new constructor parameters. This only matters to code that constructs them itself, such as
+  tests; dependency injection supplies them.
+
 ## 0.7.2
 
 ### Changed

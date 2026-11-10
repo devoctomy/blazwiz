@@ -3,6 +3,7 @@ using Devoctomy.Blazwiz.Auth.Services.Interfaces;
 using Devoctomy.Blazwiz.Auth.Sessions.Interfaces;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Models;
+using Devoctomy.Blazwiz.UI.Services;
 using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Shell;
 using Devoctomy.Blazwiz.UI.Shell.Interfaces;
@@ -22,6 +23,7 @@ public class MainLayoutViewModelTests
     private readonly Mock<ISessionLifecycle> mockLifecycle = new();
     private readonly Mock<IShellRegistry> mockShell = new();
     private readonly ShellContentService shellContent = new();
+    private readonly SessionEndedNoticeService notice = new();
     private readonly AppSettings appSettings = new();
     private readonly UserSettings userSettings = new();
     private readonly UserSession session = new() { Username = "bob@example.com", DisplayName = "Bob Hoskins" };
@@ -39,16 +41,17 @@ public class MainLayoutViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(null!, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, appSettings)).ParamName);
-        Assert.Equal("themeService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, null!, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, appSettings)).ParamName);
-        Assert.Equal("userSettingsService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, null!, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, appSettings)).ParamName);
-        Assert.Equal("navigationMenuService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, null!, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, appSettings)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, null!, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, appSettings)).ParamName);
-        Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, null!, mockLifecycle.Object, mockShell.Object, shellContent, appSettings)).ParamName);
-        Assert.Equal("sessionLifecycle", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, null!, mockShell.Object, shellContent, appSettings)).ParamName);
-        Assert.Equal("shellRegistry", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, null!, shellContent, appSettings)).ParamName);
-        Assert.Equal("shellContentService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, null!, appSettings)).ParamName);
-        Assert.Equal("appSettings", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, null!)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(null!, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, notice, appSettings)).ParamName);
+        Assert.Equal("themeService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, null!, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, notice, appSettings)).ParamName);
+        Assert.Equal("userSettingsService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, null!, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, notice, appSettings)).ParamName);
+        Assert.Equal("navigationMenuService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, null!, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, notice, appSettings)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, null!, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, notice, appSettings)).ParamName);
+        Assert.Equal("userDisplayService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, null!, mockLifecycle.Object, mockShell.Object, shellContent, notice, appSettings)).ParamName);
+        Assert.Equal("sessionLifecycle", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, null!, mockShell.Object, shellContent, notice, appSettings)).ParamName);
+        Assert.Equal("shellRegistry", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, null!, shellContent, notice, appSettings)).ParamName);
+        Assert.Equal("shellContentService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, null!, notice, appSettings)).ParamName);
+        Assert.Equal("sessionEndedNoticeService", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, null!, appSettings)).ParamName);
+        Assert.Equal("appSettings", Assert.Throws<ArgumentNullException>(() => new MainLayoutViewModel(mockAuth.Object, mockTheme.Object, mockUserSettings.Object, mockMenu.Object, mockNavigation.Object, mockUserDisplay.Object, mockLifecycle.Object, mockShell.Object, shellContent, notice, null!)).ParamName);
     }
 
     [Fact]
@@ -304,11 +307,26 @@ public class MainLayoutViewModelTests
         using var sut = CreateSut();
 
         // Act
-        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, EventArgs.Empty);
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, new SessionEndedEventArgs(SessionEndedReason.Expired));
 
         // Assert
         mockLifecycle.Verify(x => x.SigningOutAsync(), Times.Once);
         mockLifecycle.Verify(x => x.SignedOutAsync(), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("/login"), Times.Once);
+    }
+
+    [Fact]
+    public void GivenSignedOutFromAnotherDevice_WhenSessionEnded_ThenTheLoginPageIsToldWhy()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        var args = new SessionEndedEventArgs(SessionEndedReason.SignedOutEverywhere, "Android-Edge-624834");
+
+        // Act
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, args);
+
+        // Assert
+        Assert.Same(args, notice.Take());
         mockNavigation.Verify(x => x.NavigateTo("/login"), Times.Once);
     }
 
@@ -320,7 +338,7 @@ public class MainLayoutViewModelTests
         using var sut = CreateSut();
 
         // Act
-        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, EventArgs.Empty);
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, new SessionEndedEventArgs(SessionEndedReason.Expired));
 
         // Assert
         mockLifecycle.Verify(x => x.SignedOutAsync(), Times.Once);
@@ -335,7 +353,7 @@ public class MainLayoutViewModelTests
         sut.Dispose();
 
         // Act
-        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, EventArgs.Empty);
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, new SessionEndedEventArgs(SessionEndedReason.Expired));
 
         // Assert
         mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
@@ -351,5 +369,6 @@ public class MainLayoutViewModelTests
         mockLifecycle.Object,
         mockShell.Object,
         shellContent,
+        notice,
         appSettings);
 }

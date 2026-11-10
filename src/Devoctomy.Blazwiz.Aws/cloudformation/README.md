@@ -14,8 +14,15 @@ An app's own AWS resources go in its `cloudformation/app.yaml`, deployed after t
 
 Every script takes `-AppName`, `-Environment`, `-Region` and `-AwsProfile`; see each script's help for the rest.
 `deploy.ps1` keeps the stack's current value of any optional parameter it is not given (the custom domain and
-certificate, local development origins, deletion protection, audit logging), so an upgrade run need not repeat them;
-pass a value to change one (`-CustomDomainName ''` removes the custom domain).
+certificate, local development origins, deletion protection, audit logging, events), so an upgrade run need not
+repeat them; pass a value to change one (`-CustomDomainName ''` removes the custom domain).
+
+With `-Events enabled` (the default; apps created without user events pass `disabled`) the stack has a user events
+API: an AWS AppSync Events API (`<AppName>-<Environment>-events`) with one channel namespace, `users`. A user's open
+devices use it to tell each other at once when they sign out everywhere. It is charged per use (connection minutes and
+event operations), with no fixed charge. `deploy.ps1` writes its hosts (`EventsHttpEndpoint`,
+`EventsRealtimeEndpoint`) to the `Events` section of `appsettings.Production.json`, and adds them to the
+Content-Security-Policy's `connect-src` (`https:` and `wss:`).
 
 ## What protects the users' data
 
@@ -40,6 +47,10 @@ pass a value to change one (`-CustomDomainName ''` removes the custom domain).
   year (`AuditLogBucketName`). CloudTrail charges for data events; pass `false` to turn it off, or `true` for other
   environments. Management events (Cognito, Secrets Manager, CloudFormation) are in the account's own trail, if it has
   one.
+- **A user's events reach only their own devices.** The events API takes only the user pool's tokens (no IAM, so the
+  identity pool's AWS credentials cannot reach it), and the `users` namespace's handlers refuse any channel but the
+  caller's own `/users/<sub>`. Events carry no secrets. `test-auth.ps1` checks that another user's channel is
+  refused.
 - **Email changes need verification.** A new email address only takes over once the user has proved they can read it,
   and the app client can read `email`, `email_verified` and `name` and write nothing but `name`.
 - **Local development origins are only allowed where asked.** `-LocalDevOrigins` defaults to the portal's local URLs

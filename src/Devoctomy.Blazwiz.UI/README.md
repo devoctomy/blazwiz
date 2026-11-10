@@ -26,6 +26,11 @@ Add to the shell, or change it, with:
 
 Text comes from resources (`UiText`), so apps can reword and translate it.
 
+When something registers an `ISignOutEverywhereHandler` (user events, `Devoctomy.Blazwiz.Events`), the Profile page
+offers "Sign out everywhere", and Settings shows a This device section where the user names the device. When a session
+ends because of another device (`SessionEnded` with a reason), the sign-in page says why, e.g. "You were signed out
+from Work laptop."
+
 The package's JS initializer registers the app's service worker and, when a new version has downloaded, shows the
 `#app-update-banner` element of the app's `index.html`, whose button switches to it. While the new version downloads,
 `AppUpdateIndicator` (in both layouts) shows a small indicator in the corner, with the percentage of files cached when

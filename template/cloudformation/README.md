@@ -11,13 +11,16 @@ The infrastructure is in two stacks:
 | Script | What it does |
 | --- | --- |
 | `deploy.ps1` | Creates or updates the base stack, then the app's stack, publishes the portal to S3, invalidates CloudFront and sets up a test user in Cognito. |
-| `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials, per-user S3 access (and that other users' prefixes are refused) and per-user keys secrets. |
+| `test-auth.ps1` | Checks a deployed environment end to end: the portal, Cognito sign-in, identity pool credentials, per-user S3 access (and that other users' prefixes are refused), per-user keys secrets, the user events channel (own channel only), and that signing out everywhere revokes the session (which signs the test user out everywhere; `-SkipSignOutEverywhere` leaves it out). |
 | `remove.ps1` | Deletes the app's stack, the users' keys secrets, then empties the buckets (every version) and deletes the base stack, turning the user pool's deletion protection off first. |
 | `app.yaml` | The app's own CloudFormation template. |
 | `base-stack.ps1` | Finds the base stack and its scripts. |
 
 The scripts here pass the app's name, folder and portal project to the base stack's scripts, and every other
-parameter through.
+parameter through. `deploy.ps1` also passes `-Events enabled` or `-Events disabled`, depending on whether the app was
+created with user events. With them, the base stack has an AWS AppSync Events API, charged per use (connection minutes
+and event operations, with no fixed charge). Its deployer permissions are the `AppSyncEvents` statement of
+`deploy-policy.json`. `remove.ps1` needs nothing extra: the API is part of the stack.
 
 All three scripts use the AWS CLI v2 with your normal credential chain. Pass `-AwsProfile` to use a named profile.
 

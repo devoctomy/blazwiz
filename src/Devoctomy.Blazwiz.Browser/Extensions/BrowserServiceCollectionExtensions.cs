@@ -11,8 +11,8 @@ namespace Devoctomy.Blazwiz.Browser.Extensions;
 public static class BrowserServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds local storage (named after the app, see <c>AddBlazwizApp</c>), navigation, browser interop and WebAuthn
-    /// passkeys. Safe to call more than once.
+    /// Adds local storage (named after the app, see <c>AddBlazwizApp</c>), navigation, browser interop, WebAuthn
+    /// passkeys, the clipboard, the device's name and page resume events. Safe to call more than once.
     /// </summary>
     /// <param name="services">The service collection to add services to.</param>
     /// <returns>The service collection for method chaining.</returns>
@@ -25,6 +25,8 @@ public static class BrowserServiceCollectionExtensions
         services.TryAddScoped<IBrowserInteropService, BrowserInteropService>();
         services.TryAddScoped<IWebAuthnService, WebAuthnService>();
         services.TryAddScoped<IClipboardService, ClipboardService>();
+        services.TryAddScoped<IDeviceNameService, DeviceNameService>();
+        services.TryAddScoped<IPageResumeService, PageResumeService>();
         services.TryAddSingleton(TimeProvider.System);
         return services;
     }

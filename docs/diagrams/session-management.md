@@ -52,6 +52,8 @@ so a module failing (for example offline) never stops the others, the sign in or
 |---|---|---|---|
 | `DataMigrationRunner` | Auth | `int.MinValue` | Shell loading: runs the packages' `IDataMigration`s, recording versions in `myapp_data_versions` |
 | `AwsCredentialsSessionHandler` | Auth.Cognito | 0 | Session started: fetches the AWS credentials in the background. Signed out: forgets them |
+| `SessionResumeSessionHandler` | Auth | 0 | Session started: checks the session with the sign-in service whenever the app resumes (`SessionResumeMonitor`). Signing out: stops ([user-events.md](user-events.md), diagram 3) |
+| `UserEventsSessionHandler` | Events | 0 | Session started: connects the user's event channel, and ends the session when another device signs out everywhere. Signing out: disconnects ([user-events.md](user-events.md)) |
 | `SyncSessionHandler` | UI.Sync | 100 | Signed in: asks for persistent storage. Shell loading: reads "sync turned off". Session started: starts sync ([sync.md](sync.md), diagram 1). Signing out: stops sync and locks every profile |
 | `DerivedKeySessionHandler` | Auth | `int.MaxValue` | Signed out: wipes every key in `IDerivedKeyStore` (the passkey's `rememberme`, `e2e-kek` and `e2e-labels`), after the modules have locked what they hold, whatever page the app shows next |
 
@@ -253,7 +255,11 @@ sequenceDiagram
 
 ## 5. A session ends
 
-`EndSessionAsync` signs out and raises `SessionEnded`. `LogoutAsync` on its own (the Sign out button) does not raise it.
+`EndSessionAsync` signs out and raises `SessionEnded` with the reason (`SessionEndedReason`): `Expired` here, `Revoked`
+from the resume check, `SignedOutEverywhere` or `KeysRotated` when another device signed the user out everywhere, with
+that device's name ([user-events.md](user-events.md)). The shell hands the reason to the login page
+(`SessionEndedNoticeService`), which says why for every reason but `Expired`. `LogoutAsync` on its own (the Sign out
+button) and `SignOutEverywhereAsync` do not raise it.
 
 ```mermaid
 sequenceDiagram
@@ -282,8 +288,8 @@ sequenceDiagram
     opt Had a refresh token and online
         Auth->>UP: RevokeToken (best effort)
     end
-    Auth-)Layout: SessionEnded
-    Layout->>Mem: isEndingSession = true (ignore repeats)
+    Auth-)Layout: SessionEnded(Expired)
+    Layout->>Mem: SessionEndedNoticeService.Set(reason), isEndingSession = true (ignore repeats)
     Layout->>Life: SigningOutAsync()
     Life->>SyncH: OnSigningOutAsync()
     SyncH->>Mem: Stop the scheduler (cancel passes, reset sync and connectivity status), lock every profile

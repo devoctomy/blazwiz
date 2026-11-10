@@ -9,6 +9,7 @@ using Devoctomy.Blazwiz.Core.Offline;
 using Devoctomy.Blazwiz.Core.Offline.Models;
 using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Devoctomy.Blazwiz.UI.Models;
+using Devoctomy.Blazwiz.UI.Services;
 using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Shell;
 using Devoctomy.Blazwiz.UI.Shell.Interfaces;
@@ -32,6 +33,7 @@ public class LoginViewModelTests
     private readonly List<ISignInOption> options = [];
     private readonly List<SignInOptionRegistration> optionRegistrations = [];
     private readonly Mock<ISessionLifecycle> mockLifecycle = new();
+    private readonly SessionEndedNoticeService notice = new();
     private readonly AppSettings appSettings = new() { ApplicationTitle = "Test App", EnablePortalLoginAuthn = true };
 
     public LoginViewModelTests()
@@ -50,7 +52,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("authService", exception.ParamName);
@@ -67,7 +69,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("navigationService", exception.ParamName);
@@ -84,7 +86,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("themeService", exception.ParamName);
@@ -101,7 +103,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("localStorageService", exception.ParamName);
@@ -118,7 +120,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("webAuthnService", exception.ParamName);
@@ -135,7 +137,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("passwordCryptoService", exception.ParamName);
@@ -152,7 +154,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("keyStore", exception.ParamName);
@@ -169,7 +171,7 @@ public class LoginViewModelTests
             null!,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("appSettings", exception.ParamName);
@@ -244,6 +246,47 @@ public class LoginViewModelTests
         // Assert
         mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
         mockKeyStore.Verify(x => x.Clear(), Times.Never);
+    }
+
+    [Fact]
+    public void GivenNullNoticeService_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("sessionEndedNoticeService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, null!)).ParamName);
+    }
+
+    [Theory]
+    [InlineData(SessionEndedReason.SignedOutEverywhere, "Android-Edge-624834", "You were signed out from Android-Edge-624834.")]
+    [InlineData(SessionEndedReason.SignedOutEverywhere, null, "You were signed out from another device.")]
+    [InlineData(SessionEndedReason.KeysRotated, "Work laptop", "Your passphrase was changed on Work laptop. Sign in and unlock with the new one.")]
+    [InlineData(SessionEndedReason.KeysRotated, " ", "Your passphrase was changed on another device. Sign in and unlock with the new one.")]
+    [InlineData(SessionEndedReason.Revoked, null, "You were signed out.")]
+    public async Task GivenSessionEndedElsewhere_WhenInitialized_ThenSaysWhyOnce(SessionEndedReason reason, string? device, string expected)
+    {
+        // Arrange
+        notice.Set(new SessionEndedEventArgs(reason, device));
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.Equal(expected, sut.SessionEndedMessage);
+        Assert.Null(notice.Take());
+    }
+
+    [Fact]
+    public async Task GivenSessionExpired_WhenInitialized_ThenNoMessage()
+    {
+        // Arrange
+        notice.Set(new SessionEndedEventArgs(SessionEndedReason.Expired));
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.Null(sut.SessionEndedMessage);
     }
 
     [Fact]
@@ -619,7 +662,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors));
+        testText.Ui, testText.Errors, notice));
 
         // Assert
         Assert.Equal("offlineModeService", exception.ParamName);
@@ -1068,9 +1111,9 @@ public class LoginViewModelTests
     public void GivenNullExtensionPoints_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("signInOptions", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, null!, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors)).ParamName);
-        Assert.Equal("signInOptionRegistrations", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, null!, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors)).ParamName);
-        Assert.Equal("sessionLifecycle", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, null!, appSettings, testText.Ui, testText.Errors)).ParamName);
+        Assert.Equal("signInOptions", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, null!, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, notice)).ParamName);
+        Assert.Equal("signInOptionRegistrations", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, null!, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, notice)).ParamName);
+        Assert.Equal("sessionLifecycle", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, null!, appSettings, testText.Ui, testText.Errors, notice)).ParamName);
     }
 
     [Fact]
@@ -1239,7 +1282,7 @@ public class LoginViewModelTests
             optionRegistrations,
             mockLifecycle.Object,
             appSettings,
-        testText.Ui, testText.Errors);
+        testText.Ui, testText.Errors, notice);
 
     private class FakeOption : ISignInOption
     {

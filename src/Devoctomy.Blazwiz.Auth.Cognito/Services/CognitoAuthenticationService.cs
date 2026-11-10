@@ -4,6 +4,7 @@ using Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces;
 using Devoctomy.Blazwiz.Auth.Exceptions;
 using Devoctomy.Blazwiz.Auth.Models;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
+using Devoctomy.Blazwiz.Auth.Sessions.Interfaces;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Core.Offline.Interfaces;
 using Devoctomy.Blazwiz.Core.Offline.Models;
@@ -34,6 +35,7 @@ public class CognitoAuthenticationService(
     IUserDisplayService userDisplayService,
     IOfflineModeService offlineModeService,
     IOfflineSessionStore offlineSessionStore,
+    ISignOutEverywhereNotifier signOutEverywhereNotifier,
     TimeProvider timeProvider)
     : IAuthenticationService, IDisposable
 {
@@ -48,12 +50,14 @@ public class CognitoAuthenticationService(
     public static readonly TimeSpan TokenRefreshMargin = TimeSpan.FromMinutes(5);
 
     private const string NewPasswordRequiredChallenge = "NEW_PASSWORD_REQUIRED";
+    private const string NotAuthorized = "NotAuthorizedException";
 
     private readonly ICognitoUserPoolClient cognitoClient = cognitoClient ?? throw new ArgumentNullException(nameof(cognitoClient));
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
     private readonly IUserDisplayService userDisplayService = userDisplayService ?? throw new ArgumentNullException(nameof(userDisplayService));
     private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
     private readonly IOfflineSessionStore offlineSessionStore = offlineSessionStore ?? throw new ArgumentNullException(nameof(offlineSessionStore));
+    private readonly ISignOutEverywhereNotifier signOutEverywhereNotifier = signOutEverywhereNotifier ?? throw new ArgumentNullException(nameof(signOutEverywhereNotifier));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     private PendingNewPassword? pendingNewPassword;
@@ -61,7 +65,7 @@ public class CognitoAuthenticationService(
     private bool isListening;
 
     /// <inheritdoc/>
-    public event EventHandler? SessionEnded;
+    public event EventHandler<SessionEndedEventArgs>? SessionEnded;
 
     /// <inheritdoc/>
     public bool IsPlaceholder => false;
@@ -279,6 +283,80 @@ public class CognitoAuthenticationService(
     }
 
     /// <inheritdoc/>
+    public async Task<bool> SignOutEverywhereAsync(SignOutReason reason)
+    {
+        if (offlineModeService.IsOffline)
+        {
+            return false;
+        }
+
+        var session = await GetCurrentUserAsync();
+        if (session == null || session.IsOffline || string.IsNullOrEmpty(session.AccessToken))
+        {
+            return false;
+        }
+
+        try
+        {
+            await cognitoClient.GlobalSignOutAsync(session.AccessToken);
+        }
+        catch (CognitoException ex) when (ex.ErrorType == NotAuthorized)
+        {
+            // Already revoked: the user was signed out everywhere from another device meanwhile. Carry on.
+        }
+        catch (Exception ex) when (ex is CognitoException or HttpRequestException or TaskCanceledException)
+        {
+            return false;
+        }
+
+        // Every refresh token is revoked: there is nothing left to revoke on the way out.
+        refreshToken = null;
+        await signOutEverywhereNotifier.NotifyAsync(session, reason);
+        await LogoutAsync();
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task EndSessionAsync(SessionEndedReason reason, string? deviceName)
+    {
+        await LogoutAsync();
+        SessionEnded?.Invoke(this, new SessionEndedEventArgs(reason, deviceName));
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> CheckSessionAsync()
+    {
+        // Reading the session renews it when due, or ends it when it cannot be renewed.
+        var session = await GetCurrentUserAsync();
+        if (session == null)
+        {
+            return false;
+        }
+
+        if (session.IsOffline || offlineModeService.IsOffline || string.IsNullOrEmpty(session.AccessToken))
+        {
+            // Offline mode makes no calls to Cognito: checked once it is turned off.
+            return true;
+        }
+
+        try
+        {
+            await cognitoClient.CheckAccessTokenAsync(session.AccessToken);
+            return true;
+        }
+        catch (CognitoException ex) when (ex.ErrorType == NotAuthorized)
+        {
+            await EndSessionAsync(SessionEndedReason.Revoked, null);
+            return false;
+        }
+        catch (Exception ex) when (ex is CognitoException or HttpRequestException or TaskCanceledException)
+        {
+            // Throttled or unreachable: keep the session and check again next time.
+            return true;
+        }
+    }
+
+    /// <inheritdoc/>
     public void Dispose()
     {
         if (isListening)
@@ -387,11 +465,7 @@ public class CognitoAuthenticationService(
     }
 
     // Signs out (revoking the refresh token, if this tab has one) and tells the app, so it returns to the login page.
-    private async Task EndSessionAsync()
-    {
-        await LogoutAsync();
-        SessionEnded?.Invoke(this, EventArgs.Empty);
-    }
+    private Task EndSessionAsync() => EndSessionAsync(SessionEndedReason.Expired, null);
 
     private async Task<LoginResult> HandleSignInResultAsync(CognitoSignInResult result, string username)
     {

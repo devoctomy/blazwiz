@@ -293,7 +293,8 @@ function Add-ContentSecurityPolicy {
     What the policy allows:
       - scripts: the app's own files, WebAssembly, and the inline import map (by hash). No other inline script or
         event handler attributes (onerror=... etc.), so markup injected into a page cannot run.
-      - connections: the app itself, and only the AWS endpoints the portal calls in this region and data bucket.
+      - connections: the app itself, and only the AWS endpoints the portal calls in this region and data bucket, plus
+        the user events API (https: to publish, wss: to receive) when the stack has one.
       - styles: the app's own files, plus inline style attributes (Blazor sets them on elements).
       - images: the app's own files and data: URIs only. Remote images in notes are not loaded.
       - workers: the app's own files, and blob: for the OPFS worker.
@@ -303,7 +304,9 @@ function Add-ContentSecurityPolicy {
     param(
         [Parameter(Mandatory)][string]$WwwRoot,
         [Parameter(Mandatory)][string]$Region,
-        [Parameter(Mandatory)][string]$DataBucketName
+        [Parameter(Mandatory)][string]$DataBucketName,
+        [string]$EventsHttpEndpoint,
+        [string]$EventsRealtimeEndpoint
     )
 
     $indexPath = Join-Path $WwwRoot 'index.html'
@@ -323,13 +326,18 @@ function Add-ContentSecurityPolicy {
         }
     }
 
+    $connect = "connect-src 'self' https://cognito-idp.$Region.amazonaws.com https://cognito-identity.$Region.amazonaws.com https://secretsmanager.$Region.amazonaws.com https://$DataBucketName.s3.$Region.amazonaws.com"
+    if ($EventsHttpEndpoint -and $EventsRealtimeEndpoint) {
+        $connect += " https://$EventsHttpEndpoint wss://$EventsRealtimeEndpoint"
+    }
+
     $directives = @(
         "default-src 'self'"
         "script-src 'self' 'wasm-unsafe-eval' $($scriptHashes -join ' ')".TrimEnd()
         "style-src 'self' 'unsafe-inline'"
         "img-src 'self' data:"
         "font-src 'self'"
-        "connect-src 'self' https://cognito-idp.$Region.amazonaws.com https://cognito-identity.$Region.amazonaws.com https://secretsmanager.$Region.amazonaws.com https://$DataBucketName.s3.$Region.amazonaws.com"
+        $connect
         "worker-src 'self' blob:"
         "manifest-src 'self'"
         "object-src 'none'"

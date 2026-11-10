@@ -81,6 +81,7 @@ public static class UiServiceCollectionExtensions
         services.TryAddScoped<IToastService, ToastService>();
         services.TryAddScoped<IPasskeyKeysService, PasskeyKeysService>();
         services.TryAddScoped<IAppUpdateMonitor, AppUpdateMonitor>();
+        services.TryAddScoped<ISessionEndedNoticeService, SessionEndedNoticeService>();
 
         // The framework's view models. The app registers its own with AddMvvm too.
         services.AddMvvm(options =>
@@ -100,6 +101,7 @@ public static class UiServiceCollectionExtensions
         services.AddSettingsSection<AppearanceSettingsSection>(SettingsOrder.Appearance);
         services.AddSettingsSection<LanguageSettingsSection>(SettingsOrder.Language);
         services.AddSettingsSection<OfflineSettingsSection>(SettingsOrder.Offline);
+        services.AddSettingsSection<DeviceSettingsSection>(SettingsOrder.Device);
         services.AddSettingsSection<AboutSettingsSection>(SettingsOrder.About);
 
         services.AddNavigationItem(new NavigationItem
@@ -134,6 +136,12 @@ public static class UiServiceCollectionExtensions
         /// The Offline mode section.
         /// </summary>
         public const int Offline = 200;
+
+        /// <summary>
+        /// The This device section (the device's name), shown when the app tells other devices about a sign out
+        /// everywhere.
+        /// </summary>
+        public const int Device = 250;
 
         /// <summary>
         /// The About section (version and build), last.

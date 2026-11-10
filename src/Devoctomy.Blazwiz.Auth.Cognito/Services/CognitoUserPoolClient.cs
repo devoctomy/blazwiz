@@ -104,6 +104,26 @@ public class CognitoUserPoolClient : ICognitoUserPoolClient
     }
 
     /// <inheritdoc/>
+    public Task GlobalSignOutAsync(string accessToken)
+    {
+        return CallAsync(async () =>
+        {
+            await provider.GlobalSignOutAsync(new GlobalSignOutRequest { AccessToken = accessToken });
+            return true;
+        });
+    }
+
+    /// <inheritdoc/>
+    public Task CheckAccessTokenAsync(string accessToken)
+    {
+        return CallAsync(async () =>
+        {
+            await provider.GetUserAsync(new GetUserRequest { AccessToken = accessToken });
+            return true;
+        });
+    }
+
+    /// <inheritdoc/>
     public Task ChangePasswordAsync(string username, string idToken, string accessToken, DateTimeOffset expiresAt, string currentPassword, string newPassword)
     {
         return CallAsync(async () =>
