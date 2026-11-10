@@ -28,9 +28,10 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   `<Platform>-<Browser>-<6 digits>` (e.g. `Android-Edge-624834`), and can be renamed under Settings, This device. The
   section is shown when user events are on.
 - **The base stack:**
-  - A new `Events` parameter (`enabled` by default) creates an AppSync Events API, `<AppName>-<Environment>-events`,
-    with a `users` namespace whose handlers allow each user only their own channel. It also adds the outputs
-    `EventsHttpEndpoint` and `EventsRealtimeEndpoint`.
+  - A new `Events` parameter (`disabled` by default; apps created with user events pass `enabled`) creates an AppSync
+    Events API, `<AppName>-<Environment>-events`, with a `users` namespace whose handlers allow each user only their
+    own channel. It also adds the outputs `EventsHttpEndpoint` and `EventsRealtimeEndpoint`. An app made before user
+    events existed passes nothing, so upgrading it creates no API.
   - `deploy.ps1` takes `-Events`, writes the endpoints to `appsettings.Production.json` and adds them to the
     Content-Security-Policy.
   - `test-auth.ps1` checks the channel's isolation and that signing out everywhere revokes the session

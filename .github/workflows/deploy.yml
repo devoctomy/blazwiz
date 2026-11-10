@@ -110,6 +110,8 @@ jobs:
           aws cloudformation describe-stacks --stack-name $stack --region $env:AWS_DEPLOY_REGION *> $null
           if ($LASTEXITCODE -eq 0) { throw "Stack $stack already exists. Use the Upgrade workflow to update it." }
           Write-Host "Stack $stack does not exist yet."
+          # describe-stacks failing is the expected outcome here; GitHub's pwsh step would otherwise exit with its code.
+          exit 0
 
       # Parameters written out, not splatted from a hashtable: the app's deploy.ps1 passes them on to the base stack's
       # with @args, which turns a hashtable's switches (Force = $true) into a stray "True".

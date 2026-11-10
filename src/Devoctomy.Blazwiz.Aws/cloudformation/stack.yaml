@@ -55,12 +55,12 @@ Parameters:
 
   Events:
     Type: String
-    Default: enabled
+    Default: disabled
     AllowedValues: [enabled, disabled]
     Description: >-
       Whether to create the user events API (AWS AppSync Events), which lets a user's open devices tell each other
-      something changed, e.g. "sign out everywhere". Charged per use: connection minutes and event operations. Apps
-      created without events pass disabled.
+      something changed, e.g. "sign out everywhere". Charged per use: connection minutes and event operations. Off
+      unless asked for, so no app gets a resource it does not use: apps created with user events pass enabled.
 
 Conditions:
   UseCustomDomain: !And

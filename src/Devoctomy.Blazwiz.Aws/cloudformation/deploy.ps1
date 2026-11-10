@@ -80,9 +80,10 @@ param(
     [string]$AuditLogging = 'auto',
 
     # Whether to create the user events API (AppSync Events) that tells a user's open devices about a sign out
-    # everywhere. Apps created without events pass disabled through their own deploy.ps1.
+    # everywhere. Off unless asked for, so an app never gets a resource it does not use: apps created with user events
+    # pass enabled through their own deploy.ps1.
     [ValidateSet('enabled', 'disabled')]
-    [string]$Events = 'enabled',
+    [string]$Events = 'disabled',
 
     # Skip the CloudFormation deployment (just publish the portal / manage the user).
     [switch]$SkipInfrastructure,
