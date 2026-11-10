@@ -18,7 +18,8 @@ The infrastructure is in two stacks:
 
 The scripts here pass the app's name, folder and portal project to the base stack's scripts, and every other
 parameter through. `deploy.ps1` also passes `-Events enabled` or `-Events disabled`, depending on whether the app was
-created with user events. With them, the base stack has an AWS AppSync Events API, charged per use (connection minutes
+created with user events. `-Aot` publishes the portal compiled ahead of time to WebAssembly, with SIMD (the optimal
+build: needs `dotnet workload install wasm-tools`; see the app's README). With user events, the base stack has an AWS AppSync Events API, charged per use (connection minutes
 and event operations, with no fixed charge). Its deployer permissions are the `AppSyncEvents` statement of
 `deploy-policy.json`. `remove.ps1` needs nothing extra: the API is part of the stack.
 

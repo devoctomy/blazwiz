@@ -17,6 +17,11 @@ Every script takes `-AppName`, `-Environment`, `-Region` and `-AwsProfile`; see 
 certificate, local development origins, deletion protection, audit logging, events), so an upgrade run need not
 repeat them; pass a value to change one (`-CustomDomainName ''` removes the custom domain).
 
+`deploy.ps1 -Aot` publishes the portal compiled ahead of time to WebAssembly, with SIMD (`RunAOTCompilation`,
+`WasmEnableSIMD`): the optimal build for production, several times faster at run time (Argon2id most of all), with a
+larger download and a publish that takes minutes. It needs the wasm-tools workload (`dotnet workload install
+wasm-tools`). Without it the portal's .NET code runs in the WebAssembly interpreter.
+
 With `-Events enabled` (passed by apps created with user events; the default is `disabled`, so an app that does not
 use events, including one made before they existed, never gets the resource) the stack has a user events API: an AWS AppSync Events API (`<AppName>-<Environment>-events`) with one channel namespace, `users`. A user's open
 devices use it to tell each other at once when they sign out everywhere. It is charged per use (connection minutes and

@@ -77,6 +77,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      # The portal is published compiled ahead of time to WebAssembly (deploy.ps1 -Aot), as apps should ship it.
+      - name: Install the wasm-tools workload
+        run: dotnet workload install wasm-tools
+
       # What GitHub's OIDC token says, so a refused sign-in can be matched against the role's trust policy. Prints
       # the token's claims only, never the token, which is short-lived and only accepted with this audience.
       - name: Show the OIDC token's claims
@@ -112,8 +116,8 @@ jobs:
         shell: pwsh
         run: |
           if ($env:PORTAL_ONLY -eq 'true') {
-            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipInfrastructure -SkipTestUser -Force
+            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipInfrastructure -SkipTestUser -Aot -Force
           }
           else {
-            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipTestUser -Force
+            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipTestUser -Aot -Force
           }

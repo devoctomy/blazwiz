@@ -96,6 +96,12 @@ param(
     # Skip publishing and uploading the portal.
     [switch]$SkipPortal,
 
+    # Publish the portal compiled ahead of time to WebAssembly, with SIMD (RunAOTCompilation, WasmEnableSIMD), instead
+    # of running its .NET code in the WebAssembly interpreter. Much faster at run time (Argon2id key derivation most of
+    # all), larger to download, and several minutes slower to publish. Needs the wasm-tools workload
+    # (dotnet workload install wasm-tools). Setting both properties in the portal's project file does the same.
+    [switch]$Aot,
+
     # Skip creating / updating the test user.
     [switch]$SkipTestUser,
 
@@ -366,7 +372,9 @@ if (-not $SkipPortal) {
 
     try {
         if (Test-Path $publishDirectory) { Remove-Item -Recurse -Force $publishDirectory }
-        & dotnet publish $portalProject -c Release -o $publishDirectory --nologo
+        $publishArguments = @($portalProject, '-c', 'Release', '-o', $publishDirectory, '--nologo')
+        if ($Aot) { $publishArguments += @('-p:RunAOTCompilation=true', '-p:WasmEnableSIMD=true') }
+        & dotnet publish @publishArguments
         if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed (exit code $LASTEXITCODE)" }
     }
     finally {

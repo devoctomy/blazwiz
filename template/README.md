@@ -261,3 +261,18 @@ for the target account.
 
 All scripts take `-AppName` (default `myapp`), `-Environment` (default `dev`), `-Region` and `-AwsProfile`. The stack
 is named `<AppName>-<Environment>`, so several environments can share an account.
+
+### The optimal build
+
+By default the portal is published as .NET code run by the WebAssembly interpreter. For production, compile it ahead
+of time to WebAssembly, with SIMD: it runs several times faster, end to end encryption most of all (deriving a key from
+a passphrase with Argon2id takes seconds less), at the cost of a larger download and a publish that takes several
+minutes. Install the workload once, then deploy with `-Aot`:
+
+```powershell
+dotnet workload install wasm-tools
+./cloudformation/deploy.ps1 -Region eu-west-2 -Aot
+```
+
+To build it that way every time, uncomment the `RunAOTCompilation` / `WasmEnableSIMD` block in
+`MyApp.Portal/MyApp.Portal.csproj` instead. Local runs (`dotnet run`) are not affected either way.

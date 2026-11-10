@@ -39,6 +39,9 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   - `deploy-policy.json` gains an `AppSyncEvents` statement.
 - **The template's new `--events` option** (on by default) adds user events. Apps created with `--events false` are
   told at creation what that leaves out, and deploy with `-Events disabled`.
+- **`deploy.ps1 -Aot`** publishes the portal compiled ahead of time to WebAssembly, with SIMD: the optimal build, several
+  times faster at run time (Argon2id key derivation most of all). It needs `dotnet workload install wasm-tools`. The
+  app's README ("The optimal build") explains it, and how to turn it on in the portal's project file instead.
 
 ### Changed
 - `IAuthenticationService.SessionEnded` is now `EventHandler<SessionEndedEventArgs>`, with the reason

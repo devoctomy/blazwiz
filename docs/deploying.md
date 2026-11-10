@@ -26,6 +26,9 @@ because a workflow can't answer prompts. That has two consequences:
 The template app deploys with user events (`$events = 'enabled'` in `template/cloudformation/deploy.ps1`), so the
 stack includes the AppSync Events API.
 
+Deploy and Upgrade publish the portal as apps should ship it: compiled ahead of time to WebAssembly, with SIMD
+(`deploy.ps1 -Aot`, after installing the `wasm-tools` workload). This makes publishing take several minutes longer.
+
 ## Setting up AWS (once per account)
 
 The workflows need an IAM role that GitHub can assume. None of this can be done from the repository.
