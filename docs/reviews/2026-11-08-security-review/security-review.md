@@ -30,7 +30,7 @@ fixes-applied: 2026-11-08
 fixes-merged: 963afec
 stack-deployed: true
 backlog:
-  - backlog/passphrase-change-key-rotation.md
+  - ../../plans/active/2026-11-10-key-rotation-plan.md (moved from backlog/passphrase-change-key-rotation.md)
   - backlog/mfa-totp.md
   - backlog/deployer-permissions-boundary.md
   - backlog/csp-in-build.md
@@ -896,7 +896,7 @@ suggests adding.
 
 **After the fixes of 2026-11-08** (see "What was fixed"), including the second pass that did the small functional
 changes (SR1, SR5, SR20, SR21, SR34, SR39), what remains open is: SR3 (key rotation on passphrase change, planned in
-`docs/reviews/2026-11-08-security-review/backlog/passphrase-change-key-rotation.md`), SR6 (MFA, blocked by the session model as
+`docs/plans/active/2026-11-10-key-rotation-plan.md`), SR6 (MFA, blocked by the session model as
 `docs/reviews/2026-11-08-security-review/backlog/mfa-totp.md` explains), SR31 (where the CSP is produced, `docs/reviews/2026-11-08-security-review/backlog/csp-in-build.md`),
 SR17's permissions boundary (an account administrator's task, `docs/reviews/2026-11-08-security-review/backlog/deployer-permissions-boundary.md`), SR46 (test package churn), and the deploy that puts the
 stack changes into effect. The next review should start from this table.
