@@ -205,7 +205,7 @@ on an app: the developer decides. They are on by default, and turning the option
       and sees the other return to sign in.
 - [x] Stack, `deploy.ps1`, `deploy-policy.json`, CSP, `test-auth.ps1`; parse-check them here. Deploying and running
       `test-auth.ps1` is the maintainer's, as always.
-- [ ] Template: the `Events` option and its creation warning, `AddBlazwizAppSyncEvents` in `Program.cs` and the
+- [x] Template: the `Events` option and its creation warning, `AddBlazwizAppSyncEvents` in `Program.cs` and the
       `Events` section in `appsettings.json` behind `IncludeEvents`, the stack parameter in the deploy settings,
       `exclude` lists, README. `test-template.ps1` creates apps with events on and off.
 - [x] Missing infrastructure: no channel and one warning when endpoints are missing outside development; the Profile

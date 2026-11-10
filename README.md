@@ -34,6 +34,9 @@ that creates an app built on them, so apps take framework upgrades by changing o
 
 Versions are in lockstep (one version for every package and the template), see [docs/versioning.md](docs/versioning.md).
 
+The template app can be deployed to AWS from GitHub (the Deploy, Upgrade and Destroy workflows, through OIDC), built
+from the framework's source: see [docs/deploying.md](docs/deploying.md).
+
 ## Build and test
 
 Prerequisites: .NET 10 SDK. The first time, install the Playwright browser:

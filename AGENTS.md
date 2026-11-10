@@ -188,3 +188,7 @@ The AWS base stack and its scripts are in `src/Devoctomy.Blazwiz.Aws/cloudformat
 `template/cloudformation/deploy.ps1`, `remove.ps1` and `test-auth.ps1`. They create, change or delete real AWS
 resources. Never run any of them, or any AWS command, unless the maintainer asks for that exact action: no
 credentials are kept here, and the maintainer tests deployments by hand.
+
+The Deploy, Upgrade and Destroy workflows (`.github/workflows/deploy.yml`, `upgrade.yml`, `destroy.yml`) run the same
+scripts for the template app from GitHub, through OIDC (`docs/deploying.md`). Never start them: they are the
+maintainer's, like the release.

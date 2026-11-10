@@ -25,6 +25,10 @@
       "longName": "notes",
       "shortName": ""
     },
+    "Events": {
+      "longName": "events",
+      "shortName": ""
+    },
     "skipRestore": {
       "longName": "no-restore",
       "shortName": ""

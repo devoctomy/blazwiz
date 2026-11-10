@@ -1,0 +1,119 @@
+# Upgrades an EXISTING environment of the template app ("myapp") on AWS to this commit: the blazwiz base stack and the
+# app's own stack (template/cloudformation/app.yaml), then the portal, all from this commit's source. Run by hand
+# (Actions > Upgrade > Run workflow), on a commit the CI workflow has passed.
+#
+# Refused if the environment does not exist: use the Deploy workflow to create one. The test user is left as it is.
+#
+# Resources protected by the stack policy (the user pool, identity pool, data and audit log buckets, the CloudFront
+# distribution and the app client) are never replaced: a change that would replace one fails the upgrade, with nothing
+# lost. Other resources a change replaces are replaced without asking (the run cannot ask).
+#
+# Uses the same GitHub environment settings as the Deploy workflow (AWS_DEPLOY_ROLE_ARN, AWS_REGION, and the optional
+# CUSTOM_DOMAIN_NAME and CERTIFICATE_ARN, kept on every upgrade). See docs/deploying.md.
+name: Upgrade
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment name, e.g. test (the stacks myapp-<environment>).'
+        required: true
+        default: test
+      portal_only:
+        description: 'Only publish the portal (skip the CloudFormation stacks).'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: aws-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  ci-passed:
+    uses: ./.github/workflows/ci-passed.yml
+
+  upgrade:
+    needs: ci-passed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      # An OIDC token from GitHub, exchanged for short-lived AWS credentials.
+      id-token: write
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      # Fresh MSBuild processes for every build (static web assets compression).
+      MSBUILDDISABLENODEREUSE: 1
+      # Through the environment, never into the script: an input can hold quotes and $( ).
+      ENVIRONMENT_NAME: ${{ inputs.environment }}
+      PORTAL_ONLY: ${{ inputs.portal_only }}
+      # Optional: the portal's own address and its ACM certificate (in us-east-1). Passed on every run, as the stack
+      # drops the address when they are not.
+      CUSTOM_DOMAIN_NAME: ${{ vars.CUSTOM_DOMAIN_NAME }}
+      CERTIFICATE_ARN: ${{ vars.CERTIFICATE_ARN }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      AWS_DEPLOY_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Check the inputs
+        shell: pwsh
+        run: |
+          if ($env:ENVIRONMENT_NAME -notmatch '^[a-z][a-z0-9]{0,9}$') { throw "The environment name must be lowercase letters and numbers, starting with a letter (max 10): '$env:ENVIRONMENT_NAME'." }
+          if (-not $env:AWS_DEPLOY_ROLE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_DEPLOY_ROLE_ARN variable." }
+          if (-not $env:AWS_DEPLOY_REGION) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_REGION variable." }
+          if ([bool]$env:CUSTOM_DOMAIN_NAME -ne [bool]$env:CERTIFICATE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' must have both CUSTOM_DOMAIN_NAME and CERTIFICATE_ARN, or neither." }
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      # What GitHub's OIDC token says, so a refused sign-in can be matched against the role's trust policy. Prints
+      # the token's claims only, never the token, which is short-lived and only accepted with this audience.
+      - name: Show the OIDC token's claims
+        shell: pwsh
+        run: |
+          $response = Invoke-RestMethod -Uri "$env:ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" -Headers @{ Authorization = "bearer $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN" }
+          $payload = $response.value.Split('.')[1].Replace('-', '+').Replace('_', '/')
+          $payload += '=' * ((4 - $payload.Length % 4) % 4)
+          $claims = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json
+          Write-Host "sub:         $($claims.sub)"
+          Write-Host "aud:         $($claims.aud)"
+          Write-Host "iss:         $($claims.iss)"
+          Write-Host "repository:  $($claims.repository)"
+          Write-Host "environment: $($claims.environment)"
+          Write-Host "ref:         $($claims.ref)"
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Check the environment exists
+        shell: pwsh
+        run: |
+          $stack = "myapp-$env:ENVIRONMENT_NAME"
+          aws cloudformation describe-stacks --stack-name $stack --region $env:AWS_DEPLOY_REGION *> $null
+          if ($LASTEXITCODE -ne 0) { throw "Stack $stack does not exist. Use the Deploy workflow to create it." }
+          Write-Host "Stack $stack exists."
+
+      # Parameters written out, not splatted from a hashtable: the app's deploy.ps1 passes them on to the base stack's
+      # with @args, which turns a hashtable's switches (Force = $true) into a stray "True".
+      - name: Upgrade
+        shell: pwsh
+        run: |
+          if ($env:PORTAL_ONLY -eq 'true') {
+            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipInfrastructure -SkipTestUser -Force
+          }
+          else {
+            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipTestUser -Force
+          }
