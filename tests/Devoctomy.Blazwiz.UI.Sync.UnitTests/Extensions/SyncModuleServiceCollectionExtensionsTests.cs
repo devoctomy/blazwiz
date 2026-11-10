@@ -8,6 +8,7 @@ using Devoctomy.Blazwiz.Sync.Encryption;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
+using Devoctomy.Blazwiz.Sync.S3;
 using Devoctomy.Blazwiz.Sync.Storage;
 using Devoctomy.Blazwiz.UI.Extensions;
 using Devoctomy.Blazwiz.UI.Models;
@@ -42,7 +43,7 @@ public class SyncModuleServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public async Task GivenCognitoConfigured_WhenAddBlazwizSyncModule_ThenTheKeysAreKeptInSecretsManager()
+    public async Task GivenADataBucketConfigured_WhenAddBlazwizSyncModule_ThenTheKeysAreKeptInTheDataBucket()
     {
         // Arrange
         var services = TestServices.Create();
@@ -51,6 +52,8 @@ public class SyncModuleServiceCollectionExtensionsTests
             ["AwsCognito:Region"] = "eu-west-2",
             ["AwsCognito:UserPoolId"] = "eu-west-2_pool",
             ["AwsCognito:UserPoolClientId"] = "client",
+            ["AwsS3:Region"] = "eu-west-2",
+            ["AwsS3:DataBucketName"] = "data-bucket",
         }).Build();
         services.AddBlazwizUi(configuration);
 
@@ -61,8 +64,8 @@ public class SyncModuleServiceCollectionExtensionsTests
         // Assert
         await using var provider = services.BuildValidated();
         await using var scope = provider.CreateAsyncScope();
-        Assert.IsType<SecretsManagerUserKeysStore>(scope.ServiceProvider.GetRequiredService<IUserKeysStore>());
-        Assert.IsType<SecretsManagerUserKeysStore>(scope.ServiceProvider.GetRequiredService<IE2eProfileIndexStore>());
+        Assert.IsType<S3UserKeysStore>(scope.ServiceProvider.GetRequiredService<IUserKeysStore>());
+        Assert.Same(scope.ServiceProvider.GetRequiredService<IUserKeysStore>(), scope.ServiceProvider.GetRequiredService<IE2eProfileIndexStore>());
     }
 
     [Fact]
@@ -98,8 +101,7 @@ public class SyncModuleServiceCollectionExtensionsTests
         Assert.IsType<SyncStatusPresenter>(scope.ServiceProvider.GetRequiredService<ISyncStatusPresenter>());
         Assert.IsType<SyncFolderAccessMonitor>(scope.ServiceProvider.GetRequiredService<ISyncFolderAccessMonitor>());
         Assert.Contains(scope.ServiceProvider.GetServices<ISessionLifecycleHandler>(), h => h is SyncSessionHandler);
-        Assert.IsType<SecretsManagerClientFactory>(scope.ServiceProvider.GetRequiredService<ISecretsManagerClientFactory>());
-        // No Cognito configured: the keys are kept in the browser.
+        // No data bucket configured: the keys are kept in the browser.
         Assert.IsType<LocalStorageUserKeysStore>(scope.ServiceProvider.GetRequiredService<IUserKeysStore>());
         Assert.Same(scope.ServiceProvider.GetRequiredService<IUserKeysStore>(), scope.ServiceProvider.GetRequiredService<IE2eProfileIndexStore>());
         Assert.IsType<LocalStorageE2eLocalProfileIndexStore>(scope.ServiceProvider.GetRequiredService<IE2eLocalProfileIndexStore>());

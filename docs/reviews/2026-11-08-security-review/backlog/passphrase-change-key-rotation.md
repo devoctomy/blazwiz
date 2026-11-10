@@ -78,7 +78,7 @@ every session, so there is no separate key-version mechanism:
   it sees a file written under the new key.
 
 The keys document write itself is still unguarded against two devices writing at once, which matters more once a
-lost write can orphan files under a key nobody holds; `docs/plans/backlog/protected-profile-concurrent-writes.md`
+lost write can orphan files under a key nobody holds; `docs/plans/active/2026-11-10-protected-profile-concurrent-writes-plan.md`
 moves the documents to S3 with `If-Match` writes and should land first.
 
 ## Open questions

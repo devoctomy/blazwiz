@@ -7,7 +7,7 @@ contains no code.
 ## Usage
 
 Apps reference it so it is restored; they do not copy its files. An app made from the template has its own
-`cloudformation/deploy.ps1`, `test-auth.ps1` and `remove.ps1`, which run this package's scripts (from its
+`cloudformation/deploy.ps1` and `remove.ps1`, which run this package's scripts (from its
 `tools/cloudformation` folder) at the app's `BlazwizVersion`. Upgrading the framework upgrades the stack: deploy
 again after upgrading.
 

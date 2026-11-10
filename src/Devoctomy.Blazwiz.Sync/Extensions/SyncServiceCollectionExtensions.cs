@@ -25,8 +25,11 @@ namespace Devoctomy.Blazwiz.Sync.Extensions;
 public static class SyncServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the sync engine and its profiles. The app must also register <see cref="IS3SyncTargetProvider"/>,
-    /// <see cref="ISyncUserContext"/> and <see cref="ISyncEnabledStore"/>.
+    /// Adds the sync engine and its profiles, and keeps the user's keys documents and index of protected profiles
+    /// (<see cref="IUserKeysStore"/>, <see cref="IE2eProfileIndexStore"/>) in their prefix of the data bucket, or in
+    /// local storage when <see cref="IS3SyncTargetProvider.IsConfigured"/> is false. The app must also register
+    /// <see cref="IS3SyncTargetProvider"/>, <see cref="ISyncUserContext"/> and <see cref="ISyncEnabledStore"/>, and the
+    /// browser services (<c>AddBlazwizBrowser</c>).
     /// </summary>
     /// <remarks>
     /// Each profile's file store is registered as a keyed <see cref="ISyncFileStore"/> under the profile name, already
@@ -79,6 +82,13 @@ public static class SyncServiceCollectionExtensions
             options,
             IndexedDbSyncEventLog.DescribeStore(options.EventLogDatabase, options.EventLogStore)));
 
+        // The user's keys documents and the index of their protected profiles: in their prefix of the data bucket, or,
+        // with no data bucket configured (local development), in this browser's local storage.
+        services.TryAddScoped<S3UserKeysStore>();
+        services.TryAddScoped<LocalStorageUserKeysStore>();
+        services.TryAddScoped<IUserKeysStore>(sp => UsesDataBucket(sp) ? sp.GetRequiredService<S3UserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
+        services.TryAddScoped<IE2eProfileIndexStore>(sp => UsesDataBucket(sp) ? sp.GetRequiredService<S3UserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
+
         // Every profile's stores come from the registry, so profiles added while the app runs work the same way.
         services.TryAddScoped<ISyncProfileRegistry>(sp => new SyncProfileRegistry(sp, options));
         foreach (var profile in options.Profiles)
@@ -88,6 +98,9 @@ public static class SyncServiceCollectionExtensions
 
         return services;
     }
+
+    private static bool UsesDataBucket(IServiceProvider services) =>
+        services.GetRequiredService<IS3SyncTargetProvider>().IsConfigured;
 
     private static void AddProfile(IServiceCollection services, string name)
     {

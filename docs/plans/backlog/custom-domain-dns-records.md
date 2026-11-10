@@ -30,7 +30,7 @@ hosted zone is in Route 53 in the same account, as `clypse.net` is, the stack co
 - **Upgrade notes:** CloudFormation won't create a record that already exists. An environment whose records were added
   by hand must have them deleted before the first deploy with `HostedZoneId`. Say so in the changelog.
 - **Tests:**
-  - `test-auth.ps1` checks that the address resolves and serves the portal;
+  - the deploy tests (`tests/Devoctomy.Blazwiz.DeployTests`) check that the address resolves and serves the portal;
   - an upgrade test (`test-template.ps1 -UpgradeFrom latest`) for the new parameter.
 
 ## Done when

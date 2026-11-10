@@ -5,8 +5,8 @@ using Devoctomy.Blazwiz.TestSupport.Fakes;
 namespace Devoctomy.Blazwiz.Sync.IntTests.Support;
 
 /// <summary>
-/// What every device of the user shares, in memory: the keys documents and the index of protected profiles (Secrets
-/// Manager), and the user's prefix in the data bucket, with S3's conditional writes.
+/// What every device of the user shares, in memory: the keys documents and the index of protected profiles (in the
+/// data bucket's keys/ folder), and the user's prefix in the data bucket, with S3's conditional writes.
 /// </summary>
 public sealed class SharedCloud
 {

@@ -326,7 +326,7 @@ function Add-ContentSecurityPolicy {
         }
     }
 
-    $connect = "connect-src 'self' https://cognito-idp.$Region.amazonaws.com https://cognito-identity.$Region.amazonaws.com https://secretsmanager.$Region.amazonaws.com https://$DataBucketName.s3.$Region.amazonaws.com"
+    $connect = "connect-src 'self' https://cognito-idp.$Region.amazonaws.com https://cognito-identity.$Region.amazonaws.com https://$DataBucketName.s3.$Region.amazonaws.com"
     if ($EventsHttpEndpoint -and $EventsRealtimeEndpoint) {
         $connect += " https://$EventsHttpEndpoint wss://$EventsRealtimeEndpoint"
     }

@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Core.Extensions;
 using Devoctomy.Blazwiz.Encryption;
@@ -227,6 +228,7 @@ public class SyncServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         services.AddBlazwizApp("app", "a78e68c7-90e0-4f90-aa3d-73f7b2c9f2c8");
         services.AddSingleton(Mock.Of<IJSRuntime>());
+        services.AddScoped(_ => Mock.Of<ILocalStorageService>());
         services.AddScoped(_ => Mock.Of<IS3SyncTargetProvider>());
         services.AddScoped(_ => Mock.Of<ISyncUserContext>());
         services.AddScoped(_ => Mock.Of<ISyncEnabledStore>());

@@ -12,8 +12,9 @@
     <AssemblyMetadata Include="BuildTimeUtc" Value="$([System.DateTime]::UtcNow.ToString('yyyy-MM-dd HH:mm'))" />
   </ItemGroup>
   <!--
-    Uncomment for smaller / faster production builds once the wasm-tools workload is installed
-    (dotnet workload install wasm-tools). AOT makes publishing considerably slower.
+    The optimal production build: compiled ahead of time to WebAssembly, with SIMD, so it runs several times faster
+    (Argon2id most of all). Needs the wasm-tools workload (dotnet workload install wasm-tools); the download is larger
+    and publishing takes minutes. Uncomment to publish this way every time, or deploy with cloudformation/deploy.ps1 -Aot.
   <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'browser-wasm'">
     <RunAOTCompilation>true</RunAOTCompilation>
     <WasmEnableSIMD>true</WasmEnableSIMD>

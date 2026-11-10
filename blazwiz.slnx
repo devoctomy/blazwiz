@@ -38,6 +38,7 @@
     <Project Path="tests/Devoctomy.Blazwiz.Browser.UnitTests/Devoctomy.Blazwiz.Browser.UnitTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Core.UnitTests/Devoctomy.Blazwiz.Core.UnitTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Cryptography.UnitTests/Devoctomy.Blazwiz.Cryptography.UnitTests.csproj" />
+    <Project Path="tests/Devoctomy.Blazwiz.DeployTests/Devoctomy.Blazwiz.DeployTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Encryption.UnitTests/Devoctomy.Blazwiz.Encryption.UnitTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Events.AppSync.UnitTests/Devoctomy.Blazwiz.Events.AppSync.UnitTests.csproj" />
     <Project Path="tests/Devoctomy.Blazwiz.Events.UnitTests/Devoctomy.Blazwiz.Events.UnitTests.csproj" />

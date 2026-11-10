@@ -1,5 +1,6 @@
 # Deploys a NEW environment of the template app (template/, as "myapp") to AWS: the blazwiz base stack and the app's own
-# stack (template/cloudformation/app.yaml), the portal, and optionally a test user. Built from this commit's source:
+# stack (template/cloudformation/app.yaml), the portal, and optionally the deploy tests' user, then optionally runs the
+# deploy tests (deploy-tests.yml). Built from this commit's source:
 # the base stack and its scripts come from src/Devoctomy.Blazwiz.Aws, and the portal builds against the packages'
 # source (template/Directory.Build.targets), so this tests the framework as it stands, before it is released. Run by
 # hand (Actions > Deploy > Run workflow), on a commit the CI workflow has passed.
@@ -10,7 +11,8 @@
 # - variable AWS_DEPLOY_ROLE_ARN: the IAM role GitHub assumes through OIDC (no AWS keys are kept in GitHub). It needs
 #   the minimum deploy policy in template/cloudformation/deploy-policy.json. See docs/deploying.md.
 # - variable AWS_REGION: the region the environment is in, e.g. eu-west-2.
-# - secret TEST_USER_PASSWORD: only if a test user is created (min 12 characters, upper, lower and a number).
+# - variable TEST_USER_EMAIL and secret TEST_USER_PASSWORD: the deploy tests' user, only if it is created or the tests
+#   run (the password: min 12 characters, upper, lower and a number).
 # - variables CUSTOM_DOMAIN_NAME and CERTIFICATE_ARN: optional, both or neither. The portal's own address and an ACM
 #   certificate for it in us-east-1. Point the address's DNS at the CloudFront distribution.
 # Add required reviewers to the GitHub environment to approve each run before it starts.
@@ -23,10 +25,16 @@ on:
         description: 'Environment name (lowercase letters and numbers), e.g. test. The stacks are myapp-<environment>.'
         required: true
         default: test
-      test_user_email:
-        description: 'Email of a test user to create (optional; its password is the environment secret TEST_USER_PASSWORD).'
+      create_test_user:
+        description: "Create or update the deploy tests' user (TEST_USER_EMAIL, with the password TEST_USER_PASSWORD)."
+        type: boolean
         required: false
-        default: ''
+        default: false
+      run_deploy_tests:
+        description: 'Run the deploy tests afterwards.'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -52,8 +60,6 @@ jobs:
     env:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
-      # Fresh MSBuild processes for every build (static web assets compression).
-      MSBUILDDISABLENODEREUSE: 1
       # Through the environment, never into the script: an input can hold quotes and $( ).
       ENVIRONMENT_NAME: ${{ inputs.environment }}
       # Optional: the portal's own address and its ACM certificate (in us-east-1). Passed on every run, as the stack
@@ -62,7 +68,8 @@ jobs:
       CERTIFICATE_ARN: ${{ vars.CERTIFICATE_ARN }}
       AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
       AWS_DEPLOY_REGION: ${{ vars.AWS_REGION }}
-      TEST_USER_EMAIL: ${{ inputs.test_user_email }}
+      CREATE_TEST_USER: ${{ inputs.create_test_user }}
+      TEST_USER_EMAIL: ${{ vars.TEST_USER_EMAIL }}
       TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
     steps:
       - name: Check the inputs
@@ -72,7 +79,7 @@ jobs:
           if (-not $env:AWS_DEPLOY_ROLE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_DEPLOY_ROLE_ARN variable." }
           if (-not $env:AWS_DEPLOY_REGION) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_REGION variable." }
           if ([bool]$env:CUSTOM_DOMAIN_NAME -ne [bool]$env:CERTIFICATE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' must have both CUSTOM_DOMAIN_NAME and CERTIFICATE_ARN, or neither." }
-          if ($env:TEST_USER_EMAIL -and -not $env:TEST_USER_PASSWORD) { throw "A test user was asked for, but the GitHub environment '$env:ENVIRONMENT_NAME' has no TEST_USER_PASSWORD secret." }
+          if ($env:CREATE_TEST_USER -eq 'true' -and -not ($env:TEST_USER_EMAIL -and $env:TEST_USER_PASSWORD)) { throw "The deploy tests' user was asked for, but the GitHub environment '$env:ENVIRONMENT_NAME' lacks the TEST_USER_EMAIL variable or the TEST_USER_PASSWORD secret." }
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -81,6 +88,10 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
+
+      # The portal is published compiled ahead of time to WebAssembly (deploy.ps1 -Aot), as apps should ship it.
+      - name: Install the wasm-tools workload
+        run: dotnet workload install wasm-tools
 
       # What GitHub's OIDC token says, so a refused sign-in can be matched against the role's trust policy. Prints
       # the token's claims only, never the token, which is short-lived and only accepted with this audience.
@@ -118,10 +129,21 @@ jobs:
       - name: Deploy
         shell: pwsh
         run: |
-          if ($env:TEST_USER_EMAIL) {
+          if ($env:CREATE_TEST_USER -eq 'true') {
             $password = ConvertTo-SecureString $env:TEST_USER_PASSWORD -AsPlainText -Force
-            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -TestUserEmail $env:TEST_USER_EMAIL -TestUserPassword $password -Force
+            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -TestUserEmail $env:TEST_USER_EMAIL -TestUserPassword $password -Aot -Force
           }
           else {
-            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipTestUser -Force
+            ./template/cloudformation/deploy.ps1 -Region $env:AWS_DEPLOY_REGION -Environment $env:ENVIRONMENT_NAME -CustomDomainName $env:CUSTOM_DOMAIN_NAME -CertificateArn $env:CERTIFICATE_ARN -SkipTestUser -Aot -Force
           }
+
+  deploy-tests:
+    needs: deploy
+    if: ${{ inputs.run_deploy_tests }}
+    uses: ./.github/workflows/deploy-tests.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      environment: ${{ inputs.environment }}
+    secrets: inherit

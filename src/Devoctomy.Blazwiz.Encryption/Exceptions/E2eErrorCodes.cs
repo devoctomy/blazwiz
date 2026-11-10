@@ -40,4 +40,10 @@ public static class E2eErrorCodes
     /// The passphrase is not correct.
     /// </summary>
     public const string WrongPassphrase = "E2e.WrongPassphrase";
+
+    /// <summary>
+    /// The user's keys, or their list of protected profiles, kept changing on another device while this one tried to
+    /// change them, so the change was not made.
+    /// </summary>
+    public const string DocumentChanged = "E2e.DocumentChanged";
 }

@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   blazwiz base stack - static Blazor WebAssembly PWA hosted on private S3 behind CloudFront, with a Cognito
   user pool for sign-in and an identity pool that gives signed-in users temporary AWS credentials,
-  scoped to their own prefix in a private data bucket and their own '<sub>/keys/*' secrets.
+  scoped to their own prefix in a private data bucket (their files, and their keys under keys/).
 
 Parameters:
   AppName:
@@ -217,7 +217,7 @@ Resources:
               SSEAlgorithm: AES256
       # Users (and anything holding their credentials for an hour) can only delete and overwrite their own objects, so
       # every version is kept for a while: a delete leaves a marker and an overwrite keeps the old version, and only an
-      # operator can remove them. The role is not given s3:DeleteObjectVersion or s3:PutBucketVersioning.
+      # operator can remove them. The role is denied s3:DeleteObjectVersion and s3:PutBucketVersioning (NoVersionPurge).
       VersioningConfiguration:
         Status: Enabled
       LifecycleConfiguration:
@@ -315,12 +315,10 @@ Resources:
       UserPoolId: !Ref UserPool
       # Public client (runs in the browser) so it must not have a secret.
       GenerateSecret: false
-      # SRP only from the browser: the password never leaves it. The admin flow needs AWS credentials with
-      # cognito-idp:AdminInitiateAuth, and is used by test-auth.ps1 to verify sign-in from the command line.
+      # SRP only: the password never leaves the browser (or the deploy tests, which sign in the same way).
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
-        - ALLOW_ADMIN_USER_PASSWORD_AUTH
       # What the portal may read (the ID token's claims) and change with the access token. Nothing writes attributes,
       # and the email can only be changed by an administrator.
       ReadAttributes: [email, email_verified, name]
@@ -351,18 +349,6 @@ Resources:
           ProviderName: !GetAtt UserPool.ProviderName
           ServerSideTokenCheck: true
 
-  # Puts the user pool sub (the user's immutable id) on each session as the userSub principal tag, so
-  # policies can use ${aws:PrincipalTag/userSub}. Needed for Secrets Manager: secret names cannot hold
-  # the ':' that identity ids contain.
-  IdentityPoolPrincipalTag:
-    Type: AWS::Cognito::IdentityPoolPrincipalTag
-    Properties:
-      IdentityPoolId: !Ref IdentityPool
-      IdentityProviderName: !GetAtt UserPool.ProviderName
-      UseDefaults: false
-      PrincipalTags:
-        userSub: sub
-
   AuthenticatedRole:
     Type: AWS::IAM::Role
     Properties:
@@ -373,10 +359,7 @@ Resources:
           - Effect: Allow
             Principal:
               Federated: cognito-identity.amazonaws.com
-            Action:
-              - sts:AssumeRoleWithWebIdentity
-              # Required for the identity pool to pass the userSub principal tag.
-              - sts:TagSession
+            Action: sts:AssumeRoleWithWebIdentity
             Condition:
               StringEquals:
                 cognito-identity.amazonaws.com:aud: !Ref IdentityPool
@@ -396,6 +379,8 @@ Resources:
                     s3:prefix:
                       - '${cognito-identity.amazonaws.com:sub}'
                       - '${cognito-identity.amazonaws.com:sub}/*'
+              # The user's files, and under keys/ their protected profiles' keys documents and the index of them. The
+              # portal writes them all conditionally (If-Match / If-None-Match).
               - Sid: ReadWriteOwnObjects
                 Effect: Allow
                 Action:
@@ -403,35 +388,18 @@ Resources:
                   - s3:PutObject
                   - s3:DeleteObject
                 Resource: !Sub '${DataBucket.Arn}/${!cognito-identity.amazonaws.com:sub}/*'
-        - PolicyName: per-user-keys
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              # Only secrets under <user pool sub>/keys/: each profile's keys, and the index of them.
-              # Secrets Manager appends a random 6 character suffix to every secret ARN, hence '-??????'.
-              # TagResource: the portal tags each secret with the app's name as it creates it, so remove.ps1 can find
-              # and delete the users' secrets with the environment.
-              - Sid: ManageOwnKeysSecrets
-                Effect: Allow
-                Action:
-                  - secretsmanager:CreateSecret
-                  - secretsmanager:DescribeSecret
-                  - secretsmanager:GetSecretValue
-                  - secretsmanager:PutSecretValue
-                  - secretsmanager:UpdateSecret
-                  - secretsmanager:DeleteSecret
-                  - secretsmanager:RestoreSecret
-                  - secretsmanager:TagResource
-                Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${!aws:PrincipalTag/userSub}/keys/*-??????'
-              # A deleted keys secret can be restored by an operator for at least 7 days (the portal asks for 7). A
-              # hijacked session, or a bug, cannot make it gone at once.
-              - Sid: NoForcedSecretDeletion
+              # A delete only adds a delete marker and an overwrite keeps the old version (the bucket is versioned), and
+              # these keep it that way: a hijacked session, or a bug, cannot purge a version, so a deleted or
+              # overwritten keys document stays restorable by an operator until the lifecycle rule expires it.
+              - Sid: NoVersionPurge
                 Effect: Deny
-                Action: secretsmanager:DeleteSecret
-                Resource: '*'
-                Condition:
-                  Bool:
-                    secretsmanager:ForceDeleteWithoutRecovery: 'true'
+                Action:
+                  - s3:DeleteObjectVersion
+                  - s3:PutBucketVersioning
+                  - s3:PutLifecycleConfiguration
+                Resource:
+                  - !GetAtt DataBucket.Arn
+                  - !Sub '${DataBucket.Arn}/*'
       Tags:
         - Key: app
           Value: !Ref AppName
@@ -529,7 +497,7 @@ Resources:
       EnableLogFileValidation: true
       EventSelectors:
         - ReadWriteType: All
-          # Management events (Cognito, Secrets Manager, CloudFormation and so on) are in the account's own trail.
+          # Management events (Cognito, CloudFormation and so on) are in the account's own trail.
           IncludeManagementEvents: false
           DataResources:
             - Type: AWS::S3::Object

@@ -29,7 +29,7 @@ An app can depend on everything below. Changing any of it incompatibly needs a m
 | **Configuration**: section names and keys in `appsettings.json`, and builder methods such as `AddBlazwiz(...)` | Renaming or removing a key. Changing what a value means. Making an optional setting required | Adding optional settings with a default |
 | **Theme tokens**: CSS custom properties named `--bw-*` | Removing or renaming a token, or changing what it styles | Adding tokens. Changing default colours or spacing |
 | **Text resources**: keys and placeholders in each package's `.resx` | Removing or renaming a key. Changing its placeholders (their number, order or meaning) | Adding keys. Changing the default English wording |
-| **Stored data**, from 1.0: browser storage names and formats, and what is kept in S3 and Secrets Manager | Any change an app or user must act on | Changes that a packaged data migration handles at sign-in |
+| **Stored data**, from 1.0: browser storage names and formats, and what is kept in S3 (the files, and the keys documents and index under `keys/`) | Any change an app or user must act on | Changes that a packaged data migration handles at sign-in |
 | **AWS infrastructure**: outputs and requirements of the base CloudFormation stack | Removing an output. Needing a new resource or permission without a matching base stack release | Adding outputs or optional resources |
 
 ## What is not public

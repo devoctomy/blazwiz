@@ -16,6 +16,12 @@ builder.Services.AddBlazwizE2eEncryption();
 builder.Services.AddBlazwizE2eEncryption(argon2 => { /* ... */ });
 ```
 
+The app also registers where the keys documents and the index of profiles are kept (`IUserKeysStore`,
+`IE2eProfileIndexStore`; `AddBlazwizSync` does). Their writes are conditional: each read returns the document with its
+version (`StoredDocument.ETag`), and a write made from an older version throws `E2eDocumentChangedException`. The
+manager then reads the document again and reapplies its change, up to `E2eProtectedProfileManager.MaxWriteAttempts`
+times. A device's copy of a keys document keeps its version too (`E2eLocalKeys.CachedDocumentETag`).
+
 ## Versions
 
 Every `Devoctomy.Blazwiz.*` package and the `Devoctomy.Blazwiz.Templates` template are released together at one

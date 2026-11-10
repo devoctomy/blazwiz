@@ -130,8 +130,7 @@
         "cognito-idp:ListUsers",
         "cognito-idp:AdminGetUser",
         "cognito-idp:AdminCreateUser",
-        "cognito-idp:AdminSetUserPassword",
-        "cognito-idp:AdminInitiateAuth"
+        "cognito-idp:AdminSetUserPassword"
       ],
       "Resource": "arn:aws:cognito-idp:*:ACCOUNT_ID:userpool/*"
     },
@@ -170,26 +169,6 @@
         "appsync:ListTagsForResource"
       ],
       "Resource": "arn:aws:appsync:*:ACCOUNT_ID:apis/*"
-    },
-    {
-      "Sid": "UsersSecretsList",
-      "Effect": "Allow",
-      "Action": "secretsmanager:ListSecrets",
-      "Resource": "*"
-    },
-    {
-      "Sid": "UsersSecretsDelete",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:DeleteSecret"
-      ],
-      "Resource": "*",
-      "Condition": {
-        "StringEquals": {
-          "secretsmanager:ResourceTag/app": "myapp"
-        }
-      }
     },
     {
       "Sid": "IamAuthenticatedRole",

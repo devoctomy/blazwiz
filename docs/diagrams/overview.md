@@ -55,9 +55,9 @@ flowchart BT
 ```
 
 The engine (`Sync`) knows nothing of Cognito or the UI: `UI.Sync` joins them, giving the engine its S3 client
-(`CognitoS3TargetProvider`), its user (`AuthSyncUserContext`) and the keys' store in Secrets Manager
-(`SecretsManagerUserKeysStore`). The shell (`UI`) knows nothing of sync: the sync module plugs into its extension
-points ([extension-points.md](extension-points.md)).
+(`CognitoS3TargetProvider`, which the keys' store `S3UserKeysStore` in `Sync` uses too) and its user
+(`AuthSyncUserContext`). The shell (`UI`) knows nothing of sync: the sync module plugs into its extension points
+([extension-points.md](extension-points.md)).
 
 Nothing depends on `Events` but the app. `Auth` defines the hooks (`ISignOutEverywhereHandler`, `EndSessionAsync`,
 the reason on `SessionEnded`), `Events` implements them, and `UI` talks only to `Auth`
@@ -128,8 +128,8 @@ flowchart LR
 
 `AddBlazwizApp` must come first: the packages read the app's name and id from it, and refuse to start without it
 ("Call AddBlazwizApp(name, id) before adding the rest of the framework"). Without a user pool configured
-(local development), `AddBlazwizCognito` keeps the local sign in, and the sync module keeps the keys in the browser
-instead of Secrets Manager.
+(local development), `AddBlazwizCognito` keeps the local sign in, and without a data bucket configured, `AddBlazwizSync`
+keeps the keys in the browser instead of the bucket.
 
 ## 3. At run time
 

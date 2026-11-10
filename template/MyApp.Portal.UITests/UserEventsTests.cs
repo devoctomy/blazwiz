@@ -5,7 +5,7 @@ namespace MyApp.Portal.UITests;
 /// <summary>
 /// Signing out everywhere, with two pages of one browser signed in as the same user. Run against the placeholder sign
 /// in, where the local event channel (the browser's other tabs) stands in for AppSync; the AppSync channel and Cognito's
-/// global sign out are covered by the unit tests and by cloudformation/test-auth.ps1.
+/// global sign out are covered by the unit tests and by the deploy tests (tests/Devoctomy.Blazwiz.DeployTests).
 /// </summary>
 [TestClass]
 public class UserEventsTests : TestBase

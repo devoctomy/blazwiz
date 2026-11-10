@@ -1,1 +1,16 @@
 #nullable enable
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory.Create(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials! credentials) -> Amazon.SecretsManager.IAmazonSecretsManager!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory.Create(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials! credentials) -> Amazon.SecretsManager.IAmazonSecretsManager!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory.SecretsManagerClientFactory(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsCognitoConfig! cognitoConfig, Devoctomy.Blazwiz.Auth.Cognito.Services.BrowserHttpClientFactory! httpClientFactory) -> void
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.GetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.GetIndexAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.SecretsManagerUserKeysStore(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.IAwsCredentialsProvider! credentialsProvider, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory! clientFactory, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Devoctomy.Blazwiz.Core.Configuration.BlazwizAppOptions! app) -> void
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.SetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.SetIndexAsync(string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.TryCreateAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*const Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.AppTag = "app" -> string!
+*REMOVED*const Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.RecoveryWindowDays = 7 -> int

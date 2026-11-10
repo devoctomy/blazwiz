@@ -18,6 +18,9 @@
   <data name="Error.E2e.CannotEncrypt" xml:space="preserve">
     <value>End to end encryption is on, and this device cannot encrypt yet, so nothing can be saved.</value>
   </data>
+  <data name="Error.E2e.DocumentChanged" xml:space="preserve">
+    <value>Your protected profiles were being changed on another device at the same time, so this change was not saved. Try again.</value>
+  </data>
   <data name="Error.E2e.Locked" xml:space="preserve">
     <value>End to end encryption is locked on this device.</value>
   </data>

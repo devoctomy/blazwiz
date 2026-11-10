@@ -31,6 +31,12 @@ it can be unlocked with the passkey, its passphrase rules and Argon2id costs; `U
 profiles users create while the app runs. To use the engine without the module, call `AddBlazwizSync` and provide its
 services yourself (the S3 target, the signed-in user and the keys).
 
+Each profile's keys document, and the index of the profiles, are kept in the user's prefix of the data bucket under
+`keys/` (`S3UserKeysStore`), or in the browser's local storage when no data bucket is configured (local development).
+Every write to them is conditional, so two devices changing them at once cannot both succeed: the second reads them
+again and reapplies its change. No profile's remote pattern may reach `keys/` (or `profiles/`, where the profiles users
+create are kept): `AddProfile` refuses it.
+
 ### Profiles as classes
 
 A profile can be a class deriving from `SyncProfileDefinition`. `AddProfilesFromAssemblyContaining<T>()` adds every

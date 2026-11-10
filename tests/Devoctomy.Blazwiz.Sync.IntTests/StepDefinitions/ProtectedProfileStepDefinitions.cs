@@ -134,7 +134,7 @@ public sealed class ProtectedProfileStepDefinitions
     public async Task ThenTheUsersKeysAreGone(string profile)
     {
         Assert.False(cloud.Keys.Values.ContainsKey(profiles[profile].Id));
-        Assert.DoesNotContain(profiles[profile].Id, await cloud.Index.GetIndexAsync() ?? string.Empty);
+        Assert.DoesNotContain(profiles[profile].Id, (await cloud.Index.GetIndexAsync())?.Value ?? string.Empty);
     }
 
     [Then("device {string} has no keys or files of {string}")]

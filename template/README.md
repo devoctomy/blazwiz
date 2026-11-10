@@ -136,7 +136,8 @@ the data bucket.
 
 Every sync profile is encrypted end to end with its own keys and its own passphrase, so files on the device and in S3
 can only be read once the user has entered it. A profile's id (`UseKeyId`, a GUID) names its keys, kept in the user's
-own Secrets Manager secrets, or in the browser when no user pool is configured (local development). Until its
+own prefix of the data bucket (under `keys/`), or in the browser when no data bucket is configured (local
+development). Until its
 passphrase is set or entered the profile is locked: a banner points to Settings to set a first passphrase, and a
 page wrapping the profile's content in `E2eUnlockPanel` asks for it there. There is no recovery: a forgotten
 passphrase loses the profile's files. Syncing without encryption is not supported.
@@ -248,9 +249,6 @@ for the target account.
 # Deploy (asks for confirmation, then for the test user's password)
 ./cloudformation/deploy.ps1 -Region eu-west-2 -TestUserEmail me@example.com
 
-# Check it all works
-./cloudformation/test-auth.ps1 -Region eu-west-2 -Email me@example.com
-
 # Re-publish just the portal after code changes
 ./cloudformation/deploy.ps1 -Region eu-west-2 -SkipInfrastructure
 
@@ -260,3 +258,18 @@ for the target account.
 
 All scripts take `-AppName` (default `myapp`), `-Environment` (default `dev`), `-Region` and `-AwsProfile`. The stack
 is named `<AppName>-<Environment>`, so several environments can share an account.
+
+### The optimal build
+
+By default the portal is published as .NET code run by the WebAssembly interpreter. For production, compile it ahead
+of time to WebAssembly, with SIMD: it runs several times faster, end to end encryption most of all (deriving a key from
+a passphrase with Argon2id takes seconds less), at the cost of a larger download and a publish that takes several
+minutes. Install the workload once, then deploy with `-Aot`:
+
+```powershell
+dotnet workload install wasm-tools
+./cloudformation/deploy.ps1 -Region eu-west-2 -Aot
+```
+
+To build it that way every time, uncomment the `RunAOTCompilation` / `WasmEnableSIMD` block in
+`MyApp.Portal/MyApp.Portal.csproj` instead. Local runs (`dotnet run`) are not affected either way.

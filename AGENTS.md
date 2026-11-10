@@ -44,7 +44,8 @@ follow-up work stay together. Before working on an active plan, read it, and tic
   logic lives in the view model.
 - `tests/Devoctomy.Blazwiz.<Package>.UnitTests`: one unit test project per package, referencing only that package
   (and `tests/Devoctomy.Blazwiz.TestSupport` for shared fakes). `tests/Devoctomy.Blazwiz.Sync.IntTests`: Reqnroll
-  integration tests of sync.
+  integration tests of sync. `tests/Devoctomy.Blazwiz.DeployTests`: Reqnroll tests of a deployed environment, run
+  only by the Deploy tests workflow (every scenario is skipped without a deployed environment to test).
 - `template/`: the template app (`MyApp.Portal`, `.Application`, `.Models`, their tests), `.template.config/` and
   the AWS stack (`template/cloudformation`). In this repository it builds against the packages' source
   (`template/Directory.Build.targets`); generated apps use the packages.
@@ -185,10 +186,10 @@ package version is ordinary .NET and needs no test; the change does. Before 1.0 
 ## Deploying
 
 The AWS base stack and its scripts are in `src/Devoctomy.Blazwiz.Aws/cloudformation`; apps run them through
-`template/cloudformation/deploy.ps1`, `remove.ps1` and `test-auth.ps1`. They create, change or delete real AWS
+`template/cloudformation/deploy.ps1` and `remove.ps1`. They create, change or delete real AWS
 resources. Never run any of them, or any AWS command, unless the maintainer asks for that exact action: no
 credentials are kept here, and the maintainer tests deployments by hand.
 
-The Deploy, Upgrade and Destroy workflows (`.github/workflows/deploy.yml`, `upgrade.yml`, `destroy.yml`) run the same
-scripts for the template app from GitHub, through OIDC (`docs/deploying.md`). Never start them: they are the
-maintainer's, like the release.
+The Deploy, Upgrade, Deploy tests and Destroy workflows (`.github/workflows/deploy.yml`, `upgrade.yml`,
+`deploy-tests.yml`, `destroy.yml`) run the same scripts, and the deploy tests, for the template app from GitHub,
+through OIDC (`docs/deploying.md`). Never start them: they are the maintainer's, like the release.

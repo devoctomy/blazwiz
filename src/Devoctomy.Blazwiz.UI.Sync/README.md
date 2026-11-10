@@ -2,8 +2,8 @@
 
 The blazwiz sync module: sync (`Devoctomy.Blazwiz.Sync`) wired to the app shell, Cognito and S3, with its UI: the Sync
 page, the status pill, and storage and end to end encryption settings. Each profile's keys are kept in the user's own
-AWS Secrets Manager secrets (in the browser when no Cognito user pool is configured, for local development), and a
-profile can allow unlocking with a passkey.
+prefix of the data bucket (in the browser when no data bucket is configured, for local development), and a profile
+can allow unlocking with a passkey.
 
 ## Usage
 

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Tests of a deployed environment, run by the Deploy tests workflow (.github/workflows/deploy-tests.yml) after a
+    deploy. The .DeployTests suffix keeps them out of CI's UnitTests, IntTests and UITests filters. Without the
+    BLAZWIZ_DEPLOYTEST_* environment variables every scenario is skipped. See docs/deploying.md.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Amazon.Extensions.CognitoAuthentication" />
+    <PackageReference Include="AWSSDK.CognitoIdentity" />
+    <PackageReference Include="AWSSDK.CognitoIdentityProvider" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="Reqnroll.xUnit" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Devoctomy.Blazwiz.Sync\Devoctomy.Blazwiz.Sync.csproj" />
+  </ItemGroup>
+</Project>
