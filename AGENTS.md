@@ -30,10 +30,12 @@ blazwiz is a framework for Blazor WebAssembly PWAs that sign in with AWS Cognito
 to end encryption, and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
 that creates an app built on them.
 
-Plans are in `docs/plans`: active plans in `docs/plans/active` (`<date>-<topic>-plan.md`), ideas not yet planned in
-`docs/plans/backlog`, and known technical debt in `docs/plans/techdebt`. Reviews are in `docs/reviews`, each in its
-own dated folder (`<date>-<topic>/`) with the backlog plans it raised in its `backlog/` subfolder, so a review and its
-follow-up work stay together. Before working on an active plan, read it, and tick off its checkboxes as items are completed.
+Plans are in `docs/plans`: active plans in `docs/plans/active` (`<topic>-plan.md`), ideas not yet planned in
+`docs/plans/backlog` (`<topic>.md`), and known technical debt in `docs/plans/techdebt`. Reviews are in `docs/reviews`,
+each in its own dated folder (`<date>-<topic>/`) with the backlog plans it raised in its `backlog/` subfolder, so a
+review and its follow-up work stay together. Plan and backlog file names carry no date: every one starts with YAML
+frontmatter (`title`, `type`, `status`, `added`, and `updated` when changed), like the security review's backlog
+items, and dates go there. Before working on an active plan, read it, and tick off its checkboxes as items are completed.
 
 - `src/Devoctomy.Blazwiz.<Package>`: the packages. `Core` (app identity, storage names, offline mode, text, coded
   errors), `Cryptography`, `Encryption` (E2E keys), `Browser` (storage, theme, navigation, WebAuthn and their JS),
