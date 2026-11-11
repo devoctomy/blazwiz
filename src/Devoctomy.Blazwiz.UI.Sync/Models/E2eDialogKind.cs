@@ -29,4 +29,9 @@ public enum E2eDialogKind
     /// Delete a protected profile the user created, and its files.
     /// </summary>
     Delete,
+
+    /// <summary>
+    /// Finish a passphrase change that was cut short.
+    /// </summary>
+    FinishRotation,
 }

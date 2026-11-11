@@ -186,6 +186,76 @@ public class NotesTests : TestBase
         await Expect(Page.Locator("#new-note-button")).ToBeVisibleAsync();
     }
 
+    [TestMethod]
+    public async Task GivenNotes_WhenThePassphraseIsChanged_ThenWarnedSignedOutAndOnlyTheNewPassphraseReadsThem()
+    {
+        const string newPassphrase = "a brand new passphrase";
+        await OpenFilesAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#e2e-app-profiles .e2e-change").First.ClickAsync();
+        await Expect(Page.Locator("#e2e-form")).ToContainTextAsync("Every device, this one included, is signed out");
+        await Page.Locator("#e2e-current-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-passphrase").FillAsync(newPassphrase);
+        await Page.Locator("#e2e-confirm-passphrase").FillAsync(newPassphrase);
+        await Page.Locator("#e2e-acknowledge").CheckAsync();
+        await Page.Locator("#e2e-confirm").ClickAsync();
+
+        await Expect(Page.Locator("#e2e-rotation-estimate")).ToContainTextAsync("Files to encrypt again and upload: ");
+        await Expect(Page.Locator("#e2e-rotation-warning")).ToContainTextAsync("This cannot be skipped or stopped");
+        await ScreenshotAsync("Estimate");
+        await Page.Locator("#e2e-rotation-start").ClickAsync();
+        await ExpectLoginPageAsync();
+
+        await LoginAsync();
+        await OpenNotesAsync();
+        await Page.Locator("#e2e-unlock-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-unlock-button").ClickAsync();
+        await Expect(Page.Locator("#e2e-unlock-error")).ToHaveTextAsync("That passphrase is not correct. Try again.");
+        await Page.Locator("#e2e-unlock-passphrase").FillAsync(newPassphrase);
+        await Page.Locator("#e2e-unlock-button").ClickAsync();
+        await Expect(Page.Locator("#e2e-unlock-panel")).ToHaveCountAsync(0);
+        await Row("Welcome.md").Locator(".file-name").ClickAsync();
+        await Expect(Page.Locator("#note-editor")).ToHaveValueAsync(new Regex("^# Welcome to your notes"));
+    }
+
+    [TestMethod]
+    public async Task GivenAPassphraseChangeCutShort_WhenNotesAreUnlocked_ThenItMustBeFinishedFirst()
+    {
+        await OpenFilesAsync();
+
+        // A change cut short leaves its mark in the keys document, which local development keeps in the browser.
+        await Page.EvaluateAsync(
+            """
+            () => {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key.includes('e2e_browser_keys_')) {
+                        const entry = JSON.parse(localStorage.getItem(key));
+                        entry.Value = entry.Value.replace('"rotation_in_progress":false', '"rotation_in_progress":true');
+                        entry.Version++;
+                        localStorage.setItem(key, JSON.stringify(entry));
+                    }
+                }
+            }
+            """);
+        await ReloadAsync();
+        await OpenNotesAsync();
+        await Page.Locator("#e2e-unlock-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-unlock-button").ClickAsync();
+
+        await Expect(Page.Locator("#e2e-unlock-message")).ToHaveTextAsync("A passphrase change of Notes was interrupted. It must be finished before Notes can be used, and it must not be interrupted again.");
+        await Expect(Page.Locator("#e2e-rotation-warning")).ToBeVisibleAsync();
+        await Expect(Row("Welcome.md")).ToHaveCountAsync(0);
+        await ScreenshotAsync("Interrupted");
+        await Page.Locator("#e2e-rotation-finish").ClickAsync();
+        await ExpectLoginPageAsync();
+
+        await LoginAsync();
+        await OpenNotesAsync();
+        await UnlockAsync();
+        await Expect(Row("Welcome.md")).ToBeVisibleAsync();
+    }
+
     private ILocator Row(string name) => Page.Locator($"#file-tree .file-row[data-name='{name}']");
 
     private async Task OpenFilesAsync()

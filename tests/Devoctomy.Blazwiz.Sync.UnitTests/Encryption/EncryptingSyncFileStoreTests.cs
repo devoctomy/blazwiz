@@ -181,5 +181,43 @@ public class EncryptingSyncFileStoreTests
 
     private static byte[] Bytes(string text) => Encoding.UTF8.GetBytes(text);
 
+    [Fact]
+    public async Task GivenAFileUnderAKeyThisDeviceDoesNotHold_WhenReadWhileUnlocked_ThenTheHandlersAreToldBeforeItFails()
+    {
+        // Arrange: written under keys rotated on another device.
+        var told = new List<string>();
+        var handler = new Mock<ISyncKeyMissingHandler>();
+        handler.Setup(x => x.OnKeyMissingAsync(scope, It.IsAny<string>())).Callback<E2eKeyScope, string>((_, keyId) => told.Add(keyId)).Returns(Task.CompletedTask);
+        var failing = new Mock<ISyncKeyMissingHandler>();
+        failing.Setup(x => x.OnKeyMissingAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>())).ThrowsAsync(new InvalidOperationException());
+        var store = new EncryptingSyncFileStore(inner, ring, format, keyMissingHandlers: [failing.Object, handler.Object]);
+        await inner.WriteAsync(Key, format.Encrypt(Bytes("milk"), "k_new", RandomNumberGenerator.GetBytes(32), new E2eFileBinding(scope.Id, Key)));
+        Unlock();
+
+        // Act
+        var ex = await Assert.ThrowsAsync<E2eLockedException>(() => store.ReadAsync(Key));
+
+        // Assert
+        Assert.Equal(E2eErrorCodes.CannotDecrypt, ex.Code);
+        Assert.Equal(["k_new"], told);
+    }
+
+    [Fact]
+    public async Task GivenALockedProfile_WhenAFileIsRead_ThenTheKeyMissingHandlersAreNotTold()
+    {
+        // Arrange: locked is not a missing key.
+        var handler = new Mock<ISyncKeyMissingHandler>();
+        var store = new EncryptingSyncFileStore(inner, ring, format, keyMissingHandlers: [handler.Object]);
+        Unlock();
+        await store.WriteAsync(Key, Bytes("milk"));
+        ring.Clear();
+
+        // Act
+        await Assert.ThrowsAsync<E2eLockedException>(() => store.ReadAsync(Key));
+
+        // Assert
+        handler.Verify(x => x.OnKeyMissingAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>()), Times.Never);
+    }
+
     private void Unlock() => ring.Load(RandomNumberGenerator.GetBytes(32), new Dictionary<string, byte[]> { ["k_1"] = fileKey }, "k_1");
 }

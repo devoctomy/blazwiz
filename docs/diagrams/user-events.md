@@ -2,7 +2,7 @@
 
 A user's open instances of the app (tabs and devices) share an event channel, so one can tell the others that
 something changed. The first event is "signed out everywhere". It is sent when the user asks for it on the Profile
-page, and (from the key rotation plan) when their passphrase changes.
+page, and when they change a profile's passphrase (section 6).
 
 Events only make things happen sooner. An instance that is closed, offline or in the background when an event is sent
 never receives it: mobile browsers freeze a backgrounded app and drop its connection, and AppSync Events keeps nothing
@@ -18,6 +18,7 @@ its session when it resumes.
 | The channel | Events, Events.AppSync | `IUserEventChannel`: `LocalUserEventChannel` (`BroadcastChannel`), `AppSyncUserEventChannel` (`js/appsync-events.js`) |
 | Connecting, receiving, publishing | Events | `UserEventsSessionHandler`, `UserEventsSignOutHandler` |
 | The button, the messages, the Settings section | UI | `ProfileViewModel`, `MainLayoutViewModel`, `SessionEndedNoticeService`, `LoginViewModel`, `DeviceSettingsViewModel` |
+| Signing out everywhere after a passphrase change | UI.Sync | `E2eRotationSignOut`, `KeyRotationSignOutHandler`, `SessionCheckKeyMissingHandler` |
 
 Nothing depends on `Events` but the app: `Auth` defines the hooks, `Events` implements them, and `UI` only talks to
 `Auth`. Without `Events` (an app created with `--events false`), the Profile page does not offer the button, because
@@ -147,3 +148,54 @@ Settings, This device, it is made on first use as `<Platform>-<Browser>-<6 rando
 `Android-Edge-624834`. Platform and browser are a best guess from `navigator.userAgentData` or the user-agent string,
 with `Unknown` when not recognised. The name is only ever sent in events on the user's own channel. Receivers
 sanitise it (control characters removed, cut to 32 characters) and show it as plain text.
+
+## 6. After a passphrase change
+
+Changing a profile's passphrase rotates its keys and encrypts its files again ([sync.md](sync.md), diagram 8). It ends
+by signing out everywhere with the reason `KeysRotated`, so every device forgets the old keys and unlocks again with
+the new passphrase.
+
+```mermaid
+sequenceDiagram
+    participant VM as E2eProfilesViewModel / E2eUnlockPanelViewModel
+    participant Out as E2eRotationSignOut
+    participant Auth as IAuthenticationService
+    participant Notifier as SignOutEverywhereNotifier
+    participant Rot as KeyRotationSignOutHandler
+    participant Svc as SyncKeyRotationService
+    participant Mgr as E2eProtectedProfileManager
+    participant Events as UserEventsSignOutHandler
+
+    Note over VM: every file is encrypted again and uploaded
+    VM->>Out: SignOutEverywhereAsync()
+    Out->>Auth: SignOutEverywhereAsync(KeysRotated)
+    alt Unreachable, or offline mode
+        Auth-->>Out: false (nothing changed)
+        Out-->>VM: false
+        VM-->>VM: the rotation mark stays, "Sign out everywhere" is offered again
+    else Revoked
+        Auth->>Notifier: NotifyAsync(session, KeysRotated)
+        Notifier->>Rot: OnSigningOutEverywhereAsync
+        Rot->>Svc: CompleteAsync()
+        Svc->>Mgr: CompleteRotationAsync(scope): the keys document's rotation mark is cleared
+        Notifier->>Events: OnSigningOutEverywhereAsync: publishes signed-out-everywhere, reason keys-rotated
+        Auth->>Auth: LogoutAsync
+        Auth-->>Out: true
+        Out->>Out: lifecycle SigningOutAsync, SignedOutAsync, login page
+    end
+```
+
+The mark is cleared after every session is revoked and before this device signs out, while it can still reach the
+user's keys. If clearing it fails, the device is signed out all the same and the mark stays: whoever unlocks the
+profile next is asked to finish the change, which finds nothing left to encrypt and signs out everywhere again.
+
+Other devices:
+
+- **Open and connected** devices receive the event and sign out at once, and the sign-in page says the passphrase was
+  changed.
+- **Closed, offline or backgrounded** devices miss it. Their tokens are revoked, so the resume check (section 3) signs
+  them out before they sync.
+- **A device that unlocks with the passkey** is asked for the new passphrase: its copy of the old master key no longer
+  unwraps the keys document (`E2eErrorCodes.KeysChanged`).
+- **An open device whose connection dropped silently** keeps its session until its next token renewal. If it reads a
+  file written under the new key first, `SessionCheckKeyMissingHandler` runs `CheckSessionAsync`, which signs it out.

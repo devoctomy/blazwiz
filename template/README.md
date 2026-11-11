@@ -142,6 +142,11 @@ passphrase is set or entered the profile is locked: a banner points to Settings 
 page wrapping the profile's content in `E2eUnlockPanel` asks for it there. There is no recovery: a forgotten
 passphrase loses the profile's files. Syncing without encryption is not supported.
 
+Changing a profile's passphrase, in Settings, gives it new keys and encrypts every file again, so anyone who had the
+old passphrase can read nothing written afterwards. The user is shown how long it will take first. It cannot be
+skipped, and it ends by signing them out on every device. If it is cut short, the profile cannot be used until it is
+finished.
+
 <!--#endif-->
 ### Add a service
 

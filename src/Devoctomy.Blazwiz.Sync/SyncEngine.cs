@@ -39,7 +39,7 @@ public class SyncEngine(
     private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
 
     /// <inheritdoc/>
-    public async Task<SyncResult> SyncAsync(SyncProfile profile, bool verify, CancellationToken ct = default)
+    public async Task<SyncResult> SyncAsync(SyncProfile profile, bool verify, IProgress<SyncPassProgress>? progress = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
@@ -52,10 +52,13 @@ public class SyncEngine(
         try
         {
             var plan = await SnapshotAndPlanAsync(pass, verify, ct);
-            foreach (var action in plan.Actions.Where(a => a.Kind != SyncActionKind.None))
+            var actions = plan.Actions.Where(a => a.Kind != SyncActionKind.None).ToList();
+            progress?.Report(new SyncPassProgress(0, actions.Count));
+            for (var i = 0; i < actions.Count; i++)
             {
                 ct.ThrowIfCancellationRequested();
-                await ExecuteSafelyAsync(pass, action, ct);
+                await ExecuteSafelyAsync(pass, actions[i], ct);
+                progress?.Report(new SyncPassProgress(i + 1, actions.Count));
             }
         }
         catch (Exception ex) when (ex is SyncNetworkException or SyncAccessDeniedException)

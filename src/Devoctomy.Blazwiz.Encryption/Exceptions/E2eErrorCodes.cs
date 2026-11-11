@@ -27,6 +27,12 @@ public static class E2eErrorCodes
     public const string PassphraseRequired = "E2e.PassphraseRequired";
 
     /// <summary>
+    /// The profile's keys were changed on another device (its passphrase was changed), so the passkey can no longer
+    /// unlock it on this one; the new passphrase is needed.
+    /// </summary>
+    public const string KeysChanged = "E2e.KeysChanged";
+
+    /// <summary>
     /// The signed in user has no protected profile with the given id ({0}).
     /// </summary>
     public const string ProfileNotFound = "E2e.ProfileNotFound";

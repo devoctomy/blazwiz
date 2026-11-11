@@ -49,6 +49,26 @@ it asks for the passphrase in its place:
 
 Its text comes from resources (`SyncUiText`), so apps can reword and translate it.
 
+### Changing a passphrase
+
+Change passphrase, in Settings, rotates the profile's keys and encrypts its files again, so anyone who had the old
+passphrase can read nothing written afterwards. What the user sees:
+
+1. They enter the current and new passphrases. The profile is synced and an upload is timed. Offline, or if the sync
+   fails, the change is refused and nothing has changed.
+2. An estimate of how long it will take, with a warning: it cannot be skipped or stopped, and every device is signed
+   out at the end. They can still cancel.
+3. A progress bar while the files are encrypted again and uploaded. The dialog cannot be closed.
+4. Every device, this one included, is signed out (`IE2eRotationSignOut`). If the sign-in service cannot be reached,
+   the dialog says so and keeps offering Sign out everywhere until it works.
+
+If the change is cut short (the tab is closed, the connection drops), the profile is unusable until it is finished.
+`E2eUnlockPanel` shows a warning and Finish passphrase change in place of the profile's pages, on whichever device
+unlocks it next, and Settings shows the profile as "Passphrase change unfinished".
+
+A device that unlocks with the passkey is asked for the new passphrase, and told why, once the keys have been changed
+on another device.
+
 ## Versions
 
 Every `Devoctomy.Blazwiz.*` package and the `Devoctomy.Blazwiz.Templates` template are released together at one

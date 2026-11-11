@@ -254,21 +254,220 @@ public class E2eProtectedProfileManagerTests
     }
 
     [Fact]
-    public async Task GivenANewPassphrase_WhenChanged_ThenOnlyItUnlocksTheSameKeys()
+    public async Task GivenANewPassphrase_WhenChanged_ThenOnlyItUnlocksNewKeysThatStillReadTheOldFiles()
     {
         // Arrange
         var scope = await device.Manager.CreateAsync(Passphrase, Settings);
-        var activeKeyId = device.Rings.Get(scope).ActiveKeyId;
+        var oldKeyId = device.Rings.Get(scope).ActiveKeyId!;
+        Assert.True(device.Rings.Get(scope).TryGetFileKey(oldKeyId, out var oldFileKey));
+        var reported = new List<E2eStep>();
 
         // Act
-        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings, new Progress(p => reported.Add(p.Step)));
 
         // Assert
         var other = new Device(this);
         await Assert.ThrowsAsync<E2eWrongPassphraseException>(() => other.Manager.UnlockAsync(scope, Passphrase));
         await other.Manager.UnlockAsync(scope, "battery staple");
-        Assert.Equal(activeKeyId, other.Rings.Get(scope).ActiveKeyId);
+        var ring = other.Rings.Get(scope);
+        Assert.NotEqual(oldKeyId, ring.ActiveKeyId);
+        Assert.Equal(device.Rings.Get(scope).ActiveKeyId, ring.ActiveKeyId);
+        Assert.True(ring.TryGetFileKey(oldKeyId, out var stillThere));
+        Assert.Equal(oldFileKey, stillThere);
+        Assert.True(device.Manager.IsRotationInProgress(scope));
+        Assert.True(other.Manager.IsRotationInProgress(scope));
         Assert.Equal(userKeys.Values[scope.Id], device.LocalKeys.Get(scope)!.CachedDocument);
+        Assert.Equal([E2eStep.DeriveKey, E2eStep.CreateKeys, E2eStep.SaveKeys, E2eStep.StoreDeviceKey], reported.Distinct());
+    }
+
+    [Fact]
+    public async Task GivenThePassphraseChanged_WhenTheOldMasterKeyIsUsed_ThenItUnwrapsNoneOfTheNewKeys()
+    {
+        // Arrange: someone who once held the master key.
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        Assert.True(device.Rings.Get(scope).TryGetMasterKey(out var oldMasterKey));
+
+        // Act
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+
+        // Assert
+        var document = documents.Parse(userKeys.Values[scope.Id]);
+        Assert.Throws<InvalidDataException>(() => documents.LoadFileKeys(new E2eKeyRing(new InMemoryDerivedKeyStore(), scope), document, oldMasterKey));
+        Assert.Single(document.Keys, k => k.Value.Status == FileKeyEntry.ActiveStatus);
+        Assert.Single(document.Keys, k => k.Value.Status == FileKeyEntry.RetiredStatus);
+    }
+
+    [Fact]
+    public async Task GivenTheKeysDocumentChangedElsewhere_WhenThePassphraseIsChanged_ThenItStartsAgainWithNewKeysAndKeepsNoneOfTheFirstAttempt()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        userKeys.BeforeWrite = s =>
+        {
+            userKeys.BeforeWrite = null;
+            userKeys.Values[s.Id] += " ";
+        };
+
+        // Act
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+
+        // Assert
+        Assert.Equal(1, userKeys.ConflictCount);
+        var document = documents.Parse(userKeys.Values[scope.Id]);
+        Assert.Equal(2, document.Keys.Count);
+        Assert.Equal(device.Rings.Get(scope).ActiveKeyId, Assert.Single(document.Keys, k => k.Value.Status == FileKeyEntry.ActiveStatus).Key);
+    }
+
+    [Fact]
+    public async Task GivenDeviceUnlockOnWithoutThePasskeysKey_WhenThePassphraseIsChanged_ThenNoCopyOfTheOldMasterKeyStaysOnThisDevice()
+    {
+        // Arrange: device unlock was turned on, but this session signed in with a password.
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.EnableDeviceUnlockAsync(scope);
+        device.DerivedKeys.RemoveKey(E2eKeyNames.KeyEncryptionKey);
+
+        // Act
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+
+        // Assert
+        Assert.False(await device.Manager.HasDeviceUnlockAsync(scope));
+        Assert.True(string.IsNullOrEmpty(device.LocalKeys.Get(scope)!.WrappedMasterKey.Wrapped));
+    }
+
+    [Fact]
+    public async Task GivenDeviceUnlockOnAnotherDevice_WhenThePassphraseIsChangedHere_ThenThatDeviceNeedsTheNewPassphrase()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var other = new Device(this);
+        await other.Manager.UnlockAsync(scope, Passphrase);
+        await other.Manager.EnableDeviceUnlockAsync(scope);
+        other.Manager.Lock(scope);
+
+        // Act
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+
+        // Assert
+        var ex = await Assert.ThrowsAsync<E2ePassphraseRequiredException>(() => other.Manager.UnlockWithDeviceAsync(scope));
+        Assert.Equal(E2eErrorCodes.KeysChanged, ex.Code);
+        Assert.False(other.Manager.IsUnlocked(scope));
+        Assert.False(await other.Manager.HasDeviceUnlockAsync(scope));
+        Assert.Equal(userKeys.Values[scope.Id], other.LocalKeys.Get(scope)!.CachedDocument);
+        await other.Manager.UnlockAsync(scope, "battery staple");
+        Assert.True(other.Manager.IsUnlocked(scope));
+    }
+
+    [Fact]
+    public async Task GivenTheKeysDocumentChangedWithTheSameMasterKey_WhenUnlockedWithThePasskey_ThenThisDevicesCopyIsUpdatedAndItUnlocks()
+    {
+        // Arrange: written elsewhere without a rotation (e.g. a rotation mark cleared).
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.EnableDeviceUnlockAsync(scope);
+        device.Manager.Lock(scope);
+        var other = new Device(this);
+        await other.Manager.UnlockAsync(scope, Passphrase);
+        var document = documents.Parse(userKeys.Values[scope.Id]);
+        document.RotationInProgress = true;
+        userKeys.Values[scope.Id] = documents.Serialize(document);
+
+        // Act
+        await device.Manager.UnlockWithDeviceAsync(scope);
+
+        // Assert
+        Assert.True(device.Manager.IsUnlocked(scope));
+        Assert.True(device.Manager.IsRotationInProgress(scope));
+        Assert.Equal(FakeUserKeysStore.ETagOf(userKeys.Values[scope.Id]), device.LocalKeys.Get(scope)!.CachedDocumentETag);
+        Assert.True(await device.Manager.HasDeviceUnlockAsync(scope));
+    }
+
+    [Fact]
+    public async Task GivenTheKeysDocumentUnchanged_WhenUnlockedWithThePasskey_ThenItUnlocksFromThisDevicesCopy()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.EnableDeviceUnlockAsync(scope);
+        device.Manager.Lock(scope);
+        var etag = device.LocalKeys.Get(scope)!.CachedDocumentETag;
+
+        // Act
+        await device.Manager.UnlockWithDeviceAsync(scope);
+
+        // Assert
+        Assert.True(device.Manager.IsUnlocked(scope));
+        Assert.False(device.Manager.IsRotationInProgress(scope));
+        Assert.Equal(etag, device.LocalKeys.Get(scope)!.CachedDocumentETag);
+        Assert.True(await device.Manager.HasDeviceUnlockAsync(scope));
+    }
+
+    [Fact]
+    public async Task GivenOfflineAfterARotationElsewhere_WhenUnlockedWithThePasskey_ThenItUnlocksFromThisDevicesCopy()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.EnableDeviceUnlockAsync(scope);
+        var oldKeyId = device.Rings.Get(scope).ActiveKeyId;
+        device.Manager.Lock(scope);
+        var other = new Device(this);
+        await other.Manager.UnlockAsync(scope, Passphrase);
+        await other.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+        userKeys.Failure = new HttpRequestException("offline");
+
+        // Act
+        await device.Manager.UnlockWithDeviceAsync(scope);
+
+        // Assert: edits made now are under the old key, which the rotated document keeps.
+        Assert.True(device.Manager.IsUnlocked(scope));
+        Assert.Equal(oldKeyId, device.Rings.Get(scope).ActiveKeyId);
+    }
+
+    [Fact]
+    public async Task GivenARotationInProgress_WhenCompleted_ThenTheMarkIsClearedForEveryDevice()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+
+        // Act
+        await device.Manager.CompleteRotationAsync(scope);
+
+        // Assert
+        Assert.False(device.Manager.IsRotationInProgress(scope));
+        Assert.False(documents.Parse(userKeys.Values[scope.Id]).RotationInProgress);
+        Assert.Equal(userKeys.Values[scope.Id], device.LocalKeys.Get(scope)!.CachedDocument);
+        var other = new Device(this);
+        await other.Manager.UnlockAsync(scope, "battery staple");
+        Assert.False(other.Manager.IsRotationInProgress(scope));
+    }
+
+    [Fact]
+    public async Task GivenTheKeysRotatedAgainElsewhere_WhenCompleted_ThenTheirMarkStays()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+        var other = new Device(this);
+        await other.Manager.UnlockAsync(scope, "battery staple");
+        await other.Manager.ChangePassphraseAsync(scope, "battery staple", "tr0ub4dor and more", Settings);
+
+        // Act
+        await device.Manager.CompleteRotationAsync(scope);
+
+        // Assert
+        Assert.True(documents.Parse(userKeys.Values[scope.Id]).RotationInProgress);
+    }
+
+    [Fact]
+    public async Task GivenALockedProfile_WhenTheRotationIsCompleted_ThenThrowsLocked()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+        device.Manager.Lock(scope);
+
+        // Act & Assert
+        Assert.False(device.Manager.IsRotationInProgress(scope));
+        await Assert.ThrowsAsync<E2eLockedException>(() => device.Manager.CompleteRotationAsync(scope));
+        Assert.True(documents.Parse(userKeys.Values[scope.Id]).RotationInProgress);
     }
 
     [Fact]
@@ -787,6 +986,14 @@ public class E2eProtectedProfileManagerTests
         // Assert
         Assert.True(device.Manager.IsUnlocked(scope));
         Assert.Equal(etag, device.LocalKeys.Get(scope)!.CachedDocumentETag);
+    }
+
+    /// <summary>
+    /// Reports progress straight away, on the caller's thread.
+    /// </summary>
+    private sealed class Progress(Action<E2eProgress> report) : IProgress<E2eProgress>
+    {
+        public void Report(E2eProgress value) => report(value);
     }
 
     /// <summary>

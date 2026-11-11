@@ -59,7 +59,35 @@ public sealed class ProtectedDevice
             Mock.Of<IE2eIdleLock>(),
             Labels.Object);
         engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), TimeProvider.System, format, new SyncOptions());
+
+        // A passphrase change: the real rotation service, syncing with the real engine against the shared bucket. The
+        // throwaway file timed before a change is not kept anywhere.
+        var syncService = new Mock<ISyncService>();
+        syncService.Setup(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .Returns((string? name, bool verify, IProgress<SyncPassProgress>? progress, CancellationToken ct) =>
+                engine.SyncAsync(Registry.GetSyncProfile(name!), verify, progress, ct));
+        var connectivity = new Mock<IConnectivityService>();
+        connectivity.Setup(x => x.RecheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new Connectivity.ConnectivityStatus { IsOnline = true });
+        var target = new Mock<IS3SyncTargetProvider>();
+        target.SetupGet(x => x.IsConfigured).Returns(true);
+        Rotation = new SyncKeyRotationService(
+            Profiles,
+            Manager,
+            Rings,
+            Registry,
+            syncService.Object,
+            connectivity.Object,
+            locks.Object,
+            target.Object,
+            Mock.Of<ISyncScratchStore>(),
+            format,
+            new BouncyCastleAesGcmAeadCipher(),
+            TimeProvider.System);
     }
+
+    public SyncKeyRotationService Rotation { get; }
+
+    public EncryptedFileFormat Format => format;
 
     public FakeE2eLocalKeyStore LocalKeys { get; } = new();
 

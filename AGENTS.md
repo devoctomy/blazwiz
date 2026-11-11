@@ -30,10 +30,12 @@ blazwiz is a framework for Blazor WebAssembly PWAs that sign in with AWS Cognito
 to end encryption, and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
 that creates an app built on them.
 
-Plans are in `docs/plans`: active plans in `docs/plans/active` (`<date>-<topic>-plan.md`), ideas not yet planned in
-`docs/plans/backlog`, and known technical debt in `docs/plans/techdebt`. Reviews are in `docs/reviews`, each in its
-own dated folder (`<date>-<topic>/`) with the backlog plans it raised in its `backlog/` subfolder, so a review and its
-follow-up work stay together. Before working on an active plan, read it, and tick off its checkboxes as items are completed.
+Plans are in `docs/plans`: active plans in `docs/plans/active` (`<topic>-plan.md`), ideas not yet planned in
+`docs/plans/backlog` (`<topic>.md`), and known technical debt in `docs/plans/techdebt`. Reviews are in `docs/reviews`,
+each in its own dated folder (`<date>-<topic>/`) with the backlog plans it raised in its `backlog/` subfolder, so a
+review and its follow-up work stay together. Plan and backlog file names carry no date: every one starts with YAML
+frontmatter (`title`, `type`, `status`, `added`, and `updated` when changed), like the security review's backlog
+items, and dates go there. Before working on an active plan, read it, and tick off its checkboxes as items are completed.
 
 - `src/Devoctomy.Blazwiz.<Package>`: the packages. `Core` (app identity, storage names, offline mode, text, coded
   errors), `Cryptography`, `Encryption` (E2E keys), `Browser` (storage, theme, navigation, WebAuthn and their JS),
@@ -132,6 +134,22 @@ dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UITests"
 
 These are the steps CI runs (`.github/workflows/ci.yml`). Test namespaces must contain the project's suffix
 (`.UnitTests`, `.IntTests`, `.UITests`), or the filters miss them.
+
+**Run them as written, and never work around a build failure:**
+
+- Run each command exactly as above: the whole solution, one command at a time, on its own line, with its full
+  output. Don't build single projects in its place, chain builds in one command line, or filter the output down to a
+  few lines.
+- If a build fails for a reason you don't understand, stop and show the maintainer the full error. Don't retry with
+  something changed until it passes: a failure that comes and goes will pass on a retry whatever was changed.
+- Never add a build flag, environment variable, clean-up step (deleting `bin`, `obj` or anything in them) or build
+  server shutdown to get past a failure: not in workflows, not in scripts, not in project files, not in your own
+  shell. `MSBUILDDISABLENODEREUSE` and `dotnet build-server shutdown` were added this way more than once and have
+  been removed; never add them back.
+- Don't copy settings from an existing workflow or script into a new one without knowing what each is for. Check
+  `CHANGELOG.md` first: something recorded there as removed stays out.
+- Make changes to files with the editing tools, so each one can be seen, not with `sed` or `perl` one-liners. Don't
+  read, list or search anything outside this repository without asking.
 
 - The UI tests start the portal themselves (`dotnet run -c Release` on a free port). They take about two minutes.
   The portal's output goes to `template/MyApp.Portal.UITests/bin/Debug/net10.0/TestResults/portal.log`. Don't build

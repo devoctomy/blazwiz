@@ -26,8 +26,8 @@ public class SyncServiceTests
     {
         mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync(Owner);
         mockClock.Setup(x => x.GetUtcNow()).Returns(Now);
-        mockEngine.Setup(x => x.SyncAsync(It.IsAny<SyncProfile>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((SyncProfile p, bool _, CancellationToken _) => new SyncResult { Profile = p.Name });
+        mockEngine.Setup(x => x.SyncAsync(It.IsAny<SyncProfile>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((SyncProfile p, bool _, IProgress<SyncPassProgress>? _, CancellationToken _) => new SyncResult { Profile = p.Name });
         notes = Profile("notes", notesIndex, "notes/**/*.md");
         photos = Profile("photos", new InMemorySyncIndexStore(), "photos/**/*.png");
     }
@@ -58,8 +58,8 @@ public class SyncServiceTests
 
         // Assert
         Assert.Equal(["notes", "photos"], sut.Profiles);
-        mockEngine.Verify(x => x.SyncAsync(notes, false, It.IsAny<CancellationToken>()), Times.Once);
-        mockEngine.Verify(x => x.SyncAsync(photos, false, It.IsAny<CancellationToken>()), Times.Once);
+        mockEngine.Verify(x => x.SyncAsync(notes, false, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockEngine.Verify(x => x.SyncAsync(photos, false, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal([SyncState.Syncing, SyncState.Idle], states);
         Assert.Equal(Now, sut.Status.LastSyncedAt);
         Assert.Null(sut.Status.LastErrorCode);
@@ -73,8 +73,8 @@ public class SyncServiceTests
         await CreateSut().SyncAsync("photos", true);
 
         // Assert
-        mockEngine.Verify(x => x.SyncAsync(photos, true, It.IsAny<CancellationToken>()), Times.Once);
-        mockEngine.Verify(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockEngine.Verify(x => x.SyncAsync(photos, true, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockEngine.Verify(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class SyncServiceTests
         // Arrange
         var result = new SyncResult();
         result.AddChangedLocalKey("notes", "notes/a.md");
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(result);
         var sut = CreateSut();
         SyncFilesChangedEventArgs? raised = null;
         sut.FilesChanged += (_, e) => raised = e;
@@ -107,7 +107,7 @@ public class SyncServiceTests
     public async Task GivenFileFailures_WhenSyncAsync_ThenErrorStatus()
     {
         // Arrange
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 2 });
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 2 });
         var sut = CreateSut();
 
         // Act
@@ -125,7 +125,7 @@ public class SyncServiceTests
     {
         // Arrange
         var failure = new SyncNetworkException("down");
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ThrowsAsync(failure);
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ThrowsAsync(failure);
         var sut = CreateSut();
 
         // Act
@@ -142,7 +142,7 @@ public class SyncServiceTests
     public async Task GivenCredentialsRefusedOnce_WhenSyncAsync_ThenRefreshedAndRetried()
     {
         // Arrange
-        mockEngine.SetupSequence(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        mockEngine.SetupSequence(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new SyncAccessDeniedException("403"))
             .ReturnsAsync(new SyncResult());
         var sut = CreateSut();
@@ -159,7 +159,7 @@ public class SyncServiceTests
     public async Task GivenCredentialsRefusedTwice_WhenSyncAsync_ThenPassFails()
     {
         // Arrange
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException("403"));
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ThrowsAsync(new SyncAccessDeniedException("403"));
         var sut = CreateSut();
 
         // Act
@@ -167,14 +167,14 @@ public class SyncServiceTests
 
         // Assert
         Assert.Equal(SyncErrorCodes.RemoteAccessDenied, sut.Status.LastErrorCode);
-        mockEngine.Verify(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        mockEngine.Verify(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
     public async Task GivenCancelled_WhenSyncAsync_ThenIdleWithoutError()
     {
         // Arrange
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
         var sut = CreateSut();
         using var source = new CancellationTokenSource();
         await source.CancelAsync();
@@ -270,8 +270,8 @@ public class SyncServiceTests
         await sut.SyncAsync();
 
         // Assert
-        mockEngine.Verify(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
-        mockEngine.Verify(x => x.SyncAsync(photos, false, It.IsAny<CancellationToken>()), Times.Once);
+        mockEngine.Verify(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockEngine.Verify(x => x.SyncAsync(photos, false, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal(Now, sut.Status.LastSyncedAt);
     }
 
@@ -286,7 +286,7 @@ public class SyncServiceTests
         await sut.SyncAsync();
 
         // Assert
-        mockEngine.Verify(x => x.SyncAsync(It.IsAny<SyncProfile>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockEngine.Verify(x => x.SyncAsync(It.IsAny<SyncProfile>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Null(sut.Status.LastSyncedAt);
         Assert.Equal(SyncState.Idle, sut.Status.State);
     }
@@ -295,7 +295,7 @@ public class SyncServiceTests
     public async Task GivenOneProfileFailed_WhenAnotherSyncsAfterIt_ThenStatusIsStillTheError()
     {
         // Arrange: one profile at a time, as the scheduler syncs them.
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 3 });
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 3 });
         var sut = CreateSut();
         await sut.SyncAsync("notes");
 
@@ -313,7 +313,7 @@ public class SyncServiceTests
     public async Task GivenAProfileFailed_WhenItSyncsAgainSuccessfully_ThenIdle()
     {
         // Arrange
-        mockEngine.SetupSequence(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        mockEngine.SetupSequence(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new SyncNetworkException("down"))
             .ReturnsAsync(new SyncResult());
         var sut = CreateSut();
@@ -334,8 +334,8 @@ public class SyncServiceTests
     public async Task GivenProfilesSyncedAtDifferentTimes_WhenStatusRead_ThenLastSyncedIsTheLeastRecent_AndConflictsAddUp()
     {
         // Arrange
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { ConflictsResolved = 1 });
-        mockEngine.Setup(x => x.SyncAsync(photos, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { ConflictsResolved = 2 });
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { ConflictsResolved = 1 });
+        mockEngine.Setup(x => x.SyncAsync(photos, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { ConflictsResolved = 2 });
         var sut = CreateSut();
         await sut.SyncAsync("notes");
         mockClock.Setup(x => x.GetUtcNow()).Returns(Now.AddMinutes(5));
@@ -356,7 +356,7 @@ public class SyncServiceTests
         var gate = new Mock<ISyncGate>();
         gate.Setup(x => x.CanSyncAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((string p, CancellationToken _) => p != "notes" || !held);
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
         var sut = new SyncService(FakeSyncProfileRegistry.Of(notes, photos), mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [gate.Object]);
         await sut.SyncAsync();
         held = true;
@@ -375,7 +375,7 @@ public class SyncServiceTests
         // Arrange
         var registry = FakeSyncProfileRegistry.Of(notes);
         registry.Add(photos);
-        mockEngine.Setup(x => x.SyncAsync(photos, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
+        mockEngine.Setup(x => x.SyncAsync(photos, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
         var sut = new SyncService(registry, mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, []);
         await sut.SyncAsync();
         registry.Remove("photos");
@@ -392,7 +392,7 @@ public class SyncServiceTests
     public async Task GivenAProfileFailed_WhenReset_ThenTheFailureIsForgotten()
     {
         // Arrange
-        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SyncResult { Failed = 1 });
         var sut = CreateSut();
         await sut.SyncAsync("notes");
         sut.Reset();

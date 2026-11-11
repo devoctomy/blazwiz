@@ -19,4 +19,9 @@ public enum E2eProfileState
     /// Unlocked in this session.
     /// </summary>
     Unlocked,
+
+    /// <summary>
+    /// Unlocked, but a passphrase change was cut short: it must be finished before the profile is used.
+    /// </summary>
+    RotationInProgress,
 }

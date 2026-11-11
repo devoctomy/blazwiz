@@ -1,7 +1,17 @@
-# Backlog: create the custom domain's DNS records in the base stack
+---
+title: Create the custom domain's DNS records in the base stack
+type: backlog
+status: ready
+added: 2026-11-07
+origin: the maintainer, deploying clypse's test environment at test.clypse.net
+reason: a custom domain does not reach the app until someone adds its DNS records by hand
+areas: [AWS stack, deploy scripts, template/cloudformation]
+effort: small
+functional-change: no (infrastructure)
+blocked-by: none
+---
 
-**Raised:** 2026-11-07, by the maintainer, deploying clypse's test environment at `test.clypse.net`.
-**Status:** not started.
+# Create the custom domain's DNS records in the base stack
 
 ## The problem
 

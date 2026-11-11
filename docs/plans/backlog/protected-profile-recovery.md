@@ -1,8 +1,18 @@
-# Request: recovering a protected profile after a forgotten passphrase
+---
+title: Recovering a protected profile after a forgotten passphrase
+type: backlog
+status: needs a decision
+added: 2026-11-05
+reason: a forgotten passphrase means the profile's files can never be decrypted again
+areas: [Encryption, UI.Sync]
+effort: medium
+functional-change: yes
+blocked-by: the questions below
+related:
+  - the profile passphrases plan of 2026-11-05 (removed) (D6)
+---
 
-**Date:** 2026-11-05
-**Status:** not planned
-**Related:** `docs/plans/2026-11-05-profile-passphrases-plan.md` (removed) (D6)
+# Recovering a protected profile after a forgotten passphrase
 
 ## What
 

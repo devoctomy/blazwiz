@@ -1,3 +1,12 @@
+---
+title: v1 feature ideas
+type: backlog
+status: ideas
+added: 2026-10-05
+reason: gaps found in a read of the repository, for choosing what goes into v1
+areas: [template, packages]
+---
+
 # v1 feature ideas
 
 Suggestions for what the blazwiz template could add before v1, from a read of the repository on 2026-10-05

@@ -35,6 +35,8 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     private readonly ISyncScheduler scheduler;
     private readonly IPasskeyKeysService passkeys;
     private readonly IToastService toasts;
+    private readonly ISyncKeyRotationService rotation;
+    private readonly IE2eRotationSignOut rotationSignOut;
 
     private string? profile;
     private E2eProfileRow? row;
@@ -42,6 +44,11 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     private string? error;
     private bool isWorking;
     private bool rememberBiometrics;
+    private bool isFinishingRotation;
+    private int filesDone;
+    private int filesTotal;
+    private bool needsSignOut;
+    private Dictionary<E2eStep, (int Done, int Total)> fileSteps = [];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="E2eUnlockPanelViewModel"/> class.
@@ -55,6 +62,8 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     /// <param name="scheduler">Syncs the profile before it is unlocked.</param>
     /// <param name="passkeys">Asks for the passkey when its key is needed.</param>
     /// <param name="toasts">Says if biometrics could not be turned on.</param>
+    /// <param name="rotation">Finishes a passphrase change that was cut short.</param>
+    /// <param name="rotationSignOut">Signs every device out once it is finished.</param>
     public E2eUnlockPanelViewModel(
         ISyncProtectedProfileService profiles,
         IE2eProtectedProfileManager manager,
@@ -64,8 +73,12 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         IErrorText errorText,
         ISyncScheduler scheduler,
         IPasskeyKeysService passkeys,
-        IToastService toasts)
+        IToastService toasts,
+        ISyncKeyRotationService rotation,
+        IE2eRotationSignOut rotationSignOut)
     {
+        this.rotation = rotation ?? throw new ArgumentNullException(nameof(rotation));
+        this.rotationSignOut = rotationSignOut ?? throw new ArgumentNullException(nameof(rotationSignOut));
         this.passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
         this.toasts = toasts ?? throw new ArgumentNullException(nameof(toasts));
         this.scheduler = scheduler ?? throw new ArgumentNullException(nameof(scheduler));
@@ -104,11 +117,66 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     public bool NeedsPassphrase => Profile?.State == E2eProfileState.NotSetUp;
 
     /// <summary>
+    /// Gets a value indicating whether a passphrase change of the profile was cut short, so it must be finished before
+    /// the profile is shown.
+    /// </summary>
+    public bool IsRotationInProgress => Profile?.State == E2eProfileState.RotationInProgress;
+
+    /// <summary>
+    /// Gets the warning shown before a cut short passphrase change is finished.
+    /// </summary>
+    public string RotationWarning => text["Sync.E2e.Rotation.Warning"];
+
+    /// <summary>
+    /// Gets a value indicating whether the cut short passphrase change is being finished: it cannot be stopped.
+    /// </summary>
+    public bool IsFinishingRotation
+    {
+        get => isFinishingRotation;
+        private set => SetProperty(ref isFinishingRotation, value);
+    }
+
+    /// <summary>
+    /// Gets how much of finishing the passphrase change is done: files encrypted again, plus files uploaded.
+    /// </summary>
+    public int FilesDone
+    {
+        get => filesDone;
+        private set => SetProperty(ref filesDone, value);
+    }
+
+    /// <summary>
+    /// Gets how much work finishing the passphrase change has: files to encrypt again, plus files to upload; 0 before
+    /// it knows.
+    /// </summary>
+    public int FilesTotal
+    {
+        get => filesTotal;
+        private set => SetProperty(ref filesTotal, value);
+    }
+
+    /// <summary>
+    /// Gets how far finishing the passphrase change is through its files, from 0 to 100.
+    /// </summary>
+    public int FilesPercent => FilesTotal == 0 ? 0 : (int)Math.Round(100.0 * FilesDone / FilesTotal);
+
+    /// <summary>
+    /// Gets a value indicating whether the files are encrypted again but every device could not be signed out, so the
+    /// sign out is offered again.
+    /// </summary>
+    public bool NeedsSignOut
+    {
+        get => needsSignOut;
+        private set => SetProperty(ref needsSignOut, value);
+    }
+
+    /// <summary>
     /// Gets what the panel says.
     /// </summary>
     public string Message => Profile switch
     {
         { State: E2eProfileState.Locked } p => text["Sync.E2e.Panel.Locked", p.DisplayName],
+        { State: E2eProfileState.RotationInProgress } p => text["Sync.E2e.Rotation.Interrupted", p.DisplayName],
         { State: E2eProfileState.NotSetUp } p => text["Sync.E2e.Panel.NeedsPassphrase", p.DisplayName],
         { } => string.Empty,
         null => text["Sync.E2e.Status.Checking"],
@@ -219,6 +287,55 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Finishes a passphrase change that was cut short: syncs the profile, encrypts again and uploads every file not yet
+    /// under the new key, then signs every device out. It runs to the end.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task FinishRotationAsync()
+    {
+        if (IsWorking || !IsRotationInProgress || Profile is not { } current)
+        {
+            return;
+        }
+
+        Error = null;
+        IsWorking = true;
+        IsFinishingRotation = true;
+        fileSteps = [];
+        var finished = false;
+        try
+        {
+            await rotation.FinishAsync(new E2eKeyScope(current.Id), new ProgressReporter(this));
+            finished = true;
+        }
+        catch (Exception ex)
+        {
+            Error = errorText.Describe(ex);
+        }
+        finally
+        {
+            IsWorking = false;
+            IsFinishingRotation = false;
+        }
+
+        if (finished)
+        {
+            await SignOutEverywhereAsync();
+        }
+    }
+
+    /// <summary>
+    /// Signs every device out again, after finishing a passphrase change whose sign out failed.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public Task RetrySignOutAsync()
+    {
+        return IsWorking || !NeedsSignOut ? Task.CompletedTask : SignOutEverywhereAsync();
+    }
+
+    /// <summary>
     /// Opens Settings, where a first passphrase is set.
     /// </summary>
     [RelayCommand]
@@ -315,12 +432,51 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         }
     }
 
+    private async Task SignOutEverywhereAsync()
+    {
+        Error = null;
+        IsWorking = true;
+        try
+        {
+            if (await rotationSignOut.SignOutEverywhereAsync())
+            {
+                // Signed out: the login page is opening.
+                NeedsSignOut = false;
+                return;
+            }
+
+            NeedsSignOut = true;
+            Error = text["Sync.E2e.Rotation.SignOutFailed"];
+        }
+        catch (Exception ex)
+        {
+            NeedsSignOut = true;
+            Error = errorText.Describe(ex);
+        }
+        finally
+        {
+            IsWorking = false;
+        }
+    }
+
+    private void ApplyProgress(E2eProgress progress)
+    {
+        if (progress.Step is E2eStep.ReencryptFiles or E2eStep.UploadFiles)
+        {
+            fileSteps[progress.Step] = (progress.Done, progress.Total);
+            FilesDone = fileSteps.Values.Sum(s => s.Done);
+            FilesTotal = fileSteps.Values.Sum(s => s.Total);
+            OnPropertyChanged(nameof(FilesPercent));
+        }
+    }
+
     private async Task RefreshAsync()
     {
         Profile = profile == null ? null : await presenter.GetProfileAsync(profile);
         OnPropertyChanged(nameof(IsUnlocked));
         OnPropertyChanged(nameof(IsLocked));
         OnPropertyChanged(nameof(NeedsPassphrase));
+        OnPropertyChanged(nameof(IsRotationInProgress));
         OnPropertyChanged(nameof(Message));
     }
 
@@ -343,6 +499,18 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         catch (Exception)
         {
             // A background refresh must not crash the page; the next change refreshes it again.
+        }
+    }
+
+    /// <summary>
+    /// Shows progress as it is reported, on the caller's context (unlike <see cref="Progress{T}"/>).
+    /// </summary>
+    private sealed class ProgressReporter(E2eUnlockPanelViewModel owner)
+        : IProgress<E2eProgress>
+    {
+        public void Report(E2eProgress value)
+        {
+            owner.ApplyProgress(value);
         }
     }
 }

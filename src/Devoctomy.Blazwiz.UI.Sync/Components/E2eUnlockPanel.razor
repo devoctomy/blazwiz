@@ -41,6 +41,31 @@ else
                 }
             </form>
         }
+        else if (ViewModel.IsRotationInProgress)
+        {
+            <div class="e2e-unlock-form mx-auto text-start" id="e2e-rotation-panel">
+                <div class="alert alert-warning" role="alert" id="e2e-rotation-warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.RotationWarning
+                </div>
+                @if (ViewModel.IsFinishingRotation)
+                {
+                    <div class="progress mb-2" role="progressbar" id="e2e-rotation-progress" aria-label="@SyncText["Sync.E2e.Step.ReencryptFiles"]"
+                         aria-valuenow="@ViewModel.FilesPercent" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar" style="width: @(ViewModel.FilesPercent)%"></div>
+                    </div>
+                }
+                else if (ViewModel.NeedsSignOut)
+                {
+                    <button type="button" class="btn btn-primary w-100" id="e2e-rotation-sign-out" disabled="@ViewModel.IsWorking"
+                            @onclick="() => ViewModel.RetrySignOutCommand.ExecuteAsync(null)">@SyncText["Sync.E2e.Rotation.SignOut"]</button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-primary w-100" id="e2e-rotation-finish" disabled="@ViewModel.IsWorking"
+                            @onclick="() => ViewModel.FinishRotationCommand.ExecuteAsync(null)">@SyncText["Sync.E2e.FinishRotation"]</button>
+                }
+            </div>
+        }
         else if (ViewModel.NeedsPassphrase)
         {
             <button type="button" class="btn btn-primary" id="e2e-unlock-settings" @onclick="() => ViewModel.OpenSettingsCommand.Execute(null)">

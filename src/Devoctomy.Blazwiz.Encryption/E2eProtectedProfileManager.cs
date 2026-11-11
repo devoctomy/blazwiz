@@ -55,6 +55,7 @@ public class E2eProtectedProfileManager(
     private readonly IKeyWrapService keyWrapService = keyWrapService ?? throw new ArgumentNullException(nameof(keyWrapService));
     private readonly Lock gate = new Lock();
     private readonly HashSet<E2eKeyScope> unlocked = [];
+    private readonly HashSet<E2eKeyScope> rotating = [];
 
     /// <inheritdoc/>
     public event EventHandler<E2eKeyScope>? LockStateChanged;
@@ -118,6 +119,7 @@ public class E2eProtectedProfileManager(
         await localKeyStore.SaveAsync(scope, new E2eLocalKeys { CachedDocument = json, CachedDocumentETag = etag });
         keyRings.Get(scope).Load(keys.MasterKey, new Dictionary<string, byte[]>(StringComparer.Ordinal) { [keys.FileKeyId] = keys.FileKey }, keys.FileKeyId);
         progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, true));
+        SetRotating(scope, false);
         SetUnlocked(scope, true);
     }
 
@@ -161,6 +163,7 @@ public class E2eProtectedProfileManager(
             await SaveCachedDocumentAsync(scope, stored);
         }
 
+        SetRotating(scope, document.RotationInProgress);
         SetUnlocked(scope, true);
     }
 
@@ -260,15 +263,43 @@ public class E2eProtectedProfileManager(
             CryptographicOperations.ZeroMemory(kek);
         }
 
+        UserKeysDocument document;
         try
         {
-            keysDocuments.LoadFileKeys(keyRings.Get(scope), keysDocuments.Parse(local.CachedDocument), masterKey);
+            var stored = await TryGetStoredDocumentAsync(scope);
+            if (stored == null || string.Equals(stored.ETag, local.CachedDocumentETag, StringComparison.Ordinal))
+            {
+                // Offline, or unchanged since this device last read it: this device's copy.
+                document = keysDocuments.Parse(local.CachedDocument);
+                keysDocuments.LoadFileKeys(keyRings.Get(scope), document, masterKey);
+            }
+            else
+            {
+                document = keysDocuments.Parse(stored.Value);
+                local.CachedDocument = stored.Value;
+                local.CachedDocumentETag = stored.ETag;
+                try
+                {
+                    keysDocuments.LoadFileKeys(keyRings.Get(scope), document, masterKey);
+                }
+                catch (InvalidDataException ex)
+                {
+                    // The keys were rotated on another device (its passphrase changed): the master key this device
+                    // keeps unwraps nothing in them, and is forgotten. Only the new passphrase unlocks the profile now.
+                    local.WrappedMasterKey = new WrappedKey();
+                    await localKeyStore.SaveAsync(scope, local);
+                    throw new E2ePassphraseRequiredException(E2eErrorCodes.KeysChanged, ex);
+                }
+
+                await localKeyStore.SaveAsync(scope, local);
+            }
         }
         finally
         {
             CryptographicOperations.ZeroMemory(masterKey);
         }
 
+        SetRotating(scope, document.RotationInProgress);
         SetUnlocked(scope, true);
     }
 
@@ -284,11 +315,23 @@ public class E2eProtectedProfileManager(
     }
 
     /// <inheritdoc/>
+    public bool IsRotationInProgress(E2eKeyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        lock (gate)
+        {
+            return rotating.Contains(scope);
+        }
+    }
+
+    /// <inheritdoc/>
     public void Lock(E2eKeyScope scope)
     {
         CheckProtected(scope);
 
         keyRings.Get(scope).Clear();
+        SetRotating(scope, false);
         SetUnlocked(scope, false);
     }
 
@@ -302,7 +345,7 @@ public class E2eProtectedProfileManager(
     }
 
     /// <inheritdoc/>
-    public async Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, E2eProfileSettings settings, CancellationToken ct = default)
+    public async Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, E2eProfileSettings settings, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
         CheckProtected(scope);
         ArgumentException.ThrowIfNullOrEmpty(currentPassphrase);
@@ -313,27 +356,88 @@ public class E2eProtectedProfileManager(
             var stored = await userKeysStore.GetAsync(scope, ct)
                 ?? throw new E2eProfileNotFoundException(scope.Id);
             var document = keysDocuments.Parse(stored.Value);
+            E2eNewKeys keys;
             var masterKey = await keysDocuments.UnwrapMasterKeyAsync(document, currentPassphrase, ct);
             try
             {
-                await keysDocuments.RewrapMasterKeyAsync(document, masterKey, newPassphrase, settings.Argon2, ct);
+                // New random keys on every attempt: nothing made for a version that lost the race is kept.
+                keys = await keysDocuments.RotateAsync(document, masterKey, newPassphrase, settings.Argon2, progress, ct);
             }
             finally
             {
                 CryptographicOperations.ZeroMemory(masterKey);
             }
 
+            using (keys)
+            {
+                var updated = keysDocuments.Serialize(keys.Document);
+                progress?.Report(new E2eProgress(E2eStep.SaveKeys, false));
+                string etag;
+                try
+                {
+                    etag = await userKeysStore.SetAsync(scope, updated, stored.ETag, ct);
+                }
+                catch (E2eDocumentChangedException) when (attempt < MaxWriteAttempts)
+                {
+                    // Changed on another device since it was read (its passphrase too, perhaps, in which case the
+                    // current passphrase no longer unwraps it): start again from the new version.
+                    continue;
+                }
+
+                progress?.Report(new E2eProgress(E2eStep.SaveKeys, true));
+
+                // From here the old master key unwraps nothing new. This device holds the new keys, and keeps no copy
+                // of the old master key for device unlock.
+                progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, false));
+                keysDocuments.LoadFileKeys(keyRings.Get(scope), keys.Document, keys.MasterKey);
+                await SaveRotatedLocalKeysAsync(scope, new StoredDocument(updated, etag), keys.MasterKey);
+                progress?.Report(new E2eProgress(E2eStep.StoreDeviceKey, true));
+            }
+
+            SetRotating(scope, true);
+            SetUnlocked(scope, true);
+            return;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task CompleteRotationAsync(E2eKeyScope scope, CancellationToken ct = default)
+    {
+        CheckProtected(scope);
+
+        for (var attempt = 1; ; attempt++)
+        {
+            var stored = await userKeysStore.GetAsync(scope, ct)
+                ?? throw new E2eProfileNotFoundException(scope.Id);
+            var document = keysDocuments.Parse(stored.Value);
+            var activeKeyId = keyRings.Get(scope).ActiveKeyId ?? throw new E2eLockedException();
+            if (!document.Keys.TryGetValue(activeKeyId, out var active) || active.Status != FileKeyEntry.ActiveStatus)
+            {
+                // Rotated again on another device since this one encrypted the files: that rotation is still to be
+                // finished, by whoever unlocks the profile next.
+                return;
+            }
+
+            if (!document.RotationInProgress)
+            {
+                await SaveCachedDocumentAsync(scope, stored);
+                SetRotating(scope, false);
+                return;
+            }
+
+            // Only the mark changes: the keys are as they were read.
+            document.RotationInProgress = false;
             var updated = keysDocuments.Serialize(document);
             try
             {
                 var etag = await userKeysStore.SetAsync(scope, updated, stored.ETag, ct);
                 await SaveCachedDocumentAsync(scope, new StoredDocument(updated, etag));
+                SetRotating(scope, false);
                 return;
             }
             catch (E2eDocumentChangedException) when (attempt < MaxWriteAttempts)
             {
-                // Changed on another device since it was read (its passphrase too, perhaps, in which case the current
-                // passphrase no longer unwraps it): start again from the new version.
+                // Changed on another device since it was read: start again from the new version.
             }
         }
     }
@@ -470,6 +574,48 @@ public class E2eProtectedProfileManager(
         await localKeyStore.SaveAsync(scope, local);
     }
 
+    // After a rotation: the new document, and the new master key for device unlock when the passkey's key is in memory.
+    // Otherwise device unlock is turned off here, so no copy of the old master key stays on this device.
+    private async Task SaveRotatedLocalKeysAsync(E2eKeyScope scope, StoredDocument stored, byte[] masterKey)
+    {
+        var local = await localKeyStore.GetAsync(scope) ?? new E2eLocalKeys();
+        local.CachedDocument = stored.Value;
+        local.CachedDocumentETag = stored.ETag;
+        if (HasDeviceKey(local))
+        {
+            if (derivedKeyStore.TryGetKey(E2eKeyNames.KeyEncryptionKey, out var kek))
+            {
+                try
+                {
+                    local.WrappedMasterKey = keyWrapService.Wrap(kek, masterKey, DeviceKeyBinding(scope));
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(kek);
+                }
+            }
+            else
+            {
+                local.WrappedMasterKey = new WrappedKey();
+            }
+        }
+
+        await localKeyStore.SaveAsync(scope, local);
+    }
+
+    // The keys document from the store, or null when it cannot be reached (offline, or not in this session) or is gone.
+    private async Task<StoredDocument?> TryGetStoredDocumentAsync(E2eKeyScope scope)
+    {
+        try
+        {
+            return await userKeysStore.GetAsync(scope);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
     private async Task<E2eProfileIndex> ReadIndexAsync(CancellationToken ct)
     {
         string? json;
@@ -519,6 +665,21 @@ public class E2eProtectedProfileManager(
             catch (E2eDocumentChangedException) when (attempt < MaxWriteAttempts)
             {
                 // Written by another device or tab since it was read: apply the change to their version.
+            }
+        }
+    }
+
+    private void SetRotating(E2eKeyScope scope, bool value)
+    {
+        lock (gate)
+        {
+            if (value)
+            {
+                rotating.Add(scope);
+            }
+            else
+            {
+                rotating.Remove(scope);
             }
         }
     }

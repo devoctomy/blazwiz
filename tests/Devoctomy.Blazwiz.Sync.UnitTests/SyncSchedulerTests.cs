@@ -24,8 +24,8 @@ public class SyncSchedulerTests
     {
         registry = FakeSyncProfileRegistry.Of(options);
         mockSync.SetupGet(x => x.Profiles).Returns(["notes", "photos"]);
-        mockSync.Setup(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
-            .Callback<string?, bool, CancellationToken>((p, v, _) => calls.Add($"sync {p} verify={v}"))
+        mockSync.Setup(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback<string?, bool, IProgress<SyncPassProgress>?, CancellationToken>((p, v, _, _) => calls.Add($"sync {p} verify={v}"))
             .ReturnsAsync(new SyncResult());
         mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => connectivity);
         mockLocks.Setup(x => x.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -77,7 +77,7 @@ public class SyncSchedulerTests
         // Assert
         Assert.Empty(calls);
         mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Once);
-        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -176,7 +176,7 @@ public class SyncSchedulerTests
         // Arrange
         var gate = new TaskCompletionSource<SyncResult>();
         var passes = 0;
-        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
             .Returns(() => ++passes == 2 ? gate.Task : Task.FromResult(new SyncResult()));
         using var sut = CreateSut();
         await sut.StartAsync();
@@ -212,7 +212,7 @@ public class SyncSchedulerTests
         await Task.Yield();
 
         // Assert
-        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
         mockLocks.VerifyNoOtherCalls();
         mockSync.Verify(x => x.RefreshPendingCountAsync(), Times.Exactly(3));
     }
@@ -305,7 +305,7 @@ public class SyncSchedulerTests
         // Arrange
         var gate = new TaskCompletionSource<SyncResult>();
         var passes = 0;
-        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
             .Returns(() => ++passes == 2 ? gate.Task : Task.FromResult(new SyncResult()));
         using var sut = CreateSut();
         await sut.StartAsync();
@@ -412,7 +412,7 @@ public class SyncSchedulerTests
     public async Task GivenPassThrows_WhenRunning_ThenLockReleasedAndSchedulerCarriesOn()
     {
         // Arrange
-        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException());
+        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException());
         using var sut = CreateSut();
 
         // Act

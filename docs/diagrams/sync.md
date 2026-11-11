@@ -22,6 +22,7 @@ Main classes (all in `src/Devoctomy.Blazwiz.Sync/` unless noted):
 - `EncryptingSyncFileStore` (`Encryption/`): plaintext in the app, ciphertext on disk and in S3, with the profile's own keys
 - `SyncProtectedProfileService` (`Encryption/`) and `E2eProtectedProfileManager` (`src/Devoctomy.Blazwiz.Encryption/`): each profile's keys and passphrase, the profiles the user creates, unlocking and locking
 - `E2eIdleLock` and `E2eLockChannel` (`Encryption/`): locking a profile after it has been idle, and in every tab when it is locked in one
+- `SyncKeyRotationService` (`Encryption/`): changing a profile's passphrase, which rotates its keys and encrypts its files again (diagram 8), with `S3SyncScratchStore` (`S3/`) for the upload it times first
 - `SwitchableSyncFileStore` and `SyncStorageResolver` (`Storage/`): the storage chosen on this device (IndexedDB, OPFS or a folder), and `SyncStorageMigrationService` to move between them
 - `S3SyncRemoteStore` (`S3/`), with `CognitoS3TargetProvider` (`src/Devoctomy.Blazwiz.UI.Sync/Services/`) for the client
 - `WebLockSyncLockService`: one pass per profile across all tabs
@@ -49,7 +50,8 @@ The template's `Program.cs` passes it the settings in `sync.json` and the `SyncP
 | Sync status (state, last error, pending count, last synced), worked out from each profile's last pass | Memory | `SyncService.status`, `SyncService.outcomes` | Shown in the status pill |
 | AWS credentials and S3 client | Memory | see [authentication.md](authentication.md) | |
 | A profile's master and file keys | Memory | `IDerivedKeyStore` `e2e:{profile id}:master`, `e2e:{profile id}:file:{key id}`, through its `E2eKeyRing` (`E2eKeyRings`, one ring per profile) | Only while the profile is unlocked |
-| Each profile's keys document | S3 data bucket (localStorage `myapp_e2e_browser_keys_{profile id}_{user}` without a data bucket) | `{identityId}/keys/{profile id}` | Master key wrapped by the passphrase (Argon2id), file keys wrapped by the master key |
+| Each profile's keys document | S3 data bucket (localStorage `myapp_e2e_browser_keys_{profile id}_{user}` without a data bucket) | `{identityId}/keys/{profile id}` | Master key wrapped by the passphrase (Argon2id), file keys wrapped by the master key (one active, earlier ones retired), and `rotation_in_progress` while a passphrase change is unfinished |
+| The throwaway file timed before a passphrase change | S3 data bucket | `{identityId}/scratch/{random}` | Random bytes, deleted straight away. No profile may match `scratch/` |
 | Index of the user's profiles (ids, idle timeouts) | S3 data bucket (localStorage `myapp_e2e_browser_index_{user}` without a data bucket) | `{identityId}/keys/index` | This device keeps a copy in `myapp_e2e_index_{user}` |
 | This device's copy of each keys document, and the master key wrapped by the passkey where allowed | localStorage | `myapp_e2e_keys_{profile id}_{user}` | For unlocking offline, and with the passkey ([prf-remember-me.md](prf-remember-me.md), diagram 4) |
 | Labels of the profiles the user created | localStorage | `myapp_e2e_labels_{user}` | Encrypted with the passkey's `e2e-labels` key |
@@ -491,6 +493,78 @@ sequenceDiagram
     Conn->>Mem: status = {IsOnline = false, Reason = OfflineMode}
     end
 ```
+
+## 8. Changing a passphrase
+
+Changing a profile's passphrase rotates its keys and encrypts every file again, so anyone who had the old passphrase
+and a copy of the keys document can read nothing written afterwards. It runs to the end: there is no skip. The earlier
+file keys are kept in the keys document, retired, so a file not yet encrypted again still decrypts.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant UI as Settings (E2eProfilesViewModel)
+    participant Rot as SyncKeyRotationService
+    participant Sync as SyncService (diagram 4)
+    participant Mgr as E2eProtectedProfileManager
+    participant Doc as E2eKeysDocumentService
+    participant Files as The profile's file store (EncryptingSyncFileStore)
+    box rgb(235,250,235) AWS
+        participant KS as S3 data bucket (keys/)
+        participant S3 as S3 data bucket (files, scratch/)
+    end
+
+    rect rgb(245,245,245)
+    Note over User,S3: Nothing changes yet
+    User->>UI: Current and new passphrase, Change passphrase
+    UI->>Rot: PrepareAsync(scope)
+    Rot->>Sync: SyncAsync(profile), under the profile's lock
+    alt Offline, or the pass failed
+        Rot-->>UI: SyncKeyRotationException (Sync.Rotation.Offline / SyncFailed)
+        UI-->>User: The change is refused
+    end
+    Rot->>S3: PutObject then DeleteObject "{identityId}/scratch/{random}" (random bytes, timed)
+    Rot-->>UI: SyncKeyRotationEstimate (files, bytes, duration)
+    UI-->>User: The estimate and the warning. Cancel, or go on
+    end
+
+    rect rgb(245,245,245)
+    Note over User,S3: The change
+    User->>UI: Change passphrase
+    UI->>Rot: RotateAsync(scope, current, new, progress)
+    Rot->>Mgr: ChangePassphraseAsync (through SyncProtectedProfileService)
+    Mgr->>KS: GetObject "{identityId}/keys/{profile id}" (with its ETag)
+    Mgr->>Doc: RotateAsync: new master key and active file key, earlier file keys wrapped again and retired, rotation_in_progress = true
+    Mgr->>KS: PutObject with If-Match (on 412 reads again and starts over with new keys)
+    Mgr->>Mgr: Load the new keys, and replace or remove this device's passkey copy of the master key
+    loop Every file not under the active key
+        Rot->>Files: ReadAsync (decrypts with the retired key), WriteAsync (encrypts with the active key, marks the index)
+    end
+    Rot->>Sync: SyncAsync(profile, progress): one pass uploads them, reporting each
+    Rot-->>UI: Done: the profile is ready to complete
+    end
+
+    Note over UI: Sign out everywhere (user-events.md, section 6), which clears rotation_in_progress
+```
+
+The progress bar adds the two counts together: files encrypted again, then files uploaded
+(`E2eStep.ReencryptFiles`, `E2eStep.UploadFiles`). If another device's edit wins a conflict during the upload, that file
+comes back under the retired key, and the files are gone through again, up to `SyncKeyRotationService.MaxRounds`
+times.
+
+**A change cut short.** A closed tab or a lost connection after the keys are written leaves `rotation_in_progress` in
+the keys document. `E2eProtectedProfileManager.IsRotationInProgress` is then true wherever the profile is unlocked,
+with the new passphrase, and `E2eUnlockPanel` shows a warning and Finish passphrase change in place of the profile's
+pages. `SyncKeyRotationService.FinishAsync` syncs, encrypts again only the files whose header does not name the
+active key, uploads them, and the sign out everywhere follows as above.
+
+**Without a data bucket** (local development and the UI tests) nothing is synced or uploaded: the files on the device
+are encrypted again, and the placeholder sign-in signs out.
+
+The UI tests in `NotesTests` cover a passphrase change and finishing one cut short. `ProtectedProfiles.feature` covers
+two devices: the files in the bucket end up under the new key, and a change started on one device is finished on the
+other.
 
 ## The template's notes example
 

@@ -442,7 +442,7 @@ public class SyncProtectedProfileServiceTests
 
         // Assert
         mockManager.Verify(x => x.CreateKeysAsync(notes, "correct horse", settings, null, It.IsAny<CancellationToken>()), Times.Once);
-        mockManager.Verify(x => x.ChangePassphraseAsync(notes, "correct horse", "battery staple", settings, It.IsAny<CancellationToken>()), Times.Once);
+        mockManager.Verify(x => x.ChangePassphraseAsync(notes, "correct horse", "battery staple", settings, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

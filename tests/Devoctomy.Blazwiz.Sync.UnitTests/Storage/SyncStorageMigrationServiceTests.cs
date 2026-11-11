@@ -108,7 +108,7 @@ public class SyncStorageMigrationServiceTests
     {
         // Arrange: nothing local yet (straight after the first sign in); the pass downloads a file.
         mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new ConnectivityStatus { IsOnline = true });
-        mockSync.Setup(x => x.SyncAsync("notes", false, It.IsAny<CancellationToken>()))
+        mockSync.Setup(x => x.SyncAsync("notes", false, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("sync"))
             .Returns(async () =>
             {
@@ -137,7 +137,7 @@ public class SyncStorageMigrationServiceTests
         await CreateSut().MigrateAsync(SyncStorageKind.Opfs);
 
         // Assert
-        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockSync.Verify(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Single(await opfs.ListAsync());
     }
 

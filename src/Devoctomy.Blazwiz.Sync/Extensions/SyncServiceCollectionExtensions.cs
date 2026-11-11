@@ -89,6 +89,9 @@ public static class SyncServiceCollectionExtensions
         services.TryAddScoped<IUserKeysStore>(sp => UsesDataBucket(sp) ? sp.GetRequiredService<S3UserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
         services.TryAddScoped<IE2eProfileIndexStore>(sp => UsesDataBucket(sp) ? sp.GetRequiredService<S3UserKeysStore>() : sp.GetRequiredService<LocalStorageUserKeysStore>());
 
+        // Short-lived objects in the user's prefix that sync never sees, e.g. the file timed before a passphrase change.
+        services.TryAddScoped<ISyncScratchStore, S3SyncScratchStore>();
+
         // Every profile's stores come from the registry, so profiles added while the app runs work the same way.
         services.TryAddScoped<ISyncProfileRegistry>(sp => new SyncProfileRegistry(sp, options));
         foreach (var profile in options.Profiles)

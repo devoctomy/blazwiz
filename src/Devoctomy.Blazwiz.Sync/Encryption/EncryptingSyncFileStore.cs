@@ -18,16 +18,23 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// markers have no content, so they pass straight through; an empty file is reported as not encrypted, as a truncated
 /// one would be.
 /// </remarks>
+/// <param name="inner">The store holding the encrypted files.</param>
+/// <param name="keyRing">The profile's keys.</param>
+/// <param name="encryptedFileFormat">The encrypted file format.</param>
+/// <param name="idleLock">Told when the profile is used, or null.</param>
+/// <param name="keyMissingHandlers">Told when a file needs a key the unlocked profile does not hold, or null.</param>
 public class EncryptingSyncFileStore(
     ISyncFileStore inner,
     IE2eKeyRing keyRing,
     IEncryptedFileFormat encryptedFileFormat,
-    IE2eIdleLock? idleLock = null)
+    IE2eIdleLock? idleLock = null,
+    IEnumerable<ISyncKeyMissingHandler>? keyMissingHandlers = null)
     : ISyncFileStore
 {
     private readonly ISyncFileStore inner = inner ?? throw new ArgumentNullException(nameof(inner));
     private readonly IE2eKeyRing keyRing = keyRing ?? throw new ArgumentNullException(nameof(keyRing));
     private readonly IEncryptedFileFormat encryptedFileFormat = encryptedFileFormat ?? throw new ArgumentNullException(nameof(encryptedFileFormat));
+    private readonly IReadOnlyList<ISyncKeyMissingHandler> keyMissingHandlers = keyMissingHandlers?.ToList() ?? [];
 
     /// <inheritdoc/>
     public Task<IReadOnlyList<SyncFileInfo>> ListAsync(CancellationToken ct = default) => inner.ListAsync(ct);
@@ -63,6 +70,12 @@ public class EncryptingSyncFileStore(
 
         if (!keyRing.TryGetFileKey(keyId!, out var fileKey))
         {
+            if (keyRing.ActiveKeyId != null)
+            {
+                // Unlocked, yet the key is not known here: written under keys rotated on another device since.
+                await NotifyKeyMissingAsync(keyId!);
+            }
+
             throw new E2eLockedException(E2eErrorCodes.CannotDecrypt, key);
         }
 
@@ -96,6 +109,21 @@ public class EncryptingSyncFileStore(
 
     /// <inheritdoc/>
     public Task DeleteAsync(string key, CancellationToken ct = default) => inner.DeleteAsync(key, ct);
+
+    private async Task NotifyKeyMissingAsync(string keyId)
+    {
+        foreach (var handler in keyMissingHandlers)
+        {
+            try
+            {
+                await handler.OnKeyMissingAsync(keyRing.Scope, keyId);
+            }
+            catch (Exception)
+            {
+                // The read fails all the same; a handler must not hide why.
+            }
+        }
+    }
 
     private async Task WriteEncryptedAsync(string key, byte[] content, DateTimeOffset? modifiedAt, CancellationToken ct)
     {

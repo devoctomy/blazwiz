@@ -190,7 +190,12 @@ public class SyncProfileRegistry(IServiceProvider services, SyncOptions options)
 
                 // App code reads and writes plaintext; the store holds (and syncs) ciphertext, encrypted with the
                 // profile's own keys.
-                return new EncryptingSyncFileStore(store, sp.GetRequiredService<IE2eKeyRings>().Get(profile.KeyScope!), sp.GetRequiredService<IEncryptedFileFormat>(), sp.GetService<IE2eIdleLock>());
+                return new EncryptingSyncFileStore(
+                    store,
+                    sp.GetRequiredService<IE2eKeyRings>().Get(profile.KeyScope!),
+                    sp.GetRequiredService<IEncryptedFileFormat>(),
+                    sp.GetService<IE2eIdleLock>(),
+                    sp.GetServices<ISyncKeyMissingHandler>());
             });
 
             SyncProfile = new Lazy<SyncProfile>(() => new SyncProfile(

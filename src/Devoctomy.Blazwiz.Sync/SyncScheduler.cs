@@ -258,7 +258,7 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
                 {
                     var verify = state.VerifyPending;
                     state.VerifyPending = false;
-                    await syncService.SyncAsync(profile, verify, token);
+                    await syncService.SyncAsync(profile, verify, ct: token);
                 }
             }
             while (state.RunAgain && !token.IsCancellationRequested);

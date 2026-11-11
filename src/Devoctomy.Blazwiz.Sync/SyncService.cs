@@ -51,7 +51,7 @@ public class SyncService(
     public IReadOnlyList<string> Profiles => registry.Profiles.Select(p => p.Name).ToList();
 
     /// <inheritdoc/>
-    public async Task<SyncResult> SyncAsync(string? profile = null, bool verify = false, CancellationToken ct = default)
+    public async Task<SyncResult> SyncAsync(string? profile = null, bool verify = false, IProgress<SyncPassProgress>? progress = null, CancellationToken ct = default)
     {
         var selected = profile == null
             ? registry.Profiles.Select(p => registry.GetSyncProfile(p.Name)).ToList()
@@ -71,7 +71,7 @@ public class SyncService(
                 }
 
                 current = item.Name;
-                var result = await RunProfileAsync(item, verify, ct);
+                var result = await RunProfileAsync(item, verify, progress, ct);
                 total.Add(result);
                 Record(item.Name, result.Failed > 0 ? SyncErrorCodes.FilesFailed : null, [result.Failed], result.ConflictsResolved);
                 current = null;
@@ -141,17 +141,17 @@ public class SyncService(
         return true;
     }
 
-    private async Task<SyncResult> RunProfileAsync(SyncProfile profile, bool verify, CancellationToken ct)
+    private async Task<SyncResult> RunProfileAsync(SyncProfile profile, bool verify, IProgress<SyncPassProgress>? progress, CancellationToken ct)
     {
         try
         {
-            return await engine.SyncAsync(profile, verify, ct);
+            return await engine.SyncAsync(profile, verify, progress, ct);
         }
         catch (SyncAccessDeniedException)
         {
             // The credentials may have expired early: get new ones and try once more.
             targetProvider.Invalidate();
-            return await engine.SyncAsync(profile, verify, ct);
+            return await engine.SyncAsync(profile, verify, progress, ct);
         }
     }
 

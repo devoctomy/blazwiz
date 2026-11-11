@@ -75,7 +75,13 @@
                             <i class="bi bi-exclamation-triangle me-1"></i><strong>@ViewModel.NoRecoveryWarning</strong>
                         </div>
                     }
-                    @if (dialog == E2eDialogKind.Delete)
+                    @if (dialog == E2eDialogKind.FinishRotation)
+                    {
+                        <div class="alert alert-warning mb-0" role="alert" id="e2e-rotation-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.RotationWarning
+                        </div>
+                    }
+                    else if (dialog == E2eDialogKind.Delete)
                     {
                         <div class="mb-3">
                             <label class="form-label" for="e2e-delete-confirmation">@SyncText["Sync.E2e.DeleteConfirmation", ViewModel.DialogProfile?.Id ?? string.Empty]</label>
@@ -114,8 +120,24 @@
                     }
                 </form>
             }
+            else if (ViewModel.IsConfirmingRotation)
+            {
+                <div id="e2e-rotation-confirm">
+                    <p id="e2e-rotation-estimate">@ViewModel.EstimateText</p>
+                    <div class="alert alert-warning mb-0" role="alert" id="e2e-rotation-warning">
+                        <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.RotationWarning
+                    </div>
+                </div>
+            }
             else if (ViewModel.Steps.Count > 0)
             {
+                @if (ViewModel.FilesTotal > 0)
+                {
+                    <div class="progress mb-3" role="progressbar" id="e2e-rotation-progress" aria-label="@SyncText["Sync.E2e.Step.ReencryptFiles"]"
+                         aria-valuenow="@ViewModel.FilesPercent" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar" style="width: @(ViewModel.FilesPercent)%"></div>
+                    </div>
+                }
                 <ul class="list-unstyled e2e-steps mb-0" id="e2e-steps">
                     @foreach (var step in ViewModel.Steps)
                     {
@@ -151,7 +173,7 @@
             else if (ViewModel.IsWorking)
             {
                 <p class="mb-0" id="e2e-working">
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>@SyncText["Sync.E2e.Dialog.Working"]
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>@ViewModel.WorkingText
                 </p>
             }
             else if (ViewModel.IsFinished)
@@ -168,6 +190,19 @@
             {
                 <button type="button" class="btn btn-secondary" @onclick="() => ViewModel.CloseDialogCommand.Execute(null)">@Text["Common.Cancel"]</button>
                 <button type="submit" form="e2e-form" class="btn @(dialog == E2eDialogKind.Delete ? "btn-danger" : "btn-primary")" id="e2e-confirm">@ViewModel.DialogTitle</button>
+            }
+            else if (ViewModel.IsConfirmingRotation)
+            {
+                <button type="button" class="btn btn-secondary" @onclick="() => ViewModel.CloseDialogCommand.Execute(null)">@Text["Common.Cancel"]</button>
+                <button type="button" class="btn btn-primary" id="e2e-rotation-start"
+                        @onclick="() => ViewModel.StartRotationCommand.ExecuteAsync(null)">@ViewModel.DialogTitle</button>
+            }
+            else if (ViewModel.NeedsSignOut)
+            {
+                <button type="button" class="btn btn-secondary" id="e2e-close" disabled="@ViewModel.IsWorking"
+                        @onclick="() => ViewModel.CloseDialogCommand.Execute(null)">@Text["Common.Close"]</button>
+                <button type="button" class="btn btn-primary" id="e2e-rotation-sign-out" disabled="@ViewModel.IsWorking"
+                        @onclick="() => ViewModel.RetrySignOutCommand.ExecuteAsync(null)">@SyncText["Sync.E2e.Rotation.SignOut"]</button>
             }
             else
             {
@@ -192,6 +227,12 @@
             case E2eProfileState.Locked:
                 <button type="button" class="btn btn-primary btn-sm e2e-unlock"
                         @onclick="() => ViewModel.OpenUnlockCommand.Execute(row.Name)">@SyncText["Sync.E2e.Unlock"]</button>
+                break;
+            case E2eProfileState.RotationInProgress:
+                <button type="button" class="btn btn-warning btn-sm e2e-finish-rotation" disabled="@ViewModel.IsOffline"
+                        @onclick="() => ViewModel.OpenFinishRotationCommand.Execute(row.Name)">@SyncText["Sync.E2e.FinishRotation"]</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm e2e-lock"
+                        @onclick="() => ViewModel.LockCommand.Execute(row.Name)"><i class="bi bi-lock me-1"></i>@SyncText["Sync.E2e.Lock"]</button>
                 break;
             default:
                 <button type="button" class="btn btn-outline-secondary btn-sm e2e-change" disabled="@ViewModel.IsOffline"

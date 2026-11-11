@@ -3,6 +3,8 @@ using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Sync.Exceptions;
+using Devoctomy.Blazwiz.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.ViewModels;
@@ -18,6 +20,8 @@ public class E2eProfilesViewModelTests
     private readonly Mock<IE2eProtectedProfileManager> mockManager = new();
     private readonly Mock<IE2eProfilePresenter> mockPresenter = new();
     private readonly Mock<IOfflineModeService> mockOffline = new();
+    private readonly Mock<ISyncKeyRotationService> mockRotation = new();
+    private readonly Mock<IE2eRotationSignOut> mockSignOut = new();
     private readonly TestText testText = new();
     private readonly E2eProfileRow notes = new() { Name = "notes", Id = Guid.NewGuid().ToString("D"), DisplayName = "Notes", State = E2eProfileState.NotSetUp };
     private readonly E2eProfileRow created;
@@ -37,12 +41,14 @@ public class E2eProfilesViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(null!, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, null!, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("presenter", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, null!, mockOffline.Object, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, null!, testText.Sync, testText.Errors)).ParamName);
-        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, null!, testText.Errors)).ParamName);
-        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, null!)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(null!, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, null!, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("presenter", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, null!, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, null!, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, null!, testText.Errors, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, null!, mockRotation.Object, mockSignOut.Object)).ParamName);
+        Assert.Equal("rotation", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, null!, mockSignOut.Object)).ParamName);
+        Assert.Equal("rotationSignOut", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -186,9 +192,11 @@ public class E2eProfilesViewModelTests
     }
 
     [Fact]
-    public async Task GivenBothPassphrases_WhenChangingIt_ThenItIsChanged()
+    public async Task GivenBothPassphrases_WhenChangingIt_ThenTheProfileIsSyncedAndEstimatedAndNothingChangesYet()
     {
         // Arrange
+        mockRotation.Setup(x => x.PrepareAsync(new E2eKeyScope(notes.Id), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncKeyRotationEstimate(12, 3 * 1024 * 1024, TimeSpan.FromSeconds(90)));
         using var sut = await CreateInitializedSutAsync();
         sut.OpenChangePassphraseCommand.Execute("notes");
         sut.CurrentPassphrase = "old passphrase";
@@ -198,8 +206,151 @@ public class E2eProfilesViewModelTests
         await sut.ConfirmDialogCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.True(sut.IsFinished);
-        mockProfiles.Verify(x => x.ChangePassphraseAsync(new E2eKeyScope(notes.Id), "old passphrase", Pass, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.True(sut.IsConfirmingRotation);
+        Assert.False(sut.IsEditing);
+        Assert.Equal("Files to encrypt again and upload: 12 (3 MB). Time needed: about 2 min.", sut.EstimateText);
+        Assert.StartsWith("Every file is encrypted again and uploaded.", sut.RotationWarning);
+        mockRotation.Verify(x => x.RotateAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOffline_WhenChangingThePassphrase_ThenRefusedWithNothingChanged()
+    {
+        // Arrange
+        mockRotation.Setup(x => x.PrepareAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new SyncKeyRotationException(SyncErrorCodes.RotationOffline));
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenChangePassphraseCommand.Execute("notes");
+        sut.CurrentPassphrase = "old passphrase";
+        EnterNewPassphrase(sut);
+
+        // Act
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.IsEditing);
+        Assert.False(sut.IsConfirmingRotation);
+        Assert.StartsWith("Changing a passphrase needs a connection", sut.DialogError);
+        Assert.Equal(Pass, sut.Passphrase);
+    }
+
+    [Fact]
+    public async Task GivenTheEstimateConfirmed_WhenStarted_ThenTheFilesAreEncryptedAgainWithProgressAndEveryDeviceSignedOut()
+    {
+        // Arrange
+        var percents = new List<int>();
+        mockRotation.Setup(x => x.PrepareAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncKeyRotationEstimate(2, 100, TimeSpan.FromSeconds(1)));
+        mockRotation.Setup(x => x.RotateAsync(new E2eKeyScope(notes.Id), "old passphrase", Pass, It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback<E2eKeyScope, string, string, IProgress<E2eProgress>?, CancellationToken>((_, _, _, progress, _) =>
+            {
+                progress!.Report(new E2eProgress(E2eStep.ReencryptFiles, false, 0, 2));
+                progress.Report(new E2eProgress(E2eStep.UploadFiles, false, 0, 2));
+                progress.Report(new E2eProgress(E2eStep.ReencryptFiles, false, 1, 2));
+                progress.Report(new E2eProgress(E2eStep.ReencryptFiles, true, 2, 2));
+                progress.Report(new E2eProgress(E2eStep.UploadFiles, false, 1, 2));
+                progress.Report(new E2eProgress(E2eStep.UploadFiles, true, 2, 2));
+            })
+            .Returns(Task.CompletedTask);
+        mockSignOut.Setup(x => x.SignOutEverywhereAsync()).ReturnsAsync(true);
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenChangePassphraseCommand.Execute("notes");
+        sut.CurrentPassphrase = "old passphrase";
+        EnterNewPassphrase(sut);
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+        sut.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(sut.FilesPercent))
+            {
+                percents.Add(sut.FilesPercent);
+            }
+        };
+
+        // Act
+        await sut.StartRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal([0, 0, 25, 50, 75, 100], percents);
+        Assert.Equal(E2eStepState.Done, Assert.Single(sut.Steps, s => s.Step == E2eStep.ReencryptFiles).State);
+        Assert.Equal(E2eStepState.Done, Assert.Single(sut.Steps, s => s.Step == E2eStep.UploadFiles).State);
+        Assert.False(sut.NeedsSignOut);
+        Assert.Empty(sut.Passphrase);
+        Assert.Empty(sut.CurrentPassphrase);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTheFilesCannotBeUploaded_WhenRotating_ThenTheStepFailsAndNobodyIsSignedOut()
+    {
+        // Arrange
+        mockRotation.Setup(x => x.PrepareAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncKeyRotationEstimate(2, 100, TimeSpan.FromSeconds(1)));
+        mockRotation.Setup(x => x.RotateAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback<E2eKeyScope, string, string, IProgress<E2eProgress>?, CancellationToken>((_, _, _, progress, _) =>
+                progress!.Report(new E2eProgress(E2eStep.ReencryptFiles, false, 0, 2)))
+            .ThrowsAsync(new SyncKeyRotationException(SyncErrorCodes.RotationSyncFailed));
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenChangePassphraseCommand.Execute("notes");
+        sut.CurrentPassphrase = "old passphrase";
+        EnterNewPassphrase(sut);
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.StartRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(E2eStepState.Failed, Assert.Single(sut.Steps, s => s.Step == E2eStep.ReencryptFiles).State);
+        Assert.StartsWith("The profile's files could not be synced.", sut.DialogError);
+        Assert.Empty(sut.Passphrase);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenTheSignOutFails_WhenRotated_ThenItIsOfferedUntilItSucceeds()
+    {
+        // Arrange
+        mockRotation.Setup(x => x.PrepareAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncKeyRotationEstimate(0, 0, TimeSpan.Zero));
+        mockSignOut.SetupSequence(x => x.SignOutEverywhereAsync()).ReturnsAsync(false).ReturnsAsync(true);
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenChangePassphraseCommand.Execute("notes");
+        sut.CurrentPassphrase = "old passphrase";
+        EnterNewPassphrase(sut);
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+        await sut.StartRotationCommand.ExecuteAsync(null);
+        var offered = sut.NeedsSignOut;
+        var error = sut.DialogError;
+
+        // Act
+        await sut.RetrySignOutCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(offered);
+        Assert.StartsWith("Your files are encrypted with the new keys, but every device could not be signed out", error);
+        Assert.False(sut.NeedsSignOut);
+        Assert.Null(sut.DialogError);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenAnInterruptedRotation_WhenFinished_ThenTheFilesAreEncryptedAgainAndEveryDeviceSignedOut()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        mockSignOut.Setup(x => x.SignOutEverywhereAsync()).ReturnsAsync(true);
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenFinishRotationCommand.Execute("notes");
+        var text = sut.DialogText;
+
+        // Act
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("A passphrase change of Notes was interrupted. It must be finished before Notes can be used, and it must not be interrupted again.", text);
+        Assert.Equal("Passphrase change unfinished", sut.GetStateText(notes));
+        Assert.True(sut.CanLockAll);
+        mockRotation.Verify(x => x.FinishAsync(new E2eKeyScope(notes.Id), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Once);
     }
 
     [Fact]
@@ -303,5 +454,5 @@ public class E2eProfilesViewModelTests
         return sut;
     }
 
-    private E2eProfilesViewModel CreateSut() => new(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors);
+    private E2eProfilesViewModel CreateSut() => new(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object);
 }

@@ -5,6 +5,7 @@ using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
+using Devoctomy.Blazwiz.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.Text;
@@ -26,12 +27,21 @@ public partial class E2eProfilesViewModel : ViewModelBase
         E2eStep.DeriveKey, E2eStep.CreateKeys, E2eStep.SaveKeys, E2eStep.StoreDeviceKey,
     ];
 
+    private static readonly E2eStep[] RotationSteps =
+    [
+        E2eStep.DeriveKey, E2eStep.CreateKeys, E2eStep.SaveKeys, E2eStep.StoreDeviceKey, E2eStep.ReencryptFiles, E2eStep.UploadFiles,
+    ];
+
+    private static readonly E2eStep[] FinishRotationSteps = [E2eStep.ReencryptFiles, E2eStep.UploadFiles];
+
     private readonly ISyncProtectedProfileService profiles;
     private readonly IE2eProtectedProfileManager manager;
     private readonly IE2eProfilePresenter presenter;
     private readonly IOfflineModeService offlineModeService;
     private readonly IStringLocalizer<SyncUiText> text;
     private readonly IErrorText errorText;
+    private readonly ISyncKeyRotationService rotation;
+    private readonly IE2eRotationSignOut rotationSignOut;
 
     private IReadOnlyList<E2eProfileRow> rows = [];
     private string? error;
@@ -47,6 +57,11 @@ public partial class E2eProfilesViewModel : ViewModelBase
     private string? dialogError;
     private string? createdId;
     private IReadOnlyList<E2eStepItem> steps = [];
+    private SyncKeyRotationEstimate? estimate;
+    private int filesDone;
+    private int filesTotal;
+    private bool needsSignOut;
+    private Dictionary<E2eStep, (int Done, int Total)> fileSteps = [];
 
     /// <summary>
     /// Initializes a new instance of the <see cref="E2eProfilesViewModel"/> class.
@@ -57,13 +72,17 @@ public partial class E2eProfilesViewModel : ViewModelBase
     /// <param name="offlineModeService">Offline mode: the keys in the cloud can't be changed.</param>
     /// <param name="text">The sync UI's text.</param>
     /// <param name="errorText">Describes errors.</param>
+    /// <param name="rotation">Changes a passphrase: syncs, estimates, rotates the keys and encrypts the files again.</param>
+    /// <param name="rotationSignOut">Signs every device out once a passphrase change has encrypted the files again.</param>
     public E2eProfilesViewModel(
         ISyncProtectedProfileService profiles,
         IE2eProtectedProfileManager manager,
         IE2eProfilePresenter presenter,
         IOfflineModeService offlineModeService,
         IStringLocalizer<SyncUiText> text,
-        IErrorText errorText)
+        IErrorText errorText,
+        ISyncKeyRotationService rotation,
+        IE2eRotationSignOut rotationSignOut)
     {
         this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -71,6 +90,8 @@ public partial class E2eProfilesViewModel : ViewModelBase
         this.offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
         this.text = text ?? throw new ArgumentNullException(nameof(text));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
+        this.rotation = rotation ?? throw new ArgumentNullException(nameof(rotation));
+        this.rotationSignOut = rotationSignOut ?? throw new ArgumentNullException(nameof(rotationSignOut));
         this.profiles.ProfilesChanged += OnProfilesChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
         this.offlineModeService.Changed += OnOfflineModeChanged;
@@ -99,7 +120,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
     /// <summary>
     /// Gets a value indicating whether any profile is unlocked, so Lock all can be used.
     /// </summary>
-    public bool CanLockAll => rows.Any(r => r.State == E2eProfileState.Unlocked);
+    public bool CanLockAll => rows.Any(r => r.State is E2eProfileState.Unlocked or E2eProfileState.RotationInProgress);
 
     /// <summary>
     /// Gets why the last action outside a dialog did not work, or null.
@@ -142,6 +163,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
         E2eDialogKind.Create => text["Sync.E2e.New"],
         E2eDialogKind.Unlock => text["Sync.E2e.Unlock"],
         E2eDialogKind.Delete => text["Sync.E2e.Dialog.Delete"],
+        E2eDialogKind.FinishRotation => text["Sync.E2e.FinishRotation"],
         _ => text["Sync.E2e.ChangePassphrase"],
     };
 
@@ -154,8 +176,68 @@ public partial class E2eProfilesViewModel : ViewModelBase
         E2eDialogKind.Create => text["Sync.E2e.Dialog.Create.Text"],
         E2eDialogKind.Unlock => text["Sync.E2e.Dialog.Unlock.Text", DialogProfile?.DisplayName ?? string.Empty],
         E2eDialogKind.Delete => text["Sync.E2e.Dialog.Delete.Text", DialogProfile?.DisplayName ?? string.Empty],
+        E2eDialogKind.FinishRotation => text["Sync.E2e.Rotation.Interrupted", DialogProfile?.DisplayName ?? string.Empty],
         _ => text["Sync.E2e.Dialog.ChangePassphrase.Text", DialogProfile?.DisplayName ?? string.Empty],
     };
+
+    /// <summary>
+    /// Gets the estimate of a passphrase change, once the profile is synced and a file timed; the user confirms it
+    /// before anything changes. Null otherwise.
+    /// </summary>
+    public SyncKeyRotationEstimate? Estimate
+    {
+        get => estimate;
+        private set => SetProperty(ref estimate, value);
+    }
+
+    /// <summary>
+    /// Gets the estimate as the warning before a passphrase change says it.
+    /// </summary>
+    public string EstimateText => Estimate is { } e ? DescribeEstimate(e) : string.Empty;
+
+    /// <summary>
+    /// Gets the warning shown with the estimate before a passphrase change, or before finishing one.
+    /// </summary>
+    public string RotationWarning => text["Sync.E2e.Rotation.Warning"];
+
+    /// <summary>
+    /// Gets how much of a passphrase change's work on the files is done: files encrypted again, plus files uploaded.
+    /// </summary>
+    public int FilesDone
+    {
+        get => filesDone;
+        private set => SetProperty(ref filesDone, value);
+    }
+
+    /// <summary>
+    /// Gets how much work on the files a passphrase change has: files to encrypt again, plus files to upload; 0 before
+    /// it knows.
+    /// </summary>
+    public int FilesTotal
+    {
+        get => filesTotal;
+        private set => SetProperty(ref filesTotal, value);
+    }
+
+    /// <summary>
+    /// Gets how far a passphrase change is through its files, from 0 to 100.
+    /// </summary>
+    public int FilesPercent => FilesTotal == 0 ? 0 : (int)Math.Round(100.0 * FilesDone / FilesTotal);
+
+    /// <summary>
+    /// Gets a value indicating whether a passphrase change has encrypted the files again but could not sign every
+    /// device out, so it is not finished: the sign out is offered again.
+    /// </summary>
+    public bool NeedsSignOut
+    {
+        get => needsSignOut;
+        private set => SetProperty(ref needsSignOut, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the dialog is waiting for the user to confirm a passphrase change's estimate.
+    /// </summary>
+    public bool IsConfirmingRotation => Estimate != null && !IsWorking && Steps.Count == 0;
 
     /// <summary>
     /// Gets what the dialog shows once its change has finished.
@@ -268,7 +350,14 @@ public partial class E2eProfilesViewModel : ViewModelBase
     /// <summary>
     /// Gets a value indicating whether the dialog is asking for input rather than showing progress or the result.
     /// </summary>
-    public bool IsEditing => !IsWorking && !IsFinished && Steps.Count == 0;
+    public bool IsEditing => !IsWorking && !IsFinished && Steps.Count == 0 && Estimate == null && !NeedsSignOut;
+
+    /// <summary>
+    /// Gets what the dialog says while its change runs without steps to show.
+    /// </summary>
+    public string WorkingText => ActiveDialog == E2eDialogKind.ChangePassphrase
+        ? text["Sync.E2e.Rotation.Preparing"]
+        : text["Sync.E2e.Dialog.Working"];
 
     /// <summary>
     /// Gets where a profile stands, as its row says it.
@@ -323,6 +412,46 @@ public partial class E2eProfilesViewModel : ViewModelBase
     public void OpenDelete(string name) => OpenDialog(E2eDialogKind.Delete, name);
 
     /// <summary>
+    /// Opens the dialog finishing a passphrase change that was cut short.
+    /// </summary>
+    /// <param name="name">The profile's name.</param>
+    [RelayCommand]
+    public void OpenFinishRotation(string name) => OpenDialog(E2eDialogKind.FinishRotation, name);
+
+    /// <summary>
+    /// Starts the passphrase change whose estimate the user has seen. It runs to the end: the dialog cannot be closed
+    /// until every file is encrypted again and uploaded, and then every device, this one included, is signed out.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task StartRotationAsync()
+    {
+        if (IsWorking || ActiveDialog != E2eDialogKind.ChangePassphrase || Estimate == null || DialogProfile is not { } row)
+        {
+            return;
+        }
+
+        var scope = new E2eKeyScope(row.Id);
+        var value = Passphrase;
+        var current = CurrentPassphrase;
+        Estimate = null;
+        if (await RunStepsAsync(RotationSteps, reporter => rotation.RotateAsync(scope, current, value, reporter), finish: false))
+        {
+            await SignOutEverywhereAsync();
+        }
+    }
+
+    /// <summary>
+    /// Signs every device out again, after a passphrase change whose sign out failed.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public Task RetrySignOutAsync()
+    {
+        return IsWorking || !NeedsSignOut ? Task.CompletedTask : SignOutEverywhereAsync();
+    }
+
+    /// <summary>
     /// Locks a profile.
     /// </summary>
     /// <param name="name">The profile's name.</param>
@@ -358,10 +487,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
         ClearInputs();
         ActiveDialog = null;
         DialogProfile = null;
-        Steps = [];
-        IsFinished = false;
-        DialogError = null;
-        CreatedId = null;
+        ResetDialogState();
         RefreshDialog();
     }
 
@@ -388,11 +514,12 @@ public partial class E2eProfilesViewModel : ViewModelBase
         var current = CurrentPassphrase;
         return ActiveDialog switch
         {
-            E2eDialogKind.SetPassphrase => RunStepsAsync(reporter => profiles.SetUpAsync(scope!, value, reporter)),
-            E2eDialogKind.Create => RunStepsAsync(async reporter => CreatedId = (await profiles.CreateAsync(value, reporter)).Id),
+            E2eDialogKind.SetPassphrase => RunStepsAsync(KeySteps, reporter => profiles.SetUpAsync(scope!, value, reporter)),
+            E2eDialogKind.Create => RunStepsAsync(KeySteps, async reporter => CreatedId = (await profiles.CreateAsync(value, reporter)).Id),
             E2eDialogKind.Unlock => RunAsync(() => manager.UnlockAsync(scope!, value)),
             E2eDialogKind.Delete => RunAsync(() => profiles.DeleteAsync(scope!)),
-            _ => RunAsync(() => profiles.ChangePassphraseAsync(scope!, current, value)),
+            E2eDialogKind.FinishRotation => FinishRotationAsync(scope!),
+            _ => PrepareRotationAsync(scope!),
         };
     }
 
@@ -419,17 +546,100 @@ public partial class E2eProfilesViewModel : ViewModelBase
         }
 
         ClearInputs();
-        DialogError = null;
-        IsFinished = false;
-        CreatedId = null;
-        Steps = [];
+        ResetDialogState();
         DialogProfile = name == null ? null : FindRow(name);
         ActiveDialog = kind;
         RefreshDialog();
     }
 
+    private void ResetDialogState()
+    {
+        Steps = [];
+        IsFinished = false;
+        DialogError = null;
+        CreatedId = null;
+        Estimate = null;
+        NeedsSignOut = false;
+        FilesDone = 0;
+        FilesTotal = 0;
+        fileSteps = [];
+    }
+
+    private string DescribeEstimate(SyncKeyRotationEstimate value)
+    {
+        var duration = value.Duration < TimeSpan.FromMinutes(1)
+            ? text["Sync.E2e.Rotation.UnderAMinute"].Value
+            : text["Sync.E2e.Rotation.Minutes", (int)Math.Ceiling(value.Duration.TotalMinutes)].Value;
+        var megabytes = Math.Round(value.TotalBytes / (1024.0 * 1024.0), 1);
+        return text["Sync.E2e.Rotation.Estimate", value.FileCount, megabytes, duration];
+    }
+
+    // Step 1 and 2 of a passphrase change: sync, then time a throwaway file. Nothing changes; the estimate is shown and
+    // the user confirms it, or cancels.
+    private async Task PrepareRotationAsync(E2eKeyScope scope)
+    {
+        DialogError = null;
+        IsWorking = true;
+        RefreshDialog();
+        try
+        {
+            Estimate = await rotation.PrepareAsync(scope);
+        }
+        catch (Exception ex)
+        {
+            DialogError = Describe(ex);
+        }
+        finally
+        {
+            IsWorking = false;
+            RefreshDialog();
+        }
+    }
+
+    private async Task FinishRotationAsync(E2eKeyScope scope)
+    {
+        if (await RunStepsAsync(FinishRotationSteps, reporter => rotation.FinishAsync(scope, reporter), finish: false))
+        {
+            await SignOutEverywhereAsync();
+        }
+    }
+
+    private async Task SignOutEverywhereAsync()
+    {
+        DialogError = null;
+        IsWorking = true;
+        RefreshDialog();
+        try
+        {
+            if (await rotationSignOut.SignOutEverywhereAsync())
+            {
+                // Signed out: the login page is opening.
+                NeedsSignOut = false;
+                return;
+            }
+
+            NeedsSignOut = true;
+            DialogError = text["Sync.E2e.Rotation.SignOutFailed"];
+        }
+        catch (Exception ex)
+        {
+            NeedsSignOut = true;
+            DialogError = Describe(ex);
+        }
+        finally
+        {
+            IsWorking = false;
+            RefreshDialog();
+        }
+    }
+
     private string? Validate()
     {
+        if (ActiveDialog == E2eDialogKind.FinishRotation)
+        {
+            return null;
+        }
+
         if (ActiveDialog == E2eDialogKind.Delete)
         {
             return string.Equals(DeleteConfirmation.Trim(), DialogProfile?.Id, StringComparison.OrdinalIgnoreCase)
@@ -483,17 +693,20 @@ public partial class E2eProfilesViewModel : ViewModelBase
         }
     }
 
-    private async Task RunStepsAsync(Func<IProgress<E2eProgress>, Task> action)
+    // Runs a change that reports its steps. With finish false, the dialog is left to the caller once it succeeds (e.g.
+    // to sign out). Returns whether it succeeded.
+    private async Task<bool> RunStepsAsync(E2eStep[] stepList, Func<IProgress<E2eProgress>, Task> action, bool finish = true)
     {
         DialogError = null;
-        Steps = KeySteps.Select(s => new E2eStepItem { Step = s, Label = text["Sync.E2e.Step." + s], State = E2eStepState.Pending }).ToList();
+        Steps = stepList.Select(s => new E2eStepItem { Step = s, Label = text["Sync.E2e.Step." + s], State = E2eStepState.Pending }).ToList();
         IsWorking = true;
         RefreshDialog();
         try
         {
             await action(new ProgressReporter(this));
             ClearInputs();
-            IsFinished = true;
+            IsFinished = finish;
+            return true;
         }
         catch (Exception ex)
         {
@@ -504,10 +717,13 @@ public partial class E2eProfilesViewModel : ViewModelBase
             }
             else
             {
+                // Under way when it failed: the passphrases are not asked for again here.
+                ClearInputs();
                 FailRunningStep();
             }
 
             DialogError = Describe(ex);
+            return false;
         }
         finally
         {
@@ -548,6 +764,13 @@ public partial class E2eProfilesViewModel : ViewModelBase
             ? text["Sync.E2e.Step.Progress", progress.Done, progress.Total].Value
             : null;
         Steps = items;
+        if (progress.Step is E2eStep.ReencryptFiles or E2eStep.UploadFiles)
+        {
+            fileSteps[progress.Step] = (progress.Done, progress.Total);
+            FilesDone = fileSteps.Values.Sum(s => s.Done);
+            FilesTotal = fileSteps.Values.Sum(s => s.Total);
+            OnPropertyChanged(nameof(FilesPercent));
+        }
     }
 
     private void FailRunningStep()
@@ -575,6 +798,9 @@ public partial class E2eProfilesViewModel : ViewModelBase
     private void RefreshDialog()
     {
         OnPropertyChanged(nameof(IsEditing));
+        OnPropertyChanged(nameof(IsConfirmingRotation));
+        OnPropertyChanged(nameof(EstimateText));
+        OnPropertyChanged(nameof(WorkingText));
         OnPropertyChanged(nameof(DialogTitle));
         OnPropertyChanged(nameof(DialogText));
         OnPropertyChanged(nameof(FinishedText));

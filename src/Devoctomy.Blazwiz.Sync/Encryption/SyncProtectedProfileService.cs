@@ -156,10 +156,10 @@ public class SyncProtectedProfileService(
     }
 
     /// <inheritdoc/>
-    public Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, CancellationToken ct = default)
+    public Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
         var profile = FindProfile(scope) ?? throw new ArgumentException($"There is no profile '{scope}'.", nameof(scope));
-        return manager.ChangePassphraseAsync(scope, currentPassphrase, newPassphrase, profile.Settings, ct);
+        return manager.ChangePassphraseAsync(scope, currentPassphrase, newPassphrase, profile.Settings, progress, ct);
     }
 
     /// <inheritdoc/>

@@ -150,6 +150,17 @@ public class SyncBuilderTests
         Assert.Contains("the user's keys", ex.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("scratch/**/*")]
+    [InlineData("scratch/*")]
+    [InlineData("**/*")]
+    public void GivenARemotePatternOverTheScratchFolder_WhenAddProfile_ThenThrows(string pattern)
+    {
+        // Act & Assert
+        var ex = Assert.Throws<ArgumentException>(() => new SyncBuilder(options).AddProfile("one", p => p.UseKeyId(Guid.NewGuid().ToString("D")).UseRemote(pattern)));
+        Assert.Contains("could match", ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void GivenAFolderNamedLikeTheKeysFolder_WhenAddProfile_ThenAdded()
     {

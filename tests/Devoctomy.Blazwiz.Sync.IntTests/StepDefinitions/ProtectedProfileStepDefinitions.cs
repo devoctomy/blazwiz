@@ -1,4 +1,5 @@
 using System.Text;
+using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.IntTests.Support;
@@ -70,6 +71,25 @@ public sealed class ProtectedProfileStepDefinitions
     public Task WhenDeviceChangesThePassphrase(string device, string profile, string current, string replacement)
     {
         return devices[device].Profiles.ChangePassphraseAsync(profiles[profile], current, replacement);
+    }
+
+    [When("device {string} changes the passphrase of {string} from {string} to {string} and encrypts its files again")]
+    public Task WhenDeviceChangesThePassphraseAndEncryptsItsFilesAgain(string device, string profile, string current, string replacement)
+    {
+        return devices[device].Rotation.RotateAsync(profiles[profile], current, replacement);
+    }
+
+    [When("device {string} finishes the passphrase change of {string}")]
+    public Task WhenDeviceFinishesThePassphraseChange(string device, string profile)
+    {
+        return devices[device].Rotation.FinishAsync(profiles[profile]);
+    }
+
+    [When("device {string} completes its passphrase changes")]
+    public Task WhenDeviceCompletesItsPassphraseChanges(string device)
+    {
+        // What signing out everywhere does, once every session is revoked.
+        return devices[device].Rotation.CompleteAsync();
     }
 
     [When("the stored {string} in {string} is copied on device {string} to {string} in {string}")]
@@ -146,6 +166,53 @@ public sealed class ProtectedProfileStepDefinitions
         Assert.Null(devices[device].Rings.Get(scope).ActiveKeyId);
         Assert.Null(devices[device].Registry.Find(scope.Id));
         Assert.Empty(await devices[device].StoredFiles[scope.Id].ListAsync());
+    }
+
+    [Then("every file of {string} in the bucket is encrypted with the active key of device {string}")]
+    public void ThenEveryFileInTheBucketIsEncryptedWithTheActiveKey(string profile, string device)
+    {
+        var activeKeyId = devices[device].Rings.Get(profiles[profile]).ActiveKeyId;
+        Assert.NotNull(activeKeyId);
+        var files = cloud.Objects.Where(o => o.Key.StartsWith(Key(profile, string.Empty), StringComparison.Ordinal) && !o.Key.EndsWith('/')).ToList();
+        Assert.NotEmpty(files);
+        Assert.All(files, o =>
+        {
+            Assert.True(devices[device].Format.TryGetKeyId(o.Value.Content, out var keyId));
+            Assert.Equal(activeKeyId, keyId);
+        });
+    }
+
+    [Then("the old master key of {string} on device {string} unwraps none of its keys")]
+    public void ThenTheOldMasterKeyUnwrapsNoneOfItsKeys(string profile, string device)
+    {
+        // The device was unlocked before the change, so it still holds the old master key, as anyone who had it would.
+        Assert.True(devices[device].Rings.Get(profiles[profile]).TryGetMasterKey(out var oldMasterKey));
+        var json = cloud.Keys.Values[profiles[profile].Id];
+        var documents = new E2eKeysDocumentService(
+            new Cryptography.BouncyCastleArgon2idKeyDerivationService(),
+            new Cryptography.AeadKeyWrapService(new Cryptography.BouncyCastleAesGcmAeadCipher()),
+            new Cryptography.Configuration.Argon2idOptions(),
+            TimeProvider.System);
+        var ring = new E2eKeyRing(new Cryptography.InMemoryDerivedKeyStore(), profiles[profile]);
+        Assert.Throws<InvalidDataException>(() => documents.LoadFileKeys(ring, documents.Parse(json), oldMasterKey));
+    }
+
+    [Then("the passphrase change of {string} is finished")]
+    public void ThenThePassphraseChangeIsFinished(string profile)
+    {
+        Assert.DoesNotContain("\"rotation_in_progress\":true", cloud.Keys.Values[profiles[profile].Id], StringComparison.Ordinal);
+    }
+
+    [Then("the passphrase change of {string} is unfinished on device {string}")]
+    public void ThenThePassphraseChangeIsUnfinishedOnDevice(string profile, string device)
+    {
+        Assert.True(devices[device].Manager.IsRotationInProgress(profiles[profile]));
+    }
+
+    [Then("the passphrase change of {string} is not unfinished on device {string}")]
+    public void ThenThePassphraseChangeIsNotUnfinishedOnDevice(string profile, string device)
+    {
+        Assert.False(devices[device].Manager.IsRotationInProgress(profiles[profile]));
     }
 
     private string Name(string profile) => profiles[profile].Id;

@@ -27,6 +27,7 @@ using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Devoctomy.Blazwiz.UI.Sync.Views;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Devoctomy.Blazwiz.UI.Sync.Extensions;
 
@@ -98,6 +99,14 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddScoped<IE2eLockChannel, E2eLockChannel>();
         services.AddScoped<IE2eIdleLock, E2eIdleLock>();
         services.AddScoped<ISyncProtectedProfileService, SyncProtectedProfileService>();
+
+        // A passphrase change rotates the profile's keys, encrypts its files again and signs every device out; the
+        // rotation is marked finished while they are signed out. A device that meets a file under a key it does not
+        // know checks its session, so it finds out it was signed out.
+        services.AddScoped<ISyncKeyRotationService, SyncKeyRotationService>();
+        services.AddScoped<IE2eRotationSignOut, E2eRotationSignOut>();
+        services.AddSignOutEverywhereHandler<KeyRotationSignOutHandler>();
+        services.TryAddEnumerable(ServiceDescriptor.Scoped<ISyncKeyMissingHandler, SessionCheckKeyMissingHandler>());
 
         services.AddBlazwizSync(configure);
 

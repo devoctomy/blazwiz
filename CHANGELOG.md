@@ -9,6 +9,25 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 ## Unreleased
 
 ### Added
+- **Changing a passphrase rotates the profile's keys** (security review SR3). Before, the same master and file keys
+  were wrapped again, so anyone who had the old passphrase and a copy of the keys document could still read everything,
+  including files written later. Now:
+  - `IE2eProtectedProfileManager.ChangePassphraseAsync` makes a new master key and a new active file key
+    (`IE2eKeysDocumentService.RotateAsync`). Earlier file keys are kept, retired, so old files still decrypt. The keys
+    document is marked `rotation_in_progress` until `CompleteRotationAsync`.
+  - `ISyncKeyRotationService` (Sync) runs the whole change: it syncs the profile and refuses when offline or when the
+    sync fails, estimates the time from one timed upload, encrypts every file again and uploads them.
+  - In Settings, the user sees the estimate and a warning, then a progress bar, and is then signed out on every device.
+    There is no skip. If the sign out fails it is offered again until it works.
+  - A change cut short must be finished before the profile is used: `E2eUnlockPanel` shows Finish passphrase change in
+    place of the profile's pages, on any device.
+  - A device that unlocks with the passkey is asked for the new passphrase once the keys have changed elsewhere
+    (`E2eErrorCodes.KeysChanged`).
+  - A device that reads a file under a key it does not know checks its session (`ISyncKeyMissingHandler`).
+- **Sync pass progress.** `ISyncService.SyncAsync` and `ISyncEngine.SyncAsync` take an optional
+  `IProgress<SyncPassProgress>`, told how many of a pass's planned changes are done.
+- **`ISyncScratchStore`**, for short-lived objects under `scratch/` in the user's prefix, which sync never sees. A sync
+  profile whose remote pattern could match `scratch/` is refused at startup, as one matching `keys/` is.
 - **Sign out everywhere.** `IAuthenticationService.SignOutEverywhereAsync(reason)` revokes every session the user
   has (Cognito `GlobalSignOut`), runs every `ISignOutEverywhereHandler` (`AddSignOutEverywhereHandler<T>()`), then
   signs out here. When Cognito cannot be reached, or in offline mode, it returns false and nothing changes. The Profile
@@ -49,8 +68,26 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 - **The app client's `ALLOW_ADMIN_USER_PASSWORD_AUTH` flow,** which only `test-auth.ps1` used: the portal's client
   allows SRP and token refresh only. `deploy-policy.json` loses `cognito-idp:AdminInitiateAuth`. Redeploy with
   `deploy.ps1`.
+- **`IE2eKeysDocumentService.RewrapMasterKeyAsync`.** A passphrase is no longer changed without rotating the keys; use
+  `RotateAsync`.
 
 ### Changed
+- **Passphrase changes, for code that calls the services:**
+  - `IE2eProtectedProfileManager.ChangePassphraseAsync` and `ISyncProtectedProfileService.ChangePassphraseAsync` take
+    an `IProgress<E2eProgress>?` before the cancellation token, rotate the keys, and leave the profile's files to be
+    encrypted again. Call `ISyncKeyRotationService.PrepareAsync` and `RotateAsync` for the whole change.
+  - `IE2eProtectedProfileManager` gains `IsRotationInProgress` and `CompleteRotationAsync`; implementations add them.
+  - `E2eStep` gains `ReencryptFiles` and `UploadFiles`, `E2eProfileState` gains `RotationInProgress`, and
+    `E2eDialogKind` gains `FinishRotation`.
+  - `ISyncService.SyncAsync` and `ISyncEngine.SyncAsync` take an `IProgress<SyncPassProgress>?` before the
+    cancellation token. Callers passing the token by position pass it by name (`ct:`), and implementations add the
+    parameter.
+  - The constructors of `E2eProfilesViewModel`, `E2eUnlockPanelViewModel` and `EncryptingSyncFileStore` take new
+    arguments.
+- The text `Sync.E2e.Dialog.ChangePassphrase.Text` now says what a passphrase change does. An app that overrides it
+  should reword its own. New text keys: `Sync.E2e.Rotation.*`, `Sync.E2e.FinishRotation`,
+  `Sync.E2e.State.RotationInProgress`, `Sync.E2e.Step.ReencryptFiles`, `Sync.E2e.Step.UploadFiles`,
+  `Error.E2e.KeysChanged`, `Error.Sync.Rotation.Offline` and `Error.Sync.Rotation.SyncFailed`.
 - `IAuthenticationService.SessionEnded` is now `EventHandler<SessionEndedEventArgs>`, with the reason
   (`SessionEndedReason`) and the device that ended the session. `IAuthenticationService` also gains
   `SignOutEverywhereAsync`, `EndSessionAsync` and `CheckSessionAsync`. Handlers of `SessionEnded` take the new

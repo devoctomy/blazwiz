@@ -77,19 +77,78 @@ public class E2eKeysDocumentServiceTests
     }
 
     [Fact]
-    public async Task GivenANewPassphrase_WhenRewrapped_ThenOnlyTheNewOneUnwrapsTheSameMasterKey()
+    public async Task GivenANewPassphrase_WhenRotated_ThenOnlyTheNewOneUnwrapsANewMasterKey()
     {
         // Arrange
         using var keys = await sut.CreateAsync("correct horse");
-        var fileKeys = new Dictionary<string, FileKeyEntry>(keys.Document.Keys);
+        var reported = new List<E2eProgress>();
 
         // Act
-        await sut.RewrapMasterKeyAsync(keys.Document, keys.MasterKey, "battery staple");
+        using var rotated = await sut.RotateAsync(keys.Document, keys.MasterKey, "battery staple", progress: new Progress(reported));
 
         // Assert
-        Assert.Equal(keys.MasterKey, await sut.UnwrapMasterKeyAsync(keys.Document, "battery staple"));
-        await Assert.ThrowsAsync<E2eWrongPassphraseException>(() => sut.UnwrapMasterKeyAsync(keys.Document, "correct horse"));
-        Assert.Equal(fileKeys, keys.Document.Keys);
+        Assert.NotEqual(keys.MasterKey, rotated.MasterKey);
+        Assert.Equal(rotated.MasterKey, await sut.UnwrapMasterKeyAsync(rotated.Document, "battery staple"));
+        await Assert.ThrowsAsync<E2eWrongPassphraseException>(() => sut.UnwrapMasterKeyAsync(rotated.Document, "correct horse"));
+        Assert.True(rotated.Document.RotationInProgress);
+        Assert.Equal(
+            [(E2eStep.DeriveKey, false), (E2eStep.DeriveKey, true), (E2eStep.CreateKeys, false), (E2eStep.CreateKeys, true)],
+            reported.Select(p => (p.Step, p.Completed)));
+    }
+
+    [Fact]
+    public async Task GivenKeysRotatedTwice_WhenLoaded_ThenEveryEarlierFileKeyStillUnwrapsAndExactlyOneIsActive()
+    {
+        // Arrange
+        using var keys = await sut.CreateAsync("correct horse");
+        var firstKeyId = keys.FileKeyId;
+        var firstKey = keys.FileKey.ToArray();
+        using var second = await sut.RotateAsync(keys.Document, keys.MasterKey, "battery staple");
+        var secondKey = second.FileKey.ToArray();
+        using var third = await sut.RotateAsync(second.Document, second.MasterKey, "tr0ub4dor");
+        var ring = new E2eKeyRing(new InMemoryDerivedKeyStore(), new E2eKeyScope("s1"));
+
+        // Act
+        var document = sut.Parse(sut.Serialize(third.Document));
+        sut.LoadFileKeys(ring, document, third.MasterKey);
+
+        // Assert
+        Assert.Equal(3, document.Keys.Count);
+        Assert.Equal(third.FileKeyId, Assert.Single(document.Keys, k => k.Value.Status == FileKeyEntry.ActiveStatus).Key);
+        Assert.Equal(2, document.Keys.Count(k => k.Value.Status == FileKeyEntry.RetiredStatus));
+        Assert.Equal(third.FileKeyId, ring.ActiveKeyId);
+        Assert.True(ring.TryGetFileKey(firstKeyId, out var first));
+        Assert.Equal(firstKey, first);
+        Assert.True(ring.TryGetFileKey(second.FileKeyId, out var secondLoaded));
+        Assert.Equal(secondKey, secondLoaded);
+        Assert.Equal(clock.GetUtcNow().UtcDateTime, document.Keys[firstKeyId].Created);
+    }
+
+    [Fact]
+    public async Task GivenRotatedKeys_WhenLoadedWithTheOldMasterKey_ThenThrowsInvalidData()
+    {
+        // Arrange
+        using var keys = await sut.CreateAsync("correct horse");
+        var oldMasterKey = keys.MasterKey.ToArray();
+        using var rotated = await sut.RotateAsync(keys.Document, keys.MasterKey, "battery staple");
+        var ring = new E2eKeyRing(new InMemoryDerivedKeyStore(), new E2eKeyScope("s1"));
+
+        // Act & Assert
+        Assert.Throws<InvalidDataException>(() => sut.LoadFileKeys(ring, rotated.Document, oldMasterKey));
+        Assert.Null(ring.ActiveKeyId);
+    }
+
+    [Fact]
+    public async Task GivenAnotherMasterKey_WhenRotated_ThenThrowsInvalidDataAndTheDocumentIsUnchanged()
+    {
+        // Arrange
+        using var keys = await sut.CreateAsync("correct horse");
+        using var other = await sut.CreateAsync("correct horse");
+        var before = sut.Serialize(keys.Document);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(() => sut.RotateAsync(keys.Document, other.MasterKey, "battery staple"));
+        Assert.Equal(before, sut.Serialize(keys.Document));
     }
 
     [Fact]
@@ -177,7 +236,9 @@ public class E2eKeysDocumentServiceTests
         Assert.Throws<ArgumentNullException>(() => sut.Serialize(null!));
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.UnwrapMasterKeyAsync(null!, "p"));
         await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.UnwrapMasterKeyAsync(keys.Document, string.Empty));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.RewrapMasterKeyAsync(keys.Document, null!, "p"));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.RotateAsync(keys.Document, null!, "p"));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.RotateAsync(null!, keys.MasterKey, "p"));
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.RotateAsync(keys.Document, keys.MasterKey, string.Empty));
         Assert.Throws<ArgumentNullException>(() => sut.LoadFileKeys(null!, keys.Document, keys.MasterKey));
         Assert.Throws<ArgumentNullException>(() => sut.LoadFileKeys(ring, null!, keys.MasterKey));
     }

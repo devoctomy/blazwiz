@@ -56,14 +56,16 @@ public interface ISyncProtectedProfileService
     Task SetUpAsync(E2eKeyScope scope, string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Changes a profile's passphrase, with its passphrase rules and Argon2id costs.
+    /// Changes a profile's passphrase and rotates its keys, with its passphrase rules and Argon2id costs. Its files are
+    /// not encrypted again here: <see cref="ISyncKeyRotationService"/> runs the whole passphrase change.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>
     /// <param name="currentPassphrase">The current passphrase.</param>
     /// <param name="newPassphrase">The new passphrase.</param>
+    /// <param name="progress">Told about each step.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, CancellationToken ct = default);
+    Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a protected profile, under its sync lock: finds its files in S3 (and stops, with nothing deleted, if S3

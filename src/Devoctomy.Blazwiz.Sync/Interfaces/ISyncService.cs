@@ -32,9 +32,10 @@ public interface ISyncService
     /// </summary>
     /// <param name="profile">The profile, or null for every profile.</param>
     /// <param name="verify">True to hash every local file against the index.</param>
+    /// <param name="progress">Told how many of each profile's planned changes are done.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>The result.</returns>
-    Task<SyncResult> SyncAsync(string? profile = null, bool verify = false, CancellationToken ct = default);
+    Task<SyncResult> SyncAsync(string? profile = null, bool verify = false, IProgress<SyncPassProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
     /// Recounts the local changes waiting to be synced, e.g. while offline.
