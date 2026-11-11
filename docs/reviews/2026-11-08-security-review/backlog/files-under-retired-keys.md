@@ -17,7 +17,7 @@ blocked-by: choosing whether it blocks the profile or runs as part of sync
 
 # Encrypt again the files that arrive under a retired key after a passphrase change
 
-Left over from the key rotation plan (SR3 of `../security-review.md`), which rotates a profile's keys when its
+Left over from the key rotation plan (SR3 of `../security-review.md`, completed and removed on 2026-11-11), which rotates a profile's keys when its
 passphrase changes and encrypts its files again. This is the one case that plan did not settle.
 
 ## The gap
@@ -57,11 +57,11 @@ reuses sync's own triggers.
 
 ## Also left for later by the key rotation plan
 
-Recorded here so they are not lost when that plan is removed. Neither is part of this work.
+Each now has its own backlog plan. Neither is part of this work.
 
-- Housekeeping that removes retired keys no file uses any more. Retired keys are kept for now (the maintainer's
-  decision of 2026-11-10).
-- Rotation on a schedule or after a number of writes (SR37). There is none before 1.0.
+- Housekeeping that removes retired keys no file uses any more: `remove-unused-retired-keys.md`. Retired keys are
+  kept for now (the maintainer's decision of 2026-11-10).
+- A suggestion to change the passphrase, and so rotate the keys, after a set time (SR37): `suggest-key-rotation.md`.
 
 ## To decide and check
 
