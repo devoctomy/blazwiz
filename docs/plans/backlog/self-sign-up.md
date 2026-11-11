@@ -1,6 +1,17 @@
-# Self sign-up (the app developer's choice)
+---
+title: Self sign-up (the app developer's choice)
+type: backlog
+status: ready
+added: 2026-11-03
+origin: Phase 3 of the upgradeability review of 2026-11-03 (removed), optional there and not done
+reason: the user pool is invite-only, so every account is created by hand
+areas: [Auth, Auth.Cognito, UI, AWS stack]
+effort: medium
+functional-change: yes
+blocked-by: none
+---
 
-Added 2026-11-03, from Phase 3 of `docs/reviews/2026-11-03-upgradeability-review.md` (removed) (optional there, not done).
+# Self sign-up (the app developer's choice)
 
 The user pool is invite-only today. Whether people can create their own account is the app developer's choice,
 never something users switch.

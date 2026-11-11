@@ -1,3 +1,16 @@
+---
+title: "Syncing without end to end encryption: the app developer's choice"
+type: backlog
+status: ready
+added: 2026-11-03
+decision: 2026-11-03, encryption is the app developer's choice, never the user's
+reason: today users can turn encryption off, and a developer cannot opt out deliberately
+areas: [Encryption, Sync, UI.Sync, template]
+effort: large
+functional-change: yes
+blocked-by: none
+---
+
 # Syncing without end to end encryption: the app developer's choice (not implemented yet)
 
 Decided 2026-11-03. Whether synced files are end to end encrypted is decided by the developer of the app, never by its
