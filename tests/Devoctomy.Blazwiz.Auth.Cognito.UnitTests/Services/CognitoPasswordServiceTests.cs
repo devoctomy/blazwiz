@@ -195,5 +195,87 @@ public class CognitoPasswordServiceTests
         mockClient.VerifyNoOtherCalls();
     }
 
+    [Theory]
+    [InlineData("", "new")]
+    [InlineData("old", "")]
+    public async Task GivenAMissingPassword_WhenChangePasswordAsync_ThenPasswordsRequiredWithoutACall(string currentPassword, string newPassword)
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        var exception = await Assert.ThrowsAsync<BlazwizException>(() => sut.ChangePasswordAsync(currentPassword, newPassword));
+
+        // Assert
+        Assert.Equal(AuthErrorCodes.PasswordsRequired, exception.Code);
+        mockClient.VerifyNoOtherCalls();
+        mockAuth.Verify(x => x.GetCurrentUserAsync(), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GivenNoEmail_WhenRequestPasswordResetAsync_ThenEmailRequiredWithoutACall(string email)
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        var exception = await Assert.ThrowsAsync<BlazwizException>(() => sut.RequestPasswordResetAsync(email));
+
+        // Assert
+        Assert.Equal(AuthErrorCodes.EmailRequired, exception.Code);
+        mockClient.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GivenTheRequestTimesOut_WhenChangePasswordAsync_ThenUnreachable()
+    {
+        // Arrange
+        var timeout = new TaskCanceledException("timed out");
+        mockClient
+            .Setup(x => x.ChangePasswordAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(timeout);
+        var sut = CreateSut();
+
+        // Act
+        var exception = await Assert.ThrowsAsync<BlazwizException>(() => sut.ChangePasswordAsync("old", "new"));
+
+        // Assert
+        Assert.Equal(AuthErrorCodes.Unreachable, exception.Code);
+        Assert.Same(timeout, exception.InnerException);
+    }
+
+    [Fact]
+    public async Task GivenCognitoRefusesForAnotherReason_WhenRequestPasswordResetAsync_ThenSaysWhy()
+    {
+        // Arrange
+        var refused = new CognitoException("LimitExceededException", "slow down");
+        mockClient.Setup(x => x.ForgotPasswordAsync(It.IsAny<string>())).ThrowsAsync(refused);
+        var sut = CreateSut();
+
+        // Act
+        var exception = await Assert.ThrowsAsync<BlazwizException>(() => sut.RequestPasswordResetAsync("bob@example.com"));
+
+        // Assert
+        Assert.Equal(AuthErrorCodes.TooManyAttempts, exception.Code);
+        Assert.Same(refused, exception.InnerException);
+    }
+
+    [Fact]
+    public async Task GivenNobodySignedIn_WhenChangePasswordAsync_ThenNotSignedInWithoutACall()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync((UserSession?)null);
+        var sut = CreateSut();
+
+        // Act
+        var exception = await Assert.ThrowsAsync<BlazwizException>(() => sut.ChangePasswordAsync("old", "new"));
+
+        // Assert
+        Assert.Equal(AuthErrorCodes.NotSignedIn, exception.Code);
+        mockClient.VerifyNoOtherCalls();
+    }
+
     private CognitoPasswordService CreateSut() => new(mockClient.Object, mockAuth.Object, offlineMode);
 }

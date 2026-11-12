@@ -88,5 +88,44 @@ public class E2eLockIndicatorViewModelTests
         Assert.False(sut.IsMenuOpen);
     }
 
+    [Fact]
+    public void GivenTheMenuOpen_WhenClosed_ThenItClosesAndNothingIsLocked()
+    {
+        // Arrange
+        unlocked.Add(new E2eKeyScope(Guid.NewGuid().ToString("D")));
+        using var sut = CreateSut();
+        sut.ToggleMenuCommand.Execute(null);
+        var opened = sut.IsMenuOpen;
+
+        // Act
+        sut.CloseMenuCommand.Execute(null);
+
+        // Assert
+        Assert.True(opened);
+        Assert.False(sut.IsMenuOpen);
+        Assert.True(sut.IsVisible);
+        mockManager.Verify(x => x.LockAll(), Times.Never);
+    }
+
+    [Fact]
+    public void GivenTheMenuOpen_WhenAnotherProfileLocksButOneStaysUnlocked_ThenTheMenuStaysOpen()
+    {
+        // Arrange
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        unlocked.Add(scope);
+        unlocked.Add(new E2eKeyScope(Guid.NewGuid().ToString("D")));
+        using var sut = CreateSut();
+        sut.ToggleMenuCommand.Execute(null);
+
+        // Act
+        unlocked.Remove(scope);
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+
+        // Assert
+        Assert.True(sut.IsMenuOpen);
+        Assert.Equal(1, sut.UnlockedCount);
+        Assert.Equal("1 unlocked", sut.Text);
+    }
+
     private E2eLockIndicatorViewModel CreateSut() => new(mockManager.Object, testText.Plurals, testText.Sync);
 }

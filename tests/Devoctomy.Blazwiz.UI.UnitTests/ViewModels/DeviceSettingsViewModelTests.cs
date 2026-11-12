@@ -79,11 +79,14 @@ public class DeviceSettingsViewModelTests
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("123456789012345678901234567890123")]
-    public async Task GivenInvalidName_WhenSaved_ThenErrorShown_AndNothingStored(string name)
+    [InlineData("Work\tlaptop")]
+    [InlineData("Work\u0007laptop")]
+    [InlineData(null)]
+    public async Task GivenInvalidName_WhenSaved_ThenErrorShown_AndNothingStored(string? name)
     {
         // Arrange
         var sut = CreateSut();
-        sut.Name = name;
+        sut.Name = name!;
 
         // Act
         await sut.SaveCommand.ExecuteAsync(null);

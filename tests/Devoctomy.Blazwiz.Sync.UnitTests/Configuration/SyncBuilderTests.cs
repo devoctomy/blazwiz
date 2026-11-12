@@ -293,4 +293,70 @@ public class SyncBuilderTests
         Assert.Throws<ArgumentException>(() => new SyncBuilder(options).AddProfile("notes", p => p.UseDisplayText(" ", typeof(SyncBuilderTests))));
         Assert.Throws<ArgumentNullException>(() => new SyncBuilder(options).AddProfile("notes", p => p.UseDisplayText("Profile.Notes", null!)));
     }
+
+    [Fact]
+    public void GivenAMaxFileSize_WhenUseMaxFileSize_ThenItIsKept()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+
+        // Act
+        var result = sut.UseMaxFileSize(1);
+
+        // Assert
+        Assert.Same(sut, result);
+        Assert.Equal(1, options.MaxFileSize);
+    }
+
+    [Fact]
+    public void GivenAMaxFileSizeBelowOneByte_WhenUseMaxFileSize_ThenThrowsAndTheLimitIsUnchanged()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+        var before = options.MaxFileSize;
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => sut.UseMaxFileSize(0));
+        Assert.Equal(before, options.MaxFileSize);
+    }
+
+    [Fact]
+    public void GivenNoRecheckBackoff_WhenUseConnectivityTimings_ThenThrows()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => sut.UseConnectivityTimings(t => t.RecheckBackoff = null!));
+    }
+
+    [Fact]
+    public void GivenAProfileWithoutAKeyId_WhenAddProfile_ThenThrowsAndItIsNotAdded()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => sut.AddProfile("notes", p => p.UseRemote("notes/**/*.md")));
+
+        // Assert
+        Assert.Equal("configure", ex.ParamName);
+        Assert.Contains("UseKeyId", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(options.Profiles);
+    }
+
+    [Fact]
+    public void GivenTwoProfilesWithTheSameKeyId_WhenAddProfile_ThenThrowsAndOnlyTheFirstIsAdded()
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        var sut = new SyncBuilder(options).AddProfile("notes", p => p.UseKeyId(id).UseRemote("notes/**/*.md"));
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => sut.AddProfile("photos", p => p.UseKeyId(id).UseRemote("photos/**/*")));
+
+        // Assert
+        Assert.Contains("same id", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(["notes"], options.Profiles.Select(p => p.Name));
+    }
 }

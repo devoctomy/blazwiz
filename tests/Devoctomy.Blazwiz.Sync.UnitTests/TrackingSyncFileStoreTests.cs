@@ -207,6 +207,21 @@ public class TrackingSyncFileStoreTests
         Assert.Null(files.Single(f => f.Key == "notes/b.md").EncryptionKeyId);
     }
 
+    [Fact]
+    public async Task GivenSignedOut_WhenListAsync_ThenFilesAreListedWithoutKeysFromTheIndex()
+    {
+        // Arrange
+        mockInner.Setup(x => x.ListAsync(default)).ReturnsAsync([new SyncFileInfo { Key = Key }]);
+        await index.SaveAsync(new SyncIndexRecord { Profile = Profile, Owner = Owner, Key = Key, Encrypted = true, KeyId = "k_1" });
+        mockUser.Setup(x => x.GetUserIdAsync()).ReturnsAsync((string?)null);
+
+        // Act
+        var files = await CreateSut().ListAsync();
+
+        // Assert
+        Assert.Null(Assert.Single(files).EncryptionKeyId);
+    }
+
     private TrackingSyncFileStore CreateSut() =>
         new(Profile, mockInner.Object, index, mockUser.Object, mockScheduler.Object, mockClock.Object, format);
 }

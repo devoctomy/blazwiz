@@ -61,6 +61,79 @@ public class SyncViewModelTests
         Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, null!, mockDisplayNames.Object, time, testText.Sync)).ParamName);
         Assert.Equal("displayNames", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, time, testText.Sync)).ParamName);
         Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, mockDisplayNames.Object, null!, testText.Sync)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new SyncViewModel(mockLog.Object, eventPresenter, presenter, mockSync.Object, mockConnectivity.Object, mockScheduler.Object, mockDisplayNames.Object, time, null!)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenNoSearchText_WhenSetToNull_ThenItStaysEmptyAndNoSearchRuns()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        sut.SearchText = null!;
+        time.Advance(SyncViewModel.SearchDebounce);
+        await Task.Delay(20);
+
+        // Assert
+        Assert.Empty(sut.SearchText);
+        Assert.Single(queries);
+    }
+
+    [Fact]
+    public async Task GivenASearchWaiting_WhenDisposed_ThenTheSearchDoesNotRun()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        sut.SearchText = "ideas";
+
+        // Act
+        sut.Dispose();
+        time.Advance(SyncViewModel.SearchDebounce);
+        await Task.Delay(20);
+
+        // Assert
+        Assert.Single(queries);
+    }
+
+    [Fact]
+    public async Task GivenAFailureOutsideAPass_WhenInitialized_ThenItsRowHasErrorsAndIsExpanded()
+    {
+        // Arrange
+        Add(new SyncEvent { Kind = SyncEventKind.Failed, Code = SyncEventCodes.FileFailed, Key = "notes/a.md", Arguments = ["Sync.Remote.Unreachable"], Timestamp = Now.AddHours(-2) });
+        var sut = CreateSut();
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        var row = Assert.Single(sut.Days[0].Rows);
+        Assert.True(row.HasErrors);
+        Assert.True(row.IsExpanded);
+        Assert.Empty(row.Children);
+        Assert.Equal("Sync failed: S3 could not be reached.", row.Header.Message);
+        Assert.Equal("2 h ago", row.Header.RelativeTime);
+    }
+
+    [Fact]
+    public async Task GivenOfflineThenOnline_WhenConnectivityChanges_ThenSyncNowBecomesAvailable()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        var offline = sut.CanSyncNow;
+        connectivity = new ConnectivityStatus { IsOnline = true, LastCheckedAt = Now };
+
+        // Act
+        mockConnectivity.Raise(x => x.StatusChanged += null, mockConnectivity.Object, connectivity);
+        await sut.SyncNowCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(offline);
+        Assert.True(sut.CanSyncNow);
+        mockScheduler.Verify(x => x.SyncNowAsync(), Times.Once);
     }
 
     [Fact]

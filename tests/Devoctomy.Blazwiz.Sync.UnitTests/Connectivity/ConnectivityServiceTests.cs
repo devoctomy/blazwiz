@@ -455,6 +455,128 @@ public class ConnectivityServiceTests
         Assert.Equal(OfflineReason.NoNetwork, (await sut.CheckAsync()).Reason);
     }
 
+    [Fact]
+    public async Task GivenACheckInProgress_WhenRecheckedAgain_ThenTheSameCheckIsSharedWithNoSecondProbe()
+    {
+        // Arrange
+        var credentials = new TaskCompletionSource<S3SyncTarget?>();
+        mockTargets.Setup(x => x.GetTargetAsync(It.IsAny<CancellationToken>())).Returns(credentials.Task);
+        using var sut = CreateSut();
+        var first = sut.RecheckAsync();
+        var second = sut.RecheckAsync();
+
+        // Act
+        credentials.SetResult(target);
+        var results = await Task.WhenAll(first, second);
+
+        // Assert
+        Assert.All(results, r => Assert.True(r.IsOnline));
+        mockTargets.Verify(x => x.GetTargetAsync(It.IsAny<CancellationToken>()), Times.Once);
+        mockProbe.Verify(x => x.IsReachableAsync(target, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenRecheckAlreadyScheduled_WhenStillUnreachable_ThenTheBackoffIsNotAdvanced()
+    {
+        // Arrange
+        var probes = 0;
+        mockProbe.Setup(x => x.IsReachableAsync(target, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
+            .Callback(() => probes++)
+            .ReturnsAsync(false);
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+
+        // Act
+        await sut.RecheckAsync();
+        sut.ReportNetworkFailure(new HttpRequestException());
+        time.Advance(TimeSpan.FromSeconds(30));
+        var afterFirstDelay = probes;
+        time.Advance(TimeSpan.FromMinutes(1));
+
+        // Assert
+        Assert.Equal(3, afterFirstDelay);
+        Assert.Equal(4, probes);
+        Assert.True(sut.IsRecheckScheduled);
+    }
+
+    [Fact]
+    public async Task GivenOffline_WhenTheScheduledRecheckThrows_ThenStatusKeptAndNoFurtherRecheckScheduled()
+    {
+        // Arrange
+        mockProbe.Setup(x => x.IsReachableAsync(target, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+        mockProbe.Setup(x => x.IsReachableAsync(target, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("probe broke"));
+
+        // Act
+        time.Advance(TimeSpan.FromSeconds(30));
+        await Task.Yield();
+
+        // Assert
+        Assert.Equal(OfflineReason.Unreachable, sut.Status.Reason);
+        Assert.False(sut.IsRecheckScheduled);
+        mockProbe.Verify(x => x.IsReachableAsync(target, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenOfflineMode_WhenExitedAndTheCheckThrows_ThenTheExitIsLoggedAndNothingIsThrown()
+    {
+        // Arrange
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+        mockProbe.Setup(x => x.IsReachableAsync(target, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("probe broke"));
+
+        // Act
+        offlineMode.Exit();
+        await Task.Yield();
+
+        // Assert
+        Assert.Contains(logged, e => e.Code == SyncEventCodes.OfflineModeOff);
+        Assert.Equal(OfflineReason.OfflineMode, sut.Status.Reason);
+        mockProbe.Verify(x => x.IsReachableAsync(target, It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenBrowserGoesOnline_WhenTheCheckThrows_ThenNothingIsThrownAndStatusKept()
+    {
+        // Arrange
+        mockBrowser.Setup(x => x.IsOnlineAsync()).ReturnsAsync(false);
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+        mockBrowser.Setup(x => x.IsOnlineAsync()).ReturnsAsync(true);
+        mockTargets.Setup(x => x.GetTargetAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("credentials broke"));
+
+        // Act
+        mockBrowser.Raise(x => x.OnlineChanged += null, mockBrowser.Object, true);
+        await Task.Yield();
+
+        // Assert
+        Assert.Equal(OfflineReason.NoNetwork, sut.Status.Reason);
+        mockTargets.Verify(x => x.GetTargetAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenOnline_WhenOfflineModeEnteredThenExited_ThenBothAreLoggedAndOnlineAgain()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+        var raised = new List<ConnectivityStatus>();
+        sut.StatusChanged += (_, s) => raised.Add(s);
+
+        // Act
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        offlineMode.Exit();
+        await Task.Yield();
+
+        // Assert
+        Assert.Equal([SyncEventCodes.OfflineModeOn, SyncEventCodes.OfflineModeOff], logged.Where(e => e.Kind == SyncEventKind.OfflineModeChanged).Select(e => e.Code));
+        Assert.Equal(new OfflineReason?[] { OfflineReason.OfflineMode, null }, raised.Select(s => s.Reason));
+        Assert.True(sut.Status.IsOnline);
+        Assert.DoesNotContain(logged, e => e.Kind == SyncEventKind.WentOffline);
+    }
+
     private ConnectivityService CreateSut() =>
         new(offlineMode, mockSyncStore.Object, mockBrowser.Object, mockTargets.Object, mockProbe.Object, mockLog.Object, mockUser.Object, options, time);
 }

@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Reflection.Emit;
 using Devoctomy.Blazwiz.Sync.Configuration;
 
 namespace Devoctomy.Blazwiz.Sync.UnitTests.Configuration;
@@ -72,6 +74,50 @@ public class SyncProfileDefinitionTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => sut.AddProfile((SyncProfileDefinition)null!));
         Assert.Throws<ArgumentNullException>(() => sut.AddProfilesFromAssembly(null!));
+    }
+
+    [Fact]
+    public void GivenADefinitionWithoutAParameterlessConstructor_WhenItsAssemblyIsScanned_ThenThrowsInvalidOperationException()
+    {
+        // Arrange: built at run time, so the test assembly's own scan is not affected.
+        var assembly = CreateAssemblyWithDefinitionNeedingAnArgument();
+        var sut = new SyncBuilder(options);
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => sut.AddProfilesFromAssembly(assembly));
+
+        // Assert
+        Assert.IsType<MissingMethodException>(ex.InnerException);
+        Assert.Contains("NeedsArgumentSyncProfile", ex.Message, StringComparison.Ordinal);
+        Assert.Empty(options.Profiles);
+    }
+
+    private static Assembly CreateAssemblyWithDefinitionNeedingAnArgument()
+    {
+        var assembly = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("DynamicSyncProfiles"), AssemblyBuilderAccess.Run);
+        var module = assembly.DefineDynamicModule("DynamicSyncProfiles");
+        var type = module.DefineType("NeedsArgumentSyncProfile", TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class, typeof(SyncProfileDefinition));
+
+        var baseConstructor = typeof(SyncProfileDefinition).GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, Type.EmptyTypes)!;
+        var constructor = type.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, [typeof(string)]);
+        var il = constructor.GetILGenerator();
+        il.Emit(OpCodes.Ldarg_0);
+        il.Emit(OpCodes.Call, baseConstructor);
+        il.Emit(OpCodes.Ret);
+
+        var getName = type.DefineMethod("get_Name", MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig | MethodAttributes.SpecialName, typeof(string), Type.EmptyTypes);
+        il = getName.GetILGenerator();
+        il.Emit(OpCodes.Ldstr, "dynamic");
+        il.Emit(OpCodes.Ret);
+        type.DefineMethodOverride(getName, typeof(SyncProfileDefinition).GetProperty(nameof(SyncProfileDefinition.Name))!.GetMethod!);
+
+        var configure = type.DefineMethod(nameof(SyncProfileDefinition.Configure), MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.HideBySig, typeof(void), [typeof(SyncProfileBuilder)]);
+        il = configure.GetILGenerator();
+        il.Emit(OpCodes.Ret);
+        type.DefineMethodOverride(configure, typeof(SyncProfileDefinition).GetMethod(nameof(SyncProfileDefinition.Configure))!);
+
+        type.CreateType();
+        return assembly;
     }
 
     internal sealed class AlphaSyncProfile : SyncProfileDefinition

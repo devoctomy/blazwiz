@@ -127,6 +127,39 @@ public class SyncProfileRegistryTests
     }
 
     [Fact]
+    public void GivenAProfileWithoutAKeyScope_WhenAdded_ThenThrowsAndItIsNotListedOrAnnounced()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var added = new List<string>();
+        sut.ProfileAdded += (_, name) => added.Add(name);
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => sut.Add(new SyncProfileOptions { Name = "photos", RemotePattern = "photos/**/*" }));
+
+        // Assert
+        Assert.Equal("profile", ex.ParamName);
+        Assert.Contains("key scope", ex.Message, StringComparison.Ordinal);
+        Assert.Equal(["notes"], sut.Profiles.Select(p => p.Name));
+        Assert.Empty(added);
+    }
+
+    [Fact]
+    public void GivenAnAddedProfileAndNoListeners_WhenAddedAndRemoved_ThenNothingIsThrown()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        sut.Add(Profile("photos"));
+        var removed = sut.Remove("photos");
+
+        // Assert
+        Assert.True(removed);
+        Assert.Equal(["notes"], sut.Profiles.Select(p => p.Name));
+    }
+
+    [Fact]
     public void GivenAConfiguredProfile_WhenRemoved_ThenThrows()
     {
         // Arrange

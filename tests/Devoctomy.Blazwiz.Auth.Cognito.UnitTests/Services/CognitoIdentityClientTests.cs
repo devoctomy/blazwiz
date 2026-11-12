@@ -75,6 +75,59 @@ public class CognitoIdentityClientTests
     }
 
     [Fact]
+    public async Task GivenTheResponseHasNoIdentityOrExpiry_WhenGetCredentialsAsync_ThenTheIdentityFromGetIdIsUsedAndTheyExpireNow()
+    {
+        // Arrange
+        mockIdentity.Setup(x => x.GetIdAsync(It.IsAny<GetIdRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetIdResponse { IdentityId = "eu-west-2:0000-abcd-ef01" });
+        mockIdentity.Setup(x => x.GetCredentialsForIdentityAsync(It.IsAny<GetCredentialsForIdentityRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetCredentialsForIdentityResponse
+            {
+                Credentials = new Credentials { AccessKeyId = "AKIA", SecretKey = "secret", SessionToken = "session", Expiration = null },
+            });
+        var before = DateTimeOffset.UtcNow;
+
+        // Act
+        var result = await new CognitoIdentityClient(mockIdentity.Object, config).GetCredentialsAsync("token");
+
+        // Assert
+        var after = DateTimeOffset.UtcNow;
+        Assert.Equal("eu-west-2:0000-abcd-ef01", result.IdentityId);
+        Assert.Equal("AKIA", result.AccessKeyId);
+        Assert.InRange(result.Expiration, before, after);
+        Assert.Equal(TimeSpan.Zero, result.Expiration.Offset);
+    }
+
+    [Fact]
+    public async Task GivenARefusalWithoutAnErrorCode_WhenGetCredentialsAsync_ThenCognitoExceptionNamedAfterItsType()
+    {
+        // Arrange
+        mockIdentity.Setup(x => x.GetIdAsync(It.IsAny<GetIdRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ResourceNotFoundException("No such identity pool.") { ErrorCode = null! });
+
+        // Act
+        var ex = await Assert.ThrowsAsync<CognitoException>(() => new CognitoIdentityClient(mockIdentity.Object, config).GetCredentialsAsync("token"));
+
+        // Assert
+        Assert.Equal(nameof(ResourceNotFoundException), ex.ErrorType);
+    }
+
+    [Fact]
+    public async Task GivenAServiceErrorThatIsNotANetworkFailure_WhenGetCredentialsAsync_ThenItPropagatesUnchanged()
+    {
+        // Arrange
+        var failure = new AmazonServiceException("throttled", new InvalidOperationException(), HttpStatusCode.InternalServerError);
+        mockIdentity.Setup(x => x.GetIdAsync(It.IsAny<GetIdRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(failure);
+
+        // Act
+        var ex = await Assert.ThrowsAsync<AmazonServiceException>(() => new CognitoIdentityClient(mockIdentity.Object, config).GetCredentialsAsync("token"));
+
+        // Assert
+        Assert.Same(failure, ex);
+    }
+
+    [Fact]
     public async Task GivenNoToken_WhenGetCredentialsAsync_ThenThrows()
     {
         // Act & Assert

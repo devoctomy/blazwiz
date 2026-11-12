@@ -230,6 +230,112 @@ public class SyncConfigurationTests
         Assert.Throws<ArgumentNullException>(() => sut.UseConfiguration(null!));
     }
 
+    [Fact]
+    public void GivenTheConfigurationRoot_WhenApplied_ThenItsSettingsAreUsed()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+
+        // Act
+        sut.UseConfiguration(Root("""{ "ChangeDebounce": "00:00:04" }"""));
+
+        // Assert
+        Assert.Equal(TimeSpan.FromSeconds(4), options.ChangeDebounce);
+    }
+
+    [Fact]
+    public void GivenTheConfigurationRootWithAnInvalidValue_WhenApplied_ThenThrowsWithAnEmptyPath()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => sut.UseConfiguration(Root("""{ "ChangeDebounce": "-00:00:01" }""")));
+
+        // Assert
+        Assert.StartsWith("Invalid sync setting '':", ex.Message, StringComparison.Ordinal);
+        Assert.IsAssignableFrom<ArgumentException>(ex.InnerException);
+    }
+
+    [Fact]
+    public void GivenAnEmptyRecheckDelay_WhenApplied_ThenThrowsNamingIt()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+
+        // Act
+        var ex = Assert.Throws<InvalidOperationException>(() => sut.UseConfiguration(Section("""{ "Sync": { "ConnectivityTimings": { "RecheckBackoff": [ "00:00:10", "" ] } } }""")));
+
+        // Assert
+        Assert.Contains("Sync:ConnectivityTimings:RecheckBackoff:1", ex.Message, StringComparison.Ordinal);
+        Assert.Equal([TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(5)], options.ConnectivityTimings.RecheckBackoff);
+    }
+
+    [Fact]
+    public void GivenOnlyAProbeTimeout_WhenApplied_ThenTheOtherTimingsAreKept()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+
+        // Act
+        sut.UseConfiguration(Section("""{ "Sync": { "ConnectivityTimings": { "ProbeTimeout": "00:00:07" } } }"""));
+
+        // Assert
+        Assert.Equal(TimeSpan.FromSeconds(7), options.ConnectivityTimings.ProbeTimeout);
+        Assert.Equal(TimeSpan.FromSeconds(30), options.ConnectivityTimings.CacheFor);
+        Assert.Equal(4, options.ConnectivityTimings.RecheckBackoff.Count);
+    }
+
+    [Fact]
+    public void GivenOnlyACacheTime_WhenApplied_ThenTheOtherTimingsAreKept()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options);
+
+        // Act
+        sut.UseConfiguration(Section("""{ "Sync": { "ConnectivityTimings": { "CacheFor": "00:01:00" } } }"""));
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(1), options.ConnectivityTimings.CacheFor);
+        Assert.Equal(TimeSpan.FromSeconds(5), options.ConnectivityTimings.ProbeTimeout);
+    }
+
+    [Fact]
+    public void GivenOnlyAnEventLogStore_WhenApplied_ThenTheDatabaseIsKept()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options).UseIndexedDbEventLog("db", "log");
+
+        // Act
+        sut.UseConfiguration(Section("""{ "Sync": { "EventLog": { "Store": "journal" } } }"""));
+
+        // Assert
+        Assert.Equal("db", options.EventLogDatabase);
+        Assert.Equal("journal", options.EventLogStore);
+    }
+
+    [Fact]
+    public void GivenOnlyAnEventLogDatabaseAndMaxAge_WhenApplied_ThenTheStoreAndMaxEventsAreKept()
+    {
+        // Arrange
+        var sut = new SyncBuilder(options).UseIndexedDbEventLog("db", "log").UseEventLogRetention(TimeSpan.FromDays(3), 10);
+
+        // Act
+        sut.UseConfiguration(Section("""{ "Sync": { "EventLog": { "Database": "other", "MaxAge": "5.00:00:00" } } }"""));
+
+        // Assert
+        Assert.Equal("other", options.EventLogDatabase);
+        Assert.Equal("log", options.EventLogStore);
+        Assert.Equal(TimeSpan.FromDays(5), options.EventLogMaxAge);
+        Assert.Equal(10, options.EventLogMaxEventsPerUser);
+    }
+
+    private static IConfiguration Root(string json)
+    {
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+        return new ConfigurationBuilder().AddJsonStream(stream).Build();
+    }
+
     private static IConfigurationSection Section(string json)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));

@@ -15,6 +15,7 @@ using Devoctomy.Blazwiz.UI.Models;
 using Devoctomy.Blazwiz.UI.Shell;
 using Devoctomy.Blazwiz.UI.Shell.Interfaces;
 using Devoctomy.Blazwiz.Auth.Cognito.Extensions;
+using Devoctomy.Blazwiz.Auth.Cognito.Models;
 using Devoctomy.Blazwiz.UI.Sync.Extensions;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services;
@@ -164,6 +165,42 @@ public class SyncModuleServiceCollectionExtensionsTests
         var parameters = provider.GetRequiredService<Argon2idOptions>().Parameters;
         Assert.Equal(19456, parameters.MemoryKib);
         Assert.Equal(2, parameters.Iterations);
+    }
+
+    [Fact]
+    public void GivenCognitoNotRegisteredButConfigured_WhenAddBlazwizSyncModule_ThenCognitoIsRegisteredOnce()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["AwsCognito:Region"] = "eu-west-2",
+                ["AwsCognito:UserPoolId"] = "eu-west-2_pool",
+                ["AwsCognito:UserPoolClientId"] = "client",
+            })
+            .Build();
+        var services = TestServices.Create();
+
+        // Act
+        services.AddBlazwizSyncModule(configuration, sync => { });
+
+        // Assert
+        Assert.Single(services, d => d.ServiceType == typeof(AwsCognitoConfig));
+        using var provider = services.BuildServiceProvider();
+        var cognito = provider.GetRequiredService<AwsCognitoConfig>();
+        Assert.Equal("eu-west-2_pool", cognito.UserPoolId);
+        Assert.Equal("client", cognito.UserPoolClientId);
+    }
+
+    [Fact]
+    public void GivenCognitoNeitherRegisteredNorConfigured_WhenAddBlazwizSyncModule_ThenThePlaceholderSignInIsRefused()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder().Build();
+        var services = TestServices.Create();
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => services.AddBlazwizSyncModule(configuration, sync => { }));
     }
 
     [Fact]

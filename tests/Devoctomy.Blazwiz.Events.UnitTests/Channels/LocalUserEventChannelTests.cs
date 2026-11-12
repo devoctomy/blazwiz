@@ -122,6 +122,19 @@ public class LocalUserEventChannelTests
     }
 
     [Fact]
+    public async Task GivenNoSubscribers_WhenOnMessage_ThenDoesNotThrow()
+    {
+        // Arrange
+        await using var sut = new LocalUserEventChannel(mockJs.Object, mockKeys.Object);
+
+        // Act
+        var exception = Record.Exception(() => sut.OnMessage("""{"type":"signed-out-everywhere","from":"other"}"""));
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    [Fact]
     public async Task GivenItsOwnEvent_WhenOnMessage_ThenIgnored()
     {
         // Arrange

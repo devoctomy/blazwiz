@@ -198,5 +198,69 @@ public class AppSyncUserEventChannelTests
         Assert.Equal("other", Assert.Single(received).From);
     }
 
+    [Theory]
+    [InlineData("null")]
+    [InlineData("""{"type":"","from":"other"}""")]
+    [InlineData("""{"from":"other"}""")]
+    public async Task GivenAnEventWithNoType_WhenOnMessage_ThenIgnored(string json)
+    {
+        // Arrange
+        await using var sut = CreateSut();
+        var received = 0;
+        sut.Received += (_, _) => received++;
+
+        // Act
+        sut.OnMessage(json);
+
+        // Assert
+        Assert.Equal(0, received);
+    }
+
+    [Fact]
+    public async Task GivenNoSubscribers_WhenOnMessage_ThenDoesNotThrow()
+    {
+        // Arrange
+        await using var sut = CreateSut();
+
+        // Act
+        var exception = Record.Exception(() => sut.OnMessage(JsonSerializer.Serialize(new UserEvent { Type = UserEventTypes.SignedOutEverywhere, From = "other" })));
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task GivenPageGoingAway_WhenDisposeAsync_ThenDoesNotThrow()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.ConnectAsync(new UserSession { Username = "bob", AccessToken = accessToken });
+        mockModule.Setup(x => x.InvokeAsync<IJSVoidResult>("disconnect", It.IsAny<object?[]>()))
+            .ThrowsAsync(new JSDisconnectedException("gone"));
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => sut.DisposeAsync().AsTask());
+
+        // Assert
+        Assert.Null(exception);
+        mockModule.Verify(x => x.DisposeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenConnected_WhenDisposeAsync_ThenDisconnectedAndTheModuleDisposed()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.ConnectAsync(new UserSession { Username = "bob", AccessToken = accessToken });
+
+        // Act
+        await sut.DisposeAsync();
+
+        // Assert
+        Assert.Equal(UserEventConnectionState.Disconnected, sut.State);
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("disconnect", It.IsAny<object?[]>()), Times.Once);
+        mockModule.Verify(x => x.DisposeAsync(), Times.Once);
+    }
+
     private AppSyncUserEventChannel CreateSut() => new(mockJs.Object, config);
 }

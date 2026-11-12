@@ -163,6 +163,26 @@ public class NoteTreeServiceTests
         Assert.Equal(newer, result["notes/Work/"].ModifiedAt);
     }
 
+    [Fact]
+    public void GivenAFolderMarkerListedBeforeANewerNoteInside_WhenBuildEntries_ThenTheFolderTakesTheNotesTime()
+    {
+        // Arrange
+        var older = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var newer = older.AddDays(1);
+        var files = new[]
+        {
+            new SyncFileInfo { Key = "notes/Work/", ModifiedAt = older },
+            new SyncFileInfo { Key = "notes/Work/Plan.md", ModifiedAt = newer },
+        };
+
+        // Act
+        var work = sut.BuildEntries(Root, files, "bob").Single(e => e.Id == "notes/Work/");
+
+        // Assert
+        Assert.Equal(newer, work.ModifiedAt);
+        Assert.Equal(newer, work.CreatedAt);
+    }
+
     [Theory]
     [InlineData(null, "Ideas.md", false, "notes/Ideas.md")]
     [InlineData("notes/Work/", "Ideas.md", false, "notes/Work/Ideas.md")]

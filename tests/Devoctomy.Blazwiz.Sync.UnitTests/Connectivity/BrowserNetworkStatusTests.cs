@@ -83,6 +83,23 @@ public class BrowserNetworkStatusTests
     }
 
     [Fact]
+    public async Task GivenNoListeners_WhenTheBrowserReportsChanges_ThenNothingIsThrown()
+    {
+        // Arrange
+        await using var sut = new BrowserNetworkStatus(mockJs.Object);
+
+        // Act
+        var ex = Record.Exception(() =>
+        {
+            sut.OnOnlineChanged(true);
+            sut.OnBecameVisible();
+        });
+
+        // Assert
+        Assert.Null(ex);
+    }
+
+    [Fact]
     public async Task GivenPageGone_WhenDisposeAsync_ThenNoException()
     {
         // Arrange

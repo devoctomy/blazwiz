@@ -154,6 +154,21 @@ public class OpfsClientTests
     }
 
     [Fact]
+    public async Task GivenImportedModuleStillConnected_WhenDisposeAsync_ThenModuleDisposed()
+    {
+        // Arrange
+        var sut = new OpfsClient(mockJs.Object, mockKeys.Object);
+        await sut.IsSupportedAsync();
+
+        // Act
+        var ex = await Record.ExceptionAsync(() => sut.DisposeAsync().AsTask());
+
+        // Assert
+        Assert.Null(ex);
+        mockModule.Verify(x => x.DisposeAsync(), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenNothingImported_WhenDisposeAsync_ThenNothingHappens()
     {
         // Arrange

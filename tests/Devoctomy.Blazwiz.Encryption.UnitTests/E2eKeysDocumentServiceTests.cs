@@ -213,6 +213,37 @@ public class E2eKeysDocumentServiceTests
     }
 
     [Fact]
+    public async Task GivenNoActiveFileKey_WhenParsed_ThenThrowsInvalidData()
+    {
+        // Arrange
+        using var keys = await sut.CreateAsync("correct horse");
+        keys.Document.Keys[keys.FileKeyId].Status = FileKeyEntry.RetiredStatus;
+        var json = sut.Serialize(keys.Document);
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidDataException>(() => sut.Parse(json));
+        Assert.Contains("exactly one active", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GivenTwoActiveFileKeys_WhenParsed_ThenThrowsInvalidData()
+    {
+        // Arrange
+        using var keys = await sut.CreateAsync("correct horse");
+        using var rotated = await sut.RotateAsync(keys.Document, keys.MasterKey, "battery staple");
+        foreach (var entry in rotated.Document.Keys.Values)
+        {
+            entry.Status = FileKeyEntry.ActiveStatus;
+        }
+
+        var json = sut.Serialize(rotated.Document);
+
+        // Act & Assert
+        var ex = Assert.Throws<InvalidDataException>(() => sut.Parse(json));
+        Assert.Contains("exactly one active", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GivenABadSalt_WhenUnwrapped_ThenThrowsInvalidData()
     {
         // Arrange

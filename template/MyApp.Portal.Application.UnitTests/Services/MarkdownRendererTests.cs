@@ -60,6 +60,7 @@ public class MarkdownRendererTests
     [InlineData("[click](data:text/html;base64,PHNjcmlwdD4=)")]
     [InlineData("[click](vbscript:msgbox)")]
     [InlineData("<javascript:alert(1)>")]
+    [InlineData("[click](<java\u0001script:alert(1)>)")]
     public void GivenUnsafeLink_WhenToHtml_ThenUrlIsRemoved(string markdown)
     {
         // Act
@@ -75,6 +76,7 @@ public class MarkdownRendererTests
     [InlineData("[section](#heading)", "href=\"#heading\"")]
     [InlineData("[page](other/page.md)", "href=\"other/page.md\"")]
     [InlineData("[query](page?time=10:30)", "href=\"page?time=10:30\"")]
+    [InlineData("[empty]()", "href=\"\"")]
     public void GivenSafeLink_WhenToHtml_ThenUrlIsKept(string markdown, string expected)
     {
         // Act & Assert

@@ -214,6 +214,84 @@ public class SessionTimerViewModelTests
         Assert.Equal("Session 54:12", sut.Text);
     }
 
+    [Fact]
+    public void GivenNullText_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("uiText", Assert.Throws<ArgumentNullException>(() => new SessionTimerViewModel(mockAuth.Object, offlineMode, time, null!)).ParamName);
+    }
+
+    [Fact]
+    public void GivenNotInitialized_WhenDisposed_ThenDoesNotThrow()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        var exception = Record.Exception(sut.Dispose);
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task GivenReadingTheSessionFails_WhenTicking_ThenKeepsCountingDown()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).Callback(() => reads++).ThrowsAsync(new HttpRequestException("network down"));
+
+        // Act
+        AdvanceSeconds(30);
+        var textAfterFailedRead = sut.Text;
+        AdvanceSeconds(1);
+
+        // Assert
+        Assert.Equal(2, reads);
+        Assert.Equal("Session 53:43", textAfterFailedRead);
+        Assert.Equal("Session 53:41", sut.Text);
+    }
+
+    [Fact]
+    public async Task GivenReadingTheSessionFails_WhenOfflineModeChanges_ThenDoesNotThrowAndKeepsText()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).Callback(() => reads++).ThrowsAsync(new InvalidOperationException("storage unavailable"));
+
+        // Act
+        var exception = Record.Exception(() => offlineMode.Enter(OfflineEntryReason.Chosen));
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Equal(2, reads);
+        Assert.Equal("Session 54:12", sut.Text);
+    }
+
+    [Fact]
+    public async Task GivenExpiredSessionStillReturned_WhenTicking_ThenReadAgainOnlyEveryReadInterval()
+    {
+        // Arrange
+        session!.ExpiresAt = Now.AddSeconds(1);
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        AdvanceSeconds(1);
+        var readsAtExpiry = reads;
+        AdvanceSeconds(29);
+        var readsBeforeInterval = reads;
+        AdvanceSeconds(1);
+
+        // Assert
+        Assert.Equal(2, readsAtExpiry);
+        Assert.Equal(2, readsBeforeInterval);
+        Assert.Equal(3, reads);
+        Assert.Equal("Session expired", sut.Text);
+    }
+
     private void AdvanceSeconds(int seconds)
     {
         for (var i = 0; i < seconds; i++)

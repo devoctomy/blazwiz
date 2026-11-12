@@ -459,6 +459,7 @@ public class FilesViewModelTests
         // Act & Assert
         Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, null!, mockManager.Object, testText.Errors)).ParamName);
         Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, null!, testText.Errors)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new FilesViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockNavigation.Object, mockNames.Object, mockTree.Object, mockSync.Object, mockManager.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -655,6 +656,377 @@ public class FilesViewModelTests
 
         // Assert
         Assert.Equal("End to end encryption is locked on this device.", sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GivenAFolderSelected_WhenSelectTopLevel_ThenTheTopLevelIsSelected()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.SelectFolderCommand.Execute("work");
+
+        // Act
+        sut.SelectTopLevelCommand.Execute(null);
+
+        // Assert
+        Assert.Null(sut.SelectedFolderId);
+        Assert.Equal(FilesViewModel.TopLevelName, sut.SelectedFolderName);
+        Assert.Contains("work", lastExpandedFolderIds);
+    }
+
+    [Fact]
+    public async Task GivenNoNotebookOpen_WhenOpenNote_ThenNavigatesToTheDefaultNotebooksEditor()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.OpenNotebookAsync("gone");
+
+        // Act
+        sut.OpenNoteCommand.Execute("notes/a.md");
+
+        // Assert
+        mockNavigation.Verify(x => x.NavigateTo("files/edit?note=notes%2Fa.md"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNoNotebookOpen_WhenConfirmingANewNote_ThenThrowsAndIsNoLongerBusy()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.OpenNotebookAsync("gone");
+        sut.ShowNewNoteDialogCommand.Execute(null);
+        sut.DialogName = "ideas";
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(sut.ConfirmDialogAsync);
+        Assert.False(sut.IsBusy);
+    }
+
+    [Fact]
+    public async Task GivenFolder_WhenShowRenameDialog_ThenItsNameIsShownAsItIs()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        sut.ShowRenameDialogCommand.Execute("work");
+
+        // Assert
+        Assert.Equal(FilesDialogKind.Rename, sut.ActiveDialog);
+        Assert.Equal("Work", sut.DialogName);
+        mockNames.Verify(x => x.WithoutExtension(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenUnknownEntry_WhenShowingRenameMoveOrDeleteDialog_ThenNoDialogIsShown()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        sut.ShowRenameDialogCommand.Execute("gone");
+        sut.ShowMoveDialogCommand.Execute("gone");
+        sut.ShowDeleteDialogCommand.Execute("gone");
+
+        // Assert
+        Assert.Equal(FilesDialogKind.None, sut.ActiveDialog);
+        Assert.Null(sut.DialogEntry);
+    }
+
+    [Fact]
+    public async Task GivenNote_WhenShowDeleteDialog_ThenNothingInsideIsCounted()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        var countWithoutDialog = sut.DialogEntryDescendantCount;
+
+        // Act
+        sut.ShowDeleteDialogCommand.Execute("todo");
+
+        // Assert
+        Assert.Equal(0, countWithoutDialog);
+        Assert.Equal(0, sut.DialogEntryDescendantCount);
+    }
+
+    [Fact]
+    public async Task GivenSelectedFolder_WhenCreatingFolder_ThenItIsCreatedInsideTheExpandedFolderAndSelected()
+    {
+        // Arrange
+        mockNotes.Setup(x => x.CreateFolderAsync("Sub", "work")).ReturnsAsync(() =>
+        {
+            var folder = Folder("sub", "Sub", "work");
+            entries = [.. entries, folder];
+            return folder;
+        });
+        var sut = await CreateLoadedSutAsync();
+        sut.SelectFolderCommand.Execute("work");
+        sut.ToggleFolderCommand.Execute("work");
+
+        // Act
+        sut.ShowNewFolderDialogCommand.Execute(null);
+        sut.DialogName = "Sub";
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("sub", sut.SelectedFolderId);
+        Assert.Equal("Sub", sut.SelectedFolderName);
+        Assert.Contains("work", lastExpandedFolderIds);
+        Assert.Equal(FilesDialogKind.None, sut.ActiveDialog);
+    }
+
+    [Fact]
+    public async Task GivenStorageUnavailable_WhenConfirmingRename_ThenStorageErrorIsShownInTheDialog()
+    {
+        // Arrange
+        mockNames.Setup(x => x.WithoutExtension("todo.md")).Returns("todo");
+        mockNotes.Setup(x => x.RenameAsync("todo", "done")).ThrowsAsync(new JSException("IndexedDB unavailable"));
+        var sut = await CreateLoadedSutAsync();
+        sut.ShowRenameDialogCommand.Execute("todo");
+        sut.DialogName = "done";
+
+        // Act
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(FilesDialogKind.Rename, sut.ActiveDialog);
+        Assert.Equal(FilesViewModel.StorageErrorMessage, sut.DialogError);
+        Assert.False(sut.IsBusy);
+    }
+
+    [Fact]
+    public async Task GivenEncryptionLocked_WhenConfirmingDelete_ThenTheLockedErrorIsShownAndNothingIsRemoved()
+    {
+        // Arrange
+        mockNotes.Setup(x => x.DeleteAsync("todo")).ThrowsAsync(new E2eLockedException());
+        var sut = await CreateLoadedSutAsync();
+        sut.ShowDeleteDialogCommand.Execute("todo");
+
+        // Act
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(FilesDialogKind.Delete, sut.ActiveDialog);
+        Assert.Equal("End to end encryption is locked on this device.", sut.DialogError);
+        Assert.Contains(sut.VisibleItems, i => i.Entry.Id == "todo");
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
+    }
+
+    [Theory]
+    [MemberData(nameof(StorageExceptions))]
+    public async Task GivenFolderUnreachableOrFilesMoving_WhenConfirmingNewFolder_ThenItsMessageIsShownInTheDialog(Exception exception)
+    {
+        // Arrange
+        mockNotes.Setup(x => x.CreateFolderAsync(It.IsAny<string>(), It.IsAny<string?>())).ThrowsAsync(exception);
+        var sut = await CreateLoadedSutAsync();
+        sut.ShowNewFolderDialogCommand.Execute(null);
+        sut.DialogName = "Home";
+
+        // Act
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(FilesDialogKind.NewFolder, sut.ActiveDialog);
+        Assert.Equal(testText.Errors.Describe(exception), sut.DialogError);
+    }
+
+    [Fact]
+    public async Task GivenAChangeBeingSaved_WhenConfirmedAgainOrSyncLockOrProfilesChange_ThenNothingElseRunsUntilItIsSaved()
+    {
+        // Arrange
+        var created = new TaskCompletionSource<NoteEntry>();
+        mockNotes.Setup(x => x.CreateFolderAsync("Home", null)).Returns(created.Task);
+        var sut = await CreateLoadedSutAsync();
+        sut.ShowNewFolderDialogCommand.Execute(null);
+        sut.DialogName = "Home";
+        var saving = sut.ConfirmDialogAsync();
+
+        // Act
+        await sut.ConfirmDialogAsync();
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", ["x"]));
+        mockSync.Raise(x => x.StatusChanged += null, mockSync.Object, new SyncStatus { LastSyncedAt = DateTimeOffset.UnixEpoch });
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+        var busyWhileSaving = sut.IsBusy;
+        var readsWhileSaving = mockNotes.Invocations.Count(i => i.Method.Name == nameof(INoteService.GetEntriesAsync));
+        created.SetResult(Folder("home", "Home", null));
+        await saving;
+
+        // Assert
+        Assert.True(busyWhileSaving);
+        Assert.Equal(1, readsWhileSaving);
+        Assert.False(sut.IsBusy);
+        mockNotes.Verify(x => x.CreateFolderAsync(It.IsAny<string>(), It.IsAny<string?>()), Times.Once);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Exactly(2));
+        mockFactory.Verify(x => x.Create(notes), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNothingDragged_WhenDropped_ThenNothingHappens()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        await sut.DropCommand.ExecuteAsync("work");
+
+        // Assert
+        mockNotes.Verify(x => x.MoveAsync(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("gone", "work")]
+    [InlineData("todo", "plan")]
+    [InlineData("todo", "missing")]
+    [InlineData("work", "work")]
+    public async Task GivenADragThatCannotBeDroppedThere_WhenDraggedOverAndDropped_ThenNotHighlightedAndNothingMoves(string draggedId, string targetId)
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.StartDragCommand.Execute(draggedId);
+
+        // Act
+        sut.DragEnterCommand.Execute(targetId);
+        var dropTarget = sut.DropTargetId;
+        await sut.DropCommand.ExecuteAsync(targetId);
+
+        // Assert
+        Assert.Null(dropTarget);
+        Assert.Null(sut.DraggedId);
+        mockNotes.Verify(x => x.MoveAsync(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenSelectedFolder_WhenANoteElsewhereIsDeleted_ThenTheFolderStaysSelected()
+    {
+        // Arrange
+        mockNotes.Setup(x => x.DeleteAsync("todo")).Callback(() => entries = entries.Where(e => e.Id != "todo").ToList()).Returns(Task.CompletedTask);
+        var sut = await CreateLoadedSutAsync();
+        sut.SelectFolderCommand.Execute("work");
+
+        // Act
+        sut.ShowDeleteDialogCommand.Execute("todo");
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Assert
+        mockNotes.Verify(x => x.DeleteAsync("todo"), Times.Once);
+        Assert.Equal("work", sut.SelectedFolderId);
+        Assert.DoesNotContain(sut.VisibleItems, i => i.Entry.Id == "todo");
+    }
+
+    [Fact]
+    public async Task GivenSelectedFolder_WhenSyncRemovesIt_ThenTheTopLevelIsSelected()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.SelectFolderCommand.Execute("work");
+        entries = [Note("todo", "todo.md", null)];
+
+        // Act
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", ["work"]));
+        await WaitForAsync(() => sut.Entries.Count == 1);
+
+        // Assert
+        Assert.Null(sut.SelectedFolderId);
+        Assert.Empty(lastExpandedFolderIds);
+    }
+
+    [Fact]
+    public async Task GivenLoaded_WhenABackgroundReloadFailsUnexpectedly_ThenThePageKeepsItsNotesWithoutAnError()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        mockNotes.Setup(x => x.GetEntriesAsync()).ThrowsAsync(new InvalidOperationException("unexpected"));
+
+        // Act
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", ["x"]));
+        await WaitForAsync(() => mockNotes.Invocations.Count(i => i.Method.Name == nameof(INoteService.GetEntriesAsync)) >= 2);
+
+        // Assert
+        Assert.Null(sut.ErrorMessage);
+        Assert.Equal(4, sut.Entries.Count);
+    }
+
+    [Fact]
+    public async Task GivenNoNotebookOpen_WhenSyncOrLockStateChanges_ThenNothingIsLoaded()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.OpenNotebookAsync("gone");
+
+        // Act
+        mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", ["x"]));
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+
+        // Assert
+        Assert.Null(sut.Notebook);
+        mockNotebooks.Verify(x => x.FindAsync(It.IsAny<string?>()), Times.Once);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAnOpenNotebook_WhenItIsLockedElsewhere_ThenItIsShownLockedWithoutReloading()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        unlocked = false;
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+
+        // Assert
+        Assert.False(sut.IsUnlocked);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAnOpenNotebookNoLongerFound_WhenItIsUnlocked_ThenItStaysOpenAndReloads()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        mockNotebooks.Setup(x => x.FindAsync("notes")).ReturnsAsync((Notebook?)null);
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+        await WaitForAsync(() => mockNotes.Invocations.Count(i => i.Method.Name == nameof(INoteService.GetEntriesAsync)) >= 2);
+
+        // Assert
+        Assert.Same(notes, sut.Notebook);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenAnOpenNotebookStillListed_WhenProfilesChange_ThenItIsNotOpenedAgain()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+
+        // Assert
+        Assert.Same(notes, sut.Notebook);
+        mockFactory.Verify(x => x.Create(notes), Times.Once);
+        mockNotes.Verify(x => x.GetEntriesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTheNotebooksNotLoadedYet_WhenTheyLoadButFindingFails_ThenThePageDoesNotCrash()
+    {
+        // Arrange
+        mockNotebooks.SetupSequence(x => x.FindAsync(null))
+            .ReturnsAsync((Notebook?)null)
+            .ThrowsAsync(new InvalidOperationException("unexpected"));
+        var sut = CreateSut();
+        await sut.OpenNotebookAsync(null);
+
+        // Act
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+        await WaitForAsync(() => mockNotebooks.Invocations.Count >= 2);
+
+        // Assert
+        Assert.Null(sut.Notebook);
+        Assert.Null(sut.ErrorMessage);
+        mockNotebooks.Verify(x => x.FindAsync(null), Times.Exactly(2));
     }
 
     private static NoteEntry Folder(string id, string name, string? parentId) =>

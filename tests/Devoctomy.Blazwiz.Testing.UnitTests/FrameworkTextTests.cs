@@ -98,4 +98,35 @@ public class FrameworkTextTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new FrameworkText().UnknownOverrideKeys(null!));
     }
+
+    [Fact]
+    public void GivenAnOverridesClassWithNoResources_WhenChecked_ThenNothingIsUnknownOrMismatched()
+    {
+        // Arrange: a class no resources are named after, so it has no neutral resource set.
+        var text = new FrameworkText(typeof(SyncUiText));
+
+        // Act
+        var unknown = text.UnknownOverrideKeys(typeof(FrameworkTextTests));
+        var mismatched = text.MismatchedOverridePlaceholders(typeof(FrameworkTextTests));
+
+        // Assert
+        Assert.Empty(unknown);
+        Assert.Empty(mismatched);
+    }
+
+    [Fact]
+    public void GivenAModuleWithNoResources_WhenChecked_ThenTheOtherTextIsStillCompared()
+    {
+        // Arrange: the module adds no keys, so it changes nothing.
+        var withEmptyModule = new FrameworkText(typeof(SyncUiText), typeof(FrameworkTextTests));
+        var without = new FrameworkText(typeof(SyncUiText));
+
+        // Act
+        var unknown = withEmptyModule.UnknownOverrideKeys(typeof(TestOverrides));
+        var mismatched = withEmptyModule.MismatchedOverridePlaceholders(typeof(TestOverrides));
+
+        // Assert
+        Assert.Equal(without.UnknownOverrideKeys(typeof(TestOverrides)), unknown);
+        Assert.Equal(without.MismatchedOverridePlaceholders(typeof(TestOverrides)), mismatched);
+    }
 }

@@ -230,6 +230,73 @@ public class IndexedDbSyncEventLogTests
         mockClient.Verify(x => x.DeleteManyAsync(It.IsAny<IndexedDbStore>(), It.IsAny<IEnumerable<object>>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GivenNoEarlierPassAndNoListener_WhenRecordNoChangePassAsync_ThenANewEntryIsStarted()
+    {
+        // Arrange
+        mockClient.Setup(x => x.GetLastByIndexAsync<SyncEvent>(Store, IndexedDbSyncEventLog.OwnerProfileTimeIndex, It.IsAny<object>(), It.IsAny<object>()))
+            .ReturnsAsync((SyncEvent?)null);
+        SyncEvent? saved = null;
+        mockClient.Setup(x => x.PutAsync(Store, It.IsAny<SyncEvent>())).Callback<IndexedDbStore, SyncEvent>((_, e) => saved = e).Returns(Task.CompletedTask);
+
+        // Act
+        await CreateSut().RecordNoChangePassAsync(Owner, "notes", "pass", Now);
+
+        // Assert
+        Assert.Equal(1, saved!.Count);
+        Assert.True(saved.IsNoChangePass);
+        Assert.Equal(Owner, saved.Owner);
+        Assert.Equal("notes", saved.Profile);
+        Assert.Equal("pass", saved.PassId);
+    }
+
+    [Fact]
+    public async Task GivenEventsAndNoListener_WhenWriteAsync_ThenTheyAreStillPut()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        await sut.WriteAsync([Event(SyncEventKind.PassStarted, Now)]);
+
+        // Assert
+        mockClient.Verify(x => x.PutManyAsync(Store, It.Is<IEnumerable<SyncEvent>>(e => e.Count() == 1)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNoEvents_WhenClearAsync_ThenNothingIsDeletedButListenersAreStillTold()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var raised = false;
+        sut.EventsWritten += (_, _) => raised = true;
+
+        // Act
+        await sut.ClearAsync();
+        await CreateSut().ClearAsync();
+
+        // Assert
+        mockClient.Verify(x => x.DeleteManyAsync(It.IsAny<IndexedDbStore>(), It.IsAny<IEnumerable<object>>()), Times.Never);
+        Assert.True(raised);
+    }
+
+    [Fact]
+    public async Task GivenATimeWindow_WhenQueryAsync_ThenOnlyEventsInsideItAreReturned()
+    {
+        // Arrange
+        stored.Add(Event(SyncEventKind.UploadNew, Now.AddHours(-3), "notes/before.md"));
+        stored.Add(Event(SyncEventKind.UploadNew, Now.AddHours(-1), "notes/inside.md"));
+        stored.Add(Event(SyncEventKind.UploadNew, Now.AddHours(1), "notes/after.md"));
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.QueryAsync(new SyncEventQuery { From = Now.AddHours(-2), To = Now });
+
+        // Assert
+        Assert.Equal(["notes/inside.md"], result.Events.Select(e => e.Key));
+        Assert.False(result.HasMore);
+    }
+
     private static SyncEvent Event(SyncEventKind kind, DateTimeOffset timestamp, string? key = null) =>
         new() { Owner = Owner, Profile = "notes", Timestamp = timestamp, Kind = kind, Key = key, Code = kind.ToString() };
 

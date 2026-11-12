@@ -68,6 +68,66 @@ public class PageResumeServiceTests
     }
 
     [Fact]
+    public async Task GivenNoListener_WhenOnResumed_ThenDoesNotThrow()
+    {
+        // Arrange
+        await using var sut = new PageResumeService(mockJs.Object);
+
+        // Act
+        var exception = Record.Exception(sut.OnResumed);
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task GivenStarted_WhenDisposedTwice_ThenDoesNotThrow()
+    {
+        // Arrange
+        var sut = new PageResumeService(mockJs.Object);
+        await sut.StartAsync();
+
+        // Act
+        var exception = Record.Exception(() =>
+        {
+            sut.Dispose();
+            sut.Dispose();
+        });
+
+        // Assert
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public void GivenNeverStarted_WhenDisposed_ThenDoesNotThrow()
+    {
+        // Arrange
+        var sut = new PageResumeService(mockJs.Object);
+
+        // Act
+        var exception = Record.Exception(sut.Dispose);
+
+        // Assert
+        Assert.Null(exception);
+        mockJs.Verify(x => x.InvokeAsync<IJSObjectReference>(It.IsAny<string>(), It.IsAny<object?[]>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenStarted_WhenDisposeAsync_ThenUnsubscribedAndTheModuleDisposed()
+    {
+        // Arrange
+        var sut = new PageResumeService(mockJs.Object);
+        await sut.StartAsync();
+
+        // Act
+        await sut.DisposeAsync();
+
+        // Assert
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("unsubscribe", It.IsAny<object?[]>()), Times.Once);
+        mockModule.Verify(x => x.DisposeAsync(), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenPageGoingAway_WhenDisposeAsync_ThenDoesNotThrow()
     {
         // Arrange

@@ -1,5 +1,11 @@
 # blazwiz
 
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/702467d3a3c241ebb21f725b7f76a8eb)](https://app.codacy.com/gh/devoctomy/blazwiz/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![CI](https://github.com/devoctomy/blazwiz/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/devoctomy/blazwiz/actions/workflows/ci.yml?query=branch%3Amain)
+[![NuGet](https://img.shields.io/nuget/v/Devoctomy.Blazwiz.Templates?label=nuget%20template)](https://www.nuget.org/packages/Devoctomy.Blazwiz.Templates)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4.svg)](https://dotnet.microsoft.com/download/dotnet/10.0)
+
 A framework for **Blazor WebAssembly PWAs** that sign in with **AWS Cognito**, sync files with S3 (end
 to end encrypted) and work offline. It ships as NuGet packages (`Devoctomy.Blazwiz.*`) and a `dotnet new` template
 that creates an app built on them, so apps take framework upgrades by changing one version number.

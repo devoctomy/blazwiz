@@ -116,4 +116,69 @@ public class SyncStatusPresenterTests
         Assert.Throws<ArgumentNullException>(() => sut.Present(null!, Online));
         Assert.Throws<ArgumentNullException>(() => sut.Present(new SyncStatus(), null!));
     }
+
+    [Fact]
+    public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new SyncStatusPresenter(null!, testText.Plurals, testText.Errors)).ParamName);
+        Assert.Equal("plurals", Assert.Throws<ArgumentNullException>(() => new SyncStatusPresenter(testText.Sync, null!, testText.Errors)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new SyncStatusPresenter(testText.Sync, testText.Plurals, null!)).ParamName);
+    }
+
+    [Fact]
+    public void GivenAnErrorWithoutACode_WhenPresent_ThenTheGeneralErrorTooltip()
+    {
+        // Act
+        var result = sut.Present(new SyncStatus { State = SyncState.Error }, Online);
+
+        // Assert
+        Assert.Equal("Sync error", result.Text);
+        Assert.Equal(testText.Sync["Sync.Status.Error.Tooltip"].Value, result.Tooltip);
+        Assert.Equal("bi-exclamation-octagon", result.Icon);
+    }
+
+    [Fact]
+    public void GivenAnErrorWhileOffline_WhenPresent_ThenOfflineIsShownRatherThanTheError()
+    {
+        // Act
+        var result = sut.Present(new SyncStatus { State = SyncState.Error, LastErrorCode = "Sync.Remote.Unreachable" }, new ConnectivityStatus { Reason = OfflineReason.NoNetwork });
+
+        // Assert
+        Assert.Equal("Offline", result.Text);
+        Assert.Equal("Offline: no network", result.Tooltip);
+        Assert.True(result.IsOffline);
+    }
+
+    [Fact]
+    public void GivenOnline_WhenDescribeConnectivity_ThenOnline()
+    {
+        // Act & Assert
+        Assert.Equal("Online", sut.DescribeConnectivity(Online));
+    }
+
+    [Fact]
+    public void GivenOfflineWithNoReasonYet_WhenDescribeConnectivity_ThenChecking()
+    {
+        // Act & Assert
+        Assert.Equal("Checking connection", sut.DescribeConnectivity(new ConnectivityStatus()));
+    }
+
+    [Theory]
+    [InlineData(OfflineReason.NoNetwork, "Offline: no network")]
+    [InlineData(OfflineReason.Unreachable, "Offline: S3 unreachable")]
+    [InlineData(OfflineReason.OfflineMode, "Offline: offline mode")]
+    [InlineData(OfflineReason.SyncDisabled, "Sync turned off")]
+    public void GivenOfflineWithAReason_WhenDescribeConnectivity_ThenTheReason(OfflineReason reason, string expected)
+    {
+        // Act & Assert
+        Assert.Equal(expected, sut.DescribeConnectivity(new ConnectivityStatus { Reason = reason }));
+    }
+
+    [Fact]
+    public void GivenNull_WhenDescribeConnectivity_ThenThrows()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => sut.DescribeConnectivity(null!));
+    }
 }

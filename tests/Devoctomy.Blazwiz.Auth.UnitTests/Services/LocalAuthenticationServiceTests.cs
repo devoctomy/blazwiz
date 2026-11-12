@@ -440,6 +440,90 @@ public class LocalAuthenticationServiceTests
         Assert.False(result);
     }
 
+    [Fact]
+    public async Task GivenAlreadyOffline_WhenGoOfflineAsync_ThenNothingChanges()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob@example.com", OfflineEntryReason.SignInUnreachable);
+        var before = offlineSessions.Session;
+
+        // Act
+        await sut.GoOfflineAsync();
+
+        // Assert
+        Assert.Same(before, offlineSessions.Session);
+        Assert.Equal(OfflineEntryReason.SignInUnreachable, offlineMode.Reason);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(LocalAuthenticationService.SessionStorageKey), Times.Once);
+        mockLocalStorage.Verify(x => x.GetObjectAsync<UserSession>(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAPlainUsername_WhenSignInOfflineAsync_ThenTheOfflineSessionHasNoEmail()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        var result = await sut.SignInOfflineAsync("  alice ", OfflineEntryReason.Chosen);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal("alice", result.Session!.Username);
+        Assert.Null(result.Session.Email);
+        Assert.Equal("Bob Hoskins", result.Session.DisplayName);
+    }
+
+    [Fact]
+    public async Task GivenOfflineSession_WhenOfflineModeTurnedOffAndStorageFails_ThenTheErrorIsSwallowedAndSessionEndedNotRaised()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob@example.com", OfflineEntryReason.Chosen);
+        mockLocalStorage.Setup(x => x.RemoveItemAsync(LocalAuthenticationService.SessionStorageKey)).ThrowsAsync(new InvalidOperationException("storage unavailable"));
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+
+        // Act
+        var exception = Record.Exception(() => offlineMode.Exit());
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Null(offlineSessions.Session);
+        Assert.Equal(0, ended);
+    }
+
+    [Fact]
+    public async Task GivenOfflineSessionSignedOut_WhenOfflineModeTurnedOff_ThenNothingEnds()
+    {
+        // Arrange: listening starts with an offline sign-in, which is then signed out.
+        using var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob@example.com", OfflineEntryReason.Chosen);
+        await sut.LogoutAsync();
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+
+        // Act
+        offlineMode.Exit();
+
+        // Assert
+        Assert.Equal(0, ended);
+        Assert.False(offlineMode.IsOffline);
+    }
+
+    [Fact]
+    public async Task GivenNoSubscribers_WhenEndSessionAsync_ThenStillSignsOut()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        await sut.EndSessionAsync(SessionEndedReason.Expired, null);
+
+        // Assert
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(LocalAuthenticationService.SessionStorageKey), Times.Once);
+    }
+
     private void SetupStoredSession(UserSession? session)
     {
         mockLocalStorage

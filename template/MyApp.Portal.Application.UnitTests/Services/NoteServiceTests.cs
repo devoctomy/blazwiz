@@ -502,6 +502,26 @@ public class NoteServiceTests
         await Assert.ThrowsAsync<NotesException>(() => CreateSut().SaveNoteAsync("notes/Work/", "x"));
     }
 
+    [Fact]
+    public async Task GivenANoteDeletedWhileBeingMoved_WhenMoveAsync_ThenThrowsNotesExceptionAndNothingIsWrittenOrDeleted()
+    {
+        // Arrange
+        var store = new Mock<ISyncFileStore>();
+        store.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new SyncFileInfo { Key = "notes/Archive/", ModifiedAt = Now },
+            new SyncFileInfo { Key = "notes/Old.md", ModifiedAt = Now },
+        ]);
+        store.Setup(x => x.ReadAsync("notes/Old.md", It.IsAny<CancellationToken>())).ReturnsAsync((SyncFile?)null);
+        var sut = new NoteService(notebook, store.Object, mockAuth.Object, mockState.Object, mockSync.Object, mockConnectivity.Object, mockNames.Object, tree, mockClock.Object);
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<NotesException>(() => sut.MoveAsync("notes/Old.md", "notes/Archive/"));
+        Assert.Equal("That note or folder no longer exists.", ex.Message);
+        store.Verify(x => x.WriteAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<DateTimeOffset?>(), It.IsAny<CancellationToken>()), Times.Never);
+        store.Verify(x => x.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private async Task<string?> ReadAsync(string key)
     {
         var file = await files.ReadAsync(key);

@@ -746,6 +746,83 @@ public class SyncProtectedProfileServiceTests
         mockManager.Verify(x => x.SetIdleTimeoutAsync(It.IsAny<E2eKeyScope>(), It.IsAny<TimeSpan?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GivenLoaded_WhenTellingTheOtherTabsOfALockFails_ThenNothingIsThrown()
+    {
+        // Arrange
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = scope.Id }]);
+        mockManager.Setup(x => x.IsUnlocked(scope)).Returns(false);
+        mockChannel.Setup(x => x.PostLockAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("channel closed"));
+        await CreateSut().LoadAsync();
+
+        // Act
+        var ex = Record.Exception(() => mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope));
+
+        // Assert
+        Assert.Null(ex);
+        mockChannel.Verify(x => x.PostLockAsync(scope.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAnUnknownProfile_WhenSetUpOrItsPassphraseChanged_ThenThrowsAndTheManagerIsNotCalled()
+    {
+        // Arrange
+        var unknown = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.SetUpAsync(unknown, "pass"));
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.ChangePassphraseAsync(unknown, "old", "new"));
+        mockManager.Verify(x => x.CreateKeysAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<E2eProfileSettings>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockManager.Verify(x => x.ChangePassphraseAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<E2eProfileSettings>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAnUnknownProfile_WhenDeviceUnlockChecked_ThenNotOnAndTheManagerIsNotAsked()
+    {
+        // Arrange
+        options.ProfileDefaults.AllowDeviceUnlock = true;
+        var sut = CreateSut();
+
+        // Act
+        var hasIt = await sut.HasDeviceUnlockAsync(new E2eKeyScope(Guid.NewGuid().ToString("D")));
+
+        // Assert
+        Assert.False(hasIt);
+        mockManager.Verify(x => x.HasDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAnUnknownProfile_WhenDeviceUnlockUsed_ThenThrowsAndTheManagerIsNotCalled()
+    {
+        // Arrange
+        var unknown = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.EnableDeviceUnlockAsync(unknown));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.UnlockWithDeviceAsync(unknown));
+        mockManager.Verify(x => x.EnableDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAnUnchangedIdleTimeout_WhenLoadedAgain_ThenTheTimerIsNotRefreshed()
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        mockManager.Setup(x => x.GetProfilesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([new E2eProfileIndexEntry { Id = id, IdleTimeoutSeconds = 60 }]);
+        var sut = CreateSut();
+        await sut.LoadAsync();
+
+        // Act
+        await sut.LoadAsync();
+
+        // Assert
+        Assert.Equal(TimeSpan.FromMinutes(1), registry.Find(id)!.Settings.IdleTimeout);
+        mockIdle.Verify(x => x.Refresh(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
     private SyncProtectedProfileService CreateSut() => new(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object);
 
     private sealed class Releaser(List<string> calls) : IAsyncDisposable

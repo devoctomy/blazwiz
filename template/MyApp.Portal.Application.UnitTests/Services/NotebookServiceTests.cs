@@ -148,6 +148,71 @@ public class NotebookServiceTests
         mockProfiles.Verify(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GivenAnUnlockedNotebookWhoseNameCannotBeRead_WhenFound_ThenItsLabelIsShown()
+    {
+        // Arrange
+        var id = Add(Guid.NewGuid().ToString("D"), isCreatedByUser: true, isSetUp: true);
+        profiles[^1].Label = "Work";
+        unlocked.Add(new E2eKeyScope(id));
+        var store = new Mock<ISyncFileStore>();
+        store.Setup(x => x.ReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("locked meanwhile"));
+        mockRegistry.Setup(x => x.GetFileStore(id)).Returns(store.Object);
+
+        // Act
+        var notebook = await CreateSut().FindAsync(id);
+
+        // Assert
+        Assert.Equal("Work", notebook!.Title);
+        Assert.True(notebook.IsUnlocked);
+        mockProfiles.Verify(x => x.SetLabelAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAnUnlockedNotebookWithAnEmptyNameFile_WhenFound_ThenItsIdIsShown()
+    {
+        // Arrange
+        var id = Add(Guid.NewGuid().ToString("D"), isCreatedByUser: true, isSetUp: true);
+        unlocked.Add(new E2eKeyScope(id));
+        await Store(id).WriteAsync($"profiles/{id}/.notebook", Encoding.UTF8.GetBytes("null"));
+
+        // Act
+        var notebook = await CreateSut().FindAsync(id);
+
+        // Assert
+        Assert.Equal(id, notebook!.Title);
+        mockProfiles.Verify(x => x.SetLabelAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAnUnlockedNotebookAlreadyLabelledWithItsName_WhenFound_ThenItIsNotLabelledAgain()
+    {
+        // Arrange
+        var id = Add(Guid.NewGuid().ToString("D"), isCreatedByUser: true, isSetUp: true);
+        profiles[^1].Label = "Work";
+        unlocked.Add(new E2eKeyScope(id));
+        await Store(id).WriteAsync($"profiles/{id}/.notebook", Encoding.UTF8.GetBytes("""{"Title":"Work"}"""));
+
+        // Act
+        var notebook = await CreateSut().FindAsync(id);
+
+        // Assert
+        Assert.Equal("Work", notebook!.Title);
+        mockProfiles.Verify(x => x.SetLabelAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenACreatedProfileThatIsNotListed_WhenCreated_ThenThrowsInvalidOperationException()
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        mockProfiles.Setup(x => x.CreateAsync("correct horse battery", null, It.IsAny<CancellationToken>())).ReturnsAsync(new E2eKeyScope(id));
+
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().CreateAsync("Work", "correct horse battery"));
+        Assert.Contains(id, ex.Message, StringComparison.Ordinal);
+    }
+
     private string Add(string name, bool isCreatedByUser, bool isSetUp)
     {
         var id = isCreatedByUser ? name : Guid.NewGuid().ToString("D");

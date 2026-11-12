@@ -32,6 +32,28 @@ public class SyncSessionHandlerTests
     }
 
     [Fact]
+    public void GivenTheHandler_WhenOrdered_ThenItRunsAtOneHundred()
+    {
+        // Act & Assert
+        Assert.Equal(100, CreateSut().Order);
+    }
+
+    [Fact]
+    public async Task GivenTheStorageChannelFailsToStart_WhenOnSessionStarted_ThenRecoveryIsSkippedAndSyncStillStarts()
+    {
+        // Arrange
+        mockStorageChannel.Setup(x => x.StartAsync()).ThrowsAsync(new InvalidOperationException("BroadcastChannel"));
+
+        // Act
+        await CreateSut().OnSessionStartedAsync(session);
+
+        // Assert
+        mockStorageMigration.Verify(x => x.RecoverAsync(It.IsAny<CancellationToken>()), Times.Never);
+        mockProtected.Verify(x => x.LoadAsync(It.IsAny<CancellationToken>()), Times.Once);
+        mockScheduler.Verify(x => x.StartAsync(), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenShellLoading_WhenOnShellLoading_ThenConnectivityInitialized()
     {
         // Act

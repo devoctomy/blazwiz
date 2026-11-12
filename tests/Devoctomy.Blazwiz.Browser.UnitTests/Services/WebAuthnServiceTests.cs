@@ -126,6 +126,37 @@ public class WebAuthnServiceTests
         mockDerivator.Verify(x => x.DeriveKeys(It.IsAny<byte[]>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GivenAFailedRegistration_WhenRegistering_ThenNoKeysAreDerivedAndTheErrorIsReturned()
+    {
+        // Arrange: even with a PRF output and user verification, a failed registration derives nothing.
+        js.Results["webAuthnWrapper.register"] = $$"""{"success":false,"error":"The operation either timed out or was not allowed","prfEnabled":true,"userVerified":true,"prfOutput":"{{Prf}}"}""";
+
+        // Act
+        var result = await sut.RegisterAsync("bob");
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.False(result.KeysDerived);
+        Assert.Equal("The operation either timed out or was not allowed", result.Error);
+        mockDerivator.Verify(x => x.DeriveKeys(It.IsAny<byte[]>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAnEmptyPrfOutput_WhenAuthenticating_ThenNoKeysAreDerived()
+    {
+        // Arrange
+        js.Results["webAuthnWrapper.authenticate"] = """{"success":true,"userPresent":true,"userVerified":true,"prfOutput":""}""";
+
+        // Act
+        var result = await sut.AuthenticateAsync("cred");
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.False(result.KeysDerived);
+        mockDerivator.Verify(x => x.DeriveKeys(It.IsAny<byte[]>()), Times.Never);
+    }
+
     /// <summary>
     /// Answers each JavaScript call with JSON, read into the service's own result types as the browser's would be.
     /// </summary>
