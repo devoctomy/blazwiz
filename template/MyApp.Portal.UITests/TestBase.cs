@@ -50,6 +50,7 @@ public class TestBase : PageTest
 //#endif
     private static readonly string ResultsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "TestResults");
     private static readonly string ScreenshotDirectory = Path.Combine(ResultsDirectory, "Screenshots");
+    private static readonly TimeSpan PortalBuildTimeout = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan ServerStartTimeout = TimeSpan.FromSeconds(90);
     private static readonly object ServerLogLock = new();
     private static readonly System.Text.RegularExpressions.Regex LoginUrlPattern = new("/login$");
@@ -81,8 +82,8 @@ public class TestBase : PageTest
         Directory.CreateDirectory(ResultsDirectory);
         serverLog = new StreamWriter(Path.Combine(ResultsDirectory, "portal.log"), append: false) { AutoFlush = true };
 
-        // Build first: a cold Release build, as on a CI runner, takes minutes, and only the portal starting should count
-        // against ServerStartTimeout.
+        // Build first, with its own (generous) time limit: a cold Release build, as on a CI runner, takes minutes, and
+        // only the portal starting should count against ServerStartTimeout.
         await BuildPortalAsync(projectPath);
 
         serverProcess = StartDotnet($"run --project \"{projectPath}\" --configuration Release --no-build --no-launch-profile --urls=\"{ServerUrl}\"");
@@ -344,18 +345,16 @@ public class TestBase : PageTest
     private static async Task BuildPortalAsync(string projectPath)
     {
         using var build = StartDotnet($"build \"{projectPath}\" --configuration Release --nologo");
-
-        // Wait for the build process itself to exit. WaitForExitAsync also waits for its redirected output to close,
-        // and the MSBuild worker processes it leaves running keep that open, so it does not return.
-        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        build.EnableRaisingEvents = true;
-        build.Exited += (_, _) => exited.TrySetResult();
-        if (build.HasExited)
+        using var timeout = new CancellationTokenSource(PortalBuildTimeout);
+        try
         {
-            exited.TrySetResult();
+            await build.WaitForExitAsync(timeout.Token);
         }
-
-        await exited.Task;
+        catch (OperationCanceledException)
+        {
+            build.Kill(true);
+            throw new TimeoutException($"The portal did not build within {PortalBuildTimeout.TotalMinutes} minutes (see TestResults/portal.log).");
+        }
 
         if (build.ExitCode != 0)
         {
