@@ -151,7 +151,11 @@ A `.codacy.yml` at the root, if you want these kept in the repository:
 exclude_paths:
   - "**/wwwroot/lib/**"
   - "**/*.invalid.json"
+  - ".github/instructions/**"
 ```
+
+`.github/instructions/codacy.instructions.md` is written by the Codacy plugin, which adds it back whenever it is
+removed. It is excluded so its markdownlint issues (45 on the first analysis) don't count.
 
 ## What's left
 
