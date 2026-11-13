@@ -1025,41 +1025,46 @@ public class SyncEngineTests
             case Scenario.NewLocal:
                 await TrackedWriteAsync(KeyA, "new", Later);
                 break;
-            case Scenario.ChangedLocal:
-                await SyncedAsync(KeyA, "v1");
-                await TrackedWriteAsync(KeyA, "v2", Later);
-                break;
             case Scenario.NewRemote:
                 remote.Seed(KeyA, Bytes("new"), Later);
-                break;
-            case Scenario.ChangedRemote:
-                await SyncedAsync(KeyA, "v1");
-                remote.Seed(KeyA, Bytes("v2"), Later);
                 break;
             case Scenario.SameOnBoth:
                 await TrackedWriteAsync(KeyA, "same", Earlier);
                 remote.Seed(KeyA, Bytes("same"), Later);
                 break;
-            case Scenario.DeletedLocally:
+            default:
+                // The rest start from a file synced once, then changed on one side or both.
                 await SyncedAsync(KeyA, "v1");
+                await ArrangeChangesSinceSyncAsync(scenario);
+                break;
+        }
+    }
+
+    private async Task ArrangeChangesSinceSyncAsync(Scenario scenario)
+    {
+        switch (scenario)
+        {
+            case Scenario.ChangedLocal:
+                await TrackedWriteAsync(KeyA, "v2", Later);
+                break;
+            case Scenario.ChangedRemote:
+                remote.Seed(KeyA, Bytes("v2"), Later);
+                break;
+            case Scenario.DeletedLocally:
                 await TrackedDeleteAsync(KeyA, Later);
                 break;
             case Scenario.DeletedRemotely:
-                await SyncedAsync(KeyA, "v1");
                 remote.Objects.Remove(KeyA);
                 break;
             case Scenario.EditEdit:
-                await SyncedAsync(KeyA, "v1");
                 await TrackedWriteAsync(KeyA, "local", Later);
                 remote.Seed(KeyA, Bytes("remote"), Earlier);
                 break;
             case Scenario.DeleteEdit:
-                await SyncedAsync(KeyA, "v1");
                 await TrackedDeleteAsync(KeyA, Later);
                 remote.Seed(KeyA, Bytes("remote"), Earlier);
                 break;
             case Scenario.EditDelete:
-                await SyncedAsync(KeyA, "v1");
                 await TrackedWriteAsync(KeyA, "local", Later);
                 remote.Objects.Remove(KeyA);
                 break;

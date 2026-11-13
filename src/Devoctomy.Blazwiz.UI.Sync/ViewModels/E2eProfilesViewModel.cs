@@ -656,11 +656,11 @@ public partial class E2eProfilesViewModel : ViewModelBase
             return text["Sync.E2e.Error.PassphraseRequired"];
         }
 
-        if (!AsksForNewPassphrase)
-        {
-            return null;
-        }
+        return AsksForNewPassphrase ? ValidateNewPassphrase() : null;
+    }
 
+    private string? ValidateNewPassphrase()
+    {
         if (!string.Equals(Passphrase, ConfirmPassphrase, StringComparison.Ordinal))
         {
             return text["Sync.E2e.Error.PassphrasesDiffer"];

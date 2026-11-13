@@ -77,6 +77,7 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         ISyncKeyRotationService rotation,
         IE2eRotationSignOut rotationSignOut)
     {
+        // #lizard forgives: only checks and stores the injected services.
         this.rotation = rotation ?? throw new ArgumentNullException(nameof(rotation));
         this.rotationSignOut = rotationSignOut ?? throw new ArgumentNullException(nameof(rotationSignOut));
         this.passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));

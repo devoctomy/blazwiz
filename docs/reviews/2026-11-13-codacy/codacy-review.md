@@ -93,7 +93,7 @@ The compiler and StyleCop already cover unused parameters and locals (IDE0060, C
 |---|---|---|
 | `Lizard_parameter-count-medium` (limit 8) | 8 | All are constructors that take services by dependency injection. Turn off. |
 | `Lizard_file-nloc-medium` (limit 500) | 14 | 9 are test files for one class each. Its limit is fixed on Codacy, so it is turned off. The 5 source files (`E2eProtectedProfileManager`, `E2eProfilesViewModel`, `LoginViewModel`, `FilesViewModel`) are worth splitting some day, but not to pass a gate. |
-| `Lizard_ccn-minor` (limit 10) | 22 | Info only. Keep it as a pointer, or raise it to 15. The largest are `SyncPlanner.PlanItem` (18) and `LoginViewModel`'s constructor (17). |
+| `Lizard_ccn-minor` (limit 10) | 22 | Kept on, and all fixed. 17 methods were split into smaller ones (for example `SyncPlanner.PlanItem`, 18, is now four methods of at most 7). The other 5 are constructors that only check and store injected services, where each `?? throw` counts as a branch: they are marked `// #lizard forgives`, which Lizard (and so Codacy) skips. Check with `python -m lizard -C 10 -w src template tests`. |
 
 ### PowerShell (43 issues)
 

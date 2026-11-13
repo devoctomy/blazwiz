@@ -64,6 +64,7 @@ public partial class MainLayoutViewModel : ViewModelBase
         ISessionEndedNoticeService sessionEndedNoticeService,
         AppSettings appSettings)
     {
+        // #lizard forgives: only checks and stores the injected services.
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
         this.themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));
         this.userSettingsService = userSettingsService ?? throw new ArgumentNullException(nameof(userSettingsService));

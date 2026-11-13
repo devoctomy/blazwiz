@@ -72,6 +72,7 @@ public partial class SyncSettingsViewModel : ViewModelBase
         IStringLocalizer<SyncUiText> text,
         IErrorText errorText)
     {
+        // #lizard forgives: only checks and stores the injected services.
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
         this.syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
@@ -327,58 +328,19 @@ public partial class SyncSettingsViewModel : ViewModelBase
         }
 
         StorageError = null;
-        if (kind == SyncStorageKind.LocalFolder)
+        if (kind == SyncStorageKind.LocalFolder && !await TryPickFolderAsync())
         {
-            try
-            {
-                pendingFolderName = await folderService.PickAsync();
-            }
-            catch (Exception ex)
-            {
-                StorageError = text["Sync.Storage.FolderOpenFailed", errorText.Describe(ex)];
-                return;
-            }
-
-            if (pendingFolderName == null)
-            {
-                // Cancelled.
-                return;
-            }
+            return;
         }
 
         if (switchableProfiles.Count == 0)
         {
             // No files yet, so nothing to move or confirm: just remember the choice for the profiles created later.
-            try
-            {
-                await storageMigrationService.MigrateAsync(kind);
-                StorageKind = kind;
-                FolderName = kind == SyncStorageKind.LocalFolder ? pendingFolderName : null;
-            }
-            catch (Exception ex)
-            {
-                StorageError = text["Sync.Storage.MoveFailed", errorText.Describe(ex)];
-            }
-
+            await RememberStorageAsync(kind);
             return;
         }
 
-        try
-        {
-            var count = 0;
-            foreach (var profile in switchableProfiles)
-            {
-                var state = await storageResolver.GetStateAsync(profile);
-                count += (await storageResolver.GetStore(profile, state.Kind).ListAsync()).Count;
-            }
-
-            PendingFileCount = count;
-            PendingStorageKind = kind;
-        }
-        catch (Exception ex)
-        {
-            StorageError = text["Sync.Storage.ReadFailed", errorText.Describe(ex)];
-        }
+        await PrepareStorageMoveAsync(kind);
     }
 
     /// <summary>
@@ -479,6 +441,56 @@ public partial class SyncSettingsViewModel : ViewModelBase
         return unit == 0
             ? string.Create(CultureInfo.CurrentCulture, $"{bytes} B")
             : string.Create(CultureInfo.CurrentCulture, $"{size:0.#} {units[unit]}");
+    }
+
+    private async Task<bool> TryPickFolderAsync()
+    {
+        try
+        {
+            pendingFolderName = await folderService.PickAsync();
+        }
+        catch (Exception ex)
+        {
+            StorageError = text["Sync.Storage.FolderOpenFailed", errorText.Describe(ex)];
+            return false;
+        }
+
+        // Null when cancelled.
+        return pendingFolderName != null;
+    }
+
+    private async Task RememberStorageAsync(SyncStorageKind kind)
+    {
+        try
+        {
+            await storageMigrationService.MigrateAsync(kind);
+            StorageKind = kind;
+            FolderName = kind == SyncStorageKind.LocalFolder ? pendingFolderName : null;
+        }
+        catch (Exception ex)
+        {
+            StorageError = text["Sync.Storage.MoveFailed", errorText.Describe(ex)];
+        }
+    }
+
+    private async Task PrepareStorageMoveAsync(SyncStorageKind kind)
+    {
+        try
+        {
+            var count = 0;
+            foreach (var profile in switchableProfiles)
+            {
+                var state = await storageResolver.GetStateAsync(profile);
+                count += (await storageResolver.GetStore(profile, state.Kind).ListAsync()).Count;
+            }
+
+            PendingFileCount = count;
+            PendingStorageKind = kind;
+        }
+        catch (Exception ex)
+        {
+            StorageError = text["Sync.Storage.ReadFailed", errorText.Describe(ex)];
+        }
     }
 
     private async Task LoadStorageKindAsync()

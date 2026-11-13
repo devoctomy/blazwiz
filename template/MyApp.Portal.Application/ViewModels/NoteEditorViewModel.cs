@@ -107,6 +107,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         IE2eProtectedProfileManager manager,
         IErrorText errorText)
     {
+        // #lizard forgives: only checks and stores the injected services.
         this.notebookService = notebookService ?? throw new ArgumentNullException(nameof(notebookService));
         this.noteServiceFactory = noteServiceFactory ?? throw new ArgumentNullException(nameof(noteServiceFactory));
         this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));

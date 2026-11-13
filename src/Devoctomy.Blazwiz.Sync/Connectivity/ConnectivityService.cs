@@ -234,19 +234,23 @@ public sealed class ConnectivityService : IConnectivityService, IDisposable
         var changed = previous.LastCheckedAt == null || previous.IsOnline != isOnline || previous.Reason != reason;
         if (changed)
         {
-            if (isOnline && previous is { LastCheckedAt: not null, IsOnline: false })
-            {
-                await LogAsync(SyncEventKind.WentOnline, SyncEventCodes.BackOnline);
-            }
-            else if (!isOnline && GetSwitchedOffReason(reason) == null)
-            {
-                await LogAsync(SyncEventKind.WentOffline, SyncEventCodes.WentOffline, status.Reason?.ToString() ?? string.Empty);
-            }
-
+            await LogChangeAsync(previous, isOnline, reason);
             StatusChanged?.Invoke(this, status.Clone());
         }
 
         return status.Clone();
+    }
+
+    private async Task LogChangeAsync(ConnectivityStatus previous, bool isOnline, OfflineReason? reason)
+    {
+        if (isOnline && previous is { LastCheckedAt: not null, IsOnline: false })
+        {
+            await LogAsync(SyncEventKind.WentOnline, SyncEventCodes.BackOnline);
+        }
+        else if (!isOnline && GetSwitchedOffReason(reason) == null)
+        {
+            await LogAsync(SyncEventKind.WentOffline, SyncEventCodes.WentOffline, status.Reason?.ToString() ?? string.Empty);
+        }
     }
 
     private void ScheduleRecheck()

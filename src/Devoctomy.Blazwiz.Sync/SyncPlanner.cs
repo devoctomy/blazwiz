@@ -44,42 +44,55 @@ public class SyncPlanner : ISyncPlanner
     {
         ArgumentNullException.ThrowIfNull(item);
 
-        var record = item.Record;
-        var local = item.Local;
-        var remote = item.Remote;
-        var hasBase = record?.HasBase == true;
-
-        if (local == null)
+        if (item.Local == null)
         {
-            if (record?.Deleted == true)
-            {
-                // Tombstone: the file was deleted locally.
-                if (remote == null)
-                {
-                    return Action(item, SyncActionKind.DropRecord);
-                }
-
-                return hasBase && remote.ETag == record.BaseETag
-                    ? Action(item, SyncActionKind.DeleteRemote)
-                    : Action(item, SyncActionKind.Conflict, SyncConflictKind.DeleteEdit);
-            }
-
-            if (remote == null)
-            {
-                return Action(item, record == null ? SyncActionKind.None : SyncActionKind.DropRecord);
-            }
-
-            // Either a new remote file, or the local copy went missing without a tombstone: download it again.
-            return Action(item, hasBase ? SyncActionKind.Download : SyncActionKind.DownloadNew);
+            return PlanWithoutLocal(item);
         }
 
-        if (!hasBase)
+        if (item.Record is not { HasBase: true } record)
         {
             // A new local file (never synced).
-            return Action(item, remote == null ? SyncActionKind.UploadNew : SyncActionKind.CompareContent);
+            return Action(item, item.Remote == null ? SyncActionKind.UploadNew : SyncActionKind.CompareContent);
         }
 
-        var localChanged = record!.Dirty
+        return PlanSynced(item, record);
+    }
+
+    private static SyncAction PlanWithoutLocal(SyncPlanItem item)
+    {
+        var record = item.Record;
+        var hasBase = record?.HasBase == true;
+        if (record?.Deleted == true)
+        {
+            return PlanTombstone(item, record, hasBase);
+        }
+
+        if (item.Remote == null)
+        {
+            return Action(item, record == null ? SyncActionKind.None : SyncActionKind.DropRecord);
+        }
+
+        // Either a new remote file, or the local copy went missing without a tombstone: download it again.
+        return Action(item, hasBase ? SyncActionKind.Download : SyncActionKind.DownloadNew);
+    }
+
+    private static SyncAction PlanTombstone(SyncPlanItem item, SyncIndexRecord record, bool hasBase)
+    {
+        // Tombstone: the file was deleted locally.
+        if (item.Remote == null)
+        {
+            return Action(item, SyncActionKind.DropRecord);
+        }
+
+        return hasBase && item.Remote.ETag == record.BaseETag
+            ? Action(item, SyncActionKind.DeleteRemote)
+            : Action(item, SyncActionKind.Conflict, SyncConflictKind.DeleteEdit);
+    }
+
+    private static SyncAction PlanSynced(SyncPlanItem item, SyncIndexRecord record)
+    {
+        var remote = item.Remote;
+        var localChanged = record.Dirty
             || record.Deleted
             || (item.LocalHash != null && item.LocalHash != record.BaseHash);
 

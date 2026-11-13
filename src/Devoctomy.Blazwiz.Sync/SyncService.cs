@@ -53,10 +53,7 @@ public class SyncService(
     /// <inheritdoc/>
     public async Task<SyncResult> SyncAsync(string? profile = null, bool verify = false, IProgress<SyncPassProgress>? progress = null, CancellationToken ct = default)
     {
-        var selected = profile == null
-            ? registry.Profiles.Select(p => registry.GetSyncProfile(p.Name)).ToList()
-            : [registry.Find(profile) is not null ? registry.GetSyncProfile(profile) : throw new ArgumentException($"There is no sync profile called '{profile}'.", nameof(profile))];
-
+        var selected = SelectProfiles(profile);
         var total = new SyncResult { Profile = profile };
         UpdateStatus(s => s.State = SyncState.Syncing);
         string? current = null;
@@ -75,10 +72,7 @@ public class SyncService(
                 total.Add(result);
                 Record(item.Name, result.Failed > 0 ? SyncErrorCodes.FilesFailed : null, [result.Failed], result.ConflictsResolved);
                 current = null;
-                if (result.ChangedLocalKeys.TryGetValue(item.Name, out var keys) && keys.Count > 0)
-                {
-                    FilesChanged?.Invoke(this, new SyncFilesChangedEventArgs(item.Name, keys));
-                }
+                NotifyFilesChanged(item.Name, result);
             }
         }
         catch (SyncNetworkException ex)
@@ -126,6 +120,21 @@ public class SyncService(
         outcomes.Clear();
         status = new SyncStatus();
         StatusChanged?.Invoke(this, status.Clone());
+    }
+
+    private List<SyncProfile> SelectProfiles(string? profile)
+    {
+        return profile == null
+            ? registry.Profiles.Select(p => registry.GetSyncProfile(p.Name)).ToList()
+            : [registry.Find(profile) is not null ? registry.GetSyncProfile(profile) : throw new ArgumentException($"There is no sync profile called '{profile}'.", nameof(profile))];
+    }
+
+    private void NotifyFilesChanged(string profile, SyncResult result)
+    {
+        if (result.ChangedLocalKeys.TryGetValue(profile, out var keys) && keys.Count > 0)
+        {
+            FilesChanged?.Invoke(this, new SyncFilesChangedEventArgs(profile, keys));
+        }
     }
 
     private async Task<bool> CanSyncAsync(string profile, CancellationToken ct)

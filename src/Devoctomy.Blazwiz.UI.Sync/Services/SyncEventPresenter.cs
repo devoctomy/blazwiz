@@ -73,10 +73,7 @@ public class SyncEventPresenter(IStringLocalizer<SyncUiText> text, ITextPlurals 
             case SyncEventCodes.DownloadFailed:
             case SyncEventCodes.DeleteFailed:
             case SyncEventCodes.FileFailed:
-                var error = arguments.Count > 0
-                    ? errorText.Describe(arguments[0], [.. arguments.Skip(1)])
-                    : errorText.Describe(new InvalidOperationException());
-                return text["Sync.Log." + entry.Code, error];
+                return DescribeFailure(entry.Code, arguments);
             case SyncEventCodes.WentOffline:
                 return arguments.Count > 0 ? text["Sync.Connectivity." + arguments[0]] : text["Sync.Log.WentOffline"];
         }
@@ -110,6 +107,14 @@ public class SyncEventPresenter(IStringLocalizer<SyncUiText> text, ITextPlurals 
         Add(parts, "Sync.Log.Summary.Conflicts", Count(arguments, 3));
         Add(parts, "Sync.Log.Summary.Failed", Count(arguments, 4));
         return parts.Count == 0 ? text["Sync.Log.Summary.UpToDate"] : string.Join(text["Sync.Log.Summary.Separator"], parts);
+    }
+
+    private string DescribeFailure(string code, IReadOnlyList<string> arguments)
+    {
+        var error = arguments.Count > 0
+            ? errorText.Describe(arguments[0], [.. arguments.Skip(1)])
+            : errorText.Describe(new InvalidOperationException());
+        return text["Sync.Log." + code, error];
     }
 
     private void Add(List<string> parts, string key, int count)

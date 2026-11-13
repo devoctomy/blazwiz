@@ -124,20 +124,7 @@ public class E2eKeysDocumentService(
             throw new InvalidDataException($"Keys document version {document.Version} is not supported.");
         }
 
-        if (!string.Equals(document.Kdf.Algorithm, KdfSettings.Argon2idAlgorithm, StringComparison.Ordinal))
-        {
-            throw new InvalidDataException($"Key derivation '{document.Kdf.Algorithm}' is not supported.");
-        }
-
-        var kdf = document.Kdf;
-        if (kdf.KeyLength != keyWrapService.KeySize
-            || kdf.Iterations < 1 || kdf.Iterations > MaxIterations
-            || kdf.Parallelism < 1 || kdf.Parallelism > MaxParallelism
-            || kdf.MemoryKib < 8 * kdf.Parallelism || kdf.MemoryKib > MaxMemoryKib)
-        {
-            throw new InvalidDataException("The keys document's key derivation settings are out of range.");
-        }
-
+        ValidateKdf(document.Kdf);
         if (document.Keys.Count(k => k.Value.Status == FileKeyEntry.ActiveStatus) != 1)
         {
             throw new InvalidDataException("The keys document must have exactly one active file key.");
@@ -321,6 +308,22 @@ public class E2eKeysDocumentService(
         }
 
         return id.ToString();
+    }
+
+    private void ValidateKdf(KdfSettings kdf)
+    {
+        if (!string.Equals(kdf.Algorithm, KdfSettings.Argon2idAlgorithm, StringComparison.Ordinal))
+        {
+            throw new InvalidDataException($"Key derivation '{kdf.Algorithm}' is not supported.");
+        }
+
+        if (kdf.KeyLength != keyWrapService.KeySize
+            || kdf.Iterations < 1 || kdf.Iterations > MaxIterations
+            || kdf.Parallelism < 1 || kdf.Parallelism > MaxParallelism
+            || kdf.MemoryKib < 8 * kdf.Parallelism || kdf.MemoryKib > MaxMemoryKib)
+        {
+            throw new InvalidDataException("The keys document's key derivation settings are out of range.");
+        }
     }
 
     private FileKeyEntry CreateFileKeyEntry(WrappedKey wrapped) => new FileKeyEntry
