@@ -481,7 +481,7 @@ public class FilesViewModelTests
     public async Task GivenLoaded_WhenAnotherProfileChanges_ThenTreeNotReloaded()
     {
         // Arrange
-        var sut = await CreateLoadedSutAsync();
+        await CreateLoadedSutAsync();
 
         // Act
         mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("photos", ["a.png"]));

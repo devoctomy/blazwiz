@@ -2,8 +2,8 @@
 // offline support. See https://aka.ms/blazor-offline-considerations
 
 self.importScripts('./service-worker-assets.js');
-self.addEventListener('install', event => event.waitUntil(onInstall(event)));
-self.addEventListener('activate', event => event.waitUntil(onActivate(event)));
+self.addEventListener('install', event => event.waitUntil(onInstall()));
+self.addEventListener('activate', event => event.waitUntil(onActivate()));
 self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
 
 // A new version waits until the page asks it to take over (the app update check in Devoctomy.Blazwiz.UI, when the user presses Update).
@@ -26,7 +26,7 @@ const manifestUrlList = self.assetsManifest.assets.map(asset => new URL(asset.ur
 // How many files are fetched at once while installing.
 const installConcurrency = 6;
 
-async function onInstall(event) {
+async function onInstall() {
     console.info('Service worker: Install');
 
     // Fetch and cache all matching items from the assets manifest, telling the open pages how far it has got (the
@@ -65,7 +65,7 @@ async function onInstall(event) {
     await Promise.all(Array.from({ length: Math.min(installConcurrency, assets.length) }, cacheNext));
 }
 
-async function onActivate(event) {
+async function onActivate() {
     console.info('Service worker: Activate');
 
     // Delete unused caches

@@ -49,7 +49,7 @@ public class InMemorySyncFileStore(ISyncUserContext userContext, TimeProvider ti
             throw new ArgumentException("Folder keys end with '/'.", nameof(key));
         }
 
-        return WriteAsync(key, [], null, ct);
+        return WriteAsync(key, [], ct: ct);
     }
 
     /// <inheritdoc/>
