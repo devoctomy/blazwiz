@@ -146,6 +146,7 @@ a persona and a tool list. It also says `UPGRADING.md` doesn't exist, but it doe
 | `SonarCSharp_S3898`, `EncryptedFileFormat.cs:165` | A private struct that is never compared. |
 | `SonarCSharp_S3241`, `NotebookServiceTests.cs:216` | Several tests use the returned id (lines 48, 86, 101). |
 | `SonarCSharp_S3459`, `ModalDialog.razor.cs:13` | `element` is assigned by `@ref` in `ModalDialog.razor`. |
+| `ESLint8_security_detect-object-injection`, `filetree.js:146` | `chain[i]` is a numeric loop index into an array the function builds. Suppressed in the code with an `eslint-disable-next-line` comment giving this reason, not ignored on Codacy. |
 | `Stylelint_property-no-vendor-prefix`, `blazwiz.css:325` | Accepted use: `-webkit-background-clip` is kept for Safari, next to the unprefixed property. |
 
 `SonarCSharp_S1301` (a `switch` with fewer than 3 cases, 1 issue in `SyncStorageMigrationService.cs:94`) is turned

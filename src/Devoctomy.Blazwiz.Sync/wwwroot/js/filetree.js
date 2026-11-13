@@ -143,6 +143,7 @@ export async function removeFile(base, key) {
     }
 
     for (let i = chain.length - 1; i > 0; i--) {
+        // eslint-disable-next-line security/detect-object-injection -- chain[i] is a numeric loop index into an array built here.
         if (!(await isEmpty(chain[i]))) {
             break;
         }
