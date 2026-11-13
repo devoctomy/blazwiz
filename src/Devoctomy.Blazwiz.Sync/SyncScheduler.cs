@@ -243,25 +243,7 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
         state.Finished = finished;
         try
         {
-            do
-            {
-                state.RunAgain = false;
-                var connectivity = await connectivityService.CheckAsync(token);
-                if (!connectivity.IsOnline)
-                {
-                    // Changes keep being recorded while offline; just show how many are waiting.
-                    await syncService.RefreshPendingCountAsync();
-                    break;
-                }
-
-                await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile, token))
-                {
-                    var verify = state.VerifyPending;
-                    state.VerifyPending = false;
-                    await syncService.SyncAsync(profile, verify, ct: token);
-                }
-            }
-            while (state.RunAgain && !token.IsCancellationRequested);
+            await RunPassesAsync(profile, state, token);
         }
         catch (OperationCanceledException)
         {
@@ -277,6 +259,29 @@ public sealed class SyncScheduler : ISyncScheduler, IDisposable
             state.Finished = null;
             finished.TrySetResult();
         }
+    }
+
+    private async Task RunPassesAsync(string profile, ProfileState state, CancellationToken token)
+    {
+        do
+        {
+            state.RunAgain = false;
+            var connectivity = await connectivityService.CheckAsync(token);
+            if (!connectivity.IsOnline)
+            {
+                // Changes keep being recorded while offline; just show how many are waiting.
+                await syncService.RefreshPendingCountAsync();
+                break;
+            }
+
+            await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile, token))
+            {
+                var verify = state.VerifyPending;
+                state.VerifyPending = false;
+                await syncService.SyncAsync(profile, verify, ct: token);
+            }
+        }
+        while (state.RunAgain && !token.IsCancellationRequested);
     }
 
     private async void OnConnectivityChanged(object? sender, ConnectivityStatus status)

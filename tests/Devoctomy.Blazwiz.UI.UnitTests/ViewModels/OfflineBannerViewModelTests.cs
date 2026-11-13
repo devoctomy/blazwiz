@@ -19,6 +19,30 @@ public class OfflineBannerViewModelTests
     }
 
     [Fact]
+    public void GivenNullText_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new OfflineBannerViewModel(offlineMode, null!)).ParamName);
+    }
+
+    [Fact]
+    public void GivenOfflineMode_WhenSignInOnline_ThenBannerHiddenAndNotified()
+    {
+        // Arrange
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        using var sut = new OfflineBannerViewModel(offlineMode, testText.Ui);
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        sut.SignInOnlineCommand.Execute(null);
+
+        // Assert
+        Assert.False(sut.IsVisible);
+        Assert.Contains(nameof(OfflineBannerViewModel.IsVisible), changed);
+    }
+
+    [Fact]
     public void GivenOnline_WhenRead_ThenHidden()
     {
         // Act

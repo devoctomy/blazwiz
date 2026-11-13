@@ -439,3 +439,7 @@ secrets.json
 *.key
 
 temp/
+
+
+#Ignore vscode AI rules
+.github\instructions\codacy.instructions.md

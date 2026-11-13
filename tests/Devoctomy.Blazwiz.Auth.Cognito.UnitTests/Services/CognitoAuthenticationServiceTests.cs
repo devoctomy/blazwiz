@@ -360,6 +360,91 @@ public class CognitoAuthenticationServiceTests
     }
 
     [Fact]
+    public async Task GivenNeitherTokensNorAChallenge_WhenLoginAsync_ThenFailsWithAnEmptyChallengeName()
+    {
+        // Arrange
+        mockCognito.Setup(x => x.SignInAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new CognitoSignInResult());
+
+        // Act
+        var result = await CreateSut().LoginAsync("bob@example.com", Password);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.False(result.NewPasswordRequired);
+        Assert.Equal(AuthErrorCodes.ChallengeUnsupported, result.ErrorCode);
+        Assert.Equal([string.Empty], result.ErrorArguments);
+        mockLocalStorage.Verify(x => x.SetObjectAsync(It.IsAny<string>(), It.IsAny<UserSession>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenANewPasswordChallengeWithoutASession_WhenLoginAsync_ThenFailsAsUnsupported()
+    {
+        // Arrange
+        mockCognito.Setup(x => x.SignInAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new CognitoSignInResult { ChallengeName = "NEW_PASSWORD_REQUIRED" });
+
+        // Act
+        var result = await CreateSut().LoginAsync("bob@example.com", Password);
+
+        // Assert
+        Assert.False(result.Success);
+        Assert.False(result.NewPasswordRequired);
+        Assert.Equal(AuthErrorCodes.ChallengeUnsupported, result.ErrorCode);
+    }
+
+    [Fact]
+    public async Task GivenAlreadyOffline_WhenGoOfflineAsync_ThenNothingChangesAndCognitoNotCalled()
+    {
+        // Arrange (the strict Cognito mock would throw on any call)
+        using var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob.hoskins@example.com", OfflineEntryReason.SignInUnreachable);
+        var before = offlineSessions.Session;
+
+        // Act
+        await sut.GoOfflineAsync();
+
+        // Assert
+        Assert.Same(before, offlineSessions.Session);
+        Assert.Equal(OfflineEntryReason.SignInUnreachable, offlineMode.Reason);
+        mockLocalStorage.Verify(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAPlainUsername_WhenSignInOfflineAsync_ThenTheOfflineSessionHasNoEmail()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        var result = await sut.SignInOfflineAsync(" bob ", OfflineEntryReason.Chosen);
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.Equal("bob", result.Session!.Username);
+        Assert.Null(result.Session.Email);
+    }
+
+    [Fact]
+    public async Task GivenOfflineSession_WhenOfflineModeTurnedOffAndStorageFails_ThenTheErrorIsSwallowed()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SignInOfflineAsync("bob.hoskins@example.com", OfflineEntryReason.Chosen);
+        mockLocalStorage.Setup(x => x.RemoveItemAsync(CognitoAuthenticationService.SessionStorageKey)).ThrowsAsync(new InvalidOperationException("storage unavailable"));
+        var ended = 0;
+        sut.SessionEnded += (_, _) => ended++;
+
+        // Act
+        var exception = Record.Exception(() => offlineMode.Exit());
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Null(offlineSessions.Session);
+        Assert.Equal(0, ended);
+    }
+
+    [Fact]
     public async Task GivenTemporaryPassword_WhenLoginThenCompleteNewPassword_ThenSignsIn()
     {
         // Arrange

@@ -988,6 +988,201 @@ public class E2eProtectedProfileManagerTests
         Assert.Equal(etag, device.LocalKeys.Get(scope)!.CachedDocumentETag);
     }
 
+    [Fact]
+    public async Task GivenAnIdAlreadyInTheIndex_WhenItsKeysAreCreated_ThenTheIndexIsNotWrittenAgain()
+    {
+        // Arrange: the index has the entry (e.g. restored), but the keys document was never written.
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        index.Value = System.Text.Json.JsonSerializer.Serialize(new E2eProfileIndex { Profiles = [new E2eProfileIndexEntry { Id = scope.Id }] });
+        var before = index.Value;
+        var reported = new List<(E2eStep Step, bool Completed)>();
+
+        // Act
+        await device.Manager.CreateKeysAsync(scope, Passphrase, Settings, new Progress(p => reported.Add((p.Step, p.Completed))));
+
+        // Assert
+        Assert.Equal(0, index.SetCount);
+        Assert.Equal(before, index.Value);
+        Assert.True(userKeys.Values.ContainsKey(scope.Id));
+        Assert.True(device.Manager.IsUnlocked(scope));
+        Assert.Contains((E2eStep.SaveKeys, true), reported);
+        Assert.Contains((E2eStep.StoreDeviceKey, true), reported);
+    }
+
+    [Fact]
+    public async Task GivenThePasskeysKeyIsNotInMemory_WhenDeviceUnlockIsTurnedOn_ThenThrowsAndNothingIsSaved()
+    {
+        // Arrange: signed in with a password, so there is no key encryption key.
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        device.DerivedKeys.RemoveKey(E2eKeyNames.KeyEncryptionKey);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => device.Manager.EnableDeviceUnlockAsync(scope));
+        Assert.True(string.IsNullOrEmpty(device.LocalKeys.Get(scope)!.WrappedMasterKey.Wrapped));
+        Assert.True(device.Manager.IsUnlocked(scope));
+    }
+
+    [Fact]
+    public async Task GivenNoCopyOnThisDevice_WhenDeviceUnlockIsTurnedOn_ThenACopyIsStartedWithTheWrappedKey()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.LocalKeys.DeleteAsync(scope);
+
+        // Act
+        await device.Manager.EnableDeviceUnlockAsync(scope);
+
+        // Assert: there is no copy of the keys document, so the profile cannot yet be unlocked with the passkey.
+        var local = device.LocalKeys.Get(scope);
+        Assert.NotNull(local);
+        Assert.False(string.IsNullOrEmpty(local.WrappedMasterKey.Wrapped));
+        Assert.Null(local.CachedDocument);
+        Assert.False(await device.Manager.HasDeviceUnlockAsync(scope));
+        Assert.False(await device.Manager.CanUnlockWithDeviceAsync(scope));
+        await Assert.ThrowsAsync<E2ePassphraseRequiredException>(() => device.Manager.UnlockWithDeviceAsync(scope));
+    }
+
+    [Fact]
+    public async Task GivenNoCopyOnThisDevice_WhenDeviceUnlockIsCheckedOrTurnedOff_ThenItIsOffAndNothingIsSaved()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.LocalKeys.DeleteAsync(scope);
+
+        // Act
+        await device.Manager.DisableDeviceUnlockAsync(scope);
+        var has = await device.Manager.HasDeviceUnlockAsync(scope);
+        var can = await device.Manager.CanUnlockWithDeviceAsync(scope);
+
+        // Assert
+        Assert.False(has);
+        Assert.False(can);
+        Assert.Null(device.LocalKeys.Get(scope));
+        await Assert.ThrowsAsync<E2ePassphraseRequiredException>(() => device.Manager.UnlockWithDeviceAsync(scope));
+    }
+
+    [Fact]
+    public async Task GivenAProfileWhoseKeysAreGone_WhenThePassphraseIsChangedOrTheRotationCompleted_ThenThrowsNotFound()
+    {
+        // Arrange: deleted on another device.
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        userKeys.Values.Remove(scope.Id);
+
+        // Act & Assert
+        var changed = await Assert.ThrowsAsync<E2eProfileNotFoundException>(() => device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings));
+        var completed = await Assert.ThrowsAsync<E2eProfileNotFoundException>(() => device.Manager.CompleteRotationAsync(scope));
+        Assert.Equal(E2eErrorCodes.ProfileNotFound, changed.Code);
+        Assert.Equal(E2eErrorCodes.ProfileNotFound, completed.Code);
+        Assert.Equal(0, userKeys.SetCount);
+    }
+
+    [Fact]
+    public async Task GivenTheRotationAlreadyCompletedElsewhere_WhenCompleted_ThenNothingIsWrittenAndThisDevicesCopyIsUpdated()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+        var other = new Device(this);
+        await other.Manager.UnlockAsync(scope, "battery staple");
+        await other.Manager.CompleteRotationAsync(scope);
+        var writes = userKeys.SetCount;
+
+        // Act
+        await device.Manager.CompleteRotationAsync(scope);
+
+        // Assert
+        Assert.Equal(writes, userKeys.SetCount);
+        Assert.False(device.Manager.IsRotationInProgress(scope));
+        Assert.Equal(userKeys.Values[scope.Id], device.LocalKeys.Get(scope)!.CachedDocument);
+        Assert.Equal(FakeUserKeysStore.ETagOf(userKeys.Values[scope.Id]), device.LocalKeys.Get(scope)!.CachedDocumentETag);
+    }
+
+    [Fact]
+    public async Task GivenTheKeysDocumentChangedElsewhereOnce_WhenTheRotationIsCompleted_ThenItIsCompletedOnTheNewVersion()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+        userKeys.BeforeWrite = s =>
+        {
+            userKeys.BeforeWrite = null;
+            userKeys.Values[s.Id] += " ";
+        };
+
+        // Act
+        await device.Manager.CompleteRotationAsync(scope);
+
+        // Assert
+        Assert.Equal(1, userKeys.ConflictCount);
+        Assert.False(documents.Parse(userKeys.Values[scope.Id]).RotationInProgress);
+        Assert.False(device.Manager.IsRotationInProgress(scope));
+        Assert.Equal(userKeys.Values[scope.Id], device.LocalKeys.Get(scope)!.CachedDocument);
+    }
+
+    [Fact]
+    public async Task GivenTheKeysDocumentKeepsChangingElsewhere_WhenTheRotationIsCompleted_ThenThrowsDocumentChangedAfterTheLastAttempt()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+        var conflicts = userKeys.ConflictCount;
+        userKeys.BeforeWrite = s => userKeys.Values[s.Id] += " ";
+
+        // Act & Assert
+        await Assert.ThrowsAsync<E2eDocumentChangedException>(() => device.Manager.CompleteRotationAsync(scope));
+        Assert.Equal(E2eProtectedProfileManager.MaxWriteAttempts, userKeys.ConflictCount - conflicts);
+        Assert.True(device.Manager.IsRotationInProgress(scope));
+        Assert.True(documents.Parse(userKeys.Values[scope.Id]).RotationInProgress);
+    }
+
+    [Fact]
+    public async Task GivenTheActiveKeyIsNotInTheKeysDocument_WhenTheRotationIsCompleted_ThenNothingIsWritten()
+    {
+        // Arrange: the stored document holds none of this device's keys (replaced elsewhere).
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var another = await device.Manager.CreateAsync(Passphrase, Settings);
+        await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
+        userKeys.Values[scope.Id] = userKeys.Values[another.Id];
+        var before = userKeys.Values[scope.Id];
+        var writes = userKeys.SetCount;
+
+        // Act
+        await device.Manager.CompleteRotationAsync(scope);
+
+        // Assert
+        Assert.Equal(writes, userKeys.SetCount);
+        Assert.Equal(before, userKeys.Values[scope.Id]);
+        Assert.True(device.Manager.IsRotationInProgress(scope));
+    }
+
+    [Fact]
+    public async Task GivenAProfileAlreadyInTheIndex_WhenRestored_ThenTheIndexIsNotWritten()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        var writes = index.SetCount;
+
+        // Act
+        var restored = await device.Manager.TryRestoreToIndexAsync(scope);
+
+        // Assert
+        Assert.True(restored);
+        Assert.Equal(writes, index.SetCount);
+        Assert.Equal(scope.Id, Assert.Single(await device.Manager.GetProfilesAsync()).Id);
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("""{"version":2,"profiles":[]}""")]
+    public async Task GivenAnEmptyOrUnsupportedIndex_WhenListed_ThenThrowsInvalidData(string json)
+    {
+        // Arrange
+        index.Value = json;
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidDataException>(() => device.Manager.GetProfilesAsync());
+    }
+
     /// <summary>
     /// Reports progress straight away, on the caller's thread.
     /// </summary>

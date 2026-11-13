@@ -250,14 +250,7 @@ public class SyncKeyRotationService(
             uploadedTotal = uploadBase + pending.Count;
             progress?.Report(new E2eProgress(E2eStep.ReencryptFiles, false, encrypted, encryptedTotal));
             progress?.Report(new E2eProgress(E2eStep.UploadFiles, false, uploaded, uploadedTotal));
-            foreach (var key in pending)
-            {
-                await ReencryptFileAsync(store, key, ct);
-                encrypted++;
-                progress?.Report(new E2eProgress(E2eStep.ReencryptFiles, false, encrypted, encryptedTotal));
-            }
-
-            progress?.Report(new E2eProgress(E2eStep.ReencryptFiles, true, encrypted, encryptedTotal));
+            encrypted = await ReencryptFilesAsync(store, pending, encrypted, encryptedTotal, progress, ct);
             var passProgress = progress == null ? null : new PassProgress(p =>
             {
                 uploaded = uploadBase + p.Done;
@@ -271,6 +264,19 @@ public class SyncKeyRotationService(
         progress?.Report(new E2eProgress(E2eStep.ReencryptFiles, true, encrypted, encryptedTotal));
         progress?.Report(new E2eProgress(E2eStep.UploadFiles, true, uploaded, uploadedTotal));
         ready.Add(scope);
+    }
+
+    private async Task<int> ReencryptFilesAsync(ISyncFileStore store, IReadOnlyList<string> pending, int encrypted, int encryptedTotal, IProgress<E2eProgress>? progress, CancellationToken ct)
+    {
+        foreach (var key in pending)
+        {
+            await ReencryptFileAsync(store, key, ct);
+            encrypted++;
+            progress?.Report(new E2eProgress(E2eStep.ReencryptFiles, false, encrypted, encryptedTotal));
+        }
+
+        progress?.Report(new E2eProgress(E2eStep.ReencryptFiles, true, encrypted, encryptedTotal));
+        return encrypted;
     }
 
     private async Task<IReadOnlyList<string>> FindFilesUnderEarlierKeysAsync(ISyncFileStore store, ISyncFileStore untracked, string activeKeyId, CancellationToken ct)

@@ -444,6 +444,7 @@ public class NoteEditorViewModelTests
         // Act & Assert
         Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!, mockManager.Object, testText.Errors)).ParamName);
         Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, null!, testText.Errors)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -573,47 +574,293 @@ public class NoteEditorViewModelTests
     {
         mockSync.Raise(x => x.FilesChanged += null, mockSync.Object, new SyncFilesChangedEventArgs("notes", [key]));
     }
-
-    [Fact]
-    public async Task GivenANoteThatCouldNotBeReadWhileLocked_WhenNotesUnlock_ThenItIsLoaded()
-    {
-        // Arrange
-        mockNotes.SetupSequence(x => x.GetNoteAsync("n1"))
-            .ThrowsAsync(new E2eLockedException())
-            .ReturnsAsync(new NoteDocument { Entry = note, Content = "saved", FolderPath = ["Work"] });
-        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
-        var sut = await CreateLoadedSutAsync();
-
-        // Act
-        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (sut.Note == null && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(5);
-        }
-
-        // Assert
-        Assert.Equal(note, sut.Note);
-        Assert.Equal("saved", sut.Content);
-    }
-
-    [Fact]
-    public async Task GivenALoadedNote_WhenNotesLockAndUnlock_ThenUnsavedEditsAreKept()
-    {
-        // Arrange
-        var sut = await CreateLoadedSutAsync();
-        sut.Content = "unsaved";
-        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
-
-        // Act
-        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
-
-        // Assert
-        Assert.True(sut.IsUnlocked);
-        Assert.Equal("unsaved", sut.Content);
-        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
-    }
-
+
+    [Fact]
+    public async Task GivenANoteThatCouldNotBeReadWhileLocked_WhenNotesUnlock_ThenItIsLoaded()
+    {
+        // Arrange
+        mockNotes.SetupSequence(x => x.GetNoteAsync("n1"))
+            .ThrowsAsync(new E2eLockedException())
+            .ReturnsAsync(new NoteDocument { Entry = note, Content = "saved", FolderPath = ["Work"] });
+        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (sut.Note == null && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(5);
+        }
+
+        // Assert
+        Assert.Equal(note, sut.Note);
+        Assert.Equal("saved", sut.Content);
+    }
+
+    [Fact]
+    public async Task GivenALoadedNote_WhenNotesLockAndUnlock_ThenUnsavedEditsAreKept()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "unsaved";
+        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+
+        // Assert
+        Assert.True(sut.IsUnlocked);
+        Assert.Equal("unsaved", sut.Content);
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
+    }
+
+    [Fact]
+    public void GivenNothingLoaded_WhenGettingTheNotebookState_ThenLockedAndTheFilesPageIsTheDefaultNotebooks()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        Assert.False(sut.IsUnlocked);
+        Assert.Equal(NoteEditorViewModel.FilesUrl, sut.FilesPageUrl);
+    }
+
+    [Fact]
+    public async Task GivenALoadedNote_WhenContentIsSetToNull_ThenItIsEmptyAndDirty()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        sut.Content = null!;
+
+        // Assert
+        Assert.Equal(string.Empty, sut.Content);
+        Assert.Equal("<p></p>", sut.PreviewHtml);
+        Assert.True(sut.IsDirty);
+    }
+
+    [Fact]
+    public void GivenNoNoteLoaded_WhenNotesUnlockOrProfilesChange_ThenNothingIsLoaded()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+
+        // Assert
+        Assert.Null(sut.Note);
+        mockNotebooks.Verify(x => x.FindAsync(It.IsAny<string?>()), Times.Never);
+        mockNotes.Verify(x => x.GetNoteAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenANoteThatCouldNotBeReadWhileLocked_WhenAnotherNotebookUnlocks_ThenItIsNotLoaded()
+    {
+        // Arrange
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ThrowsAsync(new E2eLockedException());
+        mockManager.Setup(x => x.IsUnlocked(It.IsAny<E2eKeyScope>())).Returns(true);
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, new E2eKeyScope(Guid.NewGuid().ToString("D")));
+
+        // Assert
+        Assert.Null(sut.Note);
+        Assert.Equal("End to end encryption is locked on this device.", sut.ErrorMessage);
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenANoteThatCouldNotBeReadWhileLocked_WhenUnlockedButReadingFailsUnexpectedly_ThenThePageDoesNotCrash()
+    {
+        // Arrange
+        mockNotes.SetupSequence(x => x.GetNoteAsync("n1"))
+            .ThrowsAsync(new E2eLockedException())
+            .ThrowsAsync(new InvalidOperationException("unexpected"));
+        mockManager.Setup(x => x.IsUnlocked(notesScope)).Returns(true);
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, notesScope);
+        await WaitForAsync(() => mockNotes.Invocations.Count(i => i.Method.Name == nameof(INoteService.GetNoteAsync)) >= 2);
+
+        // Assert
+        Assert.Null(sut.Note);
+        Assert.False(sut.IsLoading);
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenALoadedNote_WhenProfilesChange_ThenItIsNotLoadedAgain()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "unsaved";
+
+        // Act
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+
+        // Assert
+        Assert.Equal("unsaved", sut.Content);
+        mockNotebooks.Verify(x => x.FindAsync(It.IsAny<string?>()), Times.Once);
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTheNotebooksNotLoadedYet_WhenTheyLoadButFindingFails_ThenThePageDoesNotCrash()
+    {
+        // Arrange
+        mockNotebooks.SetupSequence(x => x.FindAsync(null))
+            .ReturnsAsync((Notebook?)null)
+            .ThrowsAsync(new InvalidOperationException("unexpected"));
+        var sut = CreateSut();
+        await sut.LoadAsync(null, "n1");
+
+        // Act
+        mockProfiles.Raise(x => x.ProfilesChanged += null, mockProfiles.Object, EventArgs.Empty);
+        await WaitForAsync(() => mockNotebooks.Invocations.Count >= 2);
+
+        // Assert
+        Assert.Null(sut.Note);
+        Assert.False(sut.IsLoading);
+        mockNotebooks.Verify(x => x.FindAsync(null), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenAMissingNote_WhenSyncChangesThatKey_ThenNothingIsRead()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.LoadAsync(null, "missing");
+
+        // Act
+        RaiseFilesChanged("missing");
+
+        // Assert
+        Assert.True(sut.IsNotFound);
+        Assert.False(sut.IsRemoteChangeDialogOpen);
+        mockNotes.Verify(x => x.GetNoteAsync("missing"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenUnsavedEdits_WhenSyncChangesTheNoteButItCannotBeRead_ThenTheEditsAreKeptWithoutAsking()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "my edit";
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ThrowsAsync(new E2eLockedException());
+
+        // Act
+        RaiseFilesChanged("n1");
+        await WaitForAsync(() => mockNotes.Invocations.Count(i => i.Method.Name == nameof(INoteService.GetNoteAsync)) >= 2);
+
+        // Assert
+        Assert.Equal("my edit", sut.Content);
+        Assert.True(sut.IsDirty);
+        Assert.Same(note, sut.Note);
+        Assert.False(sut.IsRemoteChangeDialogOpen);
+        Assert.Null(sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GivenNoNoteLoaded_WhenTakeTheirs_ThenNothingIsReadOrNavigated()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        await sut.TakeTheirsCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(sut.IsRemoteChangeDialogOpen);
+        mockNotes.Verify(x => x.GetNoteAsync(It.IsAny<string>()), Times.Never);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Theory]
+    [MemberData(nameof(ReloadFailures))]
+    public async Task GivenUnsavedEdits_WhenTakeTheirsFails_ThenTheErrorIsShownAndTheEditsKept(Exception exception, string expected)
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "my edit";
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ThrowsAsync(exception);
+
+        // Act
+        await sut.TakeTheirsCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(expected, sut.ErrorMessage);
+        Assert.Equal("my edit", sut.Content);
+        Assert.True(sut.IsDirty);
+    }
+
+    public static TheoryData<Exception, string> ReloadFailures() => new()
+    {
+        { new NotesException("That note or folder no longer exists."), "That note or folder no longer exists." },
+        { new E2eLockedException(), "End to end encryption is locked on this device." },
+        { new SyncStorageMigrationException(SyncErrorCodes.StorageMigrating), "Your files are being moved to another storage. Try again in a moment." },
+        { new JSException("broken"), FilesViewModel.StorageErrorMessage },
+    };
+
+    [Fact]
+    public async Task GivenNoHeldNavigation_WhenDiscardAndLeave_ThenReturnsToTheFilesPage()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "changed";
+
+        // Act
+        sut.DiscardAndLeaveCommand.Execute(null);
+
+        // Assert
+        mockNavigation.Verify(x => x.NavigateTo(NoteEditorViewModel.FilesUrl), Times.Once);
+        Assert.False(sut.IsLeaveDialogOpen);
+        Assert.True(sut.CanLeave("/anywhere"));
+    }
+
+    [Fact]
+    public async Task GivenNoNoteLoaded_WhenSaved_ThenNothingIsWritten()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        await sut.SaveCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(sut.IsSaving);
+        Assert.Null(sut.ErrorMessage);
+        mockNotes.Verify(x => x.SaveNoteAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenASaveInProgress_WhenSavedAgain_ThenOnlyOneSaveIsMade()
+    {
+        // Arrange
+        var saved = new TaskCompletionSource<NoteEntry>();
+        mockNotes.Setup(x => x.SaveNoteAsync("n1", It.IsAny<string>())).Returns(saved.Task);
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "changed";
+        var saving = sut.SaveAsync();
+
+        // Act
+        await sut.SaveAsync();
+        var savingWhileSecondSave = sut.IsSaving;
+        saved.SetResult(note);
+        await saving;
+
+        // Assert
+        Assert.True(savingWhileSecondSave);
+        Assert.False(sut.IsSaving);
+        Assert.False(sut.IsDirty);
+        mockNotes.Verify(x => x.SaveNoteAsync("n1", "changed"), Times.Once);
+    }
+
     private NoteEditorViewModel CreateSut() => new(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors);
 
     private async Task<NoteEditorViewModel> CreateLoadedSutAsync()

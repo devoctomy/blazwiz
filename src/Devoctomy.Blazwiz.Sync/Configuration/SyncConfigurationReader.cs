@@ -81,11 +81,11 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
         }
     }
 
-    private static void Apply(IConfiguration section, Action apply)
+    private static void Apply(IConfiguration section, Action setting)
     {
         try
         {
-            apply();
+            setting();
         }
         catch (ArgumentException ex)
         {
@@ -105,7 +105,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
             ?? throw new InvalidOperationException($"The sync setting '{PathOf(section, key)}' is required.");
     }
 
-    private static T? Parse<T>(IConfiguration section, string key, Func<string, T> parse, string expected)
+    private static T? Parse<T>(IConfiguration section, string key, Func<string, T> parser, string expected)
         where T : struct
     {
         var value = ReadString(section, key);
@@ -116,7 +116,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
 
         try
         {
-            return parse(value);
+            return parser(value);
         }
         catch (Exception ex) when (ex is FormatException or OverflowException or ArgumentException)
         {
@@ -186,6 +186,19 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
         }
     }
 
+    private static void CheckStorageChoice(IConfigurationSection section, bool hasFileStore, int storageCount, bool hasDefaultStorage)
+    {
+        if (hasFileStore && storageCount > 0)
+        {
+            throw new InvalidOperationException($"Sync profile '{PathOf(section)}' has both {FileStoreKey} and {StoragesKey}; use one.");
+        }
+
+        if (hasDefaultStorage && storageCount == 0)
+        {
+            throw new InvalidOperationException($"Sync profile '{PathOf(section)}' has a {DefaultStorageKey} but no {StoragesKey}.");
+        }
+    }
+
     private void ReadConnectivityTimings(IConfigurationSection section)
     {
         CheckKeys(section, ConnectivityTimingsKeys);
@@ -249,16 +262,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
         var defaultStorage = ReadString(section, DefaultStorageKey) is { } value
             ? ParseStorageKind(section, DefaultStorageKey, value)
             : (SyncStorageKind?)null;
-        if (hasFileStore && storages.Count > 0)
-        {
-            throw new InvalidOperationException($"Sync profile '{PathOf(section)}' has both {FileStoreKey} and {StoragesKey}; use one.");
-        }
-
-        if (defaultStorage != null && storages.Count == 0)
-        {
-            throw new InvalidOperationException($"Sync profile '{PathOf(section)}' has a {DefaultStorageKey} but no {StoragesKey}.");
-        }
-
+        CheckStorageChoice(section, hasFileStore, storages.Count, defaultStorage != null);
         Apply(section, () => builder.AddProfile(section.Key, profile =>
         {
             if (hasIndexStore)

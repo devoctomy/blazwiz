@@ -24,6 +24,17 @@ public class ErrorTextTests
     }
 
     [Fact]
+    public void GivenResourceType_WhenCreatingErrorTextSource_ThenKept()
+    {
+        // Act
+        var sut = new ErrorTextSource(typeof(UiText));
+
+        // Assert
+        Assert.Equal(typeof(UiText), sut.ResourceType);
+        Assert.Equal("resourceType", Assert.Throws<ArgumentNullException>(() => new ErrorTextSource(null!)).ParamName);
+    }
+
+    [Fact]
     public void GivenFrameworkCode_WhenDescribe_ThenFoundInTheUiText()
     {
         // Act & Assert

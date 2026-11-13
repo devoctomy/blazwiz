@@ -73,6 +73,47 @@ public class EncryptedFileFormatTests
         Assert.Throws<InvalidDataException>(() => sut.Decrypt(plaintext, key, new E2eFileBinding(Scope, Path)));
     }
 
+    [Theory]
+    [InlineData("4532454501")] // Magic and version only: no key id length.
+    [InlineData("453245450100")] // A zero length key id.
+    [InlineData("45324545010561")] // A key id longer than the content.
+    [InlineData("4532454501016B")] // A key id but no scope id.
+    [InlineData("4532454501016B00")] // A key id and a zero length scope id.
+    [InlineData("4532454501016BFF")] // A scope id longer than the content.
+    [InlineData("4532454501FF")] // A key id length with nothing after it.
+    [InlineData("45324545010180")] // A key id that is not valid UTF-8.
+    [InlineData("4532454501016B0180")] // A scope id that is not valid UTF-8.
+    public void GivenAMalformedHeader_WhenRead_ThenNoKeyIdAndDecryptThrowsInvalidData(string hex)
+    {
+        // Arrange
+        var content = Convert.FromHexString(hex);
+
+        // Act
+        var found = sut.TryGetKeyId(content, out var keyId);
+
+        // Assert
+        Assert.False(found);
+        Assert.Null(keyId);
+        Assert.Throws<InvalidDataException>(() => sut.Decrypt(content, key, new E2eFileBinding(Scope, Path)));
+    }
+
+    [Fact]
+    public void GivenAFileCutShortBeforeItsNonceAndTag_WhenRead_ThenNoKeyIdAndDecryptThrowsInvalidData()
+    {
+        // Arrange: the header's strings are whole, but there is not room for the nonce and tag after them.
+        var encrypted = sut.Encrypt(plaintext, KeyId, key, new E2eFileBinding(Scope, Path));
+        var headerStrings = 4 + 1 + 1 + Encoding.UTF8.GetByteCount(KeyId) + 1 + Encoding.UTF8.GetByteCount(Scope);
+        var truncated = encrypted.AsSpan(0, headerStrings + 4).ToArray();
+
+        // Act
+        var found = sut.TryGetKeyId(truncated, out var keyId);
+
+        // Assert
+        Assert.False(found);
+        Assert.Null(keyId);
+        Assert.Throws<InvalidDataException>(() => sut.Decrypt(truncated, key, new E2eFileBinding(Scope, Path)));
+    }
+
     [Fact]
     public void GivenNullCipher_WhenConstructing_ThenThrowsArgumentNullException()
     {

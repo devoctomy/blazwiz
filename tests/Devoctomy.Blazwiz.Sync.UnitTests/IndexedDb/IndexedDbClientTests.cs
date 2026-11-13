@@ -123,6 +123,50 @@ public class IndexedDbClientTests
         mockModule.Verify(x => x.DisposeAsync(), Times.Once);
     }
 
+    [Fact]
+    public async Task GivenNoOmitFields_WhenGetAllByIndexAsync_ThenAnEmptyListIsPassed()
+    {
+        // Arrange
+        mockModule.Setup(x => x.InvokeAsync<List<string>>("getAllByIndex", It.Is<object?[]>(a => (string?)a[1] == "owner" && ((IReadOnlyList<string>)a[3]!).Count == 0)))
+            .ReturnsAsync(["x"]);
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
+
+        // Act
+        var result = await sut.GetAllByIndexAsync<string>(Store, "owner", "bob");
+
+        // Assert
+        Assert.Equal(["x"], result);
+    }
+
+    [Fact]
+    public async Task GivenThePageIsGoingAway_WhenDisposeAsync_ThenNothingIsThrown()
+    {
+        // Arrange
+        mockModule.Setup(x => x.DisposeAsync()).Returns(ValueTask.FromException(new JSDisconnectedException("gone")));
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
+        await sut.PutAsync(Store, "a");
+
+        // Act
+        var ex = await Record.ExceptionAsync(() => sut.DisposeAsync().AsTask());
+
+        // Assert
+        Assert.Null(ex);
+        mockModule.Verify(x => x.DisposeAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNeverUsed_WhenDisposeAsync_ThenTheModuleIsNeverImported()
+    {
+        // Arrange
+        var sut = new IndexedDbClient(mockJs.Object, mockKeys.Object);
+
+        // Act
+        await sut.DisposeAsync();
+
+        // Assert
+        mockJs.Verify(x => x.InvokeAsync<IJSObjectReference>(It.IsAny<string>(), It.IsAny<object?[]>()), Times.Never);
+    }
+
     private void VerifyVoid(string identifier, Func<object?[], bool> args)
     {
         mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>(identifier, It.Is<object?[]>(a => args(a))), Times.Once);

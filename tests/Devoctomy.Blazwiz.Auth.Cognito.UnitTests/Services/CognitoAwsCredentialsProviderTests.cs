@@ -84,6 +84,46 @@ public sealed class CognitoAwsCredentialsProviderTests : IDisposable
         mockIdentity.VerifyNoOtherCalls();
     }
 
+    [Theory]
+    [InlineData("", "eu-west-2_Pool")]
+    [InlineData(" ", "eu-west-2_Pool")]
+    [InlineData("eu-west-2", "")]
+    [InlineData("eu-west-2", " ")]
+    public async Task GivenNoRegionOrUserPool_WhenGetCredentialsAsync_ThenNotConfiguredAndNull(string region, string userPoolId)
+    {
+        // Arrange
+        cognitoConfig.Region = region;
+        cognitoConfig.UserPoolId = userPoolId;
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.GetCredentialsAsync();
+
+        // Assert
+        Assert.False(sut.IsConfigured);
+        Assert.Null(result);
+        mockIdentity.VerifyNoOtherCalls();
+        mockAuth.Verify(x => x.GetCurrentUserAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenASessionWithoutAnIdToken_WhenGetCredentialsAsync_ThenNullAndHeldCredentialsForgotten()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var first = await sut.GetCredentialsAsync();
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = "bob", IsOffline = true });
+        Assert.Null(await sut.GetCredentialsAsync());
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = "bob", IdToken = "token" });
+
+        // Act
+        var second = await sut.GetCredentialsAsync();
+
+        // Assert
+        Assert.NotSame(first, second);
+        mockIdentity.Verify(x => x.GetCredentialsAsync("token", It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
     [Fact]
     public async Task GivenSignedOut_WhenGetCredentialsAsync_ThenNull()
     {

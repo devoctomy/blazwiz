@@ -145,5 +145,44 @@ public class ProfileViewModelTests
         mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GivenSignOutEverywhereInProgress_WhenSignOutEverywhereAgain_ThenSecondIgnored()
+    {
+        // Arrange
+        var pending = new TaskCompletionSource<bool>();
+        mockAuth.Setup(x => x.SignOutEverywhereAsync(SignOutReason.UserRequested)).Returns(pending.Task);
+        var sut = CreateSut();
+
+        // Act
+        var first = sut.SignOutEverywhereAsync();
+        var busyDuringFirst = sut.IsSigningOutEverywhere;
+        await sut.SignOutEverywhereAsync();
+        pending.SetResult(true);
+        await first;
+
+        // Assert
+        Assert.True(busyDuringFirst);
+        Assert.False(sut.IsSigningOutEverywhere);
+        mockAuth.Verify(x => x.SignOutEverywhereAsync(It.IsAny<SignOutReason>()), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo("/login"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenPreviousFailure_WhenAskedAgain_ThenErrorCleared()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.SignOutEverywhereAsync(SignOutReason.UserRequested)).ReturnsAsync(false);
+        var sut = CreateSut();
+        await sut.SignOutEverywhereAsync();
+        Assert.NotNull(sut.SignOutEverywhereError);
+
+        // Act
+        sut.AskSignOutEverywhereCommand.Execute(null);
+
+        // Assert
+        Assert.Null(sut.SignOutEverywhereError);
+        Assert.True(sut.IsConfirmingSignOutEverywhere);
+    }
+
     private ProfileViewModel CreateSut() => new(mockAuth.Object, mockUserDisplay.Object, mockNotifier.Object, mockLifecycle.Object, mockNavigation.Object, testText.Ui);
 }

@@ -83,6 +83,29 @@ public class LanguageSettingsViewModelTests
         mockCultures.Verify(x => x.ChangeCultureAsync(It.IsAny<string>()), Times.Never);
     }
 
+    [Fact]
+    public void GivenCultureWithoutNativeName_WhenConstructed_ThenEmptyDisplayName()
+    {
+        // Arrange
+        mockCultures.SetupGet(x => x.SupportedCultures).Returns(new List<CultureInfo> { new UnnamedCulture() });
+
+        // Act
+        var sut = new LanguageSettingsViewModel(mockCultures.Object);
+
+        // Assert
+        Assert.Equal(string.Empty, Assert.Single(sut.Options).DisplayName);
+    }
+
     private void Supported(params string[] cultures) =>
         mockCultures.SetupGet(x => x.SupportedCultures).Returns(cultures.Select(CultureInfo.GetCultureInfo).ToList());
+
+    private sealed class UnnamedCulture : CultureInfo
+    {
+        public UnnamedCulture()
+            : base("en-GB")
+        {
+        }
+
+        public override string NativeName => string.Empty;
+    }
 }

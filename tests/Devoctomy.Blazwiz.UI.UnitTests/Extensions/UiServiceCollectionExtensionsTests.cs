@@ -2,16 +2,19 @@ using Devoctomy.Blazwiz.UI.Components;
 using Devoctomy.Blazwiz.TestSupport;
 using Devoctomy.Blazwiz.Auth.Services;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
+using Devoctomy.Blazwiz.Core.Text;
 using Devoctomy.Blazwiz.UI.Extensions;
 using Devoctomy.Blazwiz.UI.Models;
 using Devoctomy.Blazwiz.UI.Services;
 using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Shell;
 using Devoctomy.Blazwiz.UI.Shell.Interfaces;
+using Devoctomy.Blazwiz.UI.Text;
 using Devoctomy.Blazwiz.UI.ViewModels;
 using Devoctomy.Blazwiz.UI.Views;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 
 namespace Devoctomy.Blazwiz.UI.UnitTests.Extensions;
 
@@ -104,6 +107,31 @@ public class UiServiceCollectionExtensionsTests
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
         Assert.Equal(["en-GB", "fr-FR"], scope.ServiceProvider.GetRequiredService<ICultureService>().SupportedCultures.Select(c => c.Name));
+    }
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("false", false)]
+    [InlineData(null, false)]
+    public void GivenPseudoLocalizationSetting_WhenAddBlazwizUi_ThenTextIsMarkedOnlyWhenOn(string? setting, bool expected)
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [UiServiceCollectionExtensions.PseudoLocalizationSetting] = setting,
+            })
+            .Build();
+        var services = TestServices.Create();
+
+        // Act
+        services.AddBlazwizUi(configuration);
+
+        // Assert
+        using var provider = services.BuildServiceProvider();
+        Assert.Equal(expected, provider.GetRequiredService<TextOptions>().PseudoLocalization);
+        var label = provider.GetRequiredService<IStringLocalizer<UiText>>()["Offline.Switch.Label"].Value;
+        Assert.Equal(expected, label.StartsWith("[!! ", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -485,6 +485,156 @@ public class SyncSchedulerTests
         Assert.Throws<ArgumentException>(() => sut.RequestSync(" "));
     }
 
+    [Fact]
+    public async Task GivenNoProfiles_AndConnectivityCheckCancelled_WhenStartAsync_ThenStillStarted()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+        using var sut = CreateSut();
+
+        // Act
+        await sut.StartAsync();
+
+        // Assert
+        Assert.True(sut.IsStarted);
+        mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNoProfiles_AndStoppedWhileStarting_WhenStartFinishes_ThenConnectivityIsNotChecked()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        var browserStarted = new TaskCompletionSource();
+        mockBrowser.Setup(x => x.StartAsync()).Returns(browserStarted.Task);
+        using var sut = CreateSut();
+        var starting = sut.StartAsync();
+
+        // Act
+        await sut.StopAsync();
+        browserStarted.SetResult();
+        await starting;
+
+        // Assert
+        Assert.False(sut.IsStarted);
+        mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenProfiles_AndStoppedWhileStarting_WhenStartFinishes_ThenNothingSyncs()
+    {
+        // Arrange
+        var browserStarted = new TaskCompletionSource();
+        mockBrowser.Setup(x => x.StartAsync()).Returns(browserStarted.Task);
+        using var sut = CreateSut();
+        var starting = sut.StartAsync();
+
+        // Act
+        await sut.StopAsync();
+        browserStarted.SetResult();
+        await starting;
+
+        // Assert
+        Assert.Empty(calls);
+        mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Never);
+        mockSync.Verify(x => x.RefreshPendingCountAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPassCancelled_WhenRunning_ThenLockReleasedAndOtherProfilesStillSync()
+    {
+        // Arrange
+        mockSync.Setup(x => x.SyncAsync("notes", It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ThrowsAsync(new OperationCanceledException());
+        using var sut = CreateSut();
+
+        // Act
+        await sut.StartAsync();
+        calls.Clear();
+        await sut.SyncProfileAsync("notes");
+
+        // Assert
+        Assert.Equal(["lock sync-notes", "release"], calls);
+        Assert.True(sut.IsStarted);
+    }
+
+    [Fact]
+    public async Task GivenConnectivityCheckFails_WhenPassDue_ThenNothingSyncsAndTheNextTriggerTriesAgain()
+    {
+        // Arrange
+        mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ThrowsAsync(new InvalidOperationException("probe failed"));
+        using var sut = CreateSut();
+        await sut.StartAsync();
+
+        // Act
+        mockConnectivity.Setup(x => x.CheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => connectivity);
+        await sut.SyncProfileAsync("notes");
+
+        // Assert
+        Assert.Equal(["lock sync-notes", "sync notes verify=True", "release"], calls);
+    }
+
+    [Fact]
+    public async Task GivenStarted_WhenAnExistingProfileIsAddedAgain_ThenNoExtraPassRuns()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        calls.Clear();
+
+        // Act
+        registry.Add(new SyncProfileOptions { Name = "notes", RemotePattern = "notes/**/*" });
+        await Task.Delay(20);
+
+        // Assert
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public async Task GivenAPendingChange_WhenItsProfileIsRemoved_ThenTheDebouncedPassNeverRuns()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        registry.Add(new SyncProfileOptions { Name = "files", RemotePattern = "files/**/*" });
+        await WaitForAsync(() => calls.Contains("sync files verify=True"));
+        await WaitForAsync(() => calls.Count(c => c == "release") == 3);
+        calls.Clear();
+        sut.RequestSync("files");
+
+        // Act
+        registry.Remove("files");
+        time.Advance(options.ChangeDebounce);
+        await Task.Delay(20);
+
+        // Assert
+        Assert.Empty(calls);
+    }
+
+    [Fact]
+    public async Task GivenWentOfflineAndBackOnlineWhileOfflinePassesAreSkipped_WhenBackOnline_ThenPendingChangesSyncOnce()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.StartAsync();
+        connectivity = new ConnectivityStatus { IsOnline = false, Reason = OfflineReason.NoNetwork };
+        mockConnectivity.Raise(x => x.StatusChanged += null, mockConnectivity.Object, connectivity);
+        sut.RequestSync("notes");
+        time.Advance(options.ChangeDebounce);
+        await WaitForAsync(() => mockSync.Invocations.Any(i => i.Method.Name == nameof(ISyncService.RefreshPendingCountAsync)));
+        calls.Clear();
+
+        // Act
+        connectivity = new ConnectivityStatus { IsOnline = true };
+        mockConnectivity.Raise(x => x.StatusChanged += null, mockConnectivity.Object, connectivity);
+        await WaitForAsync(() => calls.Contains("sync photos verify=False"));
+
+        // Assert
+        Assert.Equal(
+            ["lock sync-notes", "sync notes verify=False", "release", "lock sync-photos", "sync photos verify=False", "release"],
+            calls);
+    }
+
     private static async Task WaitForAsync(Func<bool> condition)
     {
         var deadline = DateTime.UtcNow.AddSeconds(5);

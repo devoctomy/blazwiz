@@ -406,6 +406,49 @@ public class SyncStorageMigrationServiceTests
         Assert.Empty(calls);
     }
 
+    [Fact]
+    public async Task GivenTheCopyCannotBeReadBack_WhenMigrate_ThenUndoneAndSourceKeptInUse()
+    {
+        // Arrange
+        await indexedDb.WriteAsync("notes/a.md", [1, 2]);
+        var losing = new Mock<ISyncFileStore>();
+        losing.Setup(x => x.ListAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        losing.Setup(x => x.ReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((SyncFile?)null);
+        opfs = losing.Object;
+
+        // Act
+        var ex = await Assert.ThrowsAsync<SyncStorageMigrationException>(() => CreateSut().MigrateAsync(SyncStorageKind.Opfs));
+
+        // Assert
+        Assert.Equal(SyncErrorCodes.StorageCopyMismatch, ex.Code);
+        Assert.Equal(["notes/a.md"], ex.Arguments);
+        losing.Verify(x => x.WriteAsync("notes/a.md", It.IsAny<byte[]>(), It.IsAny<DateTimeOffset?>(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Single(await indexedDb.ListAsync());
+        Assert.Equal(SyncStorageKind.IndexedDb, stateStore.Saved.Last().Kind);
+        Assert.Null(stateStore.DeviceDefault);
+    }
+
+    [Fact]
+    public async Task GivenAnotherTabMovedTheProfileWhileWaitingForTheLock_WhenMigrate_ThenNothingIsCopiedAndTheDeviceStorageIsChosen()
+    {
+        // Arrange
+        await indexedDb.WriteAsync("notes/a.md", [1]);
+        mockLock.Setup(x => x.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback(() => stateStore.Set(new SyncStorageState { Profile = "notes", Owner = Owner, Kind = SyncStorageKind.Opfs }))
+            .ReturnsAsync(Mock.Of<IAsyncDisposable>());
+
+        // Act
+        await CreateSut().MigrateAsync(SyncStorageKind.Opfs);
+
+        // Assert
+        Assert.Single(await indexedDb.ListAsync());
+        Assert.Empty(await opfs.ListAsync());
+        Assert.Empty(stateStore.Saved);
+        Assert.Equal(SyncStorageKind.Opfs, stateStore.DeviceDefault);
+        mockConnectivity.Verify(x => x.CheckAsync(It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(["stop", "Migrating", "Changed", "start"], calls);
+    }
+
     private SyncStorageResolver CreateResolver() => new(Mock.Of<IServiceProvider>(), FakeSyncProfileRegistry.Of(options), stateStore, mockUser.Object, mockOpfs.Object, mockFolderClient.Object);
 
     private SyncStorageMigrationService CreateSut() => new(FakeSyncProfileRegistry.Of(options), CreateResolver(), stateStore, mockScheduler.Object, mockLock.Object, mockChannel.Object, mockSync.Object, mockConnectivity.Object);

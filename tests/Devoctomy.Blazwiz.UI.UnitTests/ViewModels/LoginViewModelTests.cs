@@ -1094,6 +1094,246 @@ public class LoginViewModelTests
         mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
     }
 
+    [Fact]
+    public void GivenNullTextOrErrorText_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, null!, testText.Errors, notice)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, null!, notice)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenSavedUsersCannotBeRead_WhenInitialized_ThenShowsEmptyLoginForm()
+    {
+        // Arrange
+        mockLocalStorage
+            .Setup(x => x.GetObjectAsync<SavedUsersData>(LoginViewModel.SavedUsersStorageKey))
+            .ThrowsAsync(new InvalidOperationException("storage unavailable"));
+        var sut = CreateSut();
+        sut.ShowUsersList = true;
+        sut.ShowRememberMe = false;
+
+        // Act
+        await sut.OnInitializedAsync();
+
+        // Assert
+        Assert.Empty(sut.SavedUsers);
+        Assert.False(sut.ShowUsersList);
+        Assert.True(sut.ShowRememberMe);
+        Assert.Null(sut.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GivenSavedUsersCannotBeWritten_WhenRemoveUser_ThenUserStillRemovedFromList()
+    {
+        // Arrange
+        SetupSavedUsers(new SavedUser { Email = "user1@test.com" }, new SavedUser { Email = "user2@test.com" });
+        mockLocalStorage
+            .Setup(x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.IsAny<SavedUsersData>()))
+            .ThrowsAsync(new InvalidOperationException("quota exceeded"));
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => sut.RemoveUserCommand.ExecuteAsync(sut.SavedUsers[0]));
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Equal("user2@test.com", Assert.Single(sut.SavedUsers).Email);
+        Assert.True(sut.ShowUsersList);
+    }
+
+    [Fact]
+    public async Task GivenSavedUsersCannotBeWritten_WhenLoginWithRememberMe_ThenStillSignsIn()
+    {
+        // Arrange
+        appSettings.EnablePortalLoginAuthn = false;
+        mockLocalStorage
+            .Setup(x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.IsAny<SavedUsersData>()))
+            .ThrowsAsync(new InvalidOperationException("quota exceeded"));
+        mockAuth.Setup(x => x.LoginAsync("bob", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "secret";
+        sut.RememberMe = true;
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        Assert.Null(sut.ErrorMessage);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenUserAlreadySaved_WhenLoginWithRememberMe_ThenUserIsNotAddedTwice()
+    {
+        // Arrange
+        var existing = CreateWebAuthnUser("bob@test.com", "cred1");
+        SetupSavedUsers(existing);
+        appSettings.EnablePortalLoginAuthn = false;
+        mockAuth.Setup(x => x.LoginAsync("BOB@test.com", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        sut.ShowLoginFormCommand.Execute(null);
+        sut.Username = "BOB@test.com";
+        sut.Password = "secret";
+        sut.RememberMe = true;
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        mockLocalStorage.Verify(
+            x => x.SetObjectAsync(
+                LoginViewModel.SavedUsersStorageKey,
+                It.Is<SavedUsersData>(d => d.Users.Count == 1 && d.Users[0].WebAuthnCredential!.CredentialID == "cred1")),
+            Times.Once);
+        Assert.Same(existing, Assert.Single(sut.SavedUsers));
+    }
+
+    [Fact]
+    public async Task GivenUserAlreadySaved_WhenHandleWebAuthnSetup_ThenReplacesTheirCredential()
+    {
+        // Arrange
+        var existing = CreateWebAuthnUser("bob@test.com", "old");
+        SetupSavedUsers(existing);
+        mockWebAuthn
+            .Setup(x => x.RegisterAsync("bob@test.com"))
+            .ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, KeysDerived = true, CredentialID = "new", UserID = "uid" });
+        mockPasswordCrypto.Setup(x => x.EncryptAsync("pass", "bob@test.com")).ReturnsAsync("encrypted");
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        sut.Username = "bob@test.com";
+        sut.Password = "pass";
+
+        // Act
+        await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("new", existing.WebAuthnCredential!.CredentialID);
+        Assert.Equal("encrypted", existing.WebAuthnCredential.EncryptedPassword);
+        Assert.Single(sut.SavedUsers);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenRegisterResultWithoutIds_WhenHandleWebAuthnSetup_ThenStoresEmptyIds()
+    {
+        // Arrange
+        mockWebAuthn
+            .Setup(x => x.RegisterAsync("user"))
+            .ReturnsAsync(new WebAuthnRegisterResult { Success = true, PrfEnabled = true, KeysDerived = true, CredentialID = null, UserID = null });
+        mockPasswordCrypto.Setup(x => x.EncryptAsync("pass", "user")).ReturnsAsync("encrypted");
+        var sut = CreateSut();
+        sut.Username = "user";
+        sut.Password = "pass";
+
+        // Act
+        await sut.HandleWebAuthnSetupCommand.ExecuteAsync(null);
+
+        // Assert
+        mockLocalStorage.Verify(
+            x => x.SetObjectAsync(
+                LoginViewModel.SavedUsersStorageKey,
+                It.Is<SavedUsersData>(d => d.Users.Single().WebAuthnCredential!.CredentialID == string.Empty && d.Users.Single().WebAuthnCredential!.UserID == string.Empty)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenWebAuthnAuthenticateThrows_WhenSelectUser_ThenFallsBackToManualLoginWithError()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ThrowsAsync(new InvalidOperationException("NotAllowedError"));
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
+        Assert.Equal("user@test.com", sut.Username);
+        Assert.Equal(string.Empty, sut.Password);
+        Assert.False(sut.IsBusy);
+        Assert.Null(sut.LoadingUser);
+        mockKeyStore.Verify(x => x.Clear(), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOfflineModeOn_WhenSelectUserOnline_ThenOfflineModeLeftBeforeSigningIn()
+    {
+        // Arrange
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        var offlineDuringLogin = true;
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret"))
+            .Callback(() => offlineDuringLogin = offlineMode.IsOffline)
+            .ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.False(offlineDuringLogin);
+        Assert.False(offlineMode.IsOffline);
+        mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenSignInOfflineThrows_WhenSelectUser_ThenFallsBackToManualLogin()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.SignInOfflineAsync(It.IsAny<string>(), It.IsAny<OfflineEntryReason>())).ThrowsAsync(new InvalidOperationException("no cached session"));
+        var user = CreateWebAuthnUser("user@test.com", "cred1");
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+        mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
+        var sut = CreateSut();
+        sut.SignInOffline = true;
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
+        mockKeyStore.Verify(x => x.Clear(), Times.Once);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenUserWithCredentialButNoEncryptedPassword_WhenSelectUser_ThenFillsUsernameWithoutPasskey()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var user = new SavedUser { Email = "user@test.com", WebAuthnCredential = new WebAuthnStoredCredential { CredentialID = "cred1", EncryptedPassword = string.Empty } };
+
+        // Act
+        await sut.SelectUserCommand.ExecuteAsync(user);
+
+        // Assert
+        Assert.Equal("user@test.com", sut.Username);
+        Assert.False(sut.ShowUsersList);
+        mockWebAuthn.Verify(x => x.AuthenticateAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenOptionWithoutRegisteredComponent_WhenConstructed_ThenOnlyRegisteredComponentsShown()
+    {
+        // Arrange
+        options.Add(new SecondOption());
+        AddOption(new FakeOption(), typeof(string));
+
+        // Act
+        var sut = CreateSut();
+
+        // Assert
+        Assert.Equal([typeof(string)], sut.SignInOptionComponents);
+    }
+
     private static SavedUser CreateWebAuthnUser(string email, string credentialId) => new()
     {
         Email = email,

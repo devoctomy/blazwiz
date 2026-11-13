@@ -4,6 +4,7 @@ using Devoctomy.Blazwiz.Encryption.Models;
 using Moq;
 using MyApp.Portal.Application.Services;
 using MyApp.Portal.Application.Services.Interfaces;
+using MyApp.Portal.Models.Notes;
 
 namespace MyApp.Portal.Application.UnitTests.Services;
 
@@ -50,6 +51,42 @@ public class NotebookLabelHandlerTests
         await sut.OnSessionStartedAsync(new UserSession());
 
         // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+
+        // Assert
+        mockNotebooks.Verify(x => x.FindAsync(It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenTheSessionStarted_WhenReadingAnUnlockedNotebookFails_ThenTheErrorIsSwallowedAndItIsReadAgainNextTime()
+    {
+        // Arrange
+        mockNotebooks.SetupSequence(x => x.FindAsync(scope.Id))
+            .ThrowsAsync(new InvalidOperationException("locked meanwhile"))
+            .ReturnsAsync((Notebook?)null);
+        using var sut = new NotebookLabelHandler(mockManager.Object, mockNotebooks.Object);
+        await sut.OnSessionStartedAsync(new UserSession());
+        unlocked = true;
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+
+        // Assert
+        mockNotebooks.Verify(x => x.FindAsync(scope.Id), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenDisposed_WhenANotebookIsUnlocked_ThenNothingIsRead()
+    {
+        // Arrange
+        var sut = new NotebookLabelHandler(mockManager.Object, mockNotebooks.Object);
+        await sut.OnSessionStartedAsync(new UserSession());
+
+        // Act
+        sut.Dispose();
+        sut.Dispose();
+        unlocked = true;
         mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
 
         // Assert

@@ -143,22 +143,9 @@ function omit(records, fields) {
     }
 
     return records.map(function (record) {
-        const copy = Object.assign({}, record);
-        fields.forEach(function (field) {
-            delete copy[field];
-        });
-        return copy;
-    });
-}
-
-async function databaseExists(name) {
-    if (typeof indexedDB.databases !== 'function') {
-        return true;
-    }
-
-    const databases = await indexedDB.databases();
-    return databases.some(function (database) {
-        return database.name === name;
+        return Object.fromEntries(Object.entries(record).filter(function (entry) {
+            return !fields.includes(entry[0]);
+        }));
     });
 }
 

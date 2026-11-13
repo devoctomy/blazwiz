@@ -149,16 +149,16 @@ if ($addToCurrent) {
     }
 
     $changelogText = $changelog.Substring(0, $sectionStart) + "`n" + $changelog.Substring($sectionStart + $sectionBody.Length, $versionStart - $sectionStart - $sectionBody.Length) + $merged.TrimEnd() + "`n`n" + $changelog.Substring($versionStart + $versionBody.Length)
-    Write-Text $changelogPath $changelogText $changelog
+    Write-Text -Path $changelogPath -Text $changelogText -Original $changelog
     Write-Host "Version: $current (unchanged)"
     Write-Host "CHANGELOG.md: the Unreleased changes are now under $current."
 }
 else {
-    Write-Text $propsPath ($props.Substring(0, $match.Index) + "<VersionPrefix>$next</VersionPrefix>" + $props.Substring($match.Index + $match.Length)) $props
+    Write-Text -Path $propsPath -Text ($props.Substring(0, $match.Index) + "<VersionPrefix>$next</VersionPrefix>" + $props.Substring($match.Index + $match.Length)) -Original $props
     Write-Host "Version: $current -> $next"
 
     $changelogText = $changelog.Substring(0, $unreleased.Index) + "## Unreleased`n`n## $next`n" + $changelog.Substring($sectionStart)
-    Write-Text $changelogPath $changelogText $changelog
+    Write-Text -Path $changelogPath -Text $changelogText -Original $changelog
     Write-Host "CHANGELOG.md: Unreleased is now $next."
 }
 
@@ -192,8 +192,8 @@ foreach ($package in Get-ChildItem -Path (Join-Path $root 'src') -Directory) {
     $sorted = [string[]]$shipped.ToArray()
     [System.Array]::Sort($sorted, [System.StringComparer]::Ordinal)
     $original = if ($shippedText) { $shippedText } else { $unshippedText }
-    Write-Text $shippedPath ((@($header) + $sorted) -join "`n") $original
-    Write-Text $unshippedPath $header $unshippedText
+    Write-Text -Path $shippedPath -Text ((@($header) + $sorted) -join "`n") -Original $original
+    Write-Text -Path $unshippedPath -Text $header -Original $unshippedText
     Write-Host "$($package.Name): $($lines.Count) public API lines shipped."
 }
 

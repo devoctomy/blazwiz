@@ -31,19 +31,10 @@ public class SyncStatusPresenter(IStringLocalizer<SyncUiText> text, ITextPlurals
             return Create(text["Sync.Status.Syncing"], text["Sync.Status.Syncing.Tooltip"], "bi-arrow-repeat", "info", isSyncing: true);
         }
 
-        if (!connectivity.IsOnline && connectivity.Reason == OfflineReason.SyncDisabled)
+        var offline = PresentOffline(connectivity, pending, pendingText);
+        if (offline != null)
         {
-            return pending > 0
-                ? Create(text["Sync.Status.OffPending", pending], text["Sync.Status.OffPending.Tooltip", pendingText], "bi-pause-circle", "secondary", isOffline: true)
-                : Create(text["Sync.Status.Off"], text["Sync.Status.Off.Tooltip"], "bi-pause-circle", "secondary", isOffline: true);
-        }
-
-        if (!connectivity.IsOnline && connectivity.Reason != null)
-        {
-            var reason = DescribeConnectivity(connectivity);
-            return pending > 0
-                ? Create(text["Sync.Status.OfflinePending", pending], text["Sync.Status.OfflinePending.Tooltip", reason, pendingText], "bi-wifi-off", "secondary", isOffline: true)
-                : Create(text["Sync.Status.Offline"], reason, "bi-wifi-off", "secondary", isOffline: true);
+            return offline;
         }
 
         if (status.State == SyncState.Error)
@@ -84,4 +75,24 @@ public class SyncStatusPresenter(IStringLocalizer<SyncUiText> text, ITextPlurals
 
     private static SyncStatusPresentation Create(string text, string tooltip, string icon, string tone, bool isSyncing = false, bool isOffline = false) =>
         new SyncStatusPresentation { Text = text, Tooltip = tooltip, Icon = icon, Tone = tone, IsSyncing = isSyncing, IsOffline = isOffline };
+
+    private SyncStatusPresentation? PresentOffline(ConnectivityStatus connectivity, int pending, string pendingText)
+    {
+        if (connectivity.IsOnline || connectivity.Reason == null)
+        {
+            return null;
+        }
+
+        if (connectivity.Reason == OfflineReason.SyncDisabled)
+        {
+            return pending > 0
+                ? Create(text["Sync.Status.OffPending", pending], text["Sync.Status.OffPending.Tooltip", pendingText], "bi-pause-circle", "secondary", isOffline: true)
+                : Create(text["Sync.Status.Off"], text["Sync.Status.Off.Tooltip"], "bi-pause-circle", "secondary", isOffline: true);
+        }
+
+        var reason = DescribeConnectivity(connectivity);
+        return pending > 0
+            ? Create(text["Sync.Status.OfflinePending", pending], text["Sync.Status.OfflinePending.Tooltip", reason, pendingText], "bi-wifi-off", "secondary", isOffline: true)
+            : Create(text["Sync.Status.Offline"], reason, "bi-wifi-off", "secondary", isOffline: true);
+    }
 }

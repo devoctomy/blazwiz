@@ -145,6 +145,11 @@ public class IndexedDbSyncEventLog(
 
     private static bool Matches(SyncEvent entry, SyncEventQuery query)
     {
+        return MatchesFilters(entry, query) && MatchesText(entry, query);
+    }
+
+    private static bool MatchesFilters(SyncEvent entry, SyncEventQuery query)
+    {
         if (query.Profile != null && entry.Profile != query.Profile)
         {
             return false;
@@ -155,11 +160,11 @@ public class IndexedDbSyncEventLog(
             return false;
         }
 
-        if ((query.From != null && entry.Timestamp < query.From) || (query.To != null && entry.Timestamp > query.To))
-        {
-            return false;
-        }
+        return !((query.From != null && entry.Timestamp < query.From) || (query.To != null && entry.Timestamp > query.To));
+    }
 
+    private static bool MatchesText(SyncEvent entry, SyncEventQuery query)
+    {
         if (string.IsNullOrWhiteSpace(query.Text))
         {
             return true;

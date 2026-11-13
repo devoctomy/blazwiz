@@ -1,4 +1,6 @@
+using System.Collections;
 using System.Globalization;
+using System.Resources;
 using Devoctomy.Blazwiz.Core.Text;
 using Devoctomy.Blazwiz.Core.UnitTests.Text.Resources;
 using Microsoft.Extensions.Localization;
@@ -300,7 +302,93 @@ public class OverridingStringLocalizerTests
         Assert.Equal("NoSuchKey", text.Value);
     }
 
+    [Fact]
+    public void GivenNullOptions_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Arrange
+        var resources = new ResourceManager(typeof(PackageText).FullName!, typeof(PackageText).Assembly);
+
+        // Act & Assert
+        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new OverridingStringLocalizer(resources, null!)).ParamName);
+    }
+
+    [Fact]
+    public void GivenAnOverrideResourceWithoutAManifest_WhenLookingUp_ThenItIsSkippedForThePackageText()
+    {
+        // Arrange
+        using var culture = new CultureScope("en-GB");
+        options.OverrideResources.Add(new FakeResourceManager(_ => throw new MissingManifestResourceException("no manifest")));
+        var sut = Create();
+
+        // Act
+        var text = sut["Greeting"];
+
+        // Assert
+        Assert.Equal("Hello", text.Value);
+        Assert.False(text.ResourceNotFound);
+    }
+
+    [Fact]
+    public void GivenResourcesThatAreNotText_WhenGetAllStrings_ThenOnlyTheTextIsListed()
+    {
+        // Arrange
+        using var culture = new CultureScope("en-GB");
+        var set = new ResourceSet(new HashtableResourceReader(new Hashtable { ["Title"] = "My app", ["Logo"] = new byte[] { 1, 2, 3 } }));
+        var sut = new OverridingStringLocalizer(new FakeResourceManager(_ => set), options);
+
+        // Act
+        var all = sut.GetAllStrings(includeParentCultures: false).ToList();
+
+        // Assert
+        var only = Assert.Single(all);
+        Assert.Equal("Title", only.Name);
+        Assert.Equal("My app", only.Value);
+        Assert.Equal("Fake", only.SearchedLocation);
+    }
+
+    [Fact]
+    public void GivenNoResourceSetForTheCulture_WhenGetAllStrings_ThenNothingIsListed()
+    {
+        // Arrange
+        using var culture = new CultureScope("en-GB");
+        var sut = new OverridingStringLocalizer(new FakeResourceManager(_ => null), options);
+
+        // Act
+        var all = sut.GetAllStrings(includeParentCultures: true);
+
+        // Assert
+        Assert.Empty(all);
+    }
+
     private IStringLocalizer Create() => new OverridingStringLocalizerFactory(options).Create(typeof(PackageText));
+
+    /// <summary>
+    /// A resource manager answering every culture from a function.
+    /// </summary>
+    private sealed class FakeResourceManager(Func<CultureInfo, ResourceSet?> sets) : ResourceManager
+    {
+        public override string BaseName => "Fake";
+
+        public override ResourceSet? GetResourceSet(CultureInfo culture, bool createIfNotExists, bool tryParents) => sets(culture);
+    }
+
+    /// <summary>
+    /// Reads resources from a hashtable, so a set can hold values of any type.
+    /// </summary>
+    private sealed class HashtableResourceReader(Hashtable values) : IResourceReader
+    {
+        public IDictionaryEnumerator GetEnumerator() => values.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public void Close()
+        {
+        }
+
+        public void Dispose()
+        {
+        }
+    }
 
     private sealed class CultureScope : IDisposable
     {

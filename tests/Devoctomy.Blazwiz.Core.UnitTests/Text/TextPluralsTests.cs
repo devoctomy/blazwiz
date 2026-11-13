@@ -50,6 +50,20 @@ public class TextPluralsTests
     }
 
     [Fact]
+    public void GivenNullArguments_WhenFormat_ThenFormattedWithTheCountAlone()
+    {
+        // Arrange
+        var text = new OverridingStringLocalizerFactory(options).Create(typeof(PackageText));
+        var sut = new TextPlurals(options);
+
+        // Act
+        var result = sut.Format(text, "Files", 2, null!);
+
+        // Assert
+        Assert.Equal("2 files", result);
+    }
+
+    [Fact]
     public void GivenBadArguments_WhenUsed_ThenThrows()
     {
         // Arrange
@@ -95,8 +109,8 @@ public class TextPluralsTests
 
         // Assert
         using var provider = services.BuildServiceProvider();
-        var options = Assert.Single(provider.GetServices<TextOptions>());
-        Assert.Equal(["A", "B"], options.Overrides.Keys.Order());
+        var registered = Assert.Single(provider.GetServices<TextOptions>());
+        Assert.Equal(["A", "B"], registered.Overrides.Keys.Order());
         Assert.IsType<OverridingStringLocalizerFactory>(provider.GetRequiredService<IStringLocalizerFactory>());
         Assert.Equal("Hello", provider.GetRequiredService<IStringLocalizer<PackageText>>()["Greeting"].Value);
         Assert.IsType<TextPlurals>(provider.GetRequiredService<ITextPlurals>());

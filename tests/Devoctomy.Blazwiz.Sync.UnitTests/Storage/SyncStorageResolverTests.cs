@@ -85,6 +85,20 @@ public class SyncStorageResolverTests
     }
 
     [Fact]
+    public void GivenAnUnknownProfile_WhenGetStore_ThenThrows()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        var ex = Assert.Throws<ArgumentException>(() => sut.GetStore("unknown", SyncStorageKind.IndexedDb));
+
+        // Assert
+        Assert.Equal("kind", ex.ParamName);
+        Assert.Contains("'unknown' has no IndexedDb storage", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task GivenNoRecordedState_WhenGetStateAsync_ThenDefaultStorage()
     {
         // Act

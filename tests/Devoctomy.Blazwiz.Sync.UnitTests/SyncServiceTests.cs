@@ -412,6 +412,99 @@ public class SyncServiceTests
         Assert.Equal("gates", Assert.Throws<ArgumentNullException>(() => new SyncService(FakeSyncProfileRegistry.Of(), mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, null!)).ParamName);
     }
 
+    [Fact]
+    public async Task GivenCountingPendingChangesFails_WhenRefreshPendingCountAsync_ThenTheLastCountIsKept()
+    {
+        // Arrange
+        await notesIndex.SaveAsync(new SyncIndexRecord { Profile = "notes", Owner = Owner, Key = "notes/a.md", Dirty = true });
+        var sut = CreateSut();
+        await sut.RefreshPendingCountAsync();
+        mockUser.Setup(x => x.GetUserIdAsync()).ThrowsAsync(new InvalidOperationException("storage gone"));
+        var raised = 0;
+        sut.StatusChanged += (_, _) => raised++;
+
+        // Act
+        await sut.RefreshPendingCountAsync();
+
+        // Assert
+        Assert.Equal(1, sut.Status.PendingCount);
+        Assert.Equal(0, raised);
+    }
+
+    [Fact]
+    public async Task GivenCountingPendingChangesFails_WhenSyncAsync_ThenThePassStillCompletes()
+    {
+        // Arrange
+        mockUser.Setup(x => x.GetUserIdAsync()).ThrowsAsync(new InvalidOperationException("storage gone"));
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.SyncAsync();
+
+        // Assert
+        Assert.Empty(result.Errors);
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+        Assert.Equal(0, sut.Status.PendingCount);
+        Assert.Equal(Now, sut.Status.LastSyncedAt);
+    }
+
+    [Fact]
+    public async Task GivenAGateCannotReachTheNetwork_WhenSyncAsync_ThenConnectivityIsToldAndNoProfileIsMarkedFailed()
+    {
+        // Arrange
+        var failure = new SyncNetworkException(SyncErrorCodes.RemoteUnreachable);
+        var gate = new Mock<ISyncGate>();
+        gate.Setup(x => x.CanSyncAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(failure);
+        var sut = new SyncService(FakeSyncProfileRegistry.Of(notes, photos), mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, [gate.Object]);
+
+        // Act
+        var result = await sut.SyncAsync();
+
+        // Assert
+        mockConnectivity.Verify(x => x.ReportNetworkFailure(failure), Times.Once);
+        Assert.Contains(failure.Message, result.Errors);
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+        Assert.Null(sut.Status.LastErrorCode);
+        mockEngine.Verify(x => x.SyncAsync(It.IsAny<SyncProfile>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAProfileSyncedThenWentOffline_WhenItFails_ThenItsLastSyncTimeIsKept()
+    {
+        // Arrange
+        mockEngine.SetupSequence(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncResult())
+            .ThrowsAsync(new SyncNetworkException(SyncErrorCodes.RemoteUnreachable));
+        var sut = new SyncService(FakeSyncProfileRegistry.Of(notes), mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, []);
+        await sut.SyncAsync("notes");
+        mockClock.Setup(x => x.GetUtcNow()).Returns(Now.AddMinutes(5));
+
+        // Act
+        await sut.SyncAsync("notes");
+
+        // Assert
+        Assert.Equal(SyncState.Error, sut.Status.State);
+        Assert.Equal(SyncErrorCodes.RemoteUnreachable, sut.Status.LastErrorCode);
+        Assert.Equal(Now, sut.Status.LastSyncedAt);
+    }
+
+    [Fact]
+    public async Task GivenDownloadsButNoListener_WhenSyncAsync_ThenThePassCompletes()
+    {
+        // Arrange
+        var changed = new SyncResult();
+        changed.AddChangedLocalKey("notes", "notes/a.md");
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>())).ReturnsAsync(changed);
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.SyncAsync();
+
+        // Assert
+        Assert.Equal(["notes/a.md"], result.ChangedLocalKeys["notes"]);
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+    }
+
     private SyncService CreateSut() =>
         new(FakeSyncProfileRegistry.Of(notes, photos), mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, []);
 }

@@ -127,6 +127,63 @@ public class PasskeyKeysServiceTests
         mockWebAuthn.VerifyNoOtherCalls();
     }
 
+    [Fact]
+    public async Task GivenRememberedUsersUnreadable_WhenAskedOrEnsured_ThenNotAvailable_AndNothingIsAskedFor()
+    {
+        // Arrange
+        mockStorage.Setup(x => x.GetObjectAsync<SavedUsersData>(LoginViewModel.SavedUsersStorageKey)).ThrowsAsync(new InvalidOperationException("corrupt JSON"));
+        var sut = CreateSut();
+
+        // Act
+        var available = await sut.IsAvailableAsync();
+        var ensured = await sut.EnsureKeyAsync(KeyName);
+
+        // Assert
+        Assert.False(available);
+        Assert.False(ensured);
+        mockWebAuthn.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GivenPasskeySucceedsButDerivesNoKeys_WhenEnsured_ThenFalse()
+    {
+        // Arrange
+        RememberBob(withPasskey: true);
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("bob-cred")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = false });
+
+        // Act
+        var ensured = await CreateSut().EnsureKeyAsync(KeyName);
+
+        // Assert
+        Assert.False(ensured);
+    }
+
+    [Fact]
+    public async Task GivenPasskeyDerivesKeysButNotTheOneAsked_WhenEnsured_ThenFalse()
+    {
+        // Arrange
+        RememberBob(withPasskey: true);
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("bob-cred"))
+            .Callback(() => keys.SetKey("other-key", new byte[32]))
+            .ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
+
+        // Act
+        var ensured = await CreateSut().EnsureKeyAsync(KeyName);
+
+        // Assert
+        Assert.False(ensured);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task GivenNoKeyName_WhenEnsured_ThenThrows(string? keyName)
+    {
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => CreateSut().EnsureKeyAsync(keyName!));
+    }
+
     private void RememberBob(bool withPasskey) => saved = new SavedUsersData
     {
         Users = [new SavedUser { Email = "BOB@example.com", WebAuthnCredential = withPasskey ? new WebAuthnStoredCredential { CredentialID = "bob-cred" } : null }],

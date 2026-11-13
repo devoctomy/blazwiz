@@ -132,6 +132,124 @@ public class ChangePasswordViewModelTests
         Assert.False(sut.IsBusy);
     }
 
+    [Theory]
+    [InlineData("", "new", "new")]
+    [InlineData("old", "", "new")]
+    [InlineData("old", "new", "")]
+    public async Task GivenAnyFieldEmpty_WhenChangePasswordAsync_ThenAskedToFillEveryFieldWithoutACall(string current, string next, string confirm)
+    {
+        // Arrange
+        var sut = CreateSut(current, next, confirm);
+
+        // Act
+        await sut.ChangePasswordAsync();
+
+        // Assert
+        Assert.Equal(text.Errors.Describe(AuthErrorCodes.PasswordsRequired, []), sut.ErrorMessage);
+        Assert.Null(sut.SuccessMessage);
+        mockPasswords.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GivenOffline_WhenChangePasswordAsync_ThenSaysItCannotBeChangedOffline()
+    {
+        // Arrange
+        var offline = new BlazwizException(AuthErrorCodes.PasswordChangeOffline);
+        mockPasswords.Setup(x => x.ChangePasswordAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(offline);
+        var sut = CreateSut("old", "new", "new");
+
+        // Act
+        await sut.ChangePasswordAsync();
+
+        // Assert
+        Assert.Equal(text.Errors.Describe(AuthErrorCodes.PasswordChangeOffline, []), sut.ErrorMessage);
+        Assert.Null(sut.SuccessMessage);
+        Assert.False(sut.IsBusy);
+        mockStorage.Verify(x => x.SetObjectAsync(It.IsAny<string>(), It.IsAny<SavedUsersData>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNetworkError_WhenChangePasswordAsync_ThenGeneralErrorNeverTheMessage()
+    {
+        // Arrange
+        mockPasswords.Setup(x => x.ChangePasswordAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new HttpRequestException("socket closed"));
+        var sut = CreateSut("old", "new", "new");
+
+        // Act
+        await sut.ChangePasswordAsync();
+
+        // Assert
+        Assert.Equal("Something went wrong.", sut.ErrorMessage);
+        Assert.Equal("new", sut.NewPassword);
+        Assert.False(sut.IsBusy);
+    }
+
+    [Fact]
+    public async Task GivenCancelled_WhenChangePasswordAsync_ThenCancellationIsNotTurnedIntoAnError()
+    {
+        // Arrange
+        mockPasswords.Setup(x => x.ChangePasswordAsync(It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new OperationCanceledException());
+        var sut = CreateSut("old", "new", "new");
+
+        // Act & Assert
+        await Assert.ThrowsAsync<OperationCanceledException>(sut.ChangePasswordAsync);
+        Assert.Null(sut.ErrorMessage);
+        Assert.False(sut.IsBusy);
+    }
+
+    [Fact]
+    public async Task GivenPreviousError_WhenChangePasswordSucceeds_ThenErrorCleared()
+    {
+        // Arrange
+        mockPasswords.SetupSequence(x => x.ChangePasswordAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(new BlazwizException(AuthErrorCodes.CurrentPasswordWrong))
+            .Returns(Task.CompletedTask);
+        var sut = CreateSut("old", "new", "new");
+        await sut.ChangePasswordAsync();
+        Assert.NotNull(sut.ErrorMessage);
+
+        // Act
+        await sut.ChangePasswordAsync();
+
+        // Assert
+        Assert.Null(sut.ErrorMessage);
+        Assert.Equal(text.Ui["Profile.ChangePassword.Done"].Value, sut.SuccessMessage);
+    }
+
+    [Fact]
+    public async Task GivenNobodySignedIn_WhenChangePasswordAsync_ThenRememberedPasswordUntouched()
+    {
+        // Arrange
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync((UserSession?)null);
+        var users = Remembered("old-encrypted");
+        var sut = CreateSut("old", "new", "new");
+
+        // Act
+        await sut.ChangePasswordAsync();
+
+        // Assert
+        Assert.Equal("old-encrypted", users.Users[0].WebAuthnCredential!.EncryptedPassword);
+        Assert.Equal(text.Ui["Profile.ChangePassword.Done"].Value, sut.SuccessMessage);
+        mockStorage.Verify(x => x.SetObjectAsync(It.IsAny<string>(), It.IsAny<SavedUsersData>()), Times.Never);
+        mockCrypto.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GivenRememberedWithoutPassword_WhenChangePasswordAsync_ThenNothingToUpdate()
+    {
+        // Arrange
+        Remembered(string.Empty);
+        var sut = CreateSut("old", "new", "new");
+
+        // Act
+        await sut.ChangePasswordAsync();
+
+        // Assert
+        Assert.Equal(text.Ui["Profile.ChangePassword.Done"].Value, sut.SuccessMessage);
+        mockStorage.Verify(x => x.SetObjectAsync(It.IsAny<string>(), It.IsAny<SavedUsersData>()), Times.Never);
+        mockCrypto.VerifyNoOtherCalls();
+    }
+
     private SavedUsersData Remembered(string encryptedPassword)
     {
         var users = new SavedUsersData

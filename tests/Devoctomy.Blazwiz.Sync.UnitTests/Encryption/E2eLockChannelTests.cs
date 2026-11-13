@@ -96,4 +96,62 @@ public class E2eLockChannelTests
         mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("unsubscribe", It.Is<object?[]>(a => (string?)a[0] == "myapp_" + SyncDefaults.LockChannelName)), Times.Once);
         mockModule.Verify(x => x.DisposeAsync(), Times.Once);
     }
+
+    [Fact]
+    public async Task GivenStartedAndThePageIsGoingAway_WhenDisposed_ThenNothingIsThrown()
+    {
+        // Arrange
+        mockModule.Setup(x => x.InvokeAsync<IJSVoidResult>("unsubscribe", It.IsAny<object?[]>()))
+            .Returns(ValueTask.FromException<IJSVoidResult>(new JSDisconnectedException("gone")));
+        var sut = new E2eLockChannel(mockJs.Object, mockKeys.Object);
+        await sut.StartAsync();
+
+        // Act
+        var ex = await Record.ExceptionAsync(() => sut.DisposeAsync().AsTask());
+
+        // Assert
+        Assert.Null(ex);
+        mockModule.Verify(x => x.DisposeAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOnlyPosted_WhenDisposed_ThenTheModuleIsDisposedWithoutUnsubscribing()
+    {
+        // Arrange
+        var sut = new E2eLockChannel(mockJs.Object, mockKeys.Object);
+        await sut.PostLockAsync("abc");
+
+        // Act
+        await sut.DisposeAsync();
+
+        // Assert
+        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("unsubscribe", It.IsAny<object?[]>()), Times.Never);
+        mockModule.Verify(x => x.DisposeAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNeverUsed_WhenDisposed_ThenTheModuleIsNeverLoaded()
+    {
+        // Arrange
+        var sut = new E2eLockChannel(mockJs.Object, mockKeys.Object);
+
+        // Act
+        await sut.DisposeAsync();
+
+        // Assert
+        mockJs.Verify(x => x.InvokeAsync<IJSObjectReference>(It.IsAny<string>(), It.IsAny<object?[]>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenNoListener_WhenOnMessage_ThenNothingIsThrown()
+    {
+        // Arrange
+        var sut = new E2eLockChannel(mockJs.Object, mockKeys.Object);
+
+        // Act
+        var ex = Record.Exception(() => sut.OnMessage("abc"));
+
+        // Assert
+        Assert.Null(ex);
+    }
 }

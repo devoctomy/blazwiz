@@ -511,7 +511,6 @@ public partial class E2eProfilesViewModel : ViewModelBase
 
         var scope = DialogProfile is { } row ? new E2eKeyScope(row.Id) : null;
         var value = Passphrase;
-        var current = CurrentPassphrase;
         return ActiveDialog switch
         {
             E2eDialogKind.SetPassphrase => RunStepsAsync(KeySteps, reporter => profiles.SetUpAsync(scope!, value, reporter)),
@@ -657,11 +656,11 @@ public partial class E2eProfilesViewModel : ViewModelBase
             return text["Sync.E2e.Error.PassphraseRequired"];
         }
 
-        if (!AsksForNewPassphrase)
-        {
-            return null;
-        }
+        return AsksForNewPassphrase ? ValidateNewPassphrase() : null;
+    }
 
+    private string? ValidateNewPassphrase()
+    {
         if (!string.Equals(Passphrase, ConfirmPassphrase, StringComparison.Ordinal))
         {
             return text["Sync.E2e.Error.PassphrasesDiffer"];

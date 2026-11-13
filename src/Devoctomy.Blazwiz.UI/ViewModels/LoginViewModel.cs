@@ -99,6 +99,7 @@ public partial class LoginViewModel : ViewModelBase
         IErrorText errorText,
         ISessionEndedNoticeService sessionEndedNoticeService)
     {
+        // #lizard forgives: only checks and stores the injected services.
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
         this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
         this.themeService = themeService ?? throw new ArgumentNullException(nameof(themeService));

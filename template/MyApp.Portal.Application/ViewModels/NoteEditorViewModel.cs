@@ -107,6 +107,7 @@ public partial class NoteEditorViewModel : ViewModelBase
         IE2eProtectedProfileManager manager,
         IErrorText errorText)
     {
+        // #lizard forgives: only checks and stores the injected services.
         this.notebookService = notebookService ?? throw new ArgumentNullException(nameof(notebookService));
         this.noteServiceFactory = noteServiceFactory ?? throw new ArgumentNullException(nameof(noteServiceFactory));
         this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
@@ -549,15 +550,15 @@ public partial class NoteEditorViewModel : ViewModelBase
 
     private async void OnFilesChanged(object? sender, SyncFilesChangedEventArgs e)
     {
-        var note = Note;
-        if (e.Profile != Notebook?.Name || note == null || !e.Keys.Contains(note.Id))
+        var open = Note;
+        if (e.Profile != Notebook?.Name || open == null || !e.Keys.Contains(open.Id))
         {
             return;
         }
 
         try
         {
-            var document = await Notes.GetNoteAsync(note.Id);
+            var document = await Notes.GetNoteAsync(open.Id);
             if (IsDirty)
             {
                 IsRemoteDeleted = document == null;

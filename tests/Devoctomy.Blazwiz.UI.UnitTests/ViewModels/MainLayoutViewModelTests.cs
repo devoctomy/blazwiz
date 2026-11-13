@@ -359,6 +359,42 @@ public class MainLayoutViewModelTests
         mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
     }
 
+    [Fact]
+    public void GivenSessionAlreadyEnding_WhenSessionEndedAgain_ThenSecondIgnoredUntilTheFirstFinishes()
+    {
+        // Arrange: the session ends again (e.g. revoked) while the first end is still signing out.
+        var first = new SessionEndedEventArgs(SessionEndedReason.Expired);
+        var second = new SessionEndedEventArgs(SessionEndedReason.Revoked);
+        var third = new SessionEndedEventArgs(SessionEndedReason.KeysRotated, "Work laptop");
+        var raisedWhileEnding = false;
+        mockLifecycle.Setup(x => x.SigningOutAsync())
+            .Callback(() =>
+            {
+                if (!raisedWhileEnding)
+                {
+                    raisedWhileEnding = true;
+                    mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, second);
+                }
+            })
+            .Returns(Task.CompletedTask);
+        using var sut = CreateSut();
+
+        // Act
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, first);
+        var noticeAfterFirst = notice.Take();
+        var navigationsAfterFirst = mockNavigation.Invocations.Count(i => i.Method.Name == nameof(INavigationService.NavigateTo));
+        mockAuth.Raise(x => x.SessionEnded += null, mockAuth.Object, third);
+
+        // Assert
+        Assert.True(raisedWhileEnding);
+        Assert.Same(first, noticeAfterFirst);
+        Assert.Equal(1, navigationsAfterFirst);
+        Assert.Same(third, notice.Take());
+        mockLifecycle.Verify(x => x.SigningOutAsync(), Times.Exactly(2));
+        mockAuth.Verify(x => x.LogoutAsync(), Times.Exactly(2));
+        mockNavigation.Verify(x => x.NavigateTo("/login"), Times.Exactly(2));
+    }
+
     private MainLayoutViewModel CreateSut() => new(
         mockAuth.Object,
         mockTheme.Object,

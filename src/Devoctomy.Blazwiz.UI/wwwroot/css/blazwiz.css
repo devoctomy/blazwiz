@@ -332,8 +332,7 @@ code {
     flex-direction: column;
     gap: 0.25rem;
     flex-grow: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden auto;
 }
 
 .sidebar-footer {
@@ -867,7 +866,7 @@ code {
    Blazor framework UI (loading indicator, error bar, validation)
    ========================================================================= */
 
-.valid.modified:not([type=checkbox]) {
+.valid.modified:not([type="checkbox"]) {
     outline: 1px solid #26b050;
 }
 
@@ -946,7 +945,7 @@ code {
     box-sizing: border-box;
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: 0.6rem 1.25rem 0.7rem;
     position: fixed;
     width: 100%;
     z-index: 2000;
@@ -975,7 +974,7 @@ code {
     display: block;
     width: 7rem;
     height: 7rem;
-    inset: 30vh 0 auto 0;
+    inset: 30vh 0 auto;
     margin: 0 auto;
 }
 
@@ -1002,7 +1001,7 @@ code {
     inset: calc(30vh + 2.9rem) 0 auto 0.2rem;
 }
 
-.loading-progress-text:after {
+.loading-progress-text::after {
     content: var(--blazor-load-percentage-text, "Loading");
 }
 

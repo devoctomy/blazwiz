@@ -112,6 +112,21 @@ public class AppUpdateMonitorTests
     }
 
     [Fact]
+    public async Task GivenDownloadingWithNobodyListening_WhenFinished_ThenNotDownloading()
+    {
+        // Arrange
+        await using var sut = new AppUpdateMonitor(mockJs.Object);
+        sut.OnDownloading(3, 12);
+
+        // Act
+        sut.OnFinished();
+
+        // Assert
+        Assert.False(sut.IsDownloading);
+        Assert.Null(sut.Progress);
+    }
+
+    [Fact]
     public async Task GivenNotDownloading_WhenFinished_ThenNothingRaised()
     {
         // Arrange

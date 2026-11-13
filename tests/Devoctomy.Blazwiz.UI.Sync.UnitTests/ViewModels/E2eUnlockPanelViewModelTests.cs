@@ -445,5 +445,404 @@ public class E2eUnlockPanelViewModelTests
         mockProfiles.Verify(x => x.EnableDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
     }
 
+    [Fact]
+    public void GivenNoProfileSet_WhenShown_ThenNoStateIsClaimed()
+    {
+        // Act
+        using var sut = CreateSut();
+
+        // Assert
+        Assert.Null(sut.Profile);
+        Assert.False(sut.IsUnlocked);
+        Assert.False(sut.IsLocked);
+        Assert.False(sut.NeedsPassphrase);
+        Assert.False(sut.IsRotationInProgress);
+        Assert.Equal("Checking…", sut.Message);
+        Assert.Equal(0, sut.FilesPercent);
+        Assert.Equal(testText.Sync["Sync.E2e.Rotation.Warning"].Value, sut.RotationWarning);
+    }
+
+    [Fact]
+    public async Task GivenAnUnlockedProfile_WhenShown_ThenThePanelSaysNothing()
+    {
+        // Arrange
+        notes.State = E2eProfileState.Unlocked;
+        using var sut = CreateSut();
+
+        // Act
+        await sut.SetProfileAsync("notes");
+
+        // Assert
+        Assert.True(sut.IsUnlocked);
+        Assert.Empty(sut.Message);
+    }
+
+    [Fact]
+    public async Task GivenTheSameProfile_WhenSetAgain_ThenItIsNotReloadedAndThePassphraseIsKept()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        sut.Passphrase = "pass";
+
+        // Act
+        await sut.SetProfileAsync("notes");
+
+        // Assert
+        Assert.Equal("pass", sut.Passphrase);
+        mockPresenter.Verify(x => x.GetProfileAsync("notes"), Times.Once);
+    }
+
+    [Fact]
+    public void GivenANullPassphrase_WhenSet_ThenItIsEmpty()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        sut.Passphrase = "pass";
+
+        // Act
+        sut.Passphrase = null!;
+
+        // Assert
+        Assert.Empty(sut.Passphrase);
+    }
+
+    [Fact]
+    public async Task GivenNoProfileKnownYet_WhenUnlocked_ThenNothingIsSyncedOrUnlocked()
+    {
+        // Arrange
+        mockPresenter.Setup(x => x.GetProfileAsync("notes")).ReturnsAsync((E2eProfileRow?)null);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        sut.Passphrase = "pass";
+        sut.RememberBiometrics = true;
+
+        // Act
+        await sut.UnlockCommand.ExecuteAsync(null);
+        await sut.UnlockWithDeviceCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Null(sut.Error);
+        Assert.Equal("pass", sut.Passphrase);
+        mockScheduler.Verify(x => x.SyncProfileAsync(It.IsAny<string>()), Times.Never);
+        mockPasskeys.Verify(x => x.EnsureKeyAsync(It.IsAny<string>()), Times.Never);
+        mockManager.Verify(x => x.UnlockAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockProfiles.Verify(x => x.UnlockWithDeviceAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAnUnlockRunning_WhenUnlockedAgain_ThenTheSecondIsIgnored()
+    {
+        // Arrange
+        var release = new TaskCompletionSource();
+        mockManager.Setup(x => x.UnlockAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(release.Task);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        sut.Passphrase = "pass";
+        var running = sut.UnlockAsync();
+
+        // Act
+        await sut.UnlockAsync();
+        await sut.UnlockWithDeviceAsync();
+
+        // Assert
+        Assert.True(sut.IsWorking);
+        release.SetResult();
+        await running;
+        Assert.False(sut.IsWorking);
+        mockManager.Verify(x => x.UnlockAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockProfiles.Verify(x => x.UnlockWithDeviceAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenThePasskeyFails_WhenUnlockedWithThePassphraseRememberingBiometrics_ThenUnlockedAndItSaysBiometricsAreNotOn()
+    {
+        // Arrange
+        notes.CanSetUpDeviceUnlock = true;
+        mockManager.Setup(x => x.UnlockAsync(new E2eKeyScope(notes.Id), "pass", It.IsAny<CancellationToken>()))
+            .Callback(() => notes.State = E2eProfileState.Unlocked)
+            .Returns(Task.CompletedTask);
+        mockPasskeys.Setup(x => x.EnsureKeyAsync("e2e-kek")).ThrowsAsync(new InvalidOperationException("NotAllowedError"));
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        sut.Passphrase = "pass";
+        sut.RememberBiometrics = true;
+
+        // Act
+        await sut.UnlockCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.IsUnlocked);
+        Assert.Null(sut.Error);
+        mockProfiles.Verify(x => x.EnableDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+        mockToasts.Verify(x => x.Show("Unlocked, but unlocking with biometrics could not be turned on. Try again next time.", ToastTone.Warning, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTurningOnBiometricsFails_WhenUnlockedWithThePassphrase_ThenUnlockedAndItSaysBiometricsAreNotOn()
+    {
+        // Arrange
+        notes.CanSetUpDeviceUnlock = true;
+        mockManager.Setup(x => x.UnlockAsync(new E2eKeyScope(notes.Id), "pass", It.IsAny<CancellationToken>()))
+            .Callback(() => notes.State = E2eProfileState.Unlocked)
+            .Returns(Task.CompletedTask);
+        mockProfiles.Setup(x => x.EnableDeviceUnlockAsync(new E2eKeyScope(notes.Id))).ThrowsAsync(new E2eLockedException());
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        sut.Passphrase = "pass";
+        sut.RememberBiometrics = true;
+
+        // Act
+        await sut.UnlockCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.IsUnlocked);
+        Assert.Null(sut.Error);
+        Assert.True(sut.RememberBiometrics);
+        mockToasts.Verify(x => x.Show("Unlocked, but unlocking with biometrics could not be turned on. Try again next time.", ToastTone.Warning, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenThePasskeyThrows_WhenUnlockedWithIt_ThenTheErrorIsShownAndStillLocked()
+    {
+        // Arrange
+        mockPasskeys.Setup(x => x.EnsureKeyAsync("e2e-kek")).ThrowsAsync(new InvalidOperationException("NotAllowedError"));
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.UnlockWithDeviceCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("Something went wrong.", sut.Error);
+        Assert.True(sut.IsLocked);
+        Assert.False(sut.IsWorking);
+        mockProfiles.Verify(x => x.UnlockWithDeviceAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenThePasskeyIsCancelled_WhenUnlockedWithIt_ThenItAsksForThePassphrase()
+    {
+        // Arrange
+        mockPasskeys.Setup(x => x.EnsureKeyAsync("e2e-kek")).ReturnsAsync(false);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.UnlockWithDeviceCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("Your passkey cannot unlock this device's keys. Enter your passphrase instead.", sut.Error);
+    }
+
+    [Fact]
+    public async Task GivenTheKeysAreLocked_WhenUnlockedWithThePasskey_ThenItSaysSo()
+    {
+        // Arrange
+        mockProfiles.Setup(x => x.UnlockWithDeviceAsync(new E2eKeyScope(notes.Id))).ThrowsAsync(new E2eLockedException());
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.UnlockWithDeviceCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("End to end encryption is locked on this device.", sut.Error);
+        Assert.True(sut.IsLocked);
+    }
+
+    [Fact]
+    public async Task GivenNoInterruptedPassphraseChange_WhenFinishing_ThenNothingRuns()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.FinishRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(sut.IsFinishingRotation);
+        mockRotation.Verify(x => x.FinishAsync(It.IsAny<E2eKeyScope>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenFinishingRunning_WhenFinishedAgainOrUnlocked_ThenIgnored()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        var release = new TaskCompletionSource();
+        mockRotation.Setup(x => x.FinishAsync(It.IsAny<E2eKeyScope>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>())).Returns(release.Task);
+        mockSignOut.Setup(x => x.SignOutEverywhereAsync()).ReturnsAsync(true);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        var running = sut.FinishRotationAsync();
+
+        // Act
+        await sut.FinishRotationAsync();
+        await sut.RetrySignOutAsync();
+
+        // Assert
+        Assert.True(sut.IsWorking);
+        Assert.True(sut.IsFinishingRotation);
+        release.SetResult();
+        await running;
+        Assert.False(sut.IsFinishingRotation);
+        mockRotation.Verify(x => x.FinishAsync(It.IsAny<E2eKeyScope>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNoSignOutNeeded_WhenRetried_ThenNobodyIsSignedOut()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.RetrySignOutCommand.ExecuteAsync(null);
+
+        // Assert
+        mockSignOut.Verify(x => x.SignOutEverywhereAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenTheSignOutThrows_WhenFinishingAPassphraseChange_ThenTheErrorIsShownAndTheSignOutOfferedAgain()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        mockSignOut.Setup(x => x.SignOutEverywhereAsync()).ThrowsAsync(new InvalidOperationException("network"));
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.FinishRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.NeedsSignOut);
+        Assert.Equal("Something went wrong.", sut.Error);
+        Assert.False(sut.IsWorking);
+    }
+
+    [Fact]
+    public async Task GivenTheSignOutFails_WhenFinishingAPassphraseChange_ThenItSaysSo()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        mockSignOut.Setup(x => x.SignOutEverywhereAsync()).ReturnsAsync(false);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        await sut.FinishRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.NeedsSignOut);
+        Assert.Equal(testText.Sync["Sync.E2e.Rotation.SignOutFailed"].Value, sut.Error);
+    }
+
+    [Fact]
+    public async Task GivenProgressForOtherSteps_WhenFinishingAPassphraseChange_ThenOnlyTheFilesCount()
+    {
+        // Arrange
+        notes.State = E2eProfileState.RotationInProgress;
+        mockRotation.Setup(x => x.FinishAsync(It.IsAny<E2eKeyScope>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback<E2eKeyScope, IProgress<E2eProgress>?, CancellationToken>((_, progress, _) =>
+            {
+                progress!.Report(new E2eProgress(E2eStep.DeriveKey, true, 5, 5));
+                progress.Report(new E2eProgress(E2eStep.UploadFiles, false, 1, 3));
+            })
+            .Returns(Task.CompletedTask);
+        mockSignOut.Setup(x => x.SignOutEverywhereAsync()).ReturnsAsync(true);
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        var filesTotals = new List<int>();
+        sut.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(sut.FilesTotal))
+            {
+                filesTotals.Add(sut.FilesTotal);
+            }
+        };
+
+        // Act
+        await sut.FinishRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal([3], filesTotals);
+        Assert.Equal(1, sut.FilesDone);
+        Assert.Equal(33, sut.FilesPercent);
+    }
+
+    [Fact]
+    public void GivenNoProfileSet_WhenProfilesChange_ThenNothingIsLookedUp()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        mockProfiles.Raise(x => x.ProfilesChanged += null, EventArgs.Empty);
+
+        // Assert
+        Assert.Null(sut.Profile);
+        Assert.Equal("Checking…", sut.Message);
+        mockPresenter.Verify(x => x.GetProfileAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAPassphraseIsSetElsewhere_WhenProfilesChange_ThenThePanelIsRefreshed()
+    {
+        // Arrange
+        notes.State = E2eProfileState.NotSetUp;
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        notes.State = E2eProfileState.Locked;
+        mockProfiles.Raise(x => x.ProfilesChanged += null, EventArgs.Empty);
+
+        // Assert
+        Assert.False(sut.NeedsPassphrase);
+        Assert.True(sut.IsLocked);
+    }
+
+    [Fact]
+    public async Task GivenTheProfileCannotBeRead_WhenRefreshedInTheBackground_ThenNothingThrowsAndThePanelIsKept()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        mockPresenter.Setup(x => x.GetProfileAsync("notes")).ThrowsAsync(new InvalidOperationException("storage"));
+
+        // Act
+        var exception = Record.Exception(() =>
+        {
+            mockProfiles.Raise(x => x.ProfilesChanged += null, EventArgs.Empty);
+            mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, new E2eKeyScope(notes.Id));
+        });
+
+        // Assert
+        Assert.Null(exception);
+        Assert.Same(notes, sut.Profile);
+        Assert.True(sut.IsLocked);
+    }
+
+    [Fact]
+    public async Task GivenDisposed_WhenProfilesChange_ThenThePanelIsNotRefreshed()
+    {
+        // Arrange
+        var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+
+        // Act
+        sut.Dispose();
+        mockProfiles.Raise(x => x.ProfilesChanged += null, EventArgs.Empty);
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, new E2eKeyScope(notes.Id));
+
+        // Assert
+        mockPresenter.Verify(x => x.GetProfileAsync("notes"), Times.Once);
+    }
+
     private E2eUnlockPanelViewModel CreateSut() => new(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockNavigation.Object, testText.Sync, testText.Errors, mockScheduler.Object, mockPasskeys.Object, mockToasts.Object, mockRotation.Object, mockSignOut.Object);
 }

@@ -14,6 +14,26 @@ public class ShellRegistriesTests
     }
 
     [Fact]
+    public void GivenNullAssembly_WhenRegisteringPageAssembly_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("assembly", Assert.Throws<ArgumentNullException>(() => new PageAssemblyRegistration(null!)).ParamName);
+    }
+
+    [Fact]
+    public void GivenAssembly_WhenRegisteringPageAssembly_ThenKept()
+    {
+        // Arrange
+        var assembly = typeof(PageRegistry).Assembly;
+
+        // Act
+        var sut = new PageAssemblyRegistration(assembly);
+
+        // Assert
+        Assert.Same(assembly, sut.Assembly);
+    }
+
+    [Fact]
     public void GivenComponentsInSeveralRegions_WhenGetComponents_ThenOnlyThatRegionsInOrder()
     {
         // Arrange

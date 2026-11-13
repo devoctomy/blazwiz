@@ -638,6 +638,345 @@ public class SyncEngineTests
         Assert.DoesNotContain("get", remote.Calls.Select(c => c.Split(' ')[0]), StringComparer.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task GivenUploadFails_WhenSyncAsync_ThenFailureRecordedAsUploadFailed()
+    {
+        // Arrange
+        await TrackedWriteAsync(KeyA, "a", Later);
+        remote.BeforeWrite = _ => throw new InvalidOperationException("put failed");
+
+        // Act
+        var result = await CreateSut().SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(1, result.Failed);
+        Assert.Equal(0, result.Uploaded);
+        Assert.Contains($"{KeyA}: put failed", result.Errors);
+        var failed = Assert.Single(loggedEvents, e => e.Kind == SyncEventKind.Failed);
+        Assert.Equal(SyncEventCodes.UploadFailed, failed.Code);
+        Assert.True(Record(KeyA).Dirty);
+    }
+
+    [Fact]
+    public async Task GivenRemoteDeleteFails_WhenSyncAsync_ThenFailureRecordedAsDeleteFailedAndRecordKept()
+    {
+        // Arrange
+        await SyncedAsync(KeyA, "v1");
+        await TrackedDeleteAsync(KeyA, Later);
+        remote.BeforeWrite = _ => throw new InvalidOperationException("delete failed");
+
+        // Act
+        var result = await CreateSut().SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(1, result.Failed);
+        Assert.Equal(0, result.DeletedRemote);
+        var failed = Assert.Single(loggedEvents, e => e.Kind == SyncEventKind.Failed);
+        Assert.Equal(SyncEventCodes.DeleteFailed, failed.Code);
+        Assert.True(remote.Objects.ContainsKey(KeyA));
+        Assert.True(Record(KeyA).Deleted);
+    }
+
+    [Fact]
+    public async Task GivenConflictResolutionFails_WhenSyncAsync_ThenFailureRecordedAsFileFailed()
+    {
+        // Arrange
+        await ArrangeAsync(Scenario.EditEdit);
+        var mockResolver = new Mock<ISyncConflictResolver>();
+        mockResolver.Setup(x => x.Resolve(It.IsAny<SyncConflict>())).Throws(new InvalidOperationException("cannot decide"));
+        var sut = new SyncEngine(new SyncPlanner(), mockResolver.Object, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions());
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(1, result.Failed);
+        Assert.Equal(0, result.ConflictsResolved);
+        var failed = Assert.Single(loggedEvents, e => e.Kind == SyncEventKind.Failed);
+        Assert.Equal(SyncEventCodes.FileFailed, failed.Code);
+        Assert.Equal("remote", Text(remote.Objects[KeyA].Content));
+        Assert.Equal("local", Text((await files.ReadAsync(KeyA))!.Content));
+    }
+
+    [Fact]
+    public async Task GivenRemoteUnreachableDuringDownload_WhenSyncAsync_ThenPassFailsAndRemainingFilesAreNotSynced()
+    {
+        // Arrange
+        remote.Seed(KeyA, Bytes("a"), Earlier);
+        remote.Seed(KeyB, Bytes("b"), Earlier);
+        remote.FailGet[KeyA] = new SyncNetworkException(SyncErrorCodes.RemoteUnreachable);
+
+        // Act
+        var exception = await Assert.ThrowsAsync<SyncNetworkException>(() => CreateSut().SyncAsync(profile, false));
+
+        // Assert
+        Assert.Equal(SyncErrorCodes.RemoteUnreachable, exception.Code);
+        Assert.Null(await files.ReadAsync(KeyA));
+        Assert.Null(await files.ReadAsync(KeyB));
+        Assert.DoesNotContain($"get {KeyB}", remote.Calls);
+        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.Failed && e.Code == SyncEventCodes.PassFailed && e.Key == null);
+        Assert.DoesNotContain(loggedEvents, e => e.Kind == SyncEventKind.Failed && e.Key == KeyA);
+        Assert.Equal(SyncEventCodes.Summary, loggedEvents[^1].Code);
+    }
+
+    [Fact]
+    public async Task GivenRemoteAccessDenied_WhenSyncAsync_ThenThrowsAndLogsFailureWithCode()
+    {
+        // Arrange
+        remote.FailList = new SyncAccessDeniedException(SyncErrorCodes.RemoteAccessDenied);
+
+        // Act
+        await Assert.ThrowsAsync<SyncAccessDeniedException>(() => CreateSut().SyncAsync(profile, false));
+
+        // Assert
+        var failed = Assert.Single(loggedEvents, e => e.Kind == SyncEventKind.Failed);
+        Assert.Equal(SyncEventCodes.PassFailed, failed.Code);
+        Assert.Equal([SyncErrorCodes.RemoteAccessDenied], failed.Arguments);
+        mockLog.Verify(x => x.RecordNoChangePassAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DateTimeOffset>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenPassCancelledBeforeFirstAction_WhenSyncAsync_ThenThrowsAndLogsStopped()
+    {
+        // Arrange
+        await TrackedWriteAsync(KeyA, "a", Later);
+        using var cts = new CancellationTokenSource();
+        var reporter = new PassReporter(_ => cts.Cancel());
+
+        // Act
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => CreateSut().SyncAsync(profile, false, reporter, cts.Token));
+
+        // Assert
+        Assert.DoesNotContain($"put {KeyA}", remote.Calls);
+        Assert.Equal(SyncEventKind.PassCompleted, loggedEvents[^1].Kind);
+        Assert.Equal(SyncEventCodes.Stopped, loggedEvents[^1].Code);
+        Assert.DoesNotContain(loggedEvents, e => e.Code == SyncEventCodes.Summary);
+    }
+
+    [Fact]
+    public async Task GivenDropRecordAction_WhenSyncAsync_ThenIndexRecordDeleted()
+    {
+        // Arrange
+        await index.SaveAsync(new SyncIndexRecord { Profile = Profile, Owner = Owner, Key = KeyA, BaseETag = "\"9\"", Revision = 1 });
+        var sut = CreateSutWithPlan(new SyncAction { Key = KeyA, Kind = SyncActionKind.DropRecord });
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Null(await index.GetAsync(Profile, Owner, KeyA));
+        Assert.Equal(0, result.Failed);
+    }
+
+    [Fact]
+    public async Task GivenPreconditionFailsAndReplanFindsNothingToDo_WhenSyncAsync_ThenRetriedWithoutTransfer()
+    {
+        // Arrange
+        await TrackedWriteAsync(KeyA, "a", Later);
+        remote.BeforeWrite = _ => throw new SyncPreconditionFailedException(SyncErrorCodes.RemoteChanged);
+        var mockPlanner = PlannerReturning(new SyncAction { Key = KeyA, Kind = SyncActionKind.UploadNew });
+        mockPlanner.Setup(x => x.PlanItem(It.IsAny<SyncPlanItem>())).Returns(new SyncAction { Key = KeyA, Kind = SyncActionKind.None });
+        var sut = new SyncEngine(mockPlanner.Object, new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions());
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.Retried && e.Key == KeyA && e.Code == SyncEventCodes.ChangedDuringSync);
+        Assert.Equal(0, result.Uploaded);
+        Assert.Equal(0, result.Failed);
+        mockPlanner.Verify(x => x.PlanItem(It.Is<SyncPlanItem>(i => i.Key == KeyA && i.Local != null && i.LocalHash == hasher.ComputeHash(Bytes("a")) && i.Remote == null)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenUploadPlannedButLocalFileDeletedDuringPass_WhenSyncAsync_ThenNothingUploaded()
+    {
+        // Arrange
+        var sut = CreateSutWithPlan(new SyncAction { Key = KeyA, Kind = SyncActionKind.Upload });
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(0, result.Uploaded);
+        Assert.Equal(0, result.Failed);
+        Assert.DoesNotContain($"put {KeyA}", remote.Calls);
+        Assert.Null(await index.GetAsync(Profile, Owner, KeyA));
+    }
+
+    [Fact]
+    public async Task GivenDownloadPlannedButRemoteDeletedDuringPass_WhenSyncAsync_ThenNothingDownloaded()
+    {
+        // Arrange
+        var sut = CreateSutWithPlan(new SyncAction { Key = KeyA, Kind = SyncActionKind.Download });
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(0, result.Downloaded);
+        Assert.Equal(0, result.Failed);
+        Assert.Contains($"get {KeyA}", remote.Calls);
+        Assert.Null(await files.ReadAsync(KeyA));
+    }
+
+    [Fact]
+    public async Task GivenCompareContentPlannedButRemoteDeletedDuringPass_WhenSyncAsync_ThenNothingChanged()
+    {
+        // Arrange
+        await files.WriteAsync(KeyA, Bytes("local"), Earlier);
+        var sut = CreateSutWithPlan(new SyncAction { Key = KeyA, Kind = SyncActionKind.CompareContent });
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(0, result.Adopted + result.ConflictsResolved + result.Failed);
+        Assert.Null(await index.GetAsync(Profile, Owner, KeyA));
+        Assert.Equal("local", Text((await files.ReadAsync(KeyA))!.Content));
+    }
+
+    [Fact]
+    public async Task GivenDifferentNewContentAndRemoteWins_WhenSyncAsync_ThenRemoteDownloadedAsConflict()
+    {
+        // Arrange
+        await files.WriteAsync(KeyA, Bytes("local"), Earlier);
+        remote.Seed(KeyA, Bytes("remote"), Later);
+        var mockResolver = new Mock<ISyncConflictResolver>();
+        mockResolver.Setup(x => x.Resolve(It.IsAny<SyncConflict>())).Returns(SyncConflictWinner.Remote);
+        var sut = new SyncEngine(new SyncPlanner(), mockResolver.Object, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions());
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(1, result.ConflictsResolved);
+        Assert.Equal(1, result.Downloaded);
+        Assert.Equal("remote", Text((await files.ReadAsync(KeyA))!.Content));
+        Assert.Contains(loggedEvents, e => e.Kind == SyncEventKind.ConflictResolved && e.Code == SyncEventCodes.ConflictKeptRemote);
+        mockResolver.Verify(x => x.Resolve(It.Is<SyncConflict>(c => c.Key == KeyA && c.Kind == SyncConflictKind.EditEdit && c.LocalChangedAt == Earlier)), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenFileRecreatedLocallyDuringRemoteDelete_WhenSyncAsync_ThenRecordKeptAsNewFile()
+    {
+        // Arrange
+        await SyncedAsync(KeyA, "v1");
+        await TrackedDeleteAsync(KeyA, Later);
+        var planned = Record(KeyA).Clone();
+        await TrackedWriteAsync(KeyA, "created again", Now);
+        var sut = CreateSutWithPlan(new SyncAction { Key = KeyA, Kind = SyncActionKind.DeleteRemote, Record = planned });
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(1, result.DeletedRemote);
+        Assert.False(remote.Objects.ContainsKey(KeyA));
+        var record = Record(KeyA);
+        Assert.Null(record.BaseETag);
+        Assert.Null(record.BaseHash);
+        Assert.True(record.Dirty);
+    }
+
+    [Fact]
+    public async Task GivenFileDeletedAgainLocallyDuringRemoteDelete_WhenSyncAsync_ThenRecordDropped()
+    {
+        // Arrange
+        await SyncedAsync(KeyA, "v1");
+        await TrackedDeleteAsync(KeyA, Later);
+        var planned = Record(KeyA).Clone();
+        var current = Record(KeyA);
+        current.Revision++;
+        await index.SaveAsync(current);
+        var sut = CreateSutWithPlan(new SyncAction { Key = KeyA, Kind = SyncActionKind.DeleteRemote, Record = planned });
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(1, result.DeletedRemote);
+        Assert.Null(await index.GetAsync(Profile, Owner, KeyA));
+    }
+
+    [Fact]
+    public async Task GivenLocalEditAfterSnapshot_WhenDeletingLocally_ThenLocalFileKept()
+    {
+        // Arrange
+        await SyncedAsync(KeyA, "v1");
+        remote.Objects.Remove(KeyA);
+        var planned = Record(KeyA).Clone();
+        await TrackedWriteAsync(KeyA, "typed during the pass", Now);
+        var sut = CreateSutWithPlan(new SyncAction { Key = KeyA, Kind = SyncActionKind.DeleteLocal, Record = planned });
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(0, result.DeletedLocal);
+        Assert.Equal("typed during the pass", Text((await files.ReadAsync(KeyA))!.Content));
+        Assert.True(Record(KeyA).Dirty);
+    }
+
+    [Fact]
+    public async Task GivenDeleteEditConflictButRemoteAlsoDeleted_WhenSyncAsync_ThenRecordDroppedWithoutResolving()
+    {
+        // Arrange
+        await SyncedAsync(KeyA, "v1");
+        await TrackedDeleteAsync(KeyA, Later);
+        remote.Objects.Remove(KeyA);
+        var mockResolver = new Mock<ISyncConflictResolver>();
+        var sut = new SyncEngine(
+            PlannerReturning(new SyncAction { Key = KeyA, Kind = SyncActionKind.Conflict, ConflictKind = SyncConflictKind.DeleteEdit, Record = Record(KeyA).Clone() }).Object,
+            mockResolver.Object,
+            hasher,
+            mockUser.Object,
+            mockLog.Object,
+            mockClock.Object,
+            format,
+            new SyncOptions());
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Null(await index.GetAsync(Profile, Owner, KeyA));
+        Assert.Equal(0, result.ConflictsResolved);
+        mockResolver.Verify(x => x.Resolve(It.IsAny<SyncConflict>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenEditDeleteConflictAndRemoteWins_WhenSyncAsync_ThenLocalCopyDeleted()
+    {
+        // Arrange
+        await ArrangeAsync(Scenario.EditDelete);
+        var mockResolver = new Mock<ISyncConflictResolver>();
+        mockResolver.Setup(x => x.Resolve(It.IsAny<SyncConflict>())).Returns(SyncConflictWinner.Remote);
+        var sut = new SyncEngine(new SyncPlanner(), mockResolver.Object, hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions());
+
+        // Act
+        var result = await sut.SyncAsync(profile, false);
+
+        // Assert
+        Assert.Equal(1, result.ConflictsResolved);
+        Assert.Equal(1, result.DeletedLocal);
+        Assert.Null(await files.ReadAsync(KeyA));
+        Assert.Null(await index.GetAsync(Profile, Owner, KeyA));
+        Assert.False(remote.Objects.ContainsKey(KeyA));
+        mockResolver.Verify(x => x.Resolve(It.Is<SyncConflict>(c => c.Kind == SyncConflictKind.EditDelete && c.Remote == null)), Times.Once);
+    }
+
+    private static Mock<ISyncPlanner> PlannerReturning(params SyncAction[] actions)
+    {
+        var mockPlanner = new Mock<ISyncPlanner>();
+        mockPlanner.Setup(x => x.Plan(It.IsAny<IEnumerable<SyncFileInfo>>(), It.IsAny<IEnumerable<RemoteObjectInfo>>(), It.IsAny<IEnumerable<SyncIndexRecord>>(), It.IsAny<IReadOnlyDictionary<string, string>?>()))
+            .Returns(new SyncPlan { Actions = actions });
+        return mockPlanner;
+    }
+
+    private SyncEngine CreateSutWithPlan(params SyncAction[] actions) =>
+        new(PlannerReturning(actions).Object, new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions());
+
     private SyncEngine CreateSut() =>
         new(new SyncPlanner(), new NewestWinsConflictResolver(), hasher, mockUser.Object, mockLog.Object, mockClock.Object, format, new SyncOptions());
 
@@ -686,41 +1025,46 @@ public class SyncEngineTests
             case Scenario.NewLocal:
                 await TrackedWriteAsync(KeyA, "new", Later);
                 break;
-            case Scenario.ChangedLocal:
-                await SyncedAsync(KeyA, "v1");
-                await TrackedWriteAsync(KeyA, "v2", Later);
-                break;
             case Scenario.NewRemote:
                 remote.Seed(KeyA, Bytes("new"), Later);
-                break;
-            case Scenario.ChangedRemote:
-                await SyncedAsync(KeyA, "v1");
-                remote.Seed(KeyA, Bytes("v2"), Later);
                 break;
             case Scenario.SameOnBoth:
                 await TrackedWriteAsync(KeyA, "same", Earlier);
                 remote.Seed(KeyA, Bytes("same"), Later);
                 break;
-            case Scenario.DeletedLocally:
+            default:
+                // The rest start from a file synced once, then changed on one side or both.
                 await SyncedAsync(KeyA, "v1");
+                await ArrangeChangesSinceSyncAsync(scenario);
+                break;
+        }
+    }
+
+    private async Task ArrangeChangesSinceSyncAsync(Scenario scenario)
+    {
+        switch (scenario)
+        {
+            case Scenario.ChangedLocal:
+                await TrackedWriteAsync(KeyA, "v2", Later);
+                break;
+            case Scenario.ChangedRemote:
+                remote.Seed(KeyA, Bytes("v2"), Later);
+                break;
+            case Scenario.DeletedLocally:
                 await TrackedDeleteAsync(KeyA, Later);
                 break;
             case Scenario.DeletedRemotely:
-                await SyncedAsync(KeyA, "v1");
                 remote.Objects.Remove(KeyA);
                 break;
             case Scenario.EditEdit:
-                await SyncedAsync(KeyA, "v1");
                 await TrackedWriteAsync(KeyA, "local", Later);
                 remote.Seed(KeyA, Bytes("remote"), Earlier);
                 break;
             case Scenario.DeleteEdit:
-                await SyncedAsync(KeyA, "v1");
                 await TrackedDeleteAsync(KeyA, Later);
                 remote.Seed(KeyA, Bytes("remote"), Earlier);
                 break;
             case Scenario.EditDelete:
-                await SyncedAsync(KeyA, "v1");
                 await TrackedWriteAsync(KeyA, "local", Later);
                 remote.Objects.Remove(KeyA);
                 break;

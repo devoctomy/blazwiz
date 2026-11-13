@@ -63,6 +63,118 @@ public class SyncSettingsViewModelTests
         Assert.Equal("folderService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, null!, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
         Assert.Equal("storageMigrationService", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, null!, mockFolder.Object, mockRegistry.Object, testText.Sync, testText.Errors)).ParamName);
         Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, null!, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, mockRegistry.Object, null!, testText.Errors)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new SyncSettingsViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, mockStorage.Object, mockResolver.Object, mockMigration.Object, mockFolder.Object, mockRegistry.Object, testText.Sync, null!)).ParamName);
+    }
+
+    [Fact]
+    public void GivenNoSyncError_WhenShown_ThenNoErrorTextAndTheInstallHintComesFromTheText()
+    {
+        // Arrange
+        syncStatus = new SyncStatus();
+
+        // Act
+        var sut = CreateSut();
+
+        // Assert
+        Assert.Null(sut.LastErrorText);
+        Assert.Equal(testText.Sync["Sync.Storage.InstallHint"].Value, sut.InstallHint);
+    }
+
+    [Fact]
+    public void GivenTheStorageNotRead_WhenShown_ThenItIsNotPersisted()
+    {
+        // Act
+        var sut = CreateSut();
+
+        // Assert
+        Assert.False(sut.IsStorageKnown);
+        Assert.False(sut.IsStoragePersisted);
+    }
+
+    [Fact]
+    public void GivenAStorageKindItDoesNotKnow_WhenGetStorageName_ThenItsValueIsShown()
+    {
+        // Act & Assert
+        Assert.Equal("99", CreateSut().GetStorageName((SyncStorageKind)99));
+    }
+
+    [Fact]
+    public async Task GivenAProfileIsAdded_WhenAListenerThrows_ThenTheErrorDoesNotEscape()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns([]);
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        sut.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SyncSettingsViewModel.CanSwitchStorage))
+            {
+                throw new InvalidOperationException("listener");
+            }
+        };
+
+        // Act
+        var exception = Record.Exception(() => mockRegistry.Raise(x => x.ProfileAdded += null, mockRegistry.Object, "notes"));
+
+        // Assert
+        Assert.Null(exception);
+        Assert.True(sut.CanSwitchStorage);
+    }
+
+    [Fact]
+    public async Task GivenOfflineThenOnline_WhenConnectivityChanges_ThenSyncNowBecomesAvailable()
+    {
+        // Arrange
+        syncStatus = new SyncStatus();
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        var offline = sut.CanSyncNow;
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        connectivity = new ConnectivityStatus { IsOnline = true, LastCheckedAt = DateTimeOffset.UnixEpoch };
+
+        // Act
+        mockConnectivity.Raise(x => x.StatusChanged += null, mockConnectivity.Object, connectivity);
+
+        // Assert
+        Assert.False(offline);
+        Assert.True(sut.CanSyncNow);
+        Assert.Contains(nameof(SyncSettingsViewModel.CanSyncNow), changed);
+        Assert.Equal("Online", sut.ConnectivityText);
+    }
+
+    [Fact]
+    public async Task GivenSyncing_WhenSyncNow_ThenNothingHappens()
+    {
+        // Arrange
+        connectivity = new ConnectivityStatus { IsOnline = true, LastCheckedAt = DateTimeOffset.UnixEpoch };
+        syncStatus = new SyncStatus { State = SyncState.Syncing };
+        var sut = CreateSut();
+
+        // Act
+        await sut.SyncNowCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(sut.CanSyncNow);
+        mockScheduler.Verify(x => x.SyncNowAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOnlyProfilesThatCannotSwitch_WhenAnotherStorageIsRequested_ThenNothingIsAskedOrMoved()
+    {
+        // Arrange
+        mockSync.SetupGet(x => x.Profiles).Returns(["photos"]);
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        await sut.RequestStorageChangeCommand.ExecuteAsync(SyncStorageKind.Opfs);
+
+        // Assert
+        Assert.False(sut.IsStorageDialogOpen);
+        mockFolder.Verify(x => x.PickAsync(), Times.Never);
+        mockMigration.Verify(x => x.MigrateAsync(It.IsAny<SyncStorageKind>(), It.IsAny<IProgress<SyncStorageMigrationProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

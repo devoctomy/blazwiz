@@ -45,13 +45,13 @@ public class AppUpdateTests : TestBase
     private async Task PostInstallProgressAsync(int done, int total)
     {
         var expectShown = done < total;
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; attempt <= 20; attempt++)
         {
             await Page.EvaluateAsync(
                 "([done, total]) => navigator.serviceWorker.dispatchEvent(new MessageEvent('message', { data: { type: 'INSTALL_PROGRESS', done, total } }))",
                 new[] { done, total });
             await Page.WaitForTimeoutAsync(250);
-            if (await Page.Locator("#app-update-progress").IsVisibleAsync() == expectShown || attempt >= 20)
+            if (await Page.Locator("#app-update-progress").IsVisibleAsync() == expectShown)
             {
                 return;
             }

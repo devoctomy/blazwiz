@@ -209,13 +209,7 @@ public class CognitoAuthenticationService(
         var offline = offlineSessionStore.Session;
         if (offline != null)
         {
-            if (offline.ExpiresAt <= timeProvider.GetUtcNow())
-            {
-                await EndSessionAsync();
-                return null;
-            }
-
-            return offline;
+            return await CheckOfflineSessionAsync(offline);
         }
 
         if (offlineModeService.IsOffline)
@@ -241,45 +235,7 @@ public class CognitoAuthenticationService(
             return session;
         }
 
-        if (session.ExpiresAt <= timeProvider.GetUtcNow())
-        {
-            // Not used while it was valid, so it is not brought back to life: renewing only happens before expiry.
-            await EndSessionAsync();
-            return null;
-        }
-
-        if (string.IsNullOrEmpty(refreshToken))
-        {
-            // Signed in from another tab, or before a reload: this tab cannot renew it.
-            await EndSessionAsync();
-            return null;
-        }
-
-        try
-        {
-            var result = await cognitoClient.RefreshAsync(session.Username, refreshToken);
-            if (string.IsNullOrEmpty(result.IdToken))
-            {
-                await EndSessionAsync();
-                return null;
-            }
-
-            refreshToken = result.RefreshToken ?? refreshToken;
-            var refreshed = CreateSession(result, session.Username, session.SignedInAt);
-            await localStorageService.SetObjectAsync(SessionStorageKey, refreshed);
-            return refreshed;
-        }
-        catch (CognitoException)
-        {
-            // The refresh token has expired or been revoked.
-            await EndSessionAsync();
-            return null;
-        }
-        catch (HttpRequestException)
-        {
-            // Offline: keep the stored session so it can be refreshed once back online, while it is still valid.
-            return null;
-        }
+        return await RenewAsync(session);
     }
 
     /// <inheritdoc/>
@@ -435,6 +391,60 @@ public class CognitoAuthenticationService(
         catch (Exception ex) when (ex is CognitoException or HttpRequestException)
         {
             // Best effort: the session is already gone from this browser.
+        }
+    }
+
+    private async Task<UserSession?> CheckOfflineSessionAsync(UserSession offline)
+    {
+        if (offline.ExpiresAt <= timeProvider.GetUtcNow())
+        {
+            await EndSessionAsync();
+            return null;
+        }
+
+        return offline;
+    }
+
+    private async Task<UserSession?> RenewAsync(UserSession session)
+    {
+        if (session.ExpiresAt <= timeProvider.GetUtcNow())
+        {
+            // Not used while it was valid, so it is not brought back to life: renewing only happens before expiry.
+            await EndSessionAsync();
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            // Signed in from another tab, or before a reload: this tab cannot renew it.
+            await EndSessionAsync();
+            return null;
+        }
+
+        try
+        {
+            var result = await cognitoClient.RefreshAsync(session.Username, refreshToken);
+            if (string.IsNullOrEmpty(result.IdToken))
+            {
+                await EndSessionAsync();
+                return null;
+            }
+
+            refreshToken = result.RefreshToken ?? refreshToken;
+            var refreshed = CreateSession(result, session.Username, session.SignedInAt);
+            await localStorageService.SetObjectAsync(SessionStorageKey, refreshed);
+            return refreshed;
+        }
+        catch (CognitoException)
+        {
+            // The refresh token has expired or been revoked.
+            await EndSessionAsync();
+            return null;
+        }
+        catch (HttpRequestException)
+        {
+            // Offline: keep the stored session so it can be refreshed once back online, while it is still valid.
+            return null;
         }
     }
 

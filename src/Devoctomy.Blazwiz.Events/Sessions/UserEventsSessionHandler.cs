@@ -160,7 +160,7 @@ public sealed class UserEventsSessionHandler : ISessionLifecycleHandler, IDispos
         CancelReconnect();
         var delay = TimeSpan.FromTicks(Math.Min(MaxReconnectDelay.Ticks, FirstReconnectDelay.Ticks << Math.Min(failures, 16)));
         failures++;
-        reconnectTimer = timeProvider.CreateTimer(_ => _ = ReconnectSafelyAsync(), null, delay, Timeout.InfiniteTimeSpan);
+        reconnectTimer = timeProvider.CreateTimer(state => _ = ReconnectSafelyAsync(), null, delay, Timeout.InfiniteTimeSpan);
     }
 
     private void CancelReconnect()

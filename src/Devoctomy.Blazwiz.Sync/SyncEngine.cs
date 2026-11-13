@@ -349,8 +349,15 @@ public class SyncEngine(
         };
 
         var winner = conflictResolver.Resolve(conflict);
+        await ApplyConflictWinnerAsync(pass, action, conflict, winner, ct);
+        pass.Result.ConflictsResolved++;
+    }
+
+    private async Task ApplyConflictWinnerAsync(Pass pass, SyncAction action, SyncConflict conflict, SyncConflictWinner winner, CancellationToken ct)
+    {
+        var remote = conflict.Remote;
         var detail = winner == SyncConflictWinner.Local ? "local" : "remote";
-        switch (kind, winner)
+        switch (conflict.Kind, winner)
         {
             case (SyncConflictKind.EditEdit, SyncConflictWinner.Local):
                 await UploadAsync(pass, action, remote!.ETag, false, SyncEventKind.ConflictResolved, detail, ct);
@@ -368,8 +375,6 @@ public class SyncEngine(
                 await DownloadAsync(pass, action, SyncEventKind.ConflictResolved, detail, ct);
                 break;
         }
-
-        pass.Result.ConflictsResolved++;
     }
 
     private async Task SaveSyncedAsync(Pass pass, SyncAction action, byte[] content, string etag, CancellationToken ct)

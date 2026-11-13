@@ -62,6 +62,14 @@ export function connect(realtimeHost, httpHost, token, channel, dotNetRef) {
             ws.send(JSON.stringify({ type: 'connection_init' }));
         };
 
+        function forward(event) {
+            if (typeof event === 'string') {
+                dotNetRef.invokeMethodAsync('OnMessage', event);
+            } else if (event) {
+                dotNetRef.invokeMethodAsync('OnMessage', JSON.stringify(event));
+            }
+        }
+
         ws.onmessage = function (e) {
             let message;
             try {
@@ -85,11 +93,7 @@ export function connect(realtimeHost, httpHost, token, channel, dotNetRef) {
                     resolve();
                     break;
                 case 'data':
-                    if (typeof message.event === 'string') {
-                        dotNetRef.invokeMethodAsync('OnMessage', message.event);
-                    } else if (message.event) {
-                        dotNetRef.invokeMethodAsync('OnMessage', JSON.stringify(message.event));
-                    }
+                    forward(message.event);
                     break;
                 case 'connection_error':
                 case 'subscribe_error':

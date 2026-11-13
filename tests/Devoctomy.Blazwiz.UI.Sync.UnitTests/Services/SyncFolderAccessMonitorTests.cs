@@ -23,6 +23,110 @@ public class SyncFolderAccessMonitorTests
         Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncFolderAccessMonitor(mockFolder.Object, null!, mockBrowser.Object, mockShellContent.Object, testText.Sync, testText.Errors)).ParamName);
         Assert.Equal("browserNetworkStatus", Assert.Throws<ArgumentNullException>(() => new SyncFolderAccessMonitor(mockFolder.Object, mockScheduler.Object, null!, mockShellContent.Object, testText.Sync, testText.Errors)).ParamName);
         Assert.Equal("shellContentService", Assert.Throws<ArgumentNullException>(() => new SyncFolderAccessMonitor(mockFolder.Object, mockScheduler.Object, mockBrowser.Object, null!, testText.Sync, testText.Errors)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new SyncFolderAccessMonitor(mockFolder.Object, mockScheduler.Object, mockBrowser.Object, mockShellContent.Object, null!, testText.Errors)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new SyncFolderAccessMonitor(mockFolder.Object, mockScheduler.Object, mockBrowser.Object, mockShellContent.Object, testText.Sync, null!)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenTheFolderStatusIsGone_WhenReconnectAsync_ThenSaysTheGrantWasNotKept()
+    {
+        // Arrange
+        mockFolder.Setup(x => x.NeedsReconnectAsync()).ReturnsAsync(true);
+        mockFolder.Setup(x => x.ReconnectAsync()).ReturnsAsync(true);
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+        var changes = 0;
+        sut.Changed += (_, _) => changes++;
+
+        // Act
+        await sut.ReconnectAsync();
+
+        // Assert
+        Assert.True(sut.NeedsAccess);
+        Assert.Null(sut.FolderName);
+        Assert.StartsWith("The browser did not keep access to the folder.", sut.Error);
+        Assert.Equal(1, changes);
+        mockShellContent.Verify(x => x.RequestReload(), Times.Never);
+        mockScheduler.Verify(x => x.StartAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenSyncFailsToStart_WhenReconnectAsync_ThenTheFolderIsStillReconnected()
+    {
+        // Arrange
+        mockFolder.Setup(x => x.NeedsReconnectAsync()).ReturnsAsync(true);
+        mockFolder.Setup(x => x.ReconnectAsync()).ReturnsAsync(true);
+        mockFolder.Setup(x => x.GetStatusAsync()).ReturnsAsync(new SyncFolderStatus { Name = "Notes", Permission = "granted" });
+        mockScheduler.Setup(x => x.StartAsync()).ThrowsAsync(new InvalidOperationException("offline"));
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+        var changes = 0;
+        sut.Changed += (_, _) => changes++;
+
+        // Act
+        var exception = await Record.ExceptionAsync(() => sut.ReconnectAsync());
+
+        // Assert
+        Assert.Null(exception);
+        Assert.False(sut.NeedsAccess);
+        Assert.Null(sut.Error);
+        Assert.Equal(1, changes);
+        mockShellContent.Verify(x => x.RequestReload(), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAnEarlierError_WhenReconnectSucceeds_ThenTheErrorIsCleared()
+    {
+        // Arrange
+        mockFolder.Setup(x => x.NeedsReconnectAsync()).ReturnsAsync(true);
+        mockFolder.SetupSequence(x => x.ReconnectAsync()).ReturnsAsync(false).ReturnsAsync(true);
+        mockFolder.Setup(x => x.GetStatusAsync()).ReturnsAsync(new SyncFolderStatus { Name = "Notes", Permission = "granted" });
+        using var sut = CreateSut();
+        await sut.CheckAsync();
+        await sut.ReconnectAsync();
+        var error = sut.Error;
+
+        // Act
+        await sut.ReconnectAsync();
+
+        // Assert
+        Assert.Equal("Access to the folder was not allowed.", error);
+        Assert.Null(sut.Error);
+        Assert.False(sut.NeedsAccess);
+    }
+
+    [Fact]
+    public void GivenStoppingSyncFails_WhenAppBecomesVisibleWithAccessLost_ThenNothingThrowsAndAccessIsAskedFor()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        sut.Start();
+        mockFolder.Setup(x => x.NeedsReconnectAsync()).ReturnsAsync(true);
+        mockFolder.Setup(x => x.GetStatusAsync()).ReturnsAsync(new SyncFolderStatus { Name = "Notes", Permission = "prompt" });
+        mockScheduler.Setup(x => x.StopAsync()).ThrowsAsync(new InvalidOperationException("boom"));
+
+        // Act
+        var exception = Record.Exception(() => mockBrowser.Raise(x => x.BecameVisible += null, EventArgs.Empty));
+
+        // Assert
+        Assert.Null(exception);
+        Assert.True(sut.NeedsAccess);
+        mockScheduler.Verify(x => x.StopAsync(), Times.Once);
+    }
+
+    [Fact]
+    public void GivenStartedTwice_WhenAppBecomesVisible_ThenCheckedOnce()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        sut.Start();
+        sut.Start();
+
+        // Act
+        mockBrowser.Raise(x => x.BecameVisible += null, EventArgs.Empty);
+
+        // Assert
+        mockFolder.Verify(x => x.NeedsReconnectAsync(), Times.Once);
     }
 
     [Fact]

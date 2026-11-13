@@ -484,32 +484,7 @@ public partial class FilesViewModel : ViewModelBase
         DialogError = null;
         try
         {
-            string? openNoteId = null;
-            switch (ActiveDialog)
-            {
-                case FilesDialogKind.NewNote:
-                    openNoteId = (await Notes.CreateNoteAsync(DialogName, SelectedFolderId)).Id;
-                    break;
-                case FilesDialogKind.NewFolder:
-                    var folder = await Notes.CreateFolderAsync(DialogName, SelectedFolderId);
-                    if (SelectedFolderId != null)
-                    {
-                        expandedFolderIds.Add(SelectedFolderId);
-                    }
-
-                    SelectedFolderId = folder.Id;
-                    break;
-                case FilesDialogKind.Rename when DialogEntry != null:
-                    await Notes.RenameAsync(DialogEntry.Id, DialogName);
-                    break;
-                case FilesDialogKind.Move when DialogEntry != null:
-                    await MoveEntryAsync(DialogEntry.Id, MoveTargetId);
-                    break;
-                case FilesDialogKind.Delete when DialogEntry != null:
-                    await DeleteEntryAsync(DialogEntry);
-                    break;
-            }
-
+            var openNoteId = await ApplyDialogAsync();
             CloseDialog();
             if (openNoteId != null)
             {
@@ -626,6 +601,39 @@ public partial class FilesViewModel : ViewModelBase
         return target is { IsFolder: true }
             && target.Id != entry.Id
             && !(entry.IsFolder && noteTreeService.GetDescendantIds(Entries, entry.Id).Contains(target.Id));
+    }
+
+    /// <summary>
+    /// Does what the open dialog asks.
+    /// </summary>
+    /// <returns>The id of a note to open: the one just created, or null.</returns>
+    private async Task<string?> ApplyDialogAsync()
+    {
+        switch (ActiveDialog)
+        {
+            case FilesDialogKind.NewNote:
+                return (await Notes.CreateNoteAsync(DialogName, SelectedFolderId)).Id;
+            case FilesDialogKind.NewFolder:
+                var folder = await Notes.CreateFolderAsync(DialogName, SelectedFolderId);
+                if (SelectedFolderId != null)
+                {
+                    expandedFolderIds.Add(SelectedFolderId);
+                }
+
+                SelectedFolderId = folder.Id;
+                break;
+            case FilesDialogKind.Rename when DialogEntry != null:
+                await Notes.RenameAsync(DialogEntry.Id, DialogName);
+                break;
+            case FilesDialogKind.Move when DialogEntry != null:
+                await MoveEntryAsync(DialogEntry.Id, MoveTargetId);
+                break;
+            case FilesDialogKind.Delete when DialogEntry != null:
+                await DeleteEntryAsync(DialogEntry);
+                break;
+        }
+
+        return null;
     }
 
     private async Task MoveEntryAsync(string entryId, string targetId)

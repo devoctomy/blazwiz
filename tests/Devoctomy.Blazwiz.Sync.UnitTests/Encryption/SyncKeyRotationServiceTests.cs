@@ -345,6 +345,183 @@ public class SyncKeyRotationServiceTests
         await Assert.ThrowsAsync<ArgumentException>(() => sut.PrepareAsync(new E2eKeyScope(Guid.NewGuid().ToString("D"))));
     }
 
+    [Fact]
+    public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Arrange
+        var p = mockProfiles.Object;
+        var m = mockManager.Object;
+        var k = mockRings.Object;
+        var r = registry;
+        var s = mockSync.Object;
+        var c = mockConnectivity.Object;
+        var l = mockLock.Object;
+        var t = mockTargets.Object;
+        var x = mockScratch.Object;
+
+        // Act & Assert
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(null!, m, k, r, s, c, l, t, x, format, cipher, clock)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, null!, k, r, s, c, l, t, x, format, cipher, clock)).ParamName);
+        Assert.Equal("keyRings", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, null!, r, s, c, l, t, x, format, cipher, clock)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, null!, s, c, l, t, x, format, cipher, clock)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, r, null!, c, l, t, x, format, cipher, clock)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, r, s, null!, l, t, x, format, cipher, clock)).ParamName);
+        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, r, s, c, null!, t, x, format, cipher, clock)).ParamName);
+        Assert.Equal("targetProvider", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, r, s, c, l, null!, x, format, cipher, clock)).ParamName);
+        Assert.Equal("scratchStore", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, r, s, c, l, t, null!, format, cipher, clock)).ParamName);
+        Assert.Equal("encryptedFileFormat", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, r, s, c, l, t, x, null!, cipher, clock)).ParamName);
+        Assert.Equal("cipher", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, r, s, c, l, t, x, format, null!, clock)).ParamName);
+        Assert.Equal("timeProvider", Assert.Throws<ArgumentNullException>(() => new SyncKeyRotationService(p, m, k, r, s, c, l, t, x, format, cipher, null!)).ParamName);
+    }
+
+    [Fact]
+    public async Task GivenAProfileWithNoFiles_WhenPrepared_ThenTheEstimateIsEmptyAndNothingIsUploaded()
+    {
+        // Arrange
+        await store.CreateFolderAsync("profiles/Work/");
+        var sut = CreateSut();
+
+        // Act
+        var estimate = await sut.PrepareAsync(scope);
+
+        // Assert
+        Assert.Equal(0, estimate.FileCount);
+        Assert.Equal(0, estimate.TotalBytes);
+        Assert.Equal(TimeSpan.Zero, estimate.Duration);
+        Assert.Equal(["lock " + SyncDefaults.LockNamePrefix + scope.Id, "sync"], calls);
+        mockScratch.Verify(x => x.PutAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenTheThrowawayUploadIsDenied_WhenPrepared_ThenRefusedAsSyncFailedAndTheFileIsStillDeleted()
+    {
+        // Arrange
+        await store.WriteAsync("profiles/a.md", new byte[10]);
+        var denied = new SyncAccessDeniedException(SyncErrorCodes.RemoteAccessDenied);
+        mockScratch.Setup(x => x.PutAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(denied);
+        var sut = CreateSut();
+
+        // Act
+        var ex = await Assert.ThrowsAsync<SyncKeyRotationException>(() => sut.PrepareAsync(scope));
+
+        // Assert
+        Assert.Equal(SyncErrorCodes.RotationSyncFailed, ex.Code);
+        Assert.Same(denied, ex.InnerException);
+        mockScratch.Verify(x => x.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTheThrowawayFileCannotBeDeleted_WhenPrepared_ThenTheEstimateIsStillReturned()
+    {
+        // Arrange
+        await store.WriteAsync("profiles/a.md", new byte[10]);
+        mockScratch.Setup(x => x.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new SyncNetworkException(SyncErrorCodes.RemoteUnreachable));
+        var sut = CreateSut();
+
+        // Act
+        var estimate = await sut.PrepareAsync(scope);
+
+        // Assert
+        Assert.Equal(1, estimate.FileCount);
+        Assert.Equal(TimeSpan.FromSeconds(2), estimate.Duration);
+        mockScratch.Verify(x => x.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenFilesNotInTheIndex_WhenRotated_ThenOnlyThoseWhoseHeaderNamesAnEarlierKeyAreEncryptedAgain()
+    {
+        // Arrange: written straight to the underlying store, so the listing has no key for them.
+        var plain = Bytes("not encrypted");
+        await files.WriteAsync("profiles/old.md", format.Encrypt(Bytes("alpha"), OldKeyId, oldKey, new E2eFileBinding(scope.Id, "profiles/old.md")));
+        await files.WriteAsync("profiles/plain.md", plain);
+        var sut = CreateSut();
+
+        // Act
+        await sut.RotateAsync(scope, "old", "new");
+
+        // Assert
+        var raw = await files.ReadAsync("profiles/old.md");
+        Assert.True(format.TryGetKeyId(raw!.Content, out var keyId));
+        Assert.Equal(NewKeyId, keyId);
+        Assert.Equal("alpha", Encoding.UTF8.GetString((await store.ReadAsync("profiles/old.md"))!.Content));
+        Assert.Equal(plain, (await files.ReadAsync("profiles/plain.md"))!.Content);
+        Assert.Null(await index.GetAsync(scope.Id, Owner, "profiles/plain.md"));
+        Assert.Equal([scope], sut.ReadyToComplete);
+    }
+
+    [Fact]
+    public async Task GivenAFileNotInTheIndexThatIsGoneWhenRead_WhenRotated_ThenItIsSkippedAndNothingIsSynced()
+    {
+        // Arrange
+        await files.WriteAsync("profiles/gone.md", Bytes("soon gone"));
+        var mockUntracked = new Mock<ISyncFileStore>();
+        mockUntracked.Setup(x => x.ReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((SyncFile?)null);
+        registry.SetFileStores(scope.Id, store, mockUntracked.Object);
+        var sut = CreateSut();
+
+        // Act
+        await sut.RotateAsync(scope, "old", "new");
+
+        // Assert
+        Assert.Empty(calls);
+        Assert.Equal([scope], sut.ReadyToComplete);
+        mockUntracked.Verify(x => x.ReadAsync("profiles/gone.md", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAFileDeletedBeforeItIsEncryptedAgain_WhenRotated_ThenItIsSkippedAndTheRotationFinishes()
+    {
+        // Arrange
+        IReadOnlyList<SyncFileInfo> listed = [new SyncFileInfo { Key = "profiles/a.md", EncryptionKeyId = OldKeyId }];
+        IReadOnlyList<SyncFileInfo> none = [];
+        var mockStore = new Mock<ISyncFileStore>();
+        mockStore.SetupSequence(x => x.ListAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(listed)
+            .ReturnsAsync(none);
+        mockStore.Setup(x => x.ReadAsync("profiles/a.md", It.IsAny<CancellationToken>())).ReturnsAsync((SyncFile?)null);
+        registry.SetFileStores(scope.Id, mockStore.Object, files);
+        var sut = CreateSut();
+
+        // Act
+        await sut.RotateAsync(scope, "old", "new");
+
+        // Assert
+        mockStore.Verify(x => x.WriteAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<DateTimeOffset?>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(["lock " + SyncDefaults.LockNamePrefix + scope.Id, "sync"], calls);
+        Assert.Equal([scope], sut.ReadyToComplete);
+    }
+
+    [Fact]
+    public async Task GivenEveryPassBringsBackAFileUnderTheOldKey_WhenRotated_ThenItGivesUpAfterTheMaximumRounds()
+    {
+        // Arrange
+        await store.WriteAsync("profiles/a.md", Bytes("alpha"));
+        await PushAsync(null);
+        var passes = 0;
+        mockSync.Setup(x => x.SyncAsync(scope.Id, false, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .Returns<string?, bool, IProgress<SyncPassProgress>?, CancellationToken>(async (_, _, _, _) =>
+            {
+                passes++;
+                await files.WriteAsync("profiles/a.md", format.Encrypt(Bytes("theirs"), OldKeyId, oldKey, new E2eFileBinding(scope.Id, "profiles/a.md")));
+                var record = (await index.GetAsync(scope.Id, Owner, "profiles/a.md"))!;
+                record.KeyId = OldKeyId;
+                record.Dirty = false;
+                await index.SaveAsync(record);
+                return new SyncResult { ConflictsResolved = 1 };
+            });
+        var sut = CreateSut();
+
+        // Act
+        var ex = await Assert.ThrowsAsync<SyncKeyRotationException>(() => sut.RotateAsync(scope, "old", "new"));
+
+        // Assert
+        Assert.Equal(SyncErrorCodes.RotationSyncFailed, ex.Code);
+        Assert.Equal(SyncKeyRotationService.MaxRounds, passes);
+        Assert.Empty(sut.ReadyToComplete);
+    }
+
     private static byte[] Bytes(string text) => Encoding.UTF8.GetBytes(text);
 
     // What a pass does with this device's changes: uploads every dirty file, so it is no longer dirty.

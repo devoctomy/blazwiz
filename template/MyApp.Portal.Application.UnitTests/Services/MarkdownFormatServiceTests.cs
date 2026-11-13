@@ -182,19 +182,61 @@ public class MarkdownFormatServiceTests
     }
 
     [Fact]
+    public void GivenLinesWithABlankLineBetween_WhenHeading_ThenTheBlankLineIsLeftAlone()
+    {
+        // Act & Assert
+        Assert.Equal("«# one\n\n# two»", Format("«one\n\ntwo»", MarkdownFormat.Heading1));
+        Assert.Equal("«one\n\ntwo»", Format("«# one\n\n# two»", MarkdownFormat.Heading1));
+    }
+
+    [Theory]
+    [InlineData(MarkdownFormat.BulletList, "«»")]
+    [InlineData(MarkdownFormat.Quote, "> «»")]
+    public void GivenAnEmptyNote_WhenListOrQuote_ThenAListAddsNothingAndAQuoteAddsItsMarker(MarkdownFormat format, string expected)
+    {
+        // Act & Assert
+        Assert.Equal(expected, Format("«»", format));
+    }
+
+    [Theory]
+    [InlineData("«var x = 1;»\nmore", "```\n«var x = 1;»\n```\nmore")]
+    [InlineData("«var x = 1;» more", "```\n«var x = 1;»\n```\n more")]
+    public void GivenSelectionFollowedByText_WhenCodeBlock_ThenTheFenceEndsOnItsOwnLine(string before, string expected)
+    {
+        // Act & Assert
+        Assert.Equal(expected, Format(before, MarkdownFormat.CodeBlock));
+    }
+
+    [Theory]
+    [InlineData("see «http://example.com»", "see [«link text»](http://example.com)")]
+    [InlineData("see «HTTPS://example.com»", "see [«link text»](HTTPS://example.com)")]
+    public void GivenSelectedUrlInAnyCase_WhenLink_ThenItBecomesTheLinkTarget(string before, string expected)
+    {
+        // Act & Assert
+        Assert.Equal(expected, Format(before, MarkdownFormat.Link));
+    }
+
+    [Fact]
+    public void GivenUnknownFormat_WhenApply_ThenThrowsArgumentOutOfRangeException()
+    {
+        // Act & Assert
+        Assert.Equal("format", Assert.Throws<ArgumentOutOfRangeException>(() => sut.Apply("text", 0, 0, (MarkdownFormat)999)).ParamName);
+    }
+
+    [Fact]
     public void GivenNullText_WhenApply_ThenThrowsArgumentNullException()
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => sut.Apply(null!, 0, 0, MarkdownFormat.Bold));
     }
 
-    private string Format(string markedText, MarkdownFormat format)
+    private string Format(string markedText, MarkdownFormat style)
     {
         var start = markedText.IndexOf('«');
         var end = markedText.IndexOf('»') - 1;
         var text = markedText.Replace("«", string.Empty).Replace("»", string.Empty);
 
-        var edit = sut.Apply(text, start, end, format);
+        var edit = sut.Apply(text, start, end, style);
         var result = edit.ApplyTo(text);
 
         return result[..edit.SelectionStart] + "«" + result[edit.SelectionStart..edit.SelectionEnd] + "»" + result[edit.SelectionEnd..];

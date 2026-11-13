@@ -207,6 +207,183 @@ public class UserEventsSessionHandlerTests
         mockChannel.Verify(x => x.DisconnectAsync(), Times.Once);
     }
 
+    [Fact]
+    public async Task GivenSignedOutElsewhere_WhenReconnectAsync_ThenNothingConnects()
+    {
+        // Arrange: the handler is still active, but the session has gone.
+        using var sut = CreateSut();
+        await sut.OnSessionStartedAsync(session);
+        state = UserEventConnectionState.Disconnected;
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync((UserSession?)null);
+
+        // Act
+        await sut.ReconnectAsync();
+
+        // Assert
+        mockAuth.Verify(x => x.GetCurrentUserAsync(), Times.Once);
+        mockChannel.Verify(x => x.ConnectAsync(It.IsAny<UserSession>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTheSessionIsNowAnOfflineOne_WhenReconnectAsync_ThenNothingConnects()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnSessionStartedAsync(session);
+        state = UserEventConnectionState.Disconnected;
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = "bob", IsOffline = true });
+
+        // Act
+        await sut.ReconnectAsync();
+
+        // Assert
+        mockChannel.Verify(x => x.ConnectAsync(It.IsAny<UserSession>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAConnectInProgress_WhenReconnectAsync_ThenNoSecondConnectIsStarted()
+    {
+        // Arrange
+        var pending = new TaskCompletionSource();
+        mockChannel.Setup(x => x.ConnectAsync(It.IsAny<UserSession>())).Returns(pending.Task);
+        using var sut = CreateSut();
+        var started = sut.OnSessionStartedAsync(session);
+
+        // Act
+        await sut.ReconnectAsync();
+        pending.SetResult();
+        await started;
+
+        // Assert
+        mockChannel.Verify(x => x.ConnectAsync(It.IsAny<UserSession>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenSignedOutWhileConnecting_WhenTheConnectFails_ThenNoReconnectIsScheduled()
+    {
+        // Arrange
+        var pending = new TaskCompletionSource();
+        mockChannel.Setup(x => x.ConnectAsync(It.IsAny<UserSession>())).Returns(pending.Task);
+        using var sut = CreateSut();
+        var started = sut.OnSessionStartedAsync(session);
+        await sut.OnSigningOutAsync();
+
+        // Act
+        pending.SetException(new HttpRequestException("offline"));
+        await started;
+        time.Advance(UserEventsSessionHandler.MaxReconnectDelay);
+        await Task.Delay(50);
+
+        // Assert
+        mockChannel.Verify(x => x.ConnectAsync(It.IsAny<UserSession>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenGettingTheSessionFails_WhenTheSessionResumes_ThenTheErrorIsSwallowedAndNothingConnects()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnSessionStartedAsync(session);
+        state = UserEventConnectionState.Disconnected;
+        var asked = new TaskCompletionSource();
+        mockAuth.Setup(x => x.GetCurrentUserAsync()).Callback(() => asked.TrySetResult()).ThrowsAsync(new InvalidOperationException("storage unavailable"));
+
+        // Act
+        var exception = Record.Exception(() => mockMonitor.Raise(x => x.SessionResumed += null, EventArgs.Empty));
+        await asked.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        Assert.Null(exception);
+        mockChannel.Verify(x => x.ConnectAsync(It.IsAny<UserSession>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenEndingTheSessionFails_WhenSignedOutEverywhereArrives_ThenTheErrorIsSwallowedAndEventsAreNoLongerHandled()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnSessionStartedAsync(session);
+        mockAuth.Setup(x => x.EndSessionAsync(It.IsAny<SessionEndedReason>(), It.IsAny<string?>())).ThrowsAsync(new InvalidOperationException("storage unavailable"));
+        var signedOut = new UserEvent { Type = UserEventTypes.SignedOutEverywhere, From = "other" };
+
+        // Act
+        var first = Record.Exception(() => mockChannel.Raise(x => x.Received += null, mockChannel.Object, signedOut));
+        var second = Record.Exception(() => mockChannel.Raise(x => x.Received += null, mockChannel.Object, signedOut));
+
+        // Assert
+        Assert.Null(first);
+        Assert.Null(second);
+        mockAuth.Verify(x => x.EndSessionAsync(It.IsAny<SessionEndedReason>(), It.IsAny<string?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenDisconnectingFails_WhenOfflineModeTurnsOn_ThenTheErrorIsSwallowedAndEventsAreNoLongerHandled()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnSessionStartedAsync(session);
+        mockChannel.Setup(x => x.DisconnectAsync()).ThrowsAsync(new InvalidOperationException("socket gone"));
+
+        // Act
+        var exception = Record.Exception(() => offlineMode.Enter(OfflineEntryReason.Chosen));
+        mockChannel.Raise(x => x.Received += null, mockChannel.Object, new UserEvent { Type = UserEventTypes.SignedOutEverywhere, From = "other" });
+
+        // Assert
+        Assert.Null(exception);
+        mockChannel.Verify(x => x.DisconnectAsync(), Times.Once);
+        mockAuth.Verify(x => x.EndSessionAsync(It.IsAny<SessionEndedReason>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenOnlineSessionWhileOfflineModeIsOn_WhenSessionStarts_ThenNothingConnects()
+    {
+        // Arrange
+        offlineMode.Enter(OfflineEntryReason.Chosen);
+        using var sut = CreateSut();
+
+        // Act
+        await sut.OnSessionStartedAsync(session);
+        await sut.ReconnectAsync();
+
+        // Assert
+        mockChannel.Verify(x => x.ConnectAsync(It.IsAny<UserSession>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAReconnectAlreadyScheduled_WhenTheConnectionDropsAgain_ThenTheScheduleIsKept()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnSessionStartedAsync(session);
+        state = UserEventConnectionState.Disconnected;
+        mockChannel.Raise(x => x.StateChanged += null, EventArgs.Empty);
+
+        // Act
+        mockChannel.Raise(x => x.StateChanged += null, EventArgs.Empty);
+        time.Advance(UserEventsSessionHandler.FirstReconnectDelay);
+        await WaitForAsync(() => state == UserEventConnectionState.Connected);
+
+        // Assert: had the second drop rescheduled, the wait would have doubled.
+        Assert.Equal(UserEventConnectionState.Connected, state);
+        mockChannel.Verify(x => x.ConnectAsync(session), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenConnected_WhenTheStateChangesWithoutDropping_ThenNoReconnectIsScheduled()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.OnSessionStartedAsync(session);
+
+        // Act
+        mockChannel.Raise(x => x.StateChanged += null, EventArgs.Empty);
+        time.Advance(UserEventsSessionHandler.MaxReconnectDelay);
+        await Task.Delay(50);
+
+        // Assert
+        mockChannel.Verify(x => x.ConnectAsync(session), Times.Once);
+    }
+
     private static async Task WaitForAsync(Func<bool> condition)
     {
         for (var i = 0; i < 200 && !condition(); i++)

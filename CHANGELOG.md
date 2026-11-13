@@ -119,6 +119,9 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
   - Keys documents already in Secrets Manager are not moved: set the profiles up again, or copy each secret once into
     `<identity id>/keys/` with the AWS CLI. The stack deletes nothing in Secrets Manager, so they stay restorable until
     you delete them.
+- **Generated apps build with the .NET 10 SDK only.** The template's `global.json` now rolls forward within .NET 10
+  (`latestFeature`), not to a newer major SDK (`latestMajor`). With a .NET 11 SDK also installed, the UI tests' build
+  of the portal ran on .NET 11 inside a .NET 10 `dotnet test` and failed (`MSB4216`, `ComputeWasmBuildAssets`).
 
 ## 0.7.2
 

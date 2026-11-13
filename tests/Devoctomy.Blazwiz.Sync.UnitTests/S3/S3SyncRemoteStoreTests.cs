@@ -238,6 +238,41 @@ public class S3SyncRemoteStoreTests
         await Assert.ThrowsAsync<SyncAccessDeniedException>(() => new S3SyncRemoteStore(mockTargets.Object, matcher).ListAsync());
     }
 
+    [Theory]
+    [InlineData(true, SyncErrorCodes.RemoteNoCredentials)]
+    [InlineData(false, SyncErrorCodes.RemoteNotConfigured)]
+    public async Task GivenNoTarget_WhenCalled_ThenAccessDeniedSaysWhetherSyncIsSetUp(bool isConfigured, string expectedCode)
+    {
+        // Arrange
+        mockTargets.Setup(x => x.GetTargetAsync(It.IsAny<CancellationToken>())).ReturnsAsync((S3SyncTarget?)null);
+        mockTargets.SetupGet(x => x.IsConfigured).Returns(isConfigured);
+        var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
+
+        // Act
+        var ex = await Assert.ThrowsAsync<SyncAccessDeniedException>(() => sut.GetAsync("notes/a.md"));
+
+        // Assert
+        Assert.Equal(expectedCode, ex.Code);
+        mockS3.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task GivenAnObjectWithoutAnUploadTime_WhenListAsync_ThenItsUploadTimeIsTheEarliestPossible()
+    {
+        // Arrange
+        var undated = S3Object("notes/a.md");
+        undated.LastModified = null;
+        mockS3.Setup(x => x.ListObjectsV2Async(It.IsAny<ListObjectsV2Request>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ListObjectsV2Response { S3Objects = [undated], IsTruncated = false });
+        var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
+
+        // Act
+        var result = await sut.ListAsync();
+
+        // Assert
+        Assert.Equal(DateTimeOffset.MinValue, Assert.Single(result).LastModified);
+    }
+
     [Fact]
     public async Task GivenCredentialServiceUnreachable_WhenCalled_ThenNetworkException()
     {

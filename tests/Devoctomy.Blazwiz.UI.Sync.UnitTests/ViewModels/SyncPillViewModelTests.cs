@@ -79,6 +79,44 @@ public class SyncPillViewModelTests
     }
 
     [Fact]
+    public async Task GivenSyncOff_WhenToggled_ThenTurnedOnAndTheSwitchIsRefreshed()
+    {
+        // Arrange
+        var enabled = false;
+        mockConnectivity.SetupGet(x => x.IsSyncEnabled).Returns(() => enabled);
+        mockConnectivity.Setup(x => x.SetSyncEnabledAsync(It.IsAny<bool>())).Callback<bool>(value => enabled = value).Returns(Task.CompletedTask);
+        var sut = CreateSut();
+        var before = sut.IsSyncEnabled;
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        await sut.ToggleSyncCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(before);
+        Assert.True(sut.IsSyncEnabled);
+        Assert.Contains(nameof(SyncPillViewModel.IsSyncEnabled), changed);
+        mockConnectivity.Verify(x => x.SetSyncEnabledAsync(true), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenOnlineButSyncing_WhenSyncNow_ThenNothingHappens()
+    {
+        // Arrange
+        connectivity = new ConnectivityStatus { IsOnline = true, LastCheckedAt = DateTimeOffset.UnixEpoch };
+        syncStatus = new SyncStatus { State = SyncState.Syncing };
+        var sut = CreateSut();
+
+        // Act
+        await sut.SyncNowCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(sut.CanSyncNow);
+        mockScheduler.Verify(x => x.SyncNowAsync(), Times.Never);
+    }
+
+    [Fact]
     public async Task GivenOnline_WhenSyncNow_ThenSchedulerSyncs()
     {
         // Arrange

@@ -106,6 +106,19 @@ public class SyncStorageChannelTests
     }
 
     [Fact]
+    public void GivenNoListener_WhenAKnownMessageArrives_ThenNothingIsThrown()
+    {
+        // Arrange
+        var sut = new SyncStorageChannel(mockJs.Object, mockKeys.Object);
+
+        // Act
+        var ex = Record.Exception(() => sut.OnMessage(nameof(SyncStorageChannelMessage.Changed)));
+
+        // Assert
+        Assert.Null(ex);
+    }
+
+    [Fact]
     public async Task GivenStarted_WhenDisposeAsync_ThenUnsubscribedAndModuleDisposed()
     {
         // Arrange

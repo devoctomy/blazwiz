@@ -114,7 +114,7 @@ public class OpfsSyncFileStore(
             throw new ArgumentException("Folder keys end with '/'.", nameof(key));
         }
 
-        return WriteAsync(key, [], null, ct);
+        return WriteAsync(key, [], ct: ct);
     }
 
     /// <inheritdoc/>

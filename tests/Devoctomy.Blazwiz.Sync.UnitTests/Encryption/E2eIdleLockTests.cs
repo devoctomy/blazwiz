@@ -211,6 +211,71 @@ public class E2eIdleLockTests
         Assert.Throws<ArgumentNullException>(() => sut.Refresh(null!));
     }
 
+    [Fact]
+    public void GivenAnUnlockedProfile_WhenDisposed_ThenItsTimerStopsAndLockChangesAreIgnored()
+    {
+        // Arrange
+        var sut = Started();
+        Unlock();
+
+        // Act
+        sut.Dispose();
+        time.Advance(TimeSpan.FromHours(1));
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+        time.Advance(TimeSpan.FromHours(1));
+
+        // Assert
+        mockManager.Verify(x => x.Lock(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenAnUnlockedProfile_WhenUnlockedAgain_ThenTheTimerIsReplacedAndCountsFromNow()
+    {
+        // Arrange
+        using var sut = Started();
+        Unlock();
+        time.Advance(TimeSpan.FromMinutes(3));
+
+        // Act
+        mockManager.Raise(x => x.LockStateChanged += null, mockManager.Object, scope);
+        time.Advance(TimeSpan.FromMinutes(3));
+
+        // Assert
+        mockManager.Verify(x => x.Lock(It.IsAny<E2eKeyScope>()), Times.Never);
+        time.Advance(TimeSpan.FromMinutes(2));
+        mockManager.Verify(x => x.Lock(scope), Times.Once);
+    }
+
+    [Fact]
+    public void GivenALockedProfile_WhenAdded_ThenItIsNotTimed()
+    {
+        // Arrange
+        using var sut = Started();
+        var created = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+
+        // Act
+        registry.Add(new SyncProfileOptions { Name = created.Id, RemotePattern = "profiles/y/**/*", KeyScope = created, Settings = new E2eProfileSettings { IdleTimeout = TimeSpan.FromMinutes(1) } });
+        time.Advance(TimeSpan.FromHours(1));
+
+        // Assert
+        mockManager.Verify(x => x.Lock(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenAProfileWithoutKeys_WhenAdded_ThenItIsNotTimed()
+    {
+        // Arrange
+        using var sut = Started();
+
+        // Act
+        registry.Add(new SyncProfileOptions { Name = "plain", RemotePattern = "plain/**/*" });
+        time.Advance(TimeSpan.FromHours(1));
+
+        // Assert
+        mockManager.Verify(x => x.IsUnlocked(It.IsAny<E2eKeyScope>()), Times.Never);
+        mockManager.Verify(x => x.Lock(It.IsAny<E2eKeyScope>()), Times.Never);
+    }
+
     private E2eIdleLock Started()
     {
         var sut = new E2eIdleLock(mockManager.Object, registry, time);
