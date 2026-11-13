@@ -345,21 +345,40 @@ public class TestBase : PageTest
     private static async Task BuildPortalAsync(string projectPath)
     {
         using var build = StartDotnet($"build \"{projectPath}\" --configuration Release --nologo");
+
+        // The build's errors, for the failure message: the test log is all a CI run shows.
+        var errors = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        build.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data != null && e.Data.Contains("error", StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Enqueue(e.Data);
+            }
+        };
+
+        // Wait for the build process itself to exit, not with WaitForExitAsync: that also waits for the build's output
+        // to close, and processes the build leaves running keep it open, so a finished build is never noticed.
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        build.EnableRaisingEvents = true;
+        build.Exited += (_, _) => exited.TrySetResult();
+        if (build.HasExited)
+        {
+            exited.TrySetResult();
+        }
+
         // No time limit: report every three minutes that the build is still running.
         var stopwatch = Stopwatch.StartNew();
-        var exited = build.WaitForExitAsync();
-        while (await Task.WhenAny(exited, Task.Delay(PortalBuildProgressInterval)) != exited)
+        while (await Task.WhenAny(exited.Task, Task.Delay(PortalBuildProgressInterval)) != exited.Task)
         {
             var message = $"The portal is still building ({stopwatch.Elapsed.TotalMinutes:F0} minutes so far).";
-            Console.WriteLine(message);
+            Microsoft.VisualStudio.TestTools.UnitTesting.Logging.Logger.LogMessage("{0}", message);
             WriteServerLog(message);
         }
 
-        await exited;
-
         if (build.ExitCode != 0)
         {
-            throw new InvalidOperationException($"The portal did not build (exit code {build.ExitCode}, see TestResults/portal.log).");
+            throw new InvalidOperationException(
+                $"The portal did not build (exit code {build.ExitCode}, see TestResults/portal.log):{Environment.NewLine}{string.Join(Environment.NewLine, errors.Distinct())}");
         }
     }
 
@@ -374,7 +393,7 @@ public class TestBase : PageTest
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error stopping server: {ex.Message}");
+            Microsoft.VisualStudio.TestTools.UnitTesting.Logging.Logger.LogMessage("Error stopping server: {0}", ex.Message);
         }
         finally
         {
