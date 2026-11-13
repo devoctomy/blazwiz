@@ -109,8 +109,8 @@ public class TextPluralsTests
 
         // Assert
         using var provider = services.BuildServiceProvider();
-        var options = Assert.Single(provider.GetServices<TextOptions>());
-        Assert.Equal(["A", "B"], options.Overrides.Keys.Order());
+        var registered = Assert.Single(provider.GetServices<TextOptions>());
+        Assert.Equal(["A", "B"], registered.Overrides.Keys.Order());
         Assert.IsType<OverridingStringLocalizerFactory>(provider.GetRequiredService<IStringLocalizerFactory>());
         Assert.Equal("Hello", provider.GetRequiredService<IStringLocalizer<PackageText>>()["Greeting"].Value);
         Assert.IsType<TextPlurals>(provider.GetRequiredService<ITextPlurals>());

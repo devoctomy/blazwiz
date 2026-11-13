@@ -230,13 +230,13 @@ public class MarkdownFormatServiceTests
         Assert.Throws<ArgumentNullException>(() => sut.Apply(null!, 0, 0, MarkdownFormat.Bold));
     }
 
-    private string Format(string markedText, MarkdownFormat format)
+    private string Format(string markedText, MarkdownFormat style)
     {
         var start = markedText.IndexOf('«');
         var end = markedText.IndexOf('»') - 1;
         var text = markedText.Replace("«", string.Empty).Replace("»", string.Empty);
 
-        var edit = sut.Apply(text, start, end, format);
+        var edit = sut.Apply(text, start, end, style);
         var result = edit.ApplyTo(text);
 
         return result[..edit.SelectionStart] + "«" + result[edit.SelectionStart..edit.SelectionEnd] + "»" + result[edit.SelectionEnd..];

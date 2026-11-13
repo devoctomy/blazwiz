@@ -81,11 +81,11 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
         }
     }
 
-    private static void Apply(IConfiguration section, Action apply)
+    private static void Apply(IConfiguration section, Action setting)
     {
         try
         {
-            apply();
+            setting();
         }
         catch (ArgumentException ex)
         {
@@ -105,7 +105,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
             ?? throw new InvalidOperationException($"The sync setting '{PathOf(section, key)}' is required.");
     }
 
-    private static T? Parse<T>(IConfiguration section, string key, Func<string, T> parse, string expected)
+    private static T? Parse<T>(IConfiguration section, string key, Func<string, T> parser, string expected)
         where T : struct
     {
         var value = ReadString(section, key);
@@ -116,7 +116,7 @@ internal sealed class SyncConfigurationReader(SyncBuilder builder)
 
         try
         {
-            return parse(value);
+            return parser(value);
         }
         catch (Exception ex) when (ex is FormatException or OverflowException or ArgumentException)
         {

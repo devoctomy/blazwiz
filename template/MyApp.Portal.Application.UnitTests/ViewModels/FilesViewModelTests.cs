@@ -494,7 +494,7 @@ public class FilesViewModelTests
     public async Task GivenLoaded_WhenFirstSyncFinishes_ThenTreeReloadsOnce()
     {
         // Arrange
-        var sut = await CreateLoadedSutAsync();
+        await CreateLoadedSutAsync();
         var synced = new SyncStatus { LastSyncedAt = DateTimeOffset.UnixEpoch };
 
         // Act
