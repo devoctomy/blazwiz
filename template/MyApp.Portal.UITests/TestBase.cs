@@ -344,7 +344,18 @@ public class TestBase : PageTest
     private static async Task BuildPortalAsync(string projectPath)
     {
         using var build = StartDotnet($"build \"{projectPath}\" --configuration Release --nologo");
-        await build.WaitForExitAsync();
+
+        // Wait for the build process itself to exit. WaitForExitAsync also waits for its redirected output to close,
+        // and the MSBuild worker processes it leaves running keep that open, so it does not return.
+        var exited = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        build.EnableRaisingEvents = true;
+        build.Exited += (_, _) => exited.TrySetResult();
+        if (build.HasExited)
+        {
+            exited.TrySetResult();
+        }
+
+        await exited.Task;
 
         if (build.ExitCode != 0)
         {
