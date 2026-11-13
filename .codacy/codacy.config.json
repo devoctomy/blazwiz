@@ -21,317 +21,6 @@
   },
   "tools": [
     {
-      "toolId": "Agentlinter",
-      "patterns": [
-        {
-          "patternId": "Agentlinter_token-budget_under-150-tokens"
-        },
-        {
-          "patternId": "Agentlinter_token-budget_total-tokens"
-        },
-        {
-          "patternId": "Agentlinter_token-budget_section-weight"
-        },
-        {
-          "patternId": "Agentlinter_token-budget_compressible-padding"
-        },
-        {
-          "patternId": "Agentlinter_structure_position-risk-warning"
-        },
-        {
-          "patternId": "Agentlinter_structure_no-empty-sections"
-        },
-        {
-          "patternId": "Agentlinter_structure_modular-files"
-        },
-        {
-          "patternId": "Agentlinter_structure_heading-hierarchy"
-        },
-        {
-          "patternId": "Agentlinter_structure_has-version-or-update-date"
-        },
-        {
-          "patternId": "Agentlinter_structure_has-sections"
-        },
-        {
-          "patternId": "Agentlinter_structure_has-main-file"
-        },
-        {
-          "patternId": "Agentlinter_structure_has-file-map"
-        },
-        {
-          "patternId": "Agentlinter_structure_file-size"
-        },
-        {
-          "patternId": "Agentlinter_structure_dead-import"
-        },
-        {
-          "patternId": "Agentlinter_structure_circular-import"
-        },
-        {
-          "patternId": "Agentlinter_skill-safety_skill-name-match-dir"
-        },
-        {
-          "patternId": "Agentlinter_skill-safety_skill-description-when-to-use"
-        },
-        {
-          "patternId": "Agentlinter_skill-safety_sensitive-paths"
-        },
-        {
-          "patternId": "Agentlinter_skill-safety_injection-vectors"
-        },
-        {
-          "patternId": "Agentlinter_skill-safety_has-metadata"
-        },
-        {
-          "patternId": "Agentlinter_skill-safety_excessive-permissions"
-        },
-        {
-          "patternId": "Agentlinter_skill-safety_data-exfiltration"
-        },
-        {
-          "patternId": "Agentlinter_skill-safety_dangerous-commands"
-        },
-        {
-          "patternId": "Agentlinter_security_prompt-injection-vulnerability"
-        },
-        {
-          "patternId": "Agentlinter_security_no-secrets"
-        },
-        {
-          "patternId": "Agentlinter_security_no-pii-exposure"
-        },
-        {
-          "patternId": "Agentlinter_security_no-injection-defense"
-        },
-        {
-          "patternId": "Agentlinter_security_has-permission-boundaries"
-        },
-        {
-          "patternId": "Agentlinter_security_has-injection-defense"
-        },
-        {
-          "patternId": "Agentlinter_security_env-var-references"
-        },
-        {
-          "patternId": "Agentlinter_security_api-key-exposure"
-        },
-        {
-          "patternId": "Agentlinter_runtime_token-strength"
-        },
-        {
-          "patternId": "Agentlinter_runtime_group-policy"
-        },
-        {
-          "patternId": "Agentlinter_runtime_gateway-bind"
-        },
-        {
-          "patternId": "Agentlinter_runtime_dm-policy"
-        },
-        {
-          "patternId": "Agentlinter_runtime_config-secrets"
-        },
-        {
-          "patternId": "Agentlinter_runtime_config-exists"
-        },
-        {
-          "patternId": "Agentlinter_runtime_auth-mode"
-        },
-        {
-          "patternId": "Agentlinter_remote-ready_workspace-path-specified"
-        },
-        {
-          "patternId": "Agentlinter_remote-ready_model-settings-specified"
-        },
-        {
-          "patternId": "Agentlinter_remote-ready_env-vars-documented"
-        },
-        {
-          "patternId": "Agentlinter_memory_no-mental-notes"
-        },
-        {
-          "patternId": "Agentlinter_memory_has-state-tracking"
-        },
-        {
-          "patternId": "Agentlinter_memory_has-memory-strategy"
-        },
-        {
-          "patternId": "Agentlinter_memory_has-learning-loop"
-        },
-        {
-          "patternId": "Agentlinter_memory_has-handoff-protocol"
-        },
-        {
-          "patternId": "Agentlinter_memory_has-file-based-notes"
-        },
-        {
-          "patternId": "Agentlinter_memory_has-context-window-awareness"
-        },
-        {
-          "patternId": "Agentlinter_consistency_tone-voice-alignment"
-        },
-        {
-          "patternId": "Agentlinter_consistency_timezone-locale-drift"
-        },
-        {
-          "patternId": "Agentlinter_consistency_stale-package-reference"
-        },
-        {
-          "patternId": "Agentlinter_consistency_stale-file-reference"
-        },
-        {
-          "patternId": "Agentlinter_consistency_stale-date"
-        },
-        {
-          "patternId": "Agentlinter_consistency_priority-conflict"
-        },
-        {
-          "patternId": "Agentlinter_consistency_permission-conflict"
-        },
-        {
-          "patternId": "Agentlinter_consistency_outdated-cross-references"
-        },
-        {
-          "patternId": "Agentlinter_consistency_no-duplicate-instructions"
-        },
-        {
-          "patternId": "Agentlinter_consistency_naming-convention"
-        },
-        {
-          "patternId": "Agentlinter_consistency_language-mixing"
-        },
-        {
-          "patternId": "Agentlinter_consistency_identity-alignment"
-        },
-        {
-          "patternId": "Agentlinter_consistency_circular-dependency"
-        },
-        {
-          "patternId": "Agentlinter_completeness_verification-criteria-required"
-        },
-        {
-          "patternId": "Agentlinter_completeness_session-learning-hooks"
-        },
-        {
-          "patternId": "Agentlinter_completeness_has-workflow"
-        },
-        {
-          "patternId": "Agentlinter_completeness_has-user-context"
-        },
-        {
-          "patternId": "Agentlinter_completeness_has-tools"
-        },
-        {
-          "patternId": "Agentlinter_completeness_has-priorities"
-        },
-        {
-          "patternId": "Agentlinter_completeness_has-output-format"
-        },
-        {
-          "patternId": "Agentlinter_completeness_has-identity"
-        },
-        {
-          "patternId": "Agentlinter_completeness_has-error-handling"
-        },
-        {
-          "patternId": "Agentlinter_completeness_has-boundaries"
-        },
-        {
-          "patternId": "Agentlinter_completeness_freshness-file-paths"
-        },
-        {
-          "patternId": "Agentlinter_completeness_command-coverage"
-        },
-        {
-          "patternId": "Agentlinter_claude-code_skills-vs-commands"
-        },
-        {
-          "patternId": "Agentlinter_claude-code_relevance-trap"
-        },
-        {
-          "patternId": "Agentlinter_claude-code_progressive-disclosure"
-        },
-        {
-          "patternId": "Agentlinter_claude-code_instruction-count"
-        },
-        {
-          "patternId": "Agentlinter_claude-code_hooks-structure"
-        },
-        {
-          "patternId": "Agentlinter_claude-code_descriptive-ratio"
-        },
-        {
-          "patternId": "Agentlinter_claude-code_agent-focus"
-        },
-        {
-          "patternId": "Agentlinter_clarity_undefined-term"
-        },
-        {
-          "patternId": "Agentlinter_clarity_token-efficiency-score"
-        },
-        {
-          "patternId": "Agentlinter_clarity_token-budget-range"
-        },
-        {
-          "patternId": "Agentlinter_clarity_sentence-complexity"
-        },
-        {
-          "patternId": "Agentlinter_clarity_priority-signal-missing"
-        },
-        {
-          "patternId": "Agentlinter_clarity_obvious-statements"
-        },
-        {
-          "patternId": "Agentlinter_consistency_referenced-files-exist"
-        },
-        {
-          "patternId": "Agentlinter_clarity_no-vague-instructions"
-        },
-        {
-          "patternId": "Agentlinter_clarity_no-contradictions"
-        },
-        {
-          "patternId": "Agentlinter_clarity_naked-conditional"
-        },
-        {
-          "patternId": "Agentlinter_clarity_instruction-density"
-        },
-        {
-          "patternId": "Agentlinter_clarity_has-examples"
-        },
-        {
-          "patternId": "Agentlinter_clarity_escape-hatch-missing"
-        },
-        {
-          "patternId": "Agentlinter_clarity_english-config-files"
-        },
-        {
-          "patternId": "Agentlinter_clarity_duplicate-content"
-        },
-        {
-          "patternId": "Agentlinter_clarity_compound-instruction"
-        },
-        {
-          "patternId": "Agentlinter_clarity_ambiguous-pronoun"
-        },
-        {
-          "patternId": "Agentlinter_clarity_action-without-context"
-        },
-        {
-          "patternId": "Agentlinter_clarity_actionable-instructions"
-        },
-        {
-          "patternId": "Agentlinter_blueprint_identity-defined"
-        },
-        {
-          "patternId": "Agentlinter_blueprint_coverage"
-        },
-        {
-          "patternId": "Agentlinter_blueprint_constraints-defined"
-        }
-      ]
-    },
-    {
       "toolId": "SonarCSharp",
       "patterns": [
         {
@@ -363,9 +52,6 @@
         },
         {
           "patternId": "SonarCSharp_S1905"
-        },
-        {
-          "patternId": "SonarCSharp_S131"
         },
         {
           "patternId": "SonarCSharp_S1186"
@@ -521,12 +207,6 @@
           "patternId": "SonarCSharp_S3263"
         },
         {
-          "patternId": "SonarCSharp_S3264"
-        },
-        {
-          "patternId": "SonarCSharp_S2333"
-        },
-        {
           "patternId": "SonarCSharp_S3456"
         },
         {
@@ -567,9 +247,6 @@
         },
         {
           "patternId": "SonarCSharp_S1858"
-        },
-        {
-          "patternId": "SonarCSharp_S3453"
         },
         {
           "patternId": "SonarCSharp_S3220"
@@ -644,9 +321,6 @@
           "patternId": "SonarCSharp_S1698"
         },
         {
-          "patternId": "SonarCSharp_S2339"
-        },
-        {
           "patternId": "SonarCSharp_S3257"
         },
         {
@@ -699,12 +373,6 @@
         },
         {
           "patternId": "SonarCSharp_S2696"
-        },
-        {
-          "patternId": "SonarCSharp_S1172"
-        },
-        {
-          "patternId": "SonarCSharp_S1301"
         },
         {
           "patternId": "SonarCSharp_S2760"
@@ -804,9 +472,6 @@
         },
         {
           "patternId": "SonarCSharp_S3262"
-        },
-        {
-          "patternId": "SonarCSharp_S2360"
         }
       ]
     },
@@ -2777,9 +2442,6 @@
           "patternId": "Stylelint_media-feature-name-unit-allowed-list"
         },
         {
-          "patternId": "Stylelint_media-feature-range-notation"
-        },
-        {
           "patternId": "Stylelint_declaration-property-max-values"
         },
         {
@@ -2888,12 +2550,6 @@
           "patternId": "Stylelint_declaration-property-value-disallowed-list"
         },
         {
-          "patternId": "Stylelint_color-function-notation"
-        },
-        {
-          "patternId": "Stylelint_alpha-value-notation"
-        },
-        {
           "patternId": "Stylelint_hue-degree-notation"
         },
         {
@@ -2936,9 +2592,6 @@
           "patternId": "Stylelint_function-url-no-scheme-relative"
         },
         {
-          "patternId": "Stylelint_color-no-hex"
-        },
-        {
           "patternId": "Stylelint_number-max-precision"
         },
         {
@@ -2946,9 +2599,6 @@
         },
         {
           "patternId": "Stylelint_selector-attribute-quotes"
-        },
-        {
-          "patternId": "Stylelint_font-family-name-quotes"
         },
         {
           "patternId": "Stylelint_selector-no-qualifying-type"
@@ -2970,9 +2620,6 @@
         },
         {
           "patternId": "Stylelint_rule-empty-line-before"
-        },
-        {
-          "patternId": "Stylelint_custom-property-empty-line-before"
         },
         {
           "patternId": "Stylelint_value-no-vendor-prefix"
@@ -2999,22 +2646,13 @@
           "patternId": "Stylelint_length-zero-no-unit"
         },
         {
-          "patternId": "Stylelint_color-hex-length"
-        },
-        {
           "patternId": "Stylelint_color-named"
-        },
-        {
-          "patternId": "Stylelint_declaration-no-important"
         },
         {
           "patternId": "Stylelint_shorthand-property-no-redundant-values"
         },
         {
           "patternId": "Stylelint_font-weight-notation"
-        },
-        {
-          "patternId": "Stylelint_value-keyword-case"
         },
         {
           "patternId": "Stylelint_declaration-block-single-line-max-declarations"
@@ -3029,12 +2667,6 @@
           "patternId": "Stylelint_function-name-case"
         },
         {
-          "patternId": "Stylelint_comment-empty-line-before"
-        },
-        {
-          "patternId": "Stylelint_declaration-empty-line-before"
-        },
-        {
           "patternId": "Stylelint_selector-pseudo-element-colon-notation"
         }
       ]
@@ -3042,12 +2674,6 @@
     {
       "toolId": "Lizard",
       "patterns": [
-        {
-          "patternId": "Lizard_file-nloc-medium"
-        },
-        {
-          "patternId": "Lizard_parameter-count-medium"
-        },
         {
           "patternId": "Lizard_ccn-minor"
         }
@@ -3345,9 +2971,6 @@
           "patternId": "PMD_category_java_codestyle_FieldDeclarationsShouldBeAtStartOfClass"
         },
         {
-          "patternId": "PMD_category_ecmascript_codestyle_UnnecessaryBlock"
-        },
-        {
           "patternId": "PMD_category_plsql_errorprone_TO_DATE_TO_CHAR"
         },
         {
@@ -3449,9 +3072,6 @@
           "patternId": "psscriptanalyzer_psavoidusingdeprecatedmanifestfields"
         },
         {
-          "patternId": "psscriptanalyzer_psavoidusingwritehost"
-        },
-        {
           "patternId": "psscriptanalyzer_psavoidusingwmicmdlet"
         },
         {
@@ -3534,9 +3154,6 @@
         },
         {
           "patternId": "psscriptanalyzer_psdscuseidenticalparametersfordsc"
-        },
-        {
-          "patternId": "psscriptanalyzer_psuseshouldprocessforstatechangingfunctions"
         },
         {
           "patternId": "psscriptanalyzer_psavoidglobalvars"
@@ -3654,13 +3271,7 @@
           "patternId": "markdownlint_MD033"
         },
         {
-          "patternId": "markdownlint_MD032"
-        },
-        {
           "patternId": "markdownlint_MD030"
-        },
-        {
-          "patternId": "markdownlint_MD029"
         },
         {
           "patternId": "markdownlint_MD028"
@@ -3672,16 +3283,7 @@
           "patternId": "markdownlint_MD026"
         },
         {
-          "patternId": "markdownlint_MD025"
-        },
-        {
-          "patternId": "markdownlint_MD024"
-        },
-        {
           "patternId": "markdownlint_MD023"
-        },
-        {
-          "patternId": "markdownlint_MD022"
         },
         {
           "patternId": "markdownlint_MD021"
@@ -3750,9 +3352,6 @@
         },
         {
           "patternId": "ESLint8_security-node_detect-unhandled-event-errors"
-        },
-        {
-          "patternId": "ESLint8_security-node_detect-unhandled-async-errors"
         },
         {
           "patternId": "ESLint8_security-node_detect-security-missconfiguration-cookie"
@@ -4154,9 +3753,6 @@
           "patternId": "ESLint8_@typescript-eslint_no-useless-constructor"
         },
         {
-          "patternId": "ESLint8_@typescript-eslint_no-unused-vars"
-        },
-        {
           "patternId": "ESLint8_@typescript-eslint_no-unnecessary-type-constraint"
         },
         {
@@ -4227,9 +3823,6 @@
         },
         {
           "patternId": "ESLint8_@typescript-eslint_no-empty-interface"
-        },
-        {
-          "patternId": "ESLint8_@typescript-eslint_no-empty-function"
         },
         {
           "patternId": "ESLint8_@typescript-eslint_no-dynamic-delete"

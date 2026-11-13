@@ -50,7 +50,10 @@ follow it, so the two repositories are set up the same way:
 
 - **Same as clypse (turned off there):** `SonarCSharp_S2360`, `S2339`, `S2333`, `psavoidusingwritehost`,
   `Stylelint_color-no-hex`, `color-hex-length`, `media-feature-range-notation`, `markdownlint_MD032`, `MD029`,
-  `MD024`, and the whole Agentlinter tool.
+  `MD024`, and the whole Agentlinter tool. Also ESLint's `ESLint8_security-node_detect-unhandled-async-errors`,
+  `ESLint8_@typescript-eslint_no-empty-function` and `ESLint8_@typescript-eslint_no-unused-vars` (a duplicate of
+  `ESLint8_no-unused-vars`, which stays on): these were reported only after the first changes here, on the template's
+  service workers, and are turned off for the same reasons as in clypse.
 - **Different from clypse:** clypse keeps `SonarCSharp_S1172`, `S3264`, `S3453` and `S3241` on, and ignored its few
   hits one by one (3, 1, 2 and 1). Here they are 42, 23, 6 and 1, all false positives, so turning them off is
   suggested. To keep the two repositories the same instead, ignore the issues one by one as clypse did.
@@ -142,6 +145,23 @@ a persona and a tool list. It also says `UPGRADING.md` doesn't exist, but it doe
 | `SonarCSharp_S2696`, `DeployHooks.cs:26` (High) | A static cache of the portal settings, shared by all scenarios on purpose. |
 | `SonarCSharp_S3898`, `EncryptedFileFormat.cs:165` | A private struct that is never compared. |
 | `SonarCSharp_S3241`, `NotebookServiceTests.cs:216` | Several tests use the returned id (lines 48, 86, 101). |
+| `SonarCSharp_S3459`, `ModalDialog.razor.cs:13` | `element` is assigned by `@ref` in `ModalDialog.razor`. |
+| `Stylelint_property-no-vendor-prefix`, `blazwiz.css:325` | Accepted use: `-webkit-background-clip` is kept for Safari, next to the unprefixed property. |
+
+`SonarCSharp_S1301` (a `switch` with fewer than 3 cases, 1 issue in `SyncStorageMigrationService.cs:94`) is turned
+off: the `switch` on the migration phase reads better than `if` statements.
+
+## Where the settings are kept
+
+The enabled tools and patterns are in `.codacy/codacy.config.json`, which matches Codacy after these changes:
+Agentlinter is gone, and so are the patterns turned off above. To set up Codacy again from it (for example after the
+repository moves), run `codacy tools --import` (the Codacy Cloud CLI) in the repository.
+
+`.codacy.yml` can't hold these: Codacy's documentation says it can configure tools but can't enable or disable them.
+It holds the exclusions below.
+
+The single issues ignored above are kept by Codacy per issue, with no file for them. After a move they have to be
+ignored again, with the reasons in the table.
 
 ## Suggested exclusions
 
