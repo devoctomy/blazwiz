@@ -132,6 +132,23 @@ public class LocalStorageE2eProfileLabelStoreTests
     }
 
     [Fact]
+    public async Task GivenLabelsThatDecryptToNull_WhenGot_ThenNone()
+    {
+        // Arrange: encrypted with the right key for the right user, but the JSON inside is null.
+        var key = RandomNumberGenerator.GetBytes(32);
+        keys.SetKey(E2eKeyNames.LabelKey, key);
+        var nonce = RandomNumberGenerator.GetBytes(crypto.NonceSize);
+        var ciphertext = crypto.Encrypt(key, nonce, "null"u8.ToArray(), "bob"u8.ToArray());
+        storage[StorageKey] = Convert.ToBase64String([.. nonce, .. ciphertext]);
+
+        // Act
+        var labels = await CreateSut().GetAllAsync();
+
+        // Assert
+        Assert.Empty(labels);
+    }
+
+    [Fact]
     public async Task GivenLabelsKeptForOneUser_WhenReadAsAnotherUserWithTheSameKey_ThenNone()
     {
         // Arrange: the labels are bound to the user they were kept for.

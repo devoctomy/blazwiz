@@ -8,6 +8,10 @@
     <PackageReference Include="Amazon.Extensions.CognitoAuthentication" />
     <PackageReference Include="AWSSDK.CognitoIdentity" />
     <PackageReference Include="AWSSDK.CognitoIdentityProvider" />
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Moq" />
     <PackageReference Include="Reqnroll.xUnit" />

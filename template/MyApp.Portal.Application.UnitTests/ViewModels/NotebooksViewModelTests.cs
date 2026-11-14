@@ -107,6 +107,27 @@ public class NotebooksViewModelTests
     }
 
     [Fact]
+    public async Task GivenANotebookBeingUnlockedWithBiometrics_WhenAnotherIsOpened_ThenItIsIgnored()
+    {
+        // Arrange
+        notebooks.Add(new Notebook { Name = "nb1", Id = "nb1", Title = "Work", HasPassphrase = true, CanUnlockWithBiometrics = true });
+        var unlocking = new TaskCompletionSource<bool>();
+        mockNotebooks.Setup(x => x.UnlockWithBiometricsAsync(It.IsAny<Notebook>())).Returns(unlocking.Task);
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        var first = sut.OpenAsync("nb1");
+
+        // Act
+        await sut.OpenAsync("notes");
+
+        // Assert
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+        unlocking.SetResult(true);
+        await first;
+        mockNavigation.Verify(x => x.NavigateTo("files?notebook=nb1"), Times.Once);
+    }
+
+    [Fact]
     public async Task GivenAnUnlockedNotebook_WhenOpened_ThenBiometricsAreNotAskedFor()
     {
         // Arrange
@@ -174,6 +195,42 @@ public class NotebooksViewModelTests
         Assert.Null(sut.ForgetCandidate);
         Assert.False(sut.IsWorking);
         mockNotebooks.Verify(x => x.GetNotebooksAsync(), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenBiometricsBeingForgotten_WhenCancelledOrConfirmedAgain_ThenBothAreIgnored()
+    {
+        // Arrange
+        var work = new Notebook { Name = "nb1", Id = "nb1", Title = "Work", HasPassphrase = true, CanUnlockWithBiometrics = true };
+        var forgetting = new TaskCompletionSource();
+        mockNotebooks.Setup(x => x.ForgetBiometricsAsync(work)).Returns(forgetting.Task);
+        using var sut = CreateSut();
+        sut.AskForgetBiometricsCommand.Execute(work);
+        var first = sut.ForgetBiometricsAsync();
+
+        // Act
+        sut.CancelForgetBiometrics();
+        await sut.ForgetBiometricsAsync();
+
+        // Assert
+        Assert.Same(work, sut.ForgetCandidate);
+        forgetting.SetResult();
+        await first;
+        mockNotebooks.Verify(x => x.ForgetBiometricsAsync(It.IsAny<Notebook>()), Times.Once);
+        Assert.Null(sut.ForgetCandidate);
+    }
+
+    [Fact]
+    public async Task GivenNoNotebookAskedAbout_WhenForgetBiometrics_ThenNothingIsForgotten()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        await sut.ForgetBiometricsAsync();
+
+        // Assert
+        mockNotebooks.Verify(x => x.ForgetBiometricsAsync(It.IsAny<Notebook>()), Times.Never);
     }
 
     [Fact]
