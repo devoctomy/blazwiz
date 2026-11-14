@@ -83,6 +83,8 @@ Devoctomy.Blazwiz.UI.Models.AppSettings.CopyrightMessage.get -> string!
 Devoctomy.Blazwiz.UI.Models.AppSettings.CopyrightMessage.set -> void
 Devoctomy.Blazwiz.UI.Models.AppSettings.EnablePortalLoginAuthn.get -> bool
 Devoctomy.Blazwiz.UI.Models.AppSettings.EnablePortalLoginAuthn.set -> void
+Devoctomy.Blazwiz.UI.Models.AppSettings.EnableRememberMeName.get -> bool
+Devoctomy.Blazwiz.UI.Models.AppSettings.EnableRememberMeName.set -> void
 Devoctomy.Blazwiz.UI.Models.AppSettings.LogoUrl.get -> string!
 Devoctomy.Blazwiz.UI.Models.AppSettings.LogoUrl.set -> void
 Devoctomy.Blazwiz.UI.Models.CultureOption
@@ -360,6 +362,7 @@ Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.CompleteNewPasswordAsync() -> Sys
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ConfirmNewPassword.get -> string!
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ConfirmNewPassword.set -> void
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.DismissWebAuthnError() -> void
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.DisplayNameFor(Devoctomy.Blazwiz.Auth.Models.SavedUser! user) -> string!
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ErrorMessage.get -> string?
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.HandleWebAuthnSetupAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.HasSignInOptions.get -> bool
@@ -382,6 +385,8 @@ Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.Password.get -> string!
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.Password.set -> void
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMe.get -> bool
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMe.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMeName.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMeName.set -> void
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RemoveUserAsync(Devoctomy.Blazwiz.Auth.Models.SavedUser! user) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.SavedUsers.get -> System.Collections.Generic.List<Devoctomy.Blazwiz.Auth.Models.SavedUser!>!
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.SelectUserAsync(Devoctomy.Blazwiz.Auth.Models.SavedUser! user) -> System.Threading.Tasks.Task!
@@ -389,6 +394,7 @@ Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.SessionEndedMessage.get -> string
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ShowLoginForm() -> void
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ShowRememberMe.get -> bool
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ShowRememberMe.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ShowRememberMeName.get -> bool
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ShowUsersList.get -> bool
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ShowUsersList.set -> void
 Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ShowUsersListCommand() -> void
@@ -491,6 +497,7 @@ const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.Profile = "profile" -> string!
 const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.Settings = "settings" -> string!
 const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.Sync = "sync" -> string!
 const Devoctomy.Blazwiz.UI.Text.ErrorText.UnknownKey = "Error.Unknown" -> string!
+const Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMeNameMaxLength = 50 -> int
 const Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.SavedUsersStorageKey = "saved_users" -> string!
 override Devoctomy.Blazwiz.UI.Components.ModalDialog.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.Components.Shell.BlazwizRouter.OnParametersSet() -> void

@@ -1,8 +1,1 @@
 #nullable enable
-const Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMeNameMaxLength = 50 -> int
-Devoctomy.Blazwiz.UI.Models.AppSettings.EnableRememberMeName.get -> bool
-Devoctomy.Blazwiz.UI.Models.AppSettings.EnableRememberMeName.set -> void
-Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.DisplayNameFor(Devoctomy.Blazwiz.Auth.Models.SavedUser! user) -> string!
-Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMeName.get -> string!
-Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMeName.set -> void
-Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.ShowRememberMeName.get -> bool

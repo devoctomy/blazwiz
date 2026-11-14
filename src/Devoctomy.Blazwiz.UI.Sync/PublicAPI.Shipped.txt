@@ -168,6 +168,11 @@ Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.Dispose() -> void
 Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.GetTargetAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.S3SyncTarget?>!
 Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.Invalidate() -> void
 Devoctomy.Blazwiz.UI.Sync.Services.CognitoS3TargetProvider.IsConfigured.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Services.E2eDeviceUnlockService
+Devoctomy.Blazwiz.UI.Sync.Services.E2eDeviceUnlockService.CanUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.E2eDeviceUnlockService.E2eDeviceUnlockService(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! scheduler) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.E2eDeviceUnlockService.ForgetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.E2eDeviceUnlockService.UnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.E2eProfilePresenter(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncProfileDisplayNames! displayNames, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys) -> void
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.GetProfileAsync(string! name) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?>!
@@ -175,6 +180,10 @@ Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.GetProfilesAsync() -> Sys
 Devoctomy.Blazwiz.UI.Sync.Services.E2eRotationSignOut
 Devoctomy.Blazwiz.UI.Sync.Services.E2eRotationSignOut.E2eRotationSignOut(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle! sessionLifecycle, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService) -> void
 Devoctomy.Blazwiz.UI.Sync.Services.E2eRotationSignOut.SignOutEverywhereAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eDeviceUnlockService
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eDeviceUnlockService.CanUnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eDeviceUnlockService.ForgetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eDeviceUnlockService.UnlockAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter.GetProfileAsync(string! name) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?>!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter.GetProfilesAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow!>!>!

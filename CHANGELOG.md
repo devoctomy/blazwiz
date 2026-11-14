@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.8.1
+
 ### Added
 - **A name to remember the user by.** With `AppSettings.EnableRememberMeName` on, ticking "Remember me" on the sign-in
   page shows an optional name box. The name is kept with the remembered user (`SavedUser.DisplayName`) and shown in the

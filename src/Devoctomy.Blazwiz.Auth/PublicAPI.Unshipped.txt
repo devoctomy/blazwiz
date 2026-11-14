@@ -1,3 +1,1 @@
 #nullable enable
-Devoctomy.Blazwiz.Auth.Models.SavedUser.DisplayName.get -> string?
-Devoctomy.Blazwiz.Auth.Models.SavedUser.DisplayName.set -> void

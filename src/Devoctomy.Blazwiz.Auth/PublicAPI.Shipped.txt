@@ -31,6 +31,8 @@ Devoctomy.Blazwiz.Auth.Models.LoginResult.Session.set -> void
 Devoctomy.Blazwiz.Auth.Models.LoginResult.Success.get -> bool
 Devoctomy.Blazwiz.Auth.Models.LoginResult.Success.set -> void
 Devoctomy.Blazwiz.Auth.Models.SavedUser
+Devoctomy.Blazwiz.Auth.Models.SavedUser.DisplayName.get -> string?
+Devoctomy.Blazwiz.Auth.Models.SavedUser.DisplayName.set -> void
 Devoctomy.Blazwiz.Auth.Models.SavedUser.Email.get -> string!
 Devoctomy.Blazwiz.Auth.Models.SavedUser.Email.set -> void
 Devoctomy.Blazwiz.Auth.Models.SavedUser.IsFor(string? username, string? email = null) -> bool
