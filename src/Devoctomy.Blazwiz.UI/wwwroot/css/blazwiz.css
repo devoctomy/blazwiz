@@ -80,6 +80,10 @@ body {
     color: var(--bw-text);
     -webkit-font-smoothing: antialiased;
     transition: background-color var(--bw-transition), color var(--bw-transition);
+    /* No scroll anchoring for the page. Blazor's Virtualize resizes its spacers as rows load; with anchoring on, the
+       browser scrolls to keep its anchor in place, which loads more rows, and one turn of the wheel runs to the end of
+       the list. Virtualize turns anchoring off on <html>, but Chrome takes the page's setting from <body>. */
+    overflow-anchor: none;
 }
 
 h1:focus {

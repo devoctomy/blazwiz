@@ -34,6 +34,7 @@ Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
 Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.ChangePassphrase = 3 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
 Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Create = 1 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
 Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Delete = 4 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
+Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.FinishRotation = 5 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
 Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.SetPassphrase = 0 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
 Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Unlock = 2 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow
@@ -57,6 +58,7 @@ Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.State.set -> void
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState.Locked = 1 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState.NotSetUp = 0 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState
+Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState.RotationInProgress = 3 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState.Unlocked = 2 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileState
 Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem
 Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem.Detail.get -> string?
@@ -170,11 +172,14 @@ Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.E2eProfilePresenter(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncProfileDisplayNames! displayNames, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys) -> void
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.GetProfileAsync(string! name) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?>!
 Devoctomy.Blazwiz.UI.Sync.Services.E2eProfilePresenter.GetProfilesAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow!>!>!
+Devoctomy.Blazwiz.UI.Sync.Services.E2eRotationSignOut
+Devoctomy.Blazwiz.UI.Sync.Services.E2eRotationSignOut.E2eRotationSignOut(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle! sessionLifecycle, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.E2eRotationSignOut.SignOutEverywhereAsync() -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter.GetProfileAsync(string! name) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?>!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter.GetProfilesAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow!>!>!
-Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory
-Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory.Create(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials! credentials) -> Amazon.SecretsManager.IAmazonSecretsManager!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eRotationSignOut
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eRotationSignOut.SignOutEverywhereAsync() -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter.Describe(Devoctomy.Blazwiz.Sync.Models.SyncEvent! entry) -> string!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncEventPresenter.DescribeGroup(Devoctomy.Blazwiz.UI.Sync.Models.SyncEventGroup? group) -> string!
@@ -195,17 +200,12 @@ Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncProfileDisplayNames.GetDispla
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter.DescribeConnectivity(Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> string!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter.Present(Devoctomy.Blazwiz.Sync.Models.SyncStatus! status, Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory.Create(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials! credentials) -> Amazon.SecretsManager.IAmazonSecretsManager!
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerClientFactory.SecretsManagerClientFactory(Devoctomy.Blazwiz.Auth.Cognito.Models.AwsCognitoConfig! cognitoConfig, Devoctomy.Blazwiz.Auth.Cognito.Services.BrowserHttpClientFactory! httpClientFactory) -> void
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.DeleteAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.GetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.GetIndexAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.SecretsManagerUserKeysStore(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.IAwsCredentialsProvider! credentialsProvider, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISecretsManagerClientFactory! clientFactory, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Devoctomy.Blazwiz.Core.Configuration.BlazwizAppOptions! app) -> void
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.SetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.SetIndexAsync(string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.TryCreateAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! value, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Sync.Services.KeyRotationSignOutHandler
+Devoctomy.Blazwiz.UI.Sync.Services.KeyRotationSignOutHandler.KeyRotationSignOutHandler(System.IServiceProvider! services) -> void
+Devoctomy.Blazwiz.UI.Sync.Services.KeyRotationSignOutHandler.OnSigningOutEverywhereAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session, Devoctomy.Blazwiz.Auth.Models.SignOutReason reason, string! deviceName) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SessionCheckKeyMissingHandler
+Devoctomy.Blazwiz.UI.Sync.Services.SessionCheckKeyMissingHandler.OnKeyMissingAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope! scope, string! keyId) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.Services.SessionCheckKeyMissingHandler.SessionCheckKeyMissingHandler(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService) -> void
 Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption
 Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption.ApplyAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.Services.StartSyncOffSignInOption.IsSet.get -> bool
@@ -289,10 +289,16 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogError.get -> str
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogProfile.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogTitle.get -> string!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.E2eProfilesViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.E2eProfilesViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncKeyRotationService! rotation, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eRotationSignOut! rotationSignOut) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Estimate.get -> Devoctomy.Blazwiz.Sync.Models.SyncKeyRotationEstimate?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.EstimateText.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.FilesDone.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.FilesPercent.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.FilesTotal.get -> int
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.FinishedText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.GetStateText(Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow! row) -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.IsConfirmingRotation.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.IsEditing.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.IsFinished.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.IsLoaded.get -> bool
@@ -300,29 +306,44 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.IsOffline.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.IsWorking.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Lock(string! name) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.LockAll() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.NeedsSignOut.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.NoRecoveryWarning.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenChangePassphrase(string! name) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenCreate() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenDelete(string! name) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenFinishRotation(string! name) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenSetPassphrase(string! name) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenUnlock(string! name) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Passphrase.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Passphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.RetrySignOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.RotationWarning.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.StartRotationAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Steps.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem!>!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.WorkingText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.E2eUnlockPanelViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! scheduler, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys, Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService! toasts) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.E2eUnlockPanelViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! scheduler, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys, Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService! toasts, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncKeyRotationService! rotation, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eRotationSignOut! rotationSignOut) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.FilesDone.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.FilesPercent.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.FilesTotal.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.FinishRotationAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsFinishingRotation.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsLocked.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsRotationInProgress.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsUnlocked.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsWorking.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Message.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.NeedsPassphrase.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.NeedsSignOut.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.OpenSettings() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Passphrase.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Passphrase.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Profile.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RememberBiometrics.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RememberBiometrics.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RetrySignOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RotationWarning.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.SetProfileAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.UnlockAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.UnlockWithDeviceAsync() -> System.Threading.Tasks.Task!
@@ -411,8 +432,6 @@ Devoctomy.Blazwiz.UI.Sync._Imports.Execute() -> void
 Devoctomy.Blazwiz.UI.Sync._Imports._Imports() -> void
 const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.Argon2idConfigurationSection = "Argon2id" -> string!
 const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.ConfigurationSection = "AwsS3" -> string!
-const Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.AppTag = "app" -> string!
-const Devoctomy.Blazwiz.UI.Sync.Services.SecretsManagerUserKeysStore.RecoveryWindowDays = 7 -> int
 const Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.PageSize = 200 -> int
 override Devoctomy.Blazwiz.UI.Sync.Components.E2eUnlockPanel.OnParametersSetAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Dispose(bool disposing) -> void
