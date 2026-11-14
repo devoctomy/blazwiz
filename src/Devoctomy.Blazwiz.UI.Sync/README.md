@@ -49,6 +49,20 @@ it asks for the passphrase in its place:
 
 Its text comes from resources (`SyncUiText`), so apps can reword and translate it.
 
+A user remembered on this device with a passkey ("Remember me" at sign in) can tick "Unlock with biometrics next time
+on this device" when unlocking a profile with its passphrase in the panel. To use biometrics from elsewhere, such as a
+list of the user's profiles, inject `IE2eDeviceUnlockService`:
+
+- `CanUnlockAsync(scope)`: whether biometrics can unlock the profile here (turned on here, and the user has a passkey
+  here). Show it on locked profiles, e.g. with a fingerprint icon.
+- `UnlockAsync(scope)`: syncs the profile first when online, asks for the passkey if its key is not in memory, and
+  unlocks it. It returns false when the passkey is cancelled or cannot unlock it; open the profile's page anyway, and
+  the panel asks for the passphrase.
+- `ForgetAsync(scope)`: stops unlocking it with biometrics on this device. Its passphrase still unlocks it. Ask the
+  user to confirm first.
+
+The template's Notebooks page uses all three.
+
 ### Changing a passphrase
 
 Change passphrase, in Settings, rotates the profile's keys and encrypts its files again, so anyone who had the old

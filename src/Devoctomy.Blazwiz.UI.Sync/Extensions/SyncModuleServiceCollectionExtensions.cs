@@ -99,6 +99,7 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddScoped<IE2eLockChannel, E2eLockChannel>();
         services.AddScoped<IE2eIdleLock, E2eIdleLock>();
         services.AddScoped<ISyncProtectedProfileService, SyncProtectedProfileService>();
+        services.AddScoped<IE2eDeviceUnlockService, E2eDeviceUnlockService>();
 
         // A passphrase change rotates the profile's keys, encrypts its files again and signs every device out; the
         // rotation is marked finished while they are signed out. A device that meets a file under a key it does not

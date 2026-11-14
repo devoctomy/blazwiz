@@ -43,15 +43,16 @@ public class LocalStorageE2eProfileLabelStoreTests
         SetLabelKey();
         var sut = CreateSut();
 
-        // Act
-        await sut.SetAsync("p1", "Work");
-        await sut.SetAsync("p2", "Home");
-        await sut.RemoveAsync("p2");
+        // Act: the id and label contain '-' and ' ', which base64 never does, so the ciphertext cannot contain them by
+        // chance (a short plaintext like "p1" sometimes appears in random base64).
+        await sut.SetAsync("profile-1", "Work notes");
+        await sut.SetAsync("profile-2", "Home notes");
+        await sut.RemoveAsync("profile-2");
 
         // Assert
-        Assert.Equal(new Dictionary<string, string> { ["p1"] = "Work" }, await sut.GetAllAsync());
-        Assert.DoesNotContain("Work", storage[StorageKey], StringComparison.Ordinal);
-        Assert.DoesNotContain("p1", storage[StorageKey], StringComparison.Ordinal);
+        Assert.Equal(new Dictionary<string, string> { ["profile-1"] = "Work notes" }, await sut.GetAllAsync());
+        Assert.DoesNotContain("Work notes", storage[StorageKey], StringComparison.Ordinal);
+        Assert.DoesNotContain("profile-1", storage[StorageKey], StringComparison.Ordinal);
     }
 
     [Fact]

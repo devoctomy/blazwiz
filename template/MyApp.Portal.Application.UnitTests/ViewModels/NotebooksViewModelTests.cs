@@ -68,13 +68,130 @@ public class NotebooksViewModelTests
     }
 
     [Fact]
-    public void GivenANotebook_WhenOpened_ThenItsPagesAreShown()
+    public async Task GivenANotebook_WhenOpened_ThenItsPagesAreShown()
     {
+        // Arrange
+        using var sut = CreateSut();
+
         // Act
-        CreateSut().OpenCommand.Execute("nb1");
+        await sut.OpenCommand.ExecuteAsync("nb1");
 
         // Assert
         mockNavigation.Verify(x => x.NavigateTo("files?notebook=nb1"), Times.Once);
+        mockNotebooks.Verify(x => x.UnlockWithBiometricsAsync(It.IsAny<Notebook>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GivenALockedNotebookBiometricsCanUnlock_WhenOpened_ThenItIsUnlockedWithThemFirstAndOpenedEitherWay(bool unlockedWithBiometrics)
+    {
+        // Arrange
+        var work = new Notebook { Name = "nb1", Id = "nb1", Title = "Work", HasPassphrase = true, CanUnlockWithBiometrics = true };
+        notebooks.Add(work);
+        string? openingDuringUnlock = null;
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        mockNotebooks
+            .Setup(x => x.UnlockWithBiometricsAsync(It.Is<Notebook>(n => n.Name == "nb1")))
+            .Callback(() => openingDuringUnlock = sut.OpeningNotebook)
+            .ReturnsAsync(unlockedWithBiometrics);
+
+        // Act
+        await sut.OpenCommand.ExecuteAsync("nb1");
+
+        // Assert
+        Assert.Equal("nb1", openingDuringUnlock);
+        Assert.Null(sut.OpeningNotebook);
+        mockNavigation.Verify(x => x.NavigateTo("files?notebook=nb1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAnUnlockedNotebook_WhenOpened_ThenBiometricsAreNotAskedFor()
+    {
+        // Arrange
+        notebooks.Add(new Notebook { Name = "nb1", Id = "nb1", Title = "Work", HasPassphrase = true, IsUnlocked = true, CanUnlockWithBiometrics = true });
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        await sut.OpenCommand.ExecuteAsync("nb1");
+
+        // Assert
+        mockNotebooks.Verify(x => x.UnlockWithBiometricsAsync(It.IsAny<Notebook>()), Times.Never);
+        mockNavigation.Verify(x => x.NavigateTo("files?notebook=nb1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenBiometricsUnlocking_WhenUnlockThrows_ThenOpeningIsClearedAndNothingIsOpened()
+    {
+        // Arrange
+        notebooks.Add(new Notebook { Name = "nb1", Id = "nb1", Title = "Work", HasPassphrase = true, CanUnlockWithBiometrics = true });
+        mockNotebooks.Setup(x => x.UnlockWithBiometricsAsync(It.IsAny<Notebook>())).ThrowsAsync(new InvalidOperationException("unexpected"));
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+
+        // Act
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.OpenAsync("nb1"));
+
+        // Assert
+        Assert.Null(sut.OpeningNotebook);
+        mockNavigation.Verify(x => x.NavigateTo(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenANotebook_WhenForgettingBiometricsIsAskedThenCancelled_ThenNothingIsForgotten()
+    {
+        // Arrange
+        var work = new Notebook { Name = "nb1", Id = "nb1", Title = "Work", HasPassphrase = true, CanUnlockWithBiometrics = true };
+        using var sut = CreateSut();
+        sut.AskForgetBiometricsCommand.Execute(work);
+        var askedFor = sut.ForgetCandidate;
+
+        // Act
+        sut.CancelForgetBiometricsCommand.Execute(null);
+
+        // Assert
+        Assert.Same(work, askedFor);
+        Assert.Null(sut.ForgetCandidate);
+        mockNotebooks.Verify(x => x.ForgetBiometricsAsync(It.IsAny<Notebook>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenForgettingBiometricsConfirmed_WhenForgotten_ThenTheDialogClosesAndTheListIsRefreshed()
+    {
+        // Arrange
+        var work = new Notebook { Name = "nb1", Id = "nb1", Title = "Work", HasPassphrase = true, CanUnlockWithBiometrics = true };
+        using var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        sut.AskForgetBiometricsCommand.Execute(work);
+
+        // Act
+        await sut.ForgetBiometricsCommand.ExecuteAsync(null);
+
+        // Assert
+        mockNotebooks.Verify(x => x.ForgetBiometricsAsync(work), Times.Once);
+        Assert.Null(sut.ForgetCandidate);
+        Assert.False(sut.IsWorking);
+        mockNotebooks.Verify(x => x.GetNotebooksAsync(), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenForgettingBiometricsFails_WhenConfirmed_ThenTheDialogStaysOpenWithTheError()
+    {
+        // Arrange
+        var work = new Notebook { Name = "nb1", Id = "nb1", Title = "Work", HasPassphrase = true, CanUnlockWithBiometrics = true };
+        mockNotebooks.Setup(x => x.ForgetBiometricsAsync(work)).ThrowsAsync(new InvalidOperationException("storage unavailable"));
+        using var sut = CreateSut();
+        sut.AskForgetBiometricsCommand.Execute(work);
+
+        // Act
+        await sut.ForgetBiometricsCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Same(work, sut.ForgetCandidate);
+        Assert.False(string.IsNullOrEmpty(sut.ForgetError));
+        Assert.False(sut.IsWorking);
     }
 
     [Theory]

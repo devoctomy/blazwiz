@@ -35,4 +35,10 @@ public class AppSettings
     /// Gets or sets a value indicating whether WebAuthn authentication is enabled for portal login.
     /// </summary>
     public bool EnablePortalLoginAuthn { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether ticking "Remember me" on the sign-in page offers an optional name to
+    /// remember the user by, shown in the remembered users list instead of their email address.
+    /// </summary>
+    public bool EnableRememberMeName { get; set; }
 }

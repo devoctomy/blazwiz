@@ -32,6 +32,9 @@ public partial class NotebooksViewModel : ViewModelBase
     private bool acknowledgedNoRecovery;
     private bool isWorking;
     private string? dialogError;
+    private string? openingNotebook;
+    private Notebook? forgetCandidate;
+    private string? forgetError;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NotebooksViewModel"/> class.
@@ -139,6 +142,33 @@ public partial class NotebooksViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Gets the name of the notebook being unlocked with biometrics to open it, or null.
+    /// </summary>
+    public string? OpeningNotebook
+    {
+        get => openingNotebook;
+        private set => SetProperty(ref openingNotebook, value);
+    }
+
+    /// <summary>
+    /// Gets the notebook the user is asked to confirm forgetting biometrics for, or null when the dialog is closed.
+    /// </summary>
+    public Notebook? ForgetCandidate
+    {
+        get => forgetCandidate;
+        private set => SetProperty(ref forgetCandidate, value);
+    }
+
+    /// <summary>
+    /// Gets why biometrics could not be forgotten, or null.
+    /// </summary>
+    public string? ForgetError
+    {
+        get => forgetError;
+        private set => SetProperty(ref forgetError, value);
+    }
+
+    /// <summary>
     /// Describes where a notebook stands, as its row says it.
     /// </summary>
     /// <param name="notebook">The notebook.</param>
@@ -158,13 +188,92 @@ public partial class NotebooksViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Opens a notebook's pages.
+    /// Opens a notebook's pages. A locked notebook that biometrics can unlock on this device is unlocked with them first
+    /// (synced first when online), so it opens straight onto its pages; if the passkey is cancelled or fails, its
+    /// passphrase is asked for there as usual.
     /// </summary>
     /// <param name="name">The notebook's sync profile name.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
-    public void Open(string name)
+    public async Task OpenAsync(string name)
     {
+        if (OpeningNotebook != null)
+        {
+            return;
+        }
+
+        if (Notebooks.FirstOrDefault(n => n.Name == name) is { CanUnlockWithBiometrics: true, IsUnlocked: false } notebook)
+        {
+            OpeningNotebook = name;
+            try
+            {
+                await notebookService.UnlockWithBiometricsAsync(notebook);
+            }
+            finally
+            {
+                OpeningNotebook = null;
+            }
+        }
+
         navigationService.NavigateTo(NoteEditorViewModel.GetFilesUrl(name));
+    }
+
+    /// <summary>
+    /// Asks the user to confirm they want to stop unlocking a notebook with biometrics on this device.
+    /// </summary>
+    /// <param name="notebook">The notebook.</param>
+    [RelayCommand]
+    public void AskForgetBiometrics(Notebook notebook)
+    {
+        ArgumentNullException.ThrowIfNull(notebook);
+
+        ForgetError = null;
+        ForgetCandidate = notebook;
+    }
+
+    /// <summary>
+    /// Closes the forget biometrics dialog without forgetting them. Ignored while they are being forgotten.
+    /// </summary>
+    [RelayCommand]
+    public void CancelForgetBiometrics()
+    {
+        if (IsWorking)
+        {
+            return;
+        }
+
+        ForgetCandidate = null;
+        ForgetError = null;
+    }
+
+    /// <summary>
+    /// Stops unlocking the notebook being confirmed with biometrics on this device. Its passphrase still unlocks it.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task ForgetBiometricsAsync()
+    {
+        if (IsWorking || ForgetCandidate is not { } notebook)
+        {
+            return;
+        }
+
+        ForgetError = null;
+        IsWorking = true;
+        try
+        {
+            await notebookService.ForgetBiometricsAsync(notebook);
+            ForgetCandidate = null;
+        }
+        catch (Exception ex)
+        {
+            ForgetError = errorText.Describe(ex);
+        }
+        finally
+        {
+            IsWorking = false;
+            await RefreshSafelyAsync();
+        }
     }
 
     /// <summary>
@@ -218,7 +327,7 @@ public partial class NotebooksViewModel : ViewModelBase
             var notebook = await notebookService.CreateAsync(Title, Passphrase);
             ClearInputs();
             IsCreateDialogOpen = false;
-            Open(notebook.Name);
+            navigationService.NavigateTo(NoteEditorViewModel.GetFilesUrl(notebook.Name));
         }
         catch (Exception ex)
         {

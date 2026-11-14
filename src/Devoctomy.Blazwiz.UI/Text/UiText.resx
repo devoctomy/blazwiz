@@ -153,6 +153,15 @@
   <data name="Login.RememberMe" xml:space="preserve">
     <value>Remember me</value>
   </data>
+  <data name="Login.RememberMe.Name" xml:space="preserve">
+    <value>Name to show (optional)</value>
+  </data>
+  <data name="Login.RememberMe.Name.Help" xml:space="preserve">
+    <value>Shown on this device's sign-in page instead of your email address.</value>
+  </data>
+  <data name="Login.RememberMe.Name.Placeholder" xml:space="preserve">
+    <value>e.g. Alex</value>
+  </data>
   <data name="Login.SavedUsers.PasskeyAvailable" xml:space="preserve">
     <value>Biometric login available</value>
   </data>

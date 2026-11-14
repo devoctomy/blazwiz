@@ -22,11 +22,13 @@ namespace MyApp.Portal.Application.Services;
 /// <param name="manager">Says which are unlocked.</param>
 /// <param name="registry">The sync profiles, for each notebook's file store.</param>
 /// <param name="displayNames">The default notebook's display name.</param>
+/// <param name="deviceUnlock">Says which locked notebooks biometrics can unlock on this device.</param>
 public class NotebookService(
     ISyncProtectedProfileService profiles,
     IE2eProtectedProfileManager manager,
     ISyncProfileRegistry registry,
-    ISyncProfileDisplayNames displayNames)
+    ISyncProfileDisplayNames displayNames,
+    IE2eDeviceUnlockService deviceUnlock)
     : INotebookService
 {
     /// <summary>
@@ -38,6 +40,7 @@ public class NotebookService(
     private readonly IE2eProtectedProfileManager manager = manager ?? throw new ArgumentNullException(nameof(manager));
     private readonly ISyncProfileRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly ISyncProfileDisplayNames displayNames = displayNames ?? throw new ArgumentNullException(nameof(displayNames));
+    private readonly IE2eDeviceUnlockService deviceUnlock = deviceUnlock ?? throw new ArgumentNullException(nameof(deviceUnlock));
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<Notebook>> GetNotebooksAsync()
@@ -74,6 +77,22 @@ public class NotebookService(
             ?? throw new InvalidOperationException($"Notebook {scope.Id} was created but is not listed.");
     }
 
+    /// <inheritdoc/>
+    public Task<bool> UnlockWithBiometricsAsync(Notebook notebook)
+    {
+        ArgumentNullException.ThrowIfNull(notebook);
+
+        return deviceUnlock.UnlockAsync(new E2eKeyScope(notebook.Id));
+    }
+
+    /// <inheritdoc/>
+    public Task ForgetBiometricsAsync(Notebook notebook)
+    {
+        ArgumentNullException.ThrowIfNull(notebook);
+
+        return deviceUnlock.ForgetAsync(new E2eKeyScope(notebook.Id));
+    }
+
     private static bool IsNotebook(SyncProtectedProfile profile) => profile.IsCreatedByUser || profile.Name == NoteService.ProfileName;
 
     private static string RootOf(string id) => $"{SyncDefaults.ProtectedProfilesFolder}/{id}/";
@@ -90,6 +109,7 @@ public class NotebookService(
             HasPassphrase = profile.IsSetUp,
             IsUnlocked = manager.IsUnlocked(profile.Scope),
         };
+        notebook.CanUnlockWithBiometrics = notebook.HasPassphrase && !notebook.IsUnlocked && await deviceUnlock.CanUnlockAsync(profile.Scope);
         if (isDefault)
         {
             notebook.Title = displayNames.GetDisplayName(profile.Name);

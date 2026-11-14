@@ -13,7 +13,9 @@ builder.Services.AddBlazwizUi(builder.Configuration);
 ```
 
 That registers the shell and what it uses (`Core`, `Cryptography`, `Browser` and `Auth`). It reads the `AppSettings`
-section of the configuration (title, description, copyright), and `Text:SupportedCultures` for the languages offered.
+section of the configuration (title, description, copyright, `EnablePortalLoginAuthn` to offer a passkey after
+"Remember me", and `EnableRememberMeName` to let the user give a name to be remembered by, shown on the sign-in page
+instead of their email address), and `Text:SupportedCultures` for the languages offered.
 
 Add to the shell, or change it, with:
 

@@ -27,6 +27,11 @@ public partial class LoginViewModel : ViewModelBase
     /// </summary>
     public const string SavedUsersStorageKey = "saved_users";
 
+    /// <summary>
+    /// The longest name a user can be remembered by.
+    /// </summary>
+    public const int RememberMeNameMaxLength = 50;
+
     private readonly IAuthenticationService authService;
     private readonly INavigationService navigationService;
     private readonly IThemeService themeService;
@@ -56,6 +61,7 @@ public partial class LoginViewModel : ViewModelBase
     private bool showUsersList;
     private bool showRememberMe = true;
     private bool rememberMe;
+    private string rememberMeName = string.Empty;
     private bool rememberMeWhenNewPasswordStarted;
     private bool isUsernameReadonly;
     private bool showWebAuthnPrompt;
@@ -210,10 +216,41 @@ public partial class LoginViewModel : ViewModelBase
     public bool ShowUsersList { get => showUsersList; set => SetProperty(ref showUsersList, value); }
 
     /// <summary>Gets or sets a value indicating whether the remember me checkbox is shown.</summary>
-    public bool ShowRememberMe { get => showRememberMe; set => SetProperty(ref showRememberMe, value); }
+    public bool ShowRememberMe
+    {
+        get => showRememberMe;
+        set
+        {
+            if (SetProperty(ref showRememberMe, value))
+            {
+                OnPropertyChanged(nameof(ShowRememberMeName));
+            }
+        }
+    }
 
     /// <summary>Gets or sets a value indicating whether the user wants to be remembered.</summary>
-    public bool RememberMe { get => rememberMe; set => SetProperty(ref rememberMe, value); }
+    public bool RememberMe
+    {
+        get => rememberMe;
+        set
+        {
+            if (SetProperty(ref rememberMe, value))
+            {
+                OnPropertyChanged(nameof(ShowRememberMeName));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets the optional name the user wants to be remembered by, shown instead of their email address.
+    /// </summary>
+    public string RememberMeName { get => rememberMeName; set => SetProperty(ref rememberMeName, value); }
+
+    /// <summary>
+    /// Gets a value indicating whether the name to remember the user by is asked for: when the app allows it
+    /// (<see cref="AppSettings.EnableRememberMeName"/>) and "Remember me" is shown and ticked.
+    /// </summary>
+    public bool ShowRememberMeName => appSettings.EnableRememberMeName && ShowRememberMe && RememberMe;
 
     /// <summary>Gets or sets a value indicating whether the username field is readonly.</summary>
     public bool IsUsernameReadonly { get => isUsernameReadonly; set => SetProperty(ref isUsernameReadonly, value); }
@@ -266,6 +303,18 @@ public partial class LoginViewModel : ViewModelBase
     /// Gets the application settings.
     /// </summary>
     public AppSettings AppSettings => appSettings;
+
+    /// <summary>
+    /// Gets the name to show for a remembered user: the name they chose, when the app allows it
+    /// (<see cref="AppSettings.EnableRememberMeName"/>) and they gave one, otherwise their email address.
+    /// </summary>
+    /// <param name="user">The remembered user.</param>
+    /// <returns>The name to show.</returns>
+    public string DisplayNameFor(SavedUser user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        return appSettings.EnableRememberMeName && !string.IsNullOrWhiteSpace(user.DisplayName) ? user.DisplayName : user.Email;
+    }
 
     /// <inheritdoc/>
     public override async Task OnInitializedAsync()
@@ -467,6 +516,7 @@ public partial class LoginViewModel : ViewModelBase
         Username = string.Empty;
         Password = string.Empty;
         RememberMe = false;
+        RememberMeName = string.Empty;
         ErrorMessage = null;
     }
 
@@ -479,6 +529,7 @@ public partial class LoginViewModel : ViewModelBase
         Username = string.Empty;
         Password = string.Empty;
         RememberMe = false;
+        RememberMeName = string.Empty;
         ErrorMessage = null;
     }
 
@@ -588,6 +639,7 @@ public partial class LoginViewModel : ViewModelBase
         try
         {
             var existingUser = savedUsers.FirstOrDefault(u => u.IsFor(email));
+            var displayName = ChosenDisplayName();
 
             if (existingUser != null)
             {
@@ -595,10 +647,16 @@ public partial class LoginViewModel : ViewModelBase
                 {
                     existingUser.WebAuthnCredential = webAuthnCredential;
                 }
+
+                // A name given now replaces the one remembered before; leaving it empty keeps that one.
+                if (displayName != null)
+                {
+                    existingUser.DisplayName = displayName;
+                }
             }
             else
             {
-                savedUsers.Add(new SavedUser { Email = email, WebAuthnCredential = webAuthnCredential });
+                savedUsers.Add(new SavedUser { Email = email, DisplayName = displayName, WebAuthnCredential = webAuthnCredential });
             }
 
             var usersData = new SavedUsersData { Users = savedUsers };
@@ -608,6 +666,18 @@ public partial class LoginViewModel : ViewModelBase
         {
             // Continue silently
         }
+    }
+
+    // The name typed to remember the user by, trimmed and capped, or null when the app does not offer it or none was given.
+    private string? ChosenDisplayName()
+    {
+        var name = RememberMeName.Trim();
+        if (!appSettings.EnableRememberMeName || name.Length == 0)
+        {
+            return null;
+        }
+
+        return name.Length > RememberMeNameMaxLength ? name[..RememberMeNameMaxLength].TrimEnd() : name;
     }
 
     private async Task AttemptWebAuthnLoginAsync(SavedUser user)

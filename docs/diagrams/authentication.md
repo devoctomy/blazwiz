@@ -32,7 +32,7 @@ Storage names below use the template's app name, `myapp`: the storage clients ad
 | **Refresh token** | Memory | `CognitoAuthenticationService.refreshToken` | This tab only. Lost on reload or close |
 | Pending new-password challenge (username + Cognito session id) | Memory | `CognitoAuthenticationService.pendingNewPassword`, `CognitoUserPoolClient.challengedUser` | Until answered or abandoned |
 | Typed password | Memory | `LoginViewModel.Password` | Cleared by `CompleteLogin()` |
-| Remembered users (email, plus passkey data, see [prf-remember-me.md](prf-remember-me.md)) | localStorage | `myapp_saved_users` | Until removed from the list |
+| Remembered users (email, optional display name, plus passkey data, see [prf-remember-me.md](prf-remember-me.md)) | localStorage | `myapp_saved_users` | Until removed from the list |
 | AWS temporary credentials (identity id, access key, secret, session token, expiration) | Memory | `CognitoAwsCredentialsProvider.cached` | Until 5 minutes before they expire, sign out, offline mode, or `Clear()` |
 | S3 client built from those credentials | Memory | `CognitoS3TargetProvider.cached` (UI.Sync) | Replaced when the credentials object changes |
 

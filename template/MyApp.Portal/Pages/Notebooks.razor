@@ -20,10 +20,26 @@
             @foreach (var notebook in ViewModel.Notebooks)
             {
                 <li class="notebook d-flex flex-wrap align-items-center gap-2 py-2" data-notebook="@notebook.Name">
-                    <i class="bi @(notebook.IsUnlocked ? "bi-journal-text text-success" : "bi-lock-fill text-body-secondary")"></i>
+                    <i class="bi notebook-icon @(notebook.IsUnlocked ? "bi-journal-text text-success" : notebook.CanUnlockWithBiometrics ? "bi-fingerprint text-body-secondary" : "bi-lock-fill text-body-secondary")"
+                       title="@(notebook.CanUnlockWithBiometrics ? "Opens with biometrics on this device" : null)"></i>
                     <span class="notebook-title @(notebook.Title == notebook.Id ? "font-monospace small" : null)">@notebook.Title</span>
                     <span class="notebook-state text-body-secondary small flex-grow-1">@NotebooksViewModel.GetStateText(notebook)</span>
-                    <button type="button" class="btn btn-outline-primary btn-sm notebook-open" @onclick="() => ViewModel.OpenCommand.Execute(notebook.Name)">Open</button>
+                    @if (notebook.CanUnlockWithBiometrics)
+                    {
+                        <button type="button" class="btn btn-outline-secondary btn-sm notebook-forget-biometrics" title="Forget biometric unlock on this device"
+                                disabled="@(ViewModel.OpeningNotebook != null)"
+                                @onclick="() => ViewModel.AskForgetBiometricsCommand.Execute(notebook)">
+                            <i class="bi bi-eraser"></i><span class="visually-hidden">Forget biometric unlock on this device</span>
+                        </button>
+                    }
+                    <button type="button" class="btn btn-outline-primary btn-sm notebook-open" disabled="@(ViewModel.OpeningNotebook != null)"
+                            @onclick="() => ViewModel.OpenCommand.ExecuteAsync(notebook.Name)">
+                        @if (ViewModel.OpeningNotebook == notebook.Name)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        }
+                        Open
+                    </button>
                 </li>
             }
         </ul>
@@ -32,6 +48,29 @@
         </p>
     }
 </div>
+
+@if (ViewModel.ForgetCandidate is { } forgetting)
+{
+    <ModalDialog Id="forget-biometrics-dialog" Title="Forget biometric unlock?" Icon="bi-fingerprint" OnClose="() => ViewModel.CancelForgetBiometricsCommand.Execute(null)">
+        <ChildContent>
+            <p class="mb-0">Are you sure you want to forget biometric unlock for <strong>@forgetting.Title</strong> on this device? You will need its passphrase to open it, and can turn biometrics on again when you do.</p>
+            @if (!string.IsNullOrEmpty(ViewModel.ForgetError))
+            {
+                <div class="text-danger mt-3" id="forget-biometrics-error">@ViewModel.ForgetError</div>
+            }
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" disabled="@ViewModel.IsWorking" @onclick="() => ViewModel.CancelForgetBiometricsCommand.Execute(null)">Cancel</button>
+            <button type="button" class="btn btn-primary" id="forget-biometrics-confirm" disabled="@ViewModel.IsWorking" @onclick="() => ViewModel.ForgetBiometricsCommand.ExecuteAsync(null)">
+                @if (ViewModel.IsWorking)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                Forget
+            </button>
+        </Footer>
+    </ModalDialog>
+}
 
 @if (ViewModel.IsCreateDialogOpen)
 {

@@ -25,7 +25,7 @@ Storage names use the template's app name, `myapp`, which the storage clients ad
 | PRF output (32 bytes from the authenticator) | Memory, briefly | `WebAuthnService.DeriveKeys` local | Zeroed straight after the keys are derived |
 | `rememberme` key (HKDF of the PRF output), added by Auth | Memory | `InMemoryDerivedKeyStore["rememberme"]` | Until `Clear()`: the login page with nobody signed in, a failed passkey sign in, or a reload |
 | `e2e-kek` and `e2e-labels` keys, added by UI.Sync | Memory | `InMemoryDerivedKeyStore["e2e-kek"]`, `["e2e-labels"]` | Same as above |
-| Saved user: email, credential id, user id, created at, **encrypted password** | localStorage | `myapp_saved_users` | Until the user is removed from the list, or the password is changed without the key |
+| Saved user: email, optional display name (`AppSettings.EnableRememberMeName`), credential id, user id, created at, **encrypted password** | localStorage | `myapp_saved_users` | Until the user is removed from the list, or the password is changed without the key |
 | Decrypted password | Memory, briefly | `AttemptWebAuthnLoginAsync` local | Passed to `LoginAsync`, then dropped |
 | A profile's master key wrapped by `e2e-kek`, and a copy of its keys document | localStorage | `myapp_e2e_keys_{profile id}_{user}` | Until device unlock is turned off, or the profile is deleted |
 | Labels of the profiles the user created, encrypted with `e2e-labels` | localStorage | `myapp_e2e_labels_{user}` | Until the profile is deleted |
@@ -284,8 +284,14 @@ sequenceDiagram
 Offline, the store cannot be reached and the copy on this device is used, as before. Files edited that way after a
 passphrase change elsewhere are written under the retired key, which the keys document keeps, so they stay readable.
 
+`E2eDeviceUnlockService` (UI.Sync) does the same from anywhere else in the app: `UnlockAsync` syncs the profile first,
+calls `EnsureKeyAsync("e2e-kek")` and then `UnlockWithDeviceAsync`, as the panel does above, and returns false where the
+panel asks for the passphrase. The template's Notebooks page uses it: a locked notebook that biometrics can unlock shows
+a fingerprint, and Open unlocks it with the passkey before showing its pages.
+
 `SyncProtectedProfileService.DisableDeviceUnlockAsync` turns it off: it empties the wrapped master key and keeps the
-document copy, which still unlocks with the passphrase while offline. Nothing in the UI calls it yet.
+document copy, which still unlocks with the passphrase while offline. `E2eDeviceUnlockService.ForgetAsync` calls it,
+from the Notebooks page's forget button once the user confirms.
 
 ## 5. Changing the password keeps the saved one in step
 

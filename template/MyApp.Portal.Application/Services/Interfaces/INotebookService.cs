@@ -33,4 +33,19 @@ public interface INotebookService
     /// <param name="progress">Told about each step of creating its keys.</param>
     /// <returns>The new notebook.</returns>
     Task<Notebook> CreateAsync(string title, string passphrase, IProgress<E2eProgress>? progress = null);
+
+    /// <summary>
+    /// Unlocks a notebook with biometrics (<see cref="Notebook.CanUnlockWithBiometrics"/>), syncing it first when
+    /// online and asking for the passkey if its key is not in memory.
+    /// </summary>
+    /// <param name="notebook">The notebook.</param>
+    /// <returns>True if it was unlocked; false if the passkey was cancelled or could not unlock it.</returns>
+    Task<bool> UnlockWithBiometricsAsync(Notebook notebook);
+
+    /// <summary>
+    /// Stops unlocking a notebook with biometrics on this device. Its passphrase still unlocks it.
+    /// </summary>
+    /// <param name="notebook">The notebook.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    Task ForgetBiometricsAsync(Notebook notebook);
 }

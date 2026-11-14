@@ -110,7 +110,7 @@
                             {
                                 <i class="bi bi-person-circle me-3"></i>
                             }
-                            <span class="text-truncate">@user.Email</span>
+                            <span class="text-truncate saved-user-name" title="@user.Email">@ViewModel.DisplayNameFor(user)</span>
                         </button>
                         <button type="button"
                                 class="btn btn-outline-danger"
@@ -193,13 +193,31 @@
 
             @if (ViewModel.ShowRememberMe)
             {
-                <div class="form-check mb-4">
+                <div class="form-check @(ViewModel.ShowRememberMeName ? "mb-3" : "mb-4")">
                     <InputCheckbox id="remember-me"
                                    class="form-check-input"
                                    @bind-Value="ViewModel.RememberMe"
                                    disabled="@ViewModel.IsBusy" />
                     <label class="form-check-label" for="remember-me">@Text["Login.RememberMe"]</label>
                 </div>
+
+                @if (ViewModel.ShowRememberMeName)
+                {
+                    <div class="mb-4">
+                        <label for="remember-me-name" class="form-label">@Text["Login.RememberMe.Name"]</label>
+                        <div class="input-icon">
+                            <i class="bi bi-person-badge"></i>
+                            <InputText id="remember-me-name"
+                                       class="form-control"
+                                       placeholder="@Text["Login.RememberMe.Name.Placeholder"]"
+                                       autocomplete="nickname"
+                                       maxlength="@LoginViewModel.RememberMeNameMaxLength"
+                                       @bind-Value="ViewModel.RememberMeName"
+                                       disabled="@ViewModel.IsBusy" />
+                        </div>
+                        <div class="form-text">@Text["Login.RememberMe.Name.Help"]</div>
+                    </div>
+                }
             }
 
             @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
