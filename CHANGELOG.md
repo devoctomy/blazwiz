@@ -8,6 +8,23 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.8.1
+
+### Added
+- **A name to remember the user by.** With `AppSettings.EnableRememberMeName` on, ticking "Remember me" on the sign-in
+  page shows an optional name box. The name is kept with the remembered user (`SavedUser.DisplayName`) and shown in the
+  remembered users list instead of the email address (which stays as the tooltip). Off by default; the template turns
+  it on in `wwwroot/appsettings.json`. New text: `Login.RememberMe.Name`, `Login.RememberMe.Name.Placeholder` and
+  `Login.RememberMe.Name.Help`.
+- **`IE2eDeviceUnlockService`** (UI.Sync), to unlock a protected profile with biometrics from anywhere in the app, not
+  only the unlock panel: `CanUnlockAsync`, `UnlockAsync` (syncs first when online, asks for the passkey if needed, and
+  returns false when the passphrase is needed) and `ForgetAsync`. Registered by the sync module.
+- **The template's Notebooks page opens notebooks with biometrics.** For a user remembered with a passkey, a locked
+  notebook with biometrics turned on shows a grey fingerprint, and Open unlocks it with the passkey before showing its
+  pages. An eraser button forgets biometric unlock for that notebook on this device, after asking. The template now
+  allows device unlock for every notebook (`UseProfileDefaults` in `Program.cs`, and `UseProfileSettings` in
+  `NotesSyncProfile`); before, it set neither, so the unlock panel never offered biometrics.
+
 ## 0.8.0
 
 ### Added

@@ -7,7 +7,8 @@ namespace MyApp.Portal.Application.Sync;
 
 /// <summary>
 /// The notes sync profile: plain markdown files kept in IndexedDB, OPFS or a folder the user picks, and synced with
-/// <c>notes/</c> in the user's prefix, end to end encrypted with its own passphrase. Found by
+/// <c>notes/</c> in the user's prefix, end to end encrypted with its own passphrase, which a user remembered with a
+/// passkey may choose to unlock with biometrics on a device. Found by
 /// <c>AddProfilesFromAssemblyContaining</c> in <c>Program.cs</c>.
 /// </summary>
 public sealed class NotesSyncProfile : SyncProfileDefinition
@@ -34,6 +35,7 @@ public sealed class NotesSyncProfile : SyncProfileDefinition
                 .UseDefault(SyncStorageKind.IndexedDb))
             .UseRemote("notes/**/*.md", includeEmptyFolders: true)
             .UseKeyId(KeyId)
+            .UseProfileSettings(settings => settings.AllowDeviceUnlock = true)
             .UseDisplayText("Sync.Profile.Files", typeof(SyncUiText));
     }
 }

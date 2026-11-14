@@ -17,6 +17,7 @@ public class NotebookServiceTests
     private readonly Mock<IE2eProtectedProfileManager> mockManager = new();
     private readonly Mock<ISyncProfileRegistry> mockRegistry = new();
     private readonly Mock<ISyncProfileDisplayNames> mockDisplayNames = new();
+    private readonly Mock<IE2eDeviceUnlockService> mockDeviceUnlock = new();
     private readonly List<SyncProtectedProfile> profiles = [];
     private readonly HashSet<E2eKeyScope> unlocked = [];
     private readonly Dictionary<string, Dictionary<string, byte[]>> stored = [];
@@ -35,10 +36,11 @@ public class NotebookServiceTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new NotebookService(null!, mockManager.Object, mockRegistry.Object, mockDisplayNames.Object)).ParamName);
-        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NotebookService(mockProfiles.Object, null!, mockRegistry.Object, mockDisplayNames.Object)).ParamName);
-        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new NotebookService(mockProfiles.Object, mockManager.Object, null!, mockDisplayNames.Object)).ParamName);
-        Assert.Equal("displayNames", Assert.Throws<ArgumentNullException>(() => new NotebookService(mockProfiles.Object, mockManager.Object, mockRegistry.Object, null!)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new NotebookService(null!, mockManager.Object, mockRegistry.Object, mockDisplayNames.Object, mockDeviceUnlock.Object)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NotebookService(mockProfiles.Object, null!, mockRegistry.Object, mockDisplayNames.Object, mockDeviceUnlock.Object)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new NotebookService(mockProfiles.Object, mockManager.Object, null!, mockDisplayNames.Object, mockDeviceUnlock.Object)).ParamName);
+        Assert.Equal("displayNames", Assert.Throws<ArgumentNullException>(() => new NotebookService(mockProfiles.Object, mockManager.Object, mockRegistry.Object, null!, mockDeviceUnlock.Object)).ParamName);
+        Assert.Equal("deviceUnlock", Assert.Throws<ArgumentNullException>(() => new NotebookService(mockProfiles.Object, mockManager.Object, mockRegistry.Object, mockDisplayNames.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -213,6 +215,62 @@ public class NotebookServiceTests
         Assert.Contains(id, ex.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(true, false, true, true)]
+    [InlineData(true, false, false, false)]
+    [InlineData(true, true, true, false)]
+    [InlineData(false, false, true, false)]
+    public async Task GivenANotebook_WhenFound_ThenBiometricsAreOfferedOnlyWhenLockedSetUpAndOnHere(bool isSetUp, bool isUnlocked, bool deviceCanUnlock, bool expected)
+    {
+        // Arrange
+        var id = Add(Guid.NewGuid().ToString("D"), isCreatedByUser: true, isSetUp: isSetUp);
+        if (isUnlocked)
+        {
+            unlocked.Add(new E2eKeyScope(id));
+        }
+
+        mockDeviceUnlock.Setup(x => x.CanUnlockAsync(new E2eKeyScope(id))).ReturnsAsync(deviceCanUnlock);
+
+        // Act
+        var notebook = await CreateSut().FindAsync(id);
+
+        // Assert
+        Assert.Equal(expected, notebook!.CanUnlockWithBiometrics);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GivenANotebook_WhenUnlockedWithBiometrics_ThenTheDeviceUnlockServiceUnlocksItsScope(bool result)
+    {
+        // Arrange
+        var id = Add(Guid.NewGuid().ToString("D"), isCreatedByUser: true, isSetUp: true);
+        mockDeviceUnlock.Setup(x => x.UnlockAsync(new E2eKeyScope(id))).ReturnsAsync(result);
+        var sut = CreateSut();
+        var notebook = await sut.FindAsync(id);
+
+        // Act
+        var unlockedWithBiometrics = await sut.UnlockWithBiometricsAsync(notebook!);
+
+        // Assert
+        Assert.Equal(result, unlockedWithBiometrics);
+    }
+
+    [Fact]
+    public async Task GivenANotebook_WhenBiometricsForgotten_ThenTheDeviceUnlockServiceForgetsItsScope()
+    {
+        // Arrange
+        var id = Add(Guid.NewGuid().ToString("D"), isCreatedByUser: true, isSetUp: true);
+        var sut = CreateSut();
+        var notebook = await sut.FindAsync(id);
+
+        // Act
+        await sut.ForgetBiometricsAsync(notebook!);
+
+        // Assert
+        mockDeviceUnlock.Verify(x => x.ForgetAsync(new E2eKeyScope(id)), Times.Once);
+    }
+
     private string Add(string name, bool isCreatedByUser, bool isSetUp)
     {
         var id = isCreatedByUser ? name : Guid.NewGuid().ToString("D");
@@ -237,5 +295,5 @@ public class NotebookServiceTests
         return store.Object;
     }
 
-    private NotebookService CreateSut() => new(mockProfiles.Object, mockManager.Object, mockRegistry.Object, mockDisplayNames.Object);
+    private NotebookService CreateSut() => new(mockProfiles.Object, mockManager.Object, mockRegistry.Object, mockDisplayNames.Object, mockDeviceUnlock.Object);
 }

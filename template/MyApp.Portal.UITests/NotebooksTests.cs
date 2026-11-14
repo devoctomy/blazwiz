@@ -102,7 +102,101 @@ public class NotebooksTests : TestBase
         await Expect(Page.Locator("#e2e-lock-indicator")).ToHaveCountAsync(0);
     }
 
+    [TestMethod]
+    public async Task GivenARememberedUserWithAPasskey_WhenBiometricsAreTurnedOnForANotebook_ThenItOpensWithThemFromTheNotebooksPage_UntilForgotten()
+    {
+        // Arrange: Chromium's virtual authenticator stands in for the device's passkey, with the PRF extension the
+        // keys are derived from.
+        await AddVirtualAuthenticatorAsync();
+        await LoginRememberedWithPasskeyAsync();
+        await CreateNotebookAsync("Work");
+        var work = Created();
+
+        // Turned on when unlocking with the passphrase.
+        await Page.Locator("#lock-notebook-button").ClickAsync();
+        await work.Locator(".notebook-open").ClickAsync();
+        await Page.Locator("#e2e-unlock-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-unlock-remember-biometrics").CheckAsync();
+        await Page.Locator("#e2e-unlock-button").ClickAsync();
+        await Expect(Page.Locator("#e2e-unlock-panel")).ToHaveCountAsync(0);
+
+        // Locked, the notebook shows a grey fingerprint, and opens straight onto its pages.
+        await Page.Locator("#lock-notebook-button").ClickAsync();
+        await Expect(work.Locator(".notebook-icon.bi-fingerprint")).ToBeVisibleAsync();
+        await Expect(work.Locator(".notebook-forget-biometrics")).ToBeVisibleAsync();
+        await ScreenshotAsync("BiometricNotebook");
+        await work.Locator(".notebook-open").ClickAsync();
+        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Work");
+        await Expect(Page.Locator("#e2e-unlock-panel")).ToHaveCountAsync(0);
+
+        // Forgetting asks first; cancelled, nothing changes.
+        await Page.Locator("#lock-notebook-button").ClickAsync();
+        await work.Locator(".notebook-forget-biometrics").ClickAsync();
+        await Expect(Page.Locator("#forget-biometrics-dialog")).ToContainTextAsync("Work");
+        await ScreenshotAsync("ForgetBiometrics");
+        await Page.Locator("#forget-biometrics-dialog").GetByRole(AriaRole.Button, new() { Name = "Cancel" }).ClickAsync();
+        await Expect(Page.Locator("#forget-biometrics-dialog")).ToHaveCountAsync(0);
+        await Expect(work.Locator(".notebook-icon.bi-fingerprint")).ToBeVisibleAsync();
+
+        // Act: forgotten.
+        await work.Locator(".notebook-forget-biometrics").ClickAsync();
+        await Page.Locator("#forget-biometrics-confirm").ClickAsync();
+
+        // Assert: back to the passphrase.
+        await Expect(work.Locator(".notebook-icon.bi-fingerprint")).ToHaveCountAsync(0);
+        await Expect(work.Locator(".notebook-forget-biometrics")).ToHaveCountAsync(0);
+        await work.Locator(".notebook-open").ClickAsync();
+        await Expect(Page.Locator("#e2e-unlock-panel")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#e2e-unlock-passkey-button")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#e2e-unlock-remember-biometrics")).ToBeVisibleAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenAPasswordSignInWithoutRememberMe_WhenANotebookIsLocked_ThenBiometricsAreNotOffered()
+    {
+        // Arrange
+        await LoginAsync();
+        await CreateNotebookAsync("Work");
+
+        // Act
+        await Page.Locator("#lock-notebook-button").ClickAsync();
+
+        // Assert
+        await Expect(Created().Locator(".notebook-icon.bi-lock-fill")).ToBeVisibleAsync();
+        await Expect(Created().Locator(".notebook-forget-biometrics")).ToHaveCountAsync(0);
+    }
+
     private ILocator Created() => Page.Locator("#notebooks .notebook:not([data-notebook='notes'])");
+
+    private async Task AddVirtualAuthenticatorAsync()
+    {
+        var cdp = await Context.NewCDPSessionAsync(Page);
+        await cdp.SendAsync("WebAuthn.enable");
+        await cdp.SendAsync("WebAuthn.addVirtualAuthenticator", new Dictionary<string, object>
+        {
+            ["options"] = new Dictionary<string, object>
+            {
+                ["protocol"] = "ctap2",
+                ["transport"] = "internal",
+                ["hasResidentKey"] = true,
+                ["hasUserVerification"] = true,
+                ["isUserVerified"] = true,
+                ["hasPrf"] = true,
+                ["automaticPresenceSimulation"] = true,
+            },
+        });
+    }
+
+    private async Task LoginRememberedWithPasskeyAsync()
+    {
+        await GoToLoginAsync();
+        await Page.Locator("#username").FillAsync("bob.hoskins@example.com");
+        await Page.Locator("#password").FillAsync("password123");
+        await Page.Locator("#remember-me").CheckAsync();
+        await Page.Locator("#login-button").ClickAsync();
+        await Page.Locator("#webauthn-enable").ClickAsync();
+        await Expect(Page.Locator("#dashboard-greeting")).ToBeVisibleAsync();
+    }
 
     private ILocator Notebook(string name) => Page.Locator($"#notebooks .notebook[data-notebook='{name}']");
 

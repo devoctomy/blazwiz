@@ -11,6 +11,12 @@ public class SavedUser
     public string Email { get; set; } = string.Empty;
 
     /// <summary>
+    /// Gets or sets the name the user chose to be remembered by, shown on the sign-in page instead of the email
+    /// address, or <see langword="null"/> when they did not give one.
+    /// </summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>
     /// Gets or sets the WebAuthn credential associated with this user, if any.
     /// </summary>
     public WebAuthnStoredCredential? WebAuthnCredential { get; set; }

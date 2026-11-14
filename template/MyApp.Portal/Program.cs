@@ -45,8 +45,10 @@ builder.Services.AddBlazwizAppSyncEvents(builder.Configuration, allowLocalChanne
 
 // Sync and end to end encryption, and the Sync page: the settings from sync.json (embedded in this project), and the
 // profiles (what is synced, and where it is kept on the device) from the SyncProfileDefinition classes in the app.
+// Protected profiles the user creates may be unlocked with the passkey once the user turns that on for one on a device.
 builder.Services.AddBlazwizSyncModule(builder.Configuration, sync => sync
     .UseEmbeddedConfiguration(typeof(Program).Assembly, "sync.json")
+    .UseProfileDefaults(profile => profile.AllowDeviceUnlock = true)
     .AddProfilesFromAssemblyContaining<Program>()
     .AddProfilesFromAssemblyContaining<DashboardViewModel>());
 #if (IncludeNotes)

@@ -40,6 +40,29 @@ public class LoginPageTests : TestBase
     }
 
     [TestMethod]
+    public async Task GivenRememberMeWithAName_WhenSignedOut_ThenTheRememberedUserIsShownByThatName()
+    {
+        // Arrange
+        await GoToLoginAsync();
+        await Expect(Page.Locator("#remember-me-name")).ToHaveCountAsync(0);
+        await Page.Locator("#username").FillAsync("bob.hoskins@example.com");
+        await Page.Locator("#password").FillAsync("password123");
+        await Page.Locator("#remember-me").CheckAsync();
+        await Page.Locator("#remember-me-name").FillAsync("Bob");
+        await ScreenshotAsync("RememberMeName");
+        await Page.Locator("#login-button").ClickAsync();
+        await Page.Locator("#webauthn-skip").ClickAsync();
+        await Expect(Page.Locator("#dashboard-greeting")).ToBeVisibleAsync();
+
+        // Act
+        await Page.Locator("#logout-button").ClickAsync();
+
+        // Assert
+        await Expect(Page.Locator("#saved-users .saved-user-name")).ToHaveTextAsync("Bob");
+        await Expect(Page.Locator("#saved-users .saved-user-name")).ToHaveAttributeAsync("title", "bob.hoskins@example.com");
+    }
+
+    [TestMethod]
     public async Task GivenLoginPage_WhenTogglingTheme_ThenDarkThemeIsApplied()
     {
         await GoToLoginAsync();

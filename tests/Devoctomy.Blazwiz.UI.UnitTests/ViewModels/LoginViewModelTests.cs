@@ -1192,6 +1192,173 @@ public class LoginViewModelTests
         Assert.Same(existing, Assert.Single(sut.SavedUsers));
     }
 
+    [Theory]
+    [InlineData(true, true, true, true)]
+    [InlineData(true, false, true, false)]
+    [InlineData(true, true, false, false)]
+    [InlineData(false, true, true, false)]
+    public void GivenRememberMeNameSetting_WhenRememberMeChanges_ThenNameIsAskedForOnlyWhenAllowedShownAndTicked(bool enabled, bool rememberMe, bool showRememberMe, bool expected)
+    {
+        // Arrange
+        appSettings.EnableRememberMeName = enabled;
+        var sut = CreateSut();
+        sut.ShowRememberMe = showRememberMe;
+
+        // Act
+        sut.RememberMe = rememberMe;
+
+        // Assert
+        Assert.Equal(expected, sut.ShowRememberMeName);
+    }
+
+    [Fact]
+    public void GivenRememberMeNameAllowed_WhenRememberMeTicked_ThenShowRememberMeNameChangeIsAnnounced()
+    {
+        // Arrange
+        appSettings.EnableRememberMeName = true;
+        var sut = CreateSut();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        sut.RememberMe = true;
+
+        // Assert
+        Assert.Contains(nameof(LoginViewModel.ShowRememberMeName), changed);
+    }
+
+    [Theory]
+    [InlineData("  Nick  ", "Nick")]
+    [InlineData("   ", null)]
+    [InlineData("", null)]
+    public async Task GivenRememberMeNameAllowed_WhenLoginWithRememberMe_ThenSavesTheTrimmedNameOrNone(string typed, string? expected)
+    {
+        // Arrange
+        appSettings.EnableRememberMeName = true;
+        appSettings.EnablePortalLoginAuthn = false;
+        mockAuth.Setup(x => x.LoginAsync("bob", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "secret";
+        sut.RememberMe = true;
+        sut.RememberMeName = typed;
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        mockLocalStorage.Verify(
+            x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.Is<SavedUsersData>(d => d.Users.Single().DisplayName == expected)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenRememberMeNameNotAllowed_WhenLoginWithRememberMeAndName_ThenNameIsNotSaved()
+    {
+        // Arrange
+        appSettings.EnableRememberMeName = false;
+        appSettings.EnablePortalLoginAuthn = false;
+        mockAuth.Setup(x => x.LoginAsync("bob", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "secret";
+        sut.RememberMe = true;
+        sut.RememberMeName = "Nick";
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        mockLocalStorage.Verify(
+            x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.Is<SavedUsersData>(d => d.Users.Single().DisplayName == null)),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNameLongerThanTheLimit_WhenLoginWithRememberMe_ThenSavedNameIsCapped()
+    {
+        // Arrange
+        appSettings.EnableRememberMeName = true;
+        appSettings.EnablePortalLoginAuthn = false;
+        mockAuth.Setup(x => x.LoginAsync("bob", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        sut.Username = "bob";
+        sut.Password = "secret";
+        sut.RememberMe = true;
+        sut.RememberMeName = new string('a', LoginViewModel.RememberMeNameMaxLength + 10);
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        mockLocalStorage.Verify(
+            x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.Is<SavedUsersData>(d => d.Users.Single().DisplayName!.Length == LoginViewModel.RememberMeNameMaxLength)),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData("Nick", "Nick")]
+    [InlineData("", "Old")]
+    public async Task GivenUserAlreadySavedWithName_WhenLoginWithRememberMe_ThenANewNameReplacesItAndNoNameKeepsIt(string typed, string expected)
+    {
+        // Arrange
+        var existing = new SavedUser { Email = "bob@test.com", DisplayName = "Old" };
+        SetupSavedUsers(existing);
+        appSettings.EnableRememberMeName = true;
+        appSettings.EnablePortalLoginAuthn = false;
+        mockAuth.Setup(x => x.LoginAsync("bob@test.com", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        var sut = CreateSut();
+        await sut.OnInitializedAsync();
+        sut.ShowLoginFormCommand.Execute(null);
+        sut.Username = "bob@test.com";
+        sut.Password = "secret";
+        sut.RememberMe = true;
+        sut.RememberMeName = typed;
+
+        // Act
+        await sut.LoginAsync();
+
+        // Assert
+        Assert.Equal(expected, Assert.Single(sut.SavedUsers).DisplayName);
+    }
+
+    [Theory]
+    [InlineData(true, "Nick", "Nick")]
+    [InlineData(true, null, "bob@test.com")]
+    [InlineData(true, "  ", "bob@test.com")]
+    [InlineData(false, "Nick", "bob@test.com")]
+    public void GivenSavedUser_WhenDisplayNameFor_ThenShowsTheirNameOnlyWhenAllowedAndGiven(bool enabled, string? displayName, string expected)
+    {
+        // Arrange
+        appSettings.EnableRememberMeName = enabled;
+        var sut = CreateSut();
+        var user = new SavedUser { Email = "bob@test.com", DisplayName = displayName };
+
+        // Act
+        var shown = sut.DisplayNameFor(user);
+
+        // Assert
+        Assert.Equal(expected, shown);
+    }
+
+    [Fact]
+    public void GivenTypedName_WhenShowLoginFormOrUsersList_ThenNameIsCleared()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.RememberMeName = "Nick";
+        sut.ShowLoginFormCommand.Execute(null);
+        var afterLoginForm = sut.RememberMeName;
+        sut.RememberMeName = "Nick";
+
+        // Act
+        sut.ShowUsersListCommandCommand.Execute(null);
+
+        // Assert
+        Assert.Empty(afterLoginForm);
+        Assert.Empty(sut.RememberMeName);
+    }
+
     [Fact]
     public async Task GivenUserAlreadySaved_WhenHandleWebAuthnSetup_ThenReplacesTheirCredential()
     {

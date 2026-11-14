@@ -120,7 +120,9 @@ the data bucket.
 - **Notebooks**: each notebook is a sync profile with its own passphrase and keys. The default notebook is the `notes`
   profile, set up in code (`Sync/NotesSyncProfile.cs`), whose passphrase is set the first time. Every other notebook
   is a protected profile the user creates (`NotebookService`), with its pages under `profiles/<id>/` and its name kept
-  encrypted inside it, so a locked notebook is shown by its id.
+  encrypted inside it, so a locked notebook is shown by its id. For a user remembered with a passkey, a notebook
+  unlocked with "Unlock with biometrics next time on this device" ticked shows a fingerprint while locked, and opens
+  with the passkey (`IE2eDeviceUnlockService`); its eraser button forgets that, after asking.
 - **Storage**: pages are `.md` files and folders are paths (`notes/Work/Ideas.md`), kept by the notebook's file store,
   which encrypts them. `NoteServiceFactory` creates a `NoteService` for each notebook over its store, so every change
   is tracked for sync automatically.
@@ -185,7 +187,9 @@ theme.
 
 ### Configuration
 
-`wwwroot/appsettings.json` holds `AppSettings` (title, description, copyright), `AwsCognito`
+`wwwroot/appsettings.json` holds `AppSettings` (title, description, copyright, `EnablePortalLoginAuthn` for passkey
+sign in, and `EnableRememberMeName` for an optional name to remember a user by, shown on the sign-in page instead of
+their email address; set it to `false` to show only email addresses), `AwsCognito`
 (region, user pool, client and identity pool ids) and `AwsS3` (region, data bucket).
 `appsettings.Development.json` overrides values when running locally and is not published; it lightens the Argon2id
 settings (`Argon2id`), so passphrases are quick to enter while developing and in the UI tests. When
