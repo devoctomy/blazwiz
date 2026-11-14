@@ -121,6 +121,21 @@ public class ShellTests : TestBase
     }
 
     [TestMethod]
+    public async Task GivenSignedInUser_WhenShellShown_ThenThePageHasNoScrollAnchoring()
+    {
+        // Arrange: Blazor's Virtualize resizes its spacers as rows load. With scroll anchoring on, the browser scrolls
+        // to keep up with them, which loads more rows, and one turn of the wheel runs to the end of a long list.
+        // Virtualize turns anchoring off on <html>, but Chrome takes the page's setting from <body>.
+        await LoginAsync();
+
+        // Act
+        var body = Page.Locator("body");
+
+        // Assert
+        await Expect(body).ToHaveCSSAsync("overflow-anchor", "none");
+    }
+
+    [TestMethod]
     public async Task GivenMobileViewport_WhenOpeningMenu_ThenSidebarSlidesIn()
     {
         await Page.SetViewportSizeAsync(390, 844);

@@ -1,1 +1,57 @@
 #nullable enable
+Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel
+Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel.ConnectAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel.DisconnectAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel.InstanceId.get -> string!
+Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel.PublishAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session, Devoctomy.Blazwiz.Events.Models.UserEvent! userEvent) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel.Received -> System.EventHandler<Devoctomy.Blazwiz.Events.Models.UserEvent!>?
+Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel.State.get -> Devoctomy.Blazwiz.Events.Models.UserEventConnectionState
+Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel.StateChanged -> System.EventHandler?
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.ConnectAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.DisconnectAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.Dispose() -> void
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.InstanceId.get -> string!
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.LocalUserEventChannel(Microsoft.JSInterop.IJSRuntime! jsRuntime, Devoctomy.Blazwiz.Core.Configuration.Interfaces.IAppStorageKeys! storageKeys) -> void
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.OnMessage(string! json) -> void
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.PublishAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session, Devoctomy.Blazwiz.Events.Models.UserEvent! userEvent) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.Received -> System.EventHandler<Devoctomy.Blazwiz.Events.Models.UserEvent!>?
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.State.get -> Devoctomy.Blazwiz.Events.Models.UserEventConnectionState
+Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.StateChanged -> System.EventHandler?
+Devoctomy.Blazwiz.Events.Extensions.EventsServiceCollectionExtensions
+Devoctomy.Blazwiz.Events.Models.UserEvent
+Devoctomy.Blazwiz.Events.Models.UserEvent.At.get -> System.DateTimeOffset
+Devoctomy.Blazwiz.Events.Models.UserEvent.At.set -> void
+Devoctomy.Blazwiz.Events.Models.UserEvent.Device.get -> string?
+Devoctomy.Blazwiz.Events.Models.UserEvent.Device.set -> void
+Devoctomy.Blazwiz.Events.Models.UserEvent.From.get -> string!
+Devoctomy.Blazwiz.Events.Models.UserEvent.From.set -> void
+Devoctomy.Blazwiz.Events.Models.UserEvent.Reason.get -> string?
+Devoctomy.Blazwiz.Events.Models.UserEvent.Reason.set -> void
+Devoctomy.Blazwiz.Events.Models.UserEvent.Type.get -> string!
+Devoctomy.Blazwiz.Events.Models.UserEvent.Type.set -> void
+Devoctomy.Blazwiz.Events.Models.UserEvent.UserEvent() -> void
+Devoctomy.Blazwiz.Events.Models.UserEventConnectionState
+Devoctomy.Blazwiz.Events.Models.UserEventConnectionState.Connected = 2 -> Devoctomy.Blazwiz.Events.Models.UserEventConnectionState
+Devoctomy.Blazwiz.Events.Models.UserEventConnectionState.Connecting = 1 -> Devoctomy.Blazwiz.Events.Models.UserEventConnectionState
+Devoctomy.Blazwiz.Events.Models.UserEventConnectionState.Disconnected = 0 -> Devoctomy.Blazwiz.Events.Models.UserEventConnectionState
+Devoctomy.Blazwiz.Events.Models.UserEventReasons
+Devoctomy.Blazwiz.Events.Models.UserEventTypes
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSessionHandler
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSessionHandler.Dispose() -> void
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSessionHandler.OnSessionStartedAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSessionHandler.OnSigningOutAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSessionHandler.ReconnectAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSessionHandler.UserEventsSessionHandler(Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel! channel, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionResumeMonitor! resumeMonitor, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IDeviceNameService! deviceNameService, System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSignOutHandler
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSignOutHandler.OnSigningOutEverywhereAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session, Devoctomy.Blazwiz.Auth.Models.SignOutReason reason, string! deviceName) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Events.Sessions.UserEventsSignOutHandler.UserEventsSignOutHandler(Devoctomy.Blazwiz.Events.Channels.Interfaces.IUserEventChannel! channel, System.TimeProvider! timeProvider) -> void
+const Devoctomy.Blazwiz.Events.Channels.LocalUserEventChannel.ModulePath = "./_content/Devoctomy.Blazwiz.Events/js/user-events-local.js" -> string!
+const Devoctomy.Blazwiz.Events.Models.UserEventReasons.KeysRotated = "keys-rotated" -> string!
+const Devoctomy.Blazwiz.Events.Models.UserEventReasons.UserRequested = "user-requested" -> string!
+const Devoctomy.Blazwiz.Events.Models.UserEventTypes.SignedOutEverywhere = "signed-out-everywhere" -> string!
+static Devoctomy.Blazwiz.Events.Extensions.EventsServiceCollectionExtensions.AddBlazwizEvents(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Devoctomy.Blazwiz.Events.Extensions.EventsServiceCollectionExtensions.AddBlazwizEvents<TChannel>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static readonly Devoctomy.Blazwiz.Events.Sessions.UserEventsSessionHandler.FirstReconnectDelay -> System.TimeSpan
+static readonly Devoctomy.Blazwiz.Events.Sessions.UserEventsSessionHandler.MaxReconnectDelay -> System.TimeSpan

@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.8.0
+
 ### Added
 - **Changing a passphrase rotates the profile's keys** (security review SR3). Before, the same master and file keys
   were wrapped again, so anyone who had the old passphrase and a copy of the keys document could still read everything,
@@ -122,6 +124,11 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 - **Generated apps build with the .NET 10 SDK only.** The template's `global.json` now rolls forward within .NET 10
   (`latestFeature`), not to a newer major SDK (`latestMajor`). With a .NET 11 SDK also installed, the UI tests' build
   of the portal ran on .NET 11 inside a .NET 10 `dotnet test` and failed (`MSB4216`, `ComputeWasmBuildAssets`).
+
+### Fixed
+- A long list shown with Blazor's `Virtualize` no longer runs to its end (or back to its start) on one turn of the
+  mouse wheel: the shell turns off scroll anchoring on `body` (`overflow-anchor: none`), which Chrome reads for the
+  page, instead of only the `html` setting Virtualize makes.
 
 ## 0.7.2
 

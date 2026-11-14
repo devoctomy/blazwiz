@@ -1,5 +1,11 @@
 #nullable enable
 Devoctomy.Blazwiz.Browser.Extensions.BrowserServiceCollectionExtensions
+Devoctomy.Blazwiz.Browser.Models.DeviceDescription
+Devoctomy.Blazwiz.Browser.Models.DeviceDescription.Browser.get -> string?
+Devoctomy.Blazwiz.Browser.Models.DeviceDescription.Browser.set -> void
+Devoctomy.Blazwiz.Browser.Models.DeviceDescription.DeviceDescription() -> void
+Devoctomy.Blazwiz.Browser.Models.DeviceDescription.Platform.get -> string?
+Devoctomy.Blazwiz.Browser.Models.DeviceDescription.Platform.set -> void
 Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult
 Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult.Error.get -> string?
 Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult.Error.set -> void
@@ -40,6 +46,11 @@ Devoctomy.Blazwiz.Browser.Services.ClipboardService
 Devoctomy.Blazwiz.Browser.Services.ClipboardService.ClipboardService(Microsoft.JSInterop.IJSRuntime! jsRuntime, System.TimeProvider! timeProvider) -> void
 Devoctomy.Blazwiz.Browser.Services.ClipboardService.CopyAsync(string! text, System.TimeSpan? clearAfter = null) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.ClipboardService.Dispose() -> void
+Devoctomy.Blazwiz.Browser.Services.DeviceNameService
+Devoctomy.Blazwiz.Browser.Services.DeviceNameService.DeviceNameService(Microsoft.JSInterop.IJSRuntime! jsRuntime, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService) -> void
+Devoctomy.Blazwiz.Browser.Services.DeviceNameService.GetNameAsync() -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Browser.Services.DeviceNameService.Sanitize(string? name) -> string?
+Devoctomy.Blazwiz.Browser.Services.DeviceNameService.SetNameAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.FocusFirstInputAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.GetPreferredThemeAsync() -> System.Threading.Tasks.Task<string!>!
@@ -47,6 +58,10 @@ Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.SetDocument
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.SetThemeAsync(string! theme) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IClipboardService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IClipboardService.CopyAsync(string! text, System.TimeSpan? clearAfter = null) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IDeviceNameService
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IDeviceNameService.GetNameAsync() -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IDeviceNameService.Sanitize(string? name) -> string?
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IDeviceNameService.SetNameAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService.GetItemAsync(string! key) -> System.Threading.Tasks.Task<string?>!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService.GetObjectAsync<T>(string! key) -> System.Threading.Tasks.Task<T?>!
@@ -56,6 +71,10 @@ Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService.SetObjectAsyn
 Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService.NavigateTo(string! uri) -> void
 Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService.Reload() -> void
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IPageResumeService
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IPageResumeService.Resumed -> System.EventHandler?
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IPageResumeService.StartAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IPageResumeService.StopAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService.AuthenticateAsync(string! credentialId) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult!>!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService.RegisterAsync(string! username) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult!>!
@@ -70,10 +89,23 @@ Devoctomy.Blazwiz.Browser.Services.NavigationService
 Devoctomy.Blazwiz.Browser.Services.NavigationService.NavigateTo(string! uri) -> void
 Devoctomy.Blazwiz.Browser.Services.NavigationService.NavigationService(Microsoft.AspNetCore.Components.NavigationManager! navigationManager) -> void
 Devoctomy.Blazwiz.Browser.Services.NavigationService.Reload() -> void
+Devoctomy.Blazwiz.Browser.Services.PageResumeService
+Devoctomy.Blazwiz.Browser.Services.PageResumeService.Dispose() -> void
+Devoctomy.Blazwiz.Browser.Services.PageResumeService.DisposeAsync() -> System.Threading.Tasks.ValueTask
+Devoctomy.Blazwiz.Browser.Services.PageResumeService.OnResumed() -> void
+Devoctomy.Blazwiz.Browser.Services.PageResumeService.PageResumeService(Microsoft.JSInterop.IJSRuntime! jsRuntime) -> void
+Devoctomy.Blazwiz.Browser.Services.PageResumeService.Resumed -> System.EventHandler?
+Devoctomy.Blazwiz.Browser.Services.PageResumeService.StartAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Browser.Services.PageResumeService.StopAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.AuthenticateAsync(string! credentialId) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnAuthenticateResult!>!
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.RegisterAsync(string! username) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult!>!
 Devoctomy.Blazwiz.Browser.Services.WebAuthnService.WebAuthnService(Microsoft.JSInterop.IJSRuntime! jsRuntime, Devoctomy.Blazwiz.Cryptography.Interfaces.IPrfKeyDerivator! prfKeyDerivator) -> void
 const Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/browser.js" -> string!
 const Devoctomy.Blazwiz.Browser.Services.ClipboardService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/clipboard.js" -> string!
+const Devoctomy.Blazwiz.Browser.Services.DeviceNameService.MaxLength = 32 -> int
+const Devoctomy.Blazwiz.Browser.Services.DeviceNameService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/device.js" -> string!
+const Devoctomy.Blazwiz.Browser.Services.DeviceNameService.StorageKey = "device_name" -> string!
+const Devoctomy.Blazwiz.Browser.Services.DeviceNameService.Unknown = "Unknown" -> string!
+const Devoctomy.Blazwiz.Browser.Services.PageResumeService.ModulePath = "./_content/Devoctomy.Blazwiz.Browser/js/page-resume.js" -> string!
 static Devoctomy.Blazwiz.Browser.Extensions.BrowserServiceCollectionExtensions.AddBlazwizBrowser(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
