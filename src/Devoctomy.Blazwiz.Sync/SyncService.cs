@@ -36,6 +36,10 @@ public class SyncService(
 
     private readonly Dictionary<string, ProfileOutcome> outcomes = new Dictionary<string, ProfileOutcome>(StringComparer.Ordinal);
 
+    // The passes and tracked work running now, each with its own progress, so two profiles syncing at the same time
+    // never overwrite each other's counts.
+    private readonly List<RunningPass> passes = [];
+
     private SyncStatus status = new SyncStatus();
 
     // Passes and tracked work running now: the status says syncing until the last of them ends.
@@ -59,7 +63,6 @@ public class SyncService(
         var selected = SelectProfiles(profile);
         var total = new SyncResult { Profile = profile };
         Begin();
-        var passProgress = new StatusProgress(this, progress);
         string? current = null;
         try
         {
@@ -72,7 +75,17 @@ public class SyncService(
                 }
 
                 current = item.Name;
-                var result = await RunProfileAsync(item, verify, passProgress, ct);
+                SyncResult result;
+                var pass = StartPass(item.Name);
+                try
+                {
+                    result = await RunProfileAsync(item, verify, new StatusProgress(this, pass, progress), ct);
+                }
+                finally
+                {
+                    EndPass(pass);
+                }
+
                 total.Add(result);
                 Record(item.Name, result.Failed > 0 ? SyncErrorCodes.FilesFailed : null, [result.Failed], result.ConflictsResolved);
                 current = null;
@@ -104,17 +117,20 @@ public class SyncService(
     }
 
     /// <inheritdoc/>
-    public async Task TrackAsync(Func<IProgress<SyncPassProgress>, Task> work)
+    public async Task TrackAsync(string profile, Func<IProgress<SyncPassProgress>, Task> work)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(profile);
         ArgumentNullException.ThrowIfNull(work);
 
         Begin();
+        var pass = StartPass(profile);
         try
         {
-            await work(new StatusProgress(this, null));
+            await work(new StatusProgress(this, pass, null));
         }
         finally
         {
+            EndPass(pass);
             await EndAsync();
         }
     }
@@ -133,6 +149,7 @@ public class SyncService(
     public void Reset()
     {
         outcomes.Clear();
+        passes.Clear();
         status = new SyncStatus();
         StatusChanged?.Invoke(this, status.Clone());
     }
@@ -256,17 +273,34 @@ public class SyncService(
     }
 
     /// <summary>
-    /// Starts a pass or tracked work: the status says syncing, with no count until it reports one.
+    /// Starts a pass or tracked work: the status says syncing.
     /// </summary>
     private void Begin()
     {
         running++;
-        UpdateStatus(s =>
+        UpdateStatus(s => s.State = SyncState.Syncing);
+    }
+
+    /// <summary>
+    /// Starts showing a profile's pass, or tracked work on its files, in the status, with no count until it reports one.
+    /// </summary>
+    private RunningPass StartPass(string profile)
+    {
+        var pass = new RunningPass(profile);
+        passes.Add(pass);
+        UpdateStatus(_ => { });
+        return pass;
+    }
+
+    /// <summary>
+    /// Stops showing a pass in the status.
+    /// </summary>
+    private void EndPass(RunningPass pass)
+    {
+        if (passes.Remove(pass))
         {
-            s.State = SyncState.Syncing;
-            s.ChangesDone = 0;
-            s.ChangesTotal = 0;
-        });
+            UpdateStatus(_ => { });
+        }
     }
 
     /// <summary>
@@ -282,28 +316,43 @@ public class SyncService(
             if (running == 0)
             {
                 ApplyOutcomes(s);
-                s.ChangesDone = 0;
-                s.ChangesTotal = 0;
             }
         });
     }
 
+    /// <summary>
+    /// Changes the status and raises <see cref="StatusChanged"/>, with the running passes as they are now.
+    /// </summary>
     private void UpdateStatus(Action<SyncStatus> change)
     {
         var updated = status.Clone();
         change(updated);
+        updated.Passes = passes.Select(p => new SyncPassStatus(p.Profile, p.Done, p.Total)).ToList();
         status = updated;
         StatusChanged?.Invoke(this, status.Clone());
     }
 
     /// <summary>
-    /// Passes a pass's progress on to the caller, and shows it in the status. The status changes at most every
-    /// <see cref="Interval"/>, and always at the start and end of a pass, so a pass of thousands of changes does not
-    /// redraw the UI for each one.
+    /// A pass, or tracked work, running now, and how far it has got.
+    /// </summary>
+    private sealed class RunningPass(string profile)
+    {
+        public string Profile { get; } = profile;
+
+        public int Done { get; set; }
+
+        public int Total { get; set; }
+    }
+
+    /// <summary>
+    /// Passes a pass's progress on to the caller, and shows it in the status as that pass's. The status changes at most
+    /// every <see cref="Interval"/> for each pass, and always at the start and end of one, so a pass of thousands of
+    /// changes does not redraw the UI for each one.
     /// </summary>
     /// <param name="owner">The service whose status shows it.</param>
+    /// <param name="pass">The pass whose progress it is.</param>
     /// <param name="inner">The caller's progress, or null.</param>
-    private sealed class StatusProgress(SyncService owner, IProgress<SyncPassProgress>? inner)
+    private sealed class StatusProgress(SyncService owner, RunningPass pass, IProgress<SyncPassProgress>? inner)
         : IProgress<SyncPassProgress>
     {
         private static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(250);
@@ -326,11 +375,12 @@ public class SyncService(
             }
 
             lastShown = now;
-            owner.UpdateStatus(s =>
+            pass.Done = value.Done;
+            pass.Total = value.Total;
+            if (owner.passes.Contains(pass))
             {
-                s.ChangesDone = value.Done;
-                s.ChangesTotal = value.Total;
-            });
+                owner.UpdateStatus(_ => { });
+            }
         }
     }
 

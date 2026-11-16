@@ -2,6 +2,7 @@ using Devoctomy.Blazwiz.Sync.Connectivity;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services;
+using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Moq;
 
@@ -14,6 +15,7 @@ public class SyncPillViewModelTests
     private readonly Mock<ISyncService> mockSync = new();
     private readonly Mock<IConnectivityService> mockConnectivity = new();
     private readonly Mock<ISyncScheduler> mockScheduler = new();
+    private readonly Mock<ISyncProfileDisplayNames> mockDisplayNames = new();
     private SyncStatus syncStatus = new();
     private ConnectivityStatus connectivity = new() { IsOnline = false, Reason = OfflineReason.NoCredentials, LastCheckedAt = DateTimeOffset.UnixEpoch };
 
@@ -30,10 +32,12 @@ public class SyncPillViewModelTests
         var presenter = new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors);
 
         // Act & Assert
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(null!, mockConnectivity.Object, mockScheduler.Object, presenter)).ParamName);
-        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(mockSync.Object, null!, mockScheduler.Object, presenter)).ParamName);
-        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(mockSync.Object, mockConnectivity.Object, null!, presenter)).ParamName);
-        Assert.Equal("syncStatusPresenter", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!)).ParamName);
+        var names = mockDisplayNames.Object;
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(null!, mockConnectivity.Object, mockScheduler.Object, presenter, names)).ParamName);
+        Assert.Equal("connectivityService", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(mockSync.Object, null!, mockScheduler.Object, presenter, names)).ParamName);
+        Assert.Equal("syncScheduler", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(mockSync.Object, mockConnectivity.Object, null!, presenter, names)).ParamName);
+        Assert.Equal("syncStatusPresenter", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, null!, names)).ParamName);
+        Assert.Equal("displayNames", Assert.Throws<ArgumentNullException>(() => new SyncPillViewModel(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, presenter, null!)).ParamName);
     }
 
     [Fact]
@@ -177,5 +181,113 @@ public class SyncPillViewModelTests
         Assert.Equal(0, changed);
     }
 
-    private SyncPillViewModel CreateSut() => new(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors));
+    [Fact]
+    public void GivenTwoProfilesSyncingAtOnce_WhenPassesRead_ThenEachHasItsOwnPillWithItsNameAndProgress()
+    {
+        // Arrange
+        syncStatus = new SyncStatus { State = SyncState.Syncing, Passes = [new SyncPassStatus("a", 12, 201), new SyncPassStatus("b", 150, 201)] };
+        var sut = CreateSut();
+
+        // Act
+        var result = sut.Passes;
+
+        // Assert
+        Assert.Equal(["a: Syncing Vault a 12 of 201", "b: Syncing Vault b 150 of 201"], result.Select(p => $"{p.Profile}: {p.Text}"));
+        Assert.Equal("Syncing", sut.Pill.Text);
+    }
+
+    [Fact]
+    public void GivenOneProfileSyncing_WhenPassesRead_ThenNoneAreListed_AndThePillNamesItWithItsProgress()
+    {
+        // Arrange
+        syncStatus = new SyncStatus { State = SyncState.Syncing, Passes = [new SyncPassStatus("a", 12, 201)] };
+        var sut = CreateSut();
+
+        // Act
+        var result = sut.Passes;
+
+        // Assert
+        Assert.Empty(result);
+        Assert.Equal("Syncing Vault a 12 of 201", sut.Pill.Text);
+    }
+
+    [Fact]
+    public void GivenOneProfileSyncingBeforeItHasPlanned_WhenPillRead_ThenItNamesTheProfile()
+    {
+        // Arrange
+        syncStatus = new SyncStatus { State = SyncState.Syncing, Passes = [new SyncPassStatus("a", 0, 0)] };
+        var sut = CreateSut();
+
+        // Act
+        var result = sut.Pill;
+
+        // Assert
+        Assert.Equal("Syncing Vault a", result.Text);
+        Assert.True(result.IsSyncing);
+    }
+
+    [Fact]
+    public void GivenSyncingWithNoPassYet_WhenPillRead_ThenSaysSyncing()
+    {
+        // Arrange
+        syncStatus = new SyncStatus { State = SyncState.Syncing };
+        var sut = CreateSut();
+
+        // Act
+        var result = sut.Pill;
+
+        // Assert
+        Assert.Equal("Syncing", result.Text);
+    }
+
+    [Fact]
+    public void GivenOneProfileWithNoNameSyncing_WhenPillRead_ThenItShowsTheProgressWithoutTheId()
+    {
+        // Arrange
+        syncStatus = new SyncStatus { State = SyncState.Syncing, Passes = [new SyncPassStatus("1344726a", 3, 10)] };
+        var sut = CreateSut();
+        mockDisplayNames.Setup(x => x.GetDisplayName("1344726a")).Returns("1344726a");
+
+        // Act
+        var result = sut.Pill;
+
+        // Assert
+        Assert.Equal("Syncing 3 of 10", result.Text);
+    }
+
+    [Fact]
+    public void GivenTwoProfilesSyncingOneWithNoName_WhenPassesRead_ThenTheUnnamedOneShowsItsProgressWithoutTheId()
+    {
+        // Arrange
+        syncStatus = new SyncStatus { State = SyncState.Syncing, Passes = [new SyncPassStatus("a", 12, 201), new SyncPassStatus("1344726a", 3, 10)] };
+        var sut = CreateSut();
+        mockDisplayNames.Setup(x => x.GetDisplayName("1344726a")).Returns("1344726a");
+
+        // Act
+        var result = sut.Passes;
+
+        // Assert
+        Assert.Equal(["Syncing Vault a 12 of 201", "Syncing 3 of 10"], result.Select(p => p.Text));
+    }
+
+    [Fact]
+    public void GivenSyncStatusChanges_WhenRaised_ThenPassesAreNotified()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        mockSync.Raise(x => x.StatusChanged += null, mockSync.Object, syncStatus);
+
+        // Assert
+        Assert.Contains(nameof(SyncPillViewModel.Passes), changed);
+    }
+
+    private SyncPillViewModel CreateSut()
+    {
+        mockDisplayNames.Setup(x => x.GetDisplayName(It.IsAny<string>())).Returns((string profile) => "Vault " + profile);
+        return new(mockSync.Object, mockConnectivity.Object, mockScheduler.Object, new SyncStatusPresenter(testText.Sync, testText.Plurals, testText.Errors), mockDisplayNames.Object);
+    }
 }

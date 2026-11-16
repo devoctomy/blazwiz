@@ -137,11 +137,12 @@ new passphrase: it syncs, then encrypts again and uploads only the files not yet
 again but not uploaded are still marked to upload.
 
 `ISyncService.SyncAsync` and `ISyncEngine.SyncAsync` take an optional `IProgress<SyncPassProgress>`, told how many of
-a pass's planned changes are done. While a pass runs, `SyncStatus.ChangesDone` and `ChangesTotal` say the same, so the
-status pill shows "Syncing 120 of 2000".
+a pass's planned changes are done. While passes run, `SyncStatus.Passes` has one `SyncPassStatus` for each (its
+profile, and how many of its changes are done out of how many), so the status pill shows "Syncing 120 of 2000", or a
+pill for each profile while several sync at once.
 
-Work on synced files done outside a pass goes through `ISyncService.TrackAsync(work)`: the status says syncing, with the
-count the work reports, until it ends. Deleting a protected profile (`ISyncProtectedProfileService.DeleteAsync`) does
+Work on synced files done outside a pass goes through `ISyncService.TrackAsync(profile, work)`: the status says syncing,
+with the count the work reports as that profile's entry in `Passes`, until it ends. Deleting a protected profile (`ISyncProtectedProfileService.DeleteAsync`) does
 this, counting the files deleted from S3, and the profile is listed with `IsDeleting` until it is gone, so an app can
 show it as being deleted and keep it from being opened.
 

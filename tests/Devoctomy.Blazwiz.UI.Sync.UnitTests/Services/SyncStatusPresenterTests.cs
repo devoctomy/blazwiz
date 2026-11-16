@@ -31,12 +31,65 @@ public class SyncStatusPresenterTests
     public void GivenSyncingWithPlannedChanges_WhenPresent_ThenSaysHowFarItHasGot()
     {
         // Act
-        var result = sut.Present(new SyncStatus { State = SyncState.Syncing, ChangesDone = 120, ChangesTotal = 2000 }, Online);
+        var result = sut.Present(new SyncStatus { State = SyncState.Syncing, Passes = [new SyncPassStatus("notes", 120, 2000)] }, Online);
 
         // Assert
         Assert.Equal("Syncing 120 of 2000", result.Text);
         Assert.Equal("Syncing your changes", result.Tooltip);
         Assert.True(result.IsSyncing);
+    }
+
+    [Fact]
+    public void GivenTwoPassesRunning_WhenPresent_ThenSaysSyncingWithoutPickingOnesCount()
+    {
+        // Act
+        var result = sut.Present(new SyncStatus { State = SyncState.Syncing, Passes = [new SyncPassStatus("a", 12, 201), new SyncPassStatus("b", 150, 201)] }, Online);
+
+        // Assert
+        Assert.Equal("Syncing", result.Text);
+        Assert.True(result.IsSyncing);
+    }
+
+    [Fact]
+    public void GivenAPassWithPlannedChanges_WhenPresentPass_ThenGivesItsNameAndHowFarItHasGot()
+    {
+        // Act
+        var result = sut.PresentPass(new SyncPassStatus("a", 12, 201), "Work");
+
+        // Assert
+        Assert.Equal("a", result.Profile);
+        Assert.Equal("Work", result.Name);
+        Assert.Equal("Syncing Work 12 of 201", result.Text);
+    }
+
+    [Fact]
+    public void GivenAPassStillPlanning_WhenPresentPass_ThenSaysSyncingItsProfile()
+    {
+        // Act
+        var result = sut.PresentPass(new SyncPassStatus("a", 0, 0), "Work");
+
+        // Assert
+        Assert.Equal("Syncing Work", result.Text);
+    }
+
+    [Fact]
+    public void GivenNoPass_WhenPresentPass_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => sut.PresentPass(null!, "Work"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void GivenNoName_WhenPresentPass_ThenGivesTheProgressAlone(string? name)
+    {
+        // Act
+        var result = sut.PresentPass(new SyncPassStatus("a", 12, 201), name);
+
+        // Assert
+        Assert.Equal("Syncing 12 of 201", result.Text);
+        Assert.Equal(string.Empty, result.Name);
     }
 
     [Fact]

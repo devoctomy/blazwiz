@@ -56,8 +56,8 @@ public sealed class ProtectedDevice
         syncService.Setup(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
             .Returns((string? name, bool verify, IProgress<SyncPassProgress>? progress, CancellationToken ct) =>
                 engine.SyncAsync(Registry.GetSyncProfile(name!), verify, progress, ct));
-        syncService.Setup(x => x.TrackAsync(It.IsAny<Func<IProgress<SyncPassProgress>, Task>>()))
-            .Returns((Func<IProgress<SyncPassProgress>, Task> work) => work(new Progress<SyncPassProgress>()));
+        syncService.Setup(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<Func<IProgress<SyncPassProgress>, Task>>()))
+            .Returns((string _, Func<IProgress<SyncPassProgress>, Task> work) => work(new Progress<SyncPassProgress>()));
 
         Profiles = new SyncProtectedProfileService(
             Manager,
