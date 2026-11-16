@@ -40,6 +40,18 @@ public class SyncStatus
     public int ConflictsResolved { get; set; }
 
     /// <summary>
+    /// Gets or sets how many of the running pass's changes are done, while <see cref="State"/> is
+    /// <see cref="SyncState.Syncing"/>. It is 0 otherwise.
+    /// </summary>
+    public int ChangesDone { get; set; }
+
+    /// <summary>
+    /// Gets or sets how many changes the running pass planned, while <see cref="State"/> is
+    /// <see cref="SyncState.Syncing"/>. It is 0 otherwise, and while the pass is still working out what to change.
+    /// </summary>
+    public int ChangesTotal { get; set; }
+
+    /// <summary>
     /// Creates a copy of the status.
     /// </summary>
     /// <returns>The copy.</returns>

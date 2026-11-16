@@ -696,6 +696,9 @@
   <data name="Sync.Status.Syncing.Tooltip" xml:space="preserve">
     <value>Syncing your changes</value>
   </data>
+  <data name="Sync.Status.SyncingChanges" xml:space="preserve">
+    <value>Syncing {0} of {1}</value>
+  </data>
   <data name="Sync.Status.UpToDate" xml:space="preserve">
     <value>Up to date</value>
   </data>

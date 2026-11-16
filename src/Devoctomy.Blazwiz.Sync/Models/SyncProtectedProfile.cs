@@ -35,6 +35,12 @@ public class SyncProtectedProfile
     public string? Label { get; set; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether the profile is being deleted on this device. It cannot be used meanwhile:
+    /// its keys go first, then its files.
+    /// </summary>
+    public bool IsDeleting { get; set; }
+
+    /// <summary>
     /// Gets or sets the profile's security settings.
     /// </summary>
     public E2eProfileSettings Settings { get; set; } = new E2eProfileSettings();

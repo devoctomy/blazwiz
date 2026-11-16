@@ -8,6 +8,26 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.8.2
+
+### Changed
+- **The status pill says how far a sync has got.** While a pass works through its changes it shows "Syncing 120 of
+  2000" instead of only "Syncing", so a large sync (e.g. after importing many files) no longer looks stuck.
+  `SyncStatus.ChangesDone` and `ChangesTotal` carry the count; the text is the new `Sync.Status.SyncingChanges`
+  resource. The status updates at most every 250ms during a pass, so a long pass does not redraw the UI for each file.
+- **Deleting a protected profile shows in the status pill.** `ISyncProtectedProfileService.DeleteAsync` runs through the
+  new `ISyncService.TrackAsync`, so the pill says "Syncing 120 of 2000" while the profile's files are deleted from S3,
+  and stays syncing until both the deletion and any pass running at the same time have ended. The profile is listed
+  with the new `SyncProtectedProfile.IsDeleting` from the moment deleting starts until it is gone, and reloading the
+  profiles meanwhile leaves it to the deletion. **Breaking:** `SyncProtectedProfileService` takes an `ISyncService`;
+  apps that register it through `AddBlazwizSyncModule` need no change.
+
+### Fixed
+- **Profile labels are no longer lost when the profiles are loaded again.** Signed in with a password, labels are only
+  kept in memory, and `ISyncProtectedProfileService.LoadAsync` cleared them, so locked profiles went back to showing
+  their ids (e.g. after opening a page that reloads the list). Labels of profiles still there are now kept, with any
+  stored ones laid over them.
+
 ## 0.8.1
 
 ### Added

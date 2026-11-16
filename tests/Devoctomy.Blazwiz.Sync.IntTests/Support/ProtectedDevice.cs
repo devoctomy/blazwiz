@@ -47,6 +47,17 @@ public sealed class ProtectedDevice
         resolver.Setup(x => x.GetStore(It.IsAny<string>(), SyncStorageKind.IndexedDb)).Returns((string name, SyncStorageKind _) => StoredFiles[name]);
         var locks = new Mock<ISyncLockService>();
         locks.Setup(x => x.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(Mock.Of<IAsyncDisposable>());
+        engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), TimeProvider.System, format, new SyncOptions());
+
+        // A passphrase change: the real rotation service, syncing with the real engine against the shared bucket. The
+        // throwaway file timed before a change is not kept anywhere. Work tracked in the status (a profile's deletion)
+        // just runs.
+        var syncService = new Mock<ISyncService>();
+        syncService.Setup(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .Returns((string? name, bool verify, IProgress<SyncPassProgress>? progress, CancellationToken ct) =>
+                engine.SyncAsync(Registry.GetSyncProfile(name!), verify, progress, ct));
+        syncService.Setup(x => x.TrackAsync(It.IsAny<Func<IProgress<SyncPassProgress>, Task>>()))
+            .Returns((Func<IProgress<SyncPassProgress>, Task> work) => work(new Progress<SyncPassProgress>()));
 
         Profiles = new SyncProtectedProfileService(
             Manager,
@@ -57,15 +68,8 @@ public sealed class ProtectedDevice
             Mock.Of<IE2eLockChannel>(),
             new SyncOptions(),
             Mock.Of<IE2eIdleLock>(),
-            Labels.Object);
-        engine = new SyncEngine(new SyncPlanner(), new NewestWinsConflictResolver(), new Sha256ContentHasher(), user.Object, Mock.Of<ISyncEventLog>(), TimeProvider.System, format, new SyncOptions());
-
-        // A passphrase change: the real rotation service, syncing with the real engine against the shared bucket. The
-        // throwaway file timed before a change is not kept anywhere.
-        var syncService = new Mock<ISyncService>();
-        syncService.Setup(x => x.SyncAsync(It.IsAny<string?>(), It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
-            .Returns((string? name, bool verify, IProgress<SyncPassProgress>? progress, CancellationToken ct) =>
-                engine.SyncAsync(Registry.GetSyncProfile(name!), verify, progress, ct));
+            Labels.Object,
+            syncService.Object);
         var connectivity = new Mock<IConnectivityService>();
         connectivity.Setup(x => x.RecheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new Connectivity.ConnectivityStatus { IsOnline = true });
         var target = new Mock<IS3SyncTargetProvider>();

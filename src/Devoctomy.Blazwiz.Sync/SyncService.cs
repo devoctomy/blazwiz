@@ -38,6 +38,9 @@ public class SyncService(
 
     private SyncStatus status = new SyncStatus();
 
+    // Passes and tracked work running now: the status says syncing until the last of them ends.
+    private int running;
+
     /// <inheritdoc/>
     public event EventHandler<SyncStatus>? StatusChanged;
 
@@ -55,7 +58,8 @@ public class SyncService(
     {
         var selected = SelectProfiles(profile);
         var total = new SyncResult { Profile = profile };
-        UpdateStatus(s => s.State = SyncState.Syncing);
+        Begin();
+        var passProgress = new StatusProgress(this, progress);
         string? current = null;
         try
         {
@@ -68,7 +72,7 @@ public class SyncService(
                 }
 
                 current = item.Name;
-                var result = await RunProfileAsync(item, verify, progress, ct);
+                var result = await RunProfileAsync(item, verify, passProgress, ct);
                 total.Add(result);
                 Record(item.Name, result.Failed > 0 ? SyncErrorCodes.FilesFailed : null, [result.Failed], result.ConflictsResolved);
                 current = null;
@@ -92,16 +96,27 @@ public class SyncService(
         }
         finally
         {
-            var pending = await CountPendingAsync();
-            UpdateStatus(s =>
-            {
-                ApplyOutcomes(s);
-                s.PendingCount = pending;
-            });
+            await EndAsync();
             await PruneLogAsync();
         }
 
         return total;
+    }
+
+    /// <inheritdoc/>
+    public async Task TrackAsync(Func<IProgress<SyncPassProgress>, Task> work)
+    {
+        ArgumentNullException.ThrowIfNull(work);
+
+        Begin();
+        try
+        {
+            await work(new StatusProgress(this, null));
+        }
+        finally
+        {
+            await EndAsync();
+        }
     }
 
     /// <inheritdoc/>
@@ -240,12 +255,83 @@ public class SyncService(
             : current.Min(o => o.LastSyncedAt);
     }
 
+    /// <summary>
+    /// Starts a pass or tracked work: the status says syncing, with no count until it reports one.
+    /// </summary>
+    private void Begin()
+    {
+        running++;
+        UpdateStatus(s =>
+        {
+            s.State = SyncState.Syncing;
+            s.ChangesDone = 0;
+            s.ChangesTotal = 0;
+        });
+    }
+
+    /// <summary>
+    /// Ends a pass or tracked work. Once nothing else is running, the status goes back to the profiles' last passes.
+    /// </summary>
+    private async Task EndAsync()
+    {
+        running--;
+        var pending = await CountPendingAsync();
+        UpdateStatus(s =>
+        {
+            s.PendingCount = pending;
+            if (running == 0)
+            {
+                ApplyOutcomes(s);
+                s.ChangesDone = 0;
+                s.ChangesTotal = 0;
+            }
+        });
+    }
+
     private void UpdateStatus(Action<SyncStatus> change)
     {
         var updated = status.Clone();
         change(updated);
         status = updated;
         StatusChanged?.Invoke(this, status.Clone());
+    }
+
+    /// <summary>
+    /// Passes a pass's progress on to the caller, and shows it in the status. The status changes at most every
+    /// <see cref="Interval"/>, and always at the start and end of a pass, so a pass of thousands of changes does not
+    /// redraw the UI for each one.
+    /// </summary>
+    /// <param name="owner">The service whose status shows it.</param>
+    /// <param name="inner">The caller's progress, or null.</param>
+    private sealed class StatusProgress(SyncService owner, IProgress<SyncPassProgress>? inner)
+        : IProgress<SyncPassProgress>
+    {
+        private static readonly TimeSpan Interval = TimeSpan.FromMilliseconds(250);
+
+        private DateTimeOffset? lastShown;
+
+        public void Report(SyncPassProgress value)
+        {
+            inner?.Report(value);
+            if (value.Total == 0)
+            {
+                return;
+            }
+
+            var now = owner.timeProvider.GetUtcNow();
+            var boundary = value.Done == 0 || value.Done >= value.Total;
+            if (!boundary && lastShown != null && now - lastShown < Interval)
+            {
+                return;
+            }
+
+            lastShown = now;
+            owner.UpdateStatus(s =>
+            {
+                s.ChangesDone = value.Done;
+                s.ChangesTotal = value.Total;
+            });
+        }
     }
 
     /// <summary>

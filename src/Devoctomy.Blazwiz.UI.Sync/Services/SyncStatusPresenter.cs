@@ -28,7 +28,10 @@ public class SyncStatusPresenter(IStringLocalizer<SyncUiText> text, ITextPlurals
 
         if (status.State == SyncState.Syncing)
         {
-            return Create(text["Sync.Status.Syncing"], text["Sync.Status.Syncing.Tooltip"], "bi-arrow-repeat", "info", isSyncing: true);
+            var syncing = status.ChangesTotal > 0
+                ? text["Sync.Status.SyncingChanges", status.ChangesDone, status.ChangesTotal]
+                : text["Sync.Status.Syncing"];
+            return Create(syncing, text["Sync.Status.Syncing.Tooltip"], "bi-arrow-repeat", "info", isSyncing: true);
         }
 
         var offline = PresentOffline(connectivity, pending, pendingText);

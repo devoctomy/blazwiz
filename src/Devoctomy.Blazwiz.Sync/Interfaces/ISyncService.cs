@@ -38,6 +38,15 @@ public interface ISyncService
     Task<SyncResult> SyncAsync(string? profile = null, bool verify = false, IProgress<SyncPassProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
+    /// Shows work on synced files done outside a pass, e.g. deleting a protected profile's files, in the status: as
+    /// syncing, with how many of its changes are done. When it ends, the status goes back to the profiles' last passes,
+    /// unless a pass or other work is still running.
+    /// </summary>
+    /// <param name="work">The work, given the progress to report how many of its changes are done.</param>
+    /// <returns>A <see cref="Task"/> that completes when the work does, or fails as it does.</returns>
+    Task TrackAsync(Func<IProgress<SyncPassProgress>, Task> work);
+
+    /// <summary>
     /// Recounts the local changes waiting to be synced, e.g. while offline.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
