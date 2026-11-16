@@ -60,7 +60,8 @@ public class SyncServiceTests
         Assert.Equal(["notes", "photos"], sut.Profiles);
         mockEngine.Verify(x => x.SyncAsync(notes, false, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
         mockEngine.Verify(x => x.SyncAsync(photos, false, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
-        Assert.Equal([SyncState.Syncing, SyncState.Idle], states);
+        Assert.Equal([SyncState.Syncing, SyncState.Idle], states.Distinct());
+        Assert.Equal(SyncState.Idle, states[^1]);
         Assert.Equal(Now, sut.Status.LastSyncedAt);
         Assert.Null(sut.Status.LastErrorCode);
         mockLog.Verify(x => x.PruneAsync(), Times.Once);
@@ -83,7 +84,7 @@ public class SyncServiceTests
             .ReturnsAsync(new SyncResult { Profile = "notes" });
         var sut = CreateSut();
         var shown = new List<string>();
-        sut.StatusChanged += (_, s) => shown.Add($"{s.State} {s.ChangesDone}/{s.ChangesTotal}");
+        sut.StatusChanged += (_, s) => shown.Add(Describe(s));
         var reported = new List<int>();
 
         // Act
@@ -91,10 +92,43 @@ public class SyncServiceTests
 
         // Assert
         // 1 is within 250ms of 0 and skipped; 2 is 300ms after 0; 3 is within 250ms of 2; 4 ends the pass.
-        Assert.Equal(["Syncing 0/0", "Syncing 0/4", "Syncing 2/4", "Syncing 4/4", "Idle 0/0"], shown);
+        Assert.Equal(["Syncing", "Syncing notes 0/0", "Syncing notes 0/4", "Syncing notes 2/4", "Syncing notes 4/4", "Syncing", "Idle"], shown);
         Assert.Equal([0, 1, 2, 3, 4], reported);
-        Assert.Equal(0, sut.Status.ChangesDone);
-        Assert.Equal(0, sut.Status.ChangesTotal);
+        Assert.Empty(sut.Status.Passes);
+    }
+
+    [Fact]
+    public async Task GivenTwoProfilesSyncingAtOnce_WhenBothReportProgress_ThenTheStatusShowsEachOnesOwnProgress()
+    {
+        // Arrange
+        SyncService? sut = null;
+        IReadOnlyList<SyncPassStatus>? during = null;
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback<SyncProfile, bool, IProgress<SyncPassProgress>?, CancellationToken>((_, _, progress, _) =>
+            {
+                progress!.Report(new SyncPassProgress(3, 4));
+                during = sut!.Status.Passes;
+            })
+            .ReturnsAsync(new SyncResult { Profile = "notes" });
+        sut = CreateSut();
+        var release = new TaskCompletionSource();
+        var photosDeleted = sut.TrackAsync("photos", async progress =>
+        {
+            progress.Report(new SyncPassProgress(1, 5));
+            await release.Task;
+        });
+
+        // Act
+        await sut.SyncAsync("notes");
+
+        // Assert
+        Assert.NotNull(during);
+        Assert.Equal(["photos 1/5", "notes 3/4"], during.Select(p => $"{p.Profile} {p.Done}/{p.Total}"));
+        Assert.Equal(["photos 1/5"], sut.Status.Passes.Select(p => $"{p.Profile} {p.Done}/{p.Total}"));
+        release.SetResult();
+        await photosDeleted;
+        Assert.Empty(sut.Status.Passes);
+        Assert.Equal(SyncState.Idle, sut.Status.State);
     }
 
     [Fact]
@@ -106,13 +140,13 @@ public class SyncServiceTests
             .ReturnsAsync(new SyncResult { Profile = "notes" });
         var sut = CreateSut();
         var shown = new List<string>();
-        sut.StatusChanged += (_, s) => shown.Add($"{s.State} {s.ChangesDone}/{s.ChangesTotal}");
+        sut.StatusChanged += (_, s) => shown.Add(Describe(s));
 
         // Act
         await sut.SyncAsync("notes");
 
         // Assert
-        Assert.Equal(["Syncing 0/0", "Idle 0/0"], shown);
+        Assert.Equal(["Syncing", "Syncing notes 0/0", "Syncing", "Idle"], shown);
     }
 
     [Fact]
@@ -121,10 +155,10 @@ public class SyncServiceTests
         // Arrange
         var sut = CreateSut();
         var shown = new List<string>();
-        sut.StatusChanged += (_, s) => shown.Add($"{s.State} {s.ChangesDone}/{s.ChangesTotal}");
+        sut.StatusChanged += (_, s) => shown.Add(Describe(s));
 
         // Act
-        await sut.TrackAsync(progress =>
+        await sut.TrackAsync("notes", progress =>
         {
             progress.Report(new SyncPassProgress(0, 2));
             progress.Report(new SyncPassProgress(2, 2));
@@ -132,7 +166,7 @@ public class SyncServiceTests
         });
 
         // Assert
-        Assert.Equal(["Syncing 0/0", "Syncing 0/2", "Syncing 2/2", "Idle 0/0"], shown);
+        Assert.Equal(["Syncing", "Syncing notes 0/0", "Syncing notes 0/2", "Syncing notes 2/2", "Syncing", "Idle"], shown);
     }
 
     [Fact]
@@ -142,8 +176,9 @@ public class SyncServiceTests
         var sut = CreateSut();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.TrackAsync(_ => throw new InvalidOperationException("failed")));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.TrackAsync("notes", _ => throw new InvalidOperationException("failed")));
         Assert.Equal(SyncState.Idle, sut.Status.State);
+        Assert.Empty(sut.Status.Passes);
     }
 
     [Fact]
@@ -152,7 +187,7 @@ public class SyncServiceTests
         // Arrange
         var sut = CreateSut();
         var release = new TaskCompletionSource();
-        var tracked = sut.TrackAsync(_ => release.Task);
+        var tracked = sut.TrackAsync("photos", _ => release.Task);
 
         // Act
         await sut.SyncAsync("notes");
@@ -168,7 +203,14 @@ public class SyncServiceTests
     public async Task GivenNoWork_WhenTracked_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().TrackAsync(null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().TrackAsync("notes", null!));
+    }
+
+    [Fact]
+    public async Task GivenNoProfile_WhenTracked_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().TrackAsync(null!, _ => Task.CompletedTask));
     }
 
     [Fact]
@@ -612,6 +654,12 @@ public class SyncServiceTests
 
     private SyncService CreateSut() =>
         new(FakeSyncProfileRegistry.Of(notes, photos), mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, []);
+
+    /// <summary>
+    /// The state and each running pass, e.g. "Syncing notes 2/4".
+    /// </summary>
+    private static string Describe(SyncStatus status) =>
+        string.Join(" ", new[] { status.State.ToString() }.Concat(status.Passes.Select(p => $"{p.Profile} {p.Done}/{p.Total}")));
 
     /// <summary>
     /// Records each report as it is made (unlike <see cref="Progress{T}"/>, which posts them).

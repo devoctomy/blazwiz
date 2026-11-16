@@ -17,6 +17,7 @@ public partial class SyncPillViewModel : ViewModelBase
     private readonly IConnectivityService connectivityService;
     private readonly ISyncScheduler syncScheduler;
     private readonly ISyncStatusPresenter syncStatusPresenter;
+    private readonly ISyncProfileDisplayNames displayNames;
 
     private bool isPopoverOpen;
 
@@ -27,25 +28,58 @@ public partial class SyncPillViewModel : ViewModelBase
     /// <param name="connectivityService">The connectivity service.</param>
     /// <param name="syncScheduler">The sync scheduler.</param>
     /// <param name="syncStatusPresenter">Describes the sync status.</param>
+    /// <param name="displayNames">The names the profiles are shown by.</param>
     public SyncPillViewModel(
         ISyncService syncService,
         IConnectivityService connectivityService,
         ISyncScheduler syncScheduler,
-        ISyncStatusPresenter syncStatusPresenter)
+        ISyncStatusPresenter syncStatusPresenter,
+        ISyncProfileDisplayNames displayNames)
     {
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         this.connectivityService = connectivityService ?? throw new ArgumentNullException(nameof(connectivityService));
         this.syncScheduler = syncScheduler ?? throw new ArgumentNullException(nameof(syncScheduler));
         this.syncStatusPresenter = syncStatusPresenter ?? throw new ArgumentNullException(nameof(syncStatusPresenter));
+        this.displayNames = displayNames ?? throw new ArgumentNullException(nameof(displayNames));
 
         this.syncService.StatusChanged += OnSyncStatusChanged;
         this.connectivityService.StatusChanged += OnConnectivityChanged;
     }
 
     /// <summary>
-    /// Gets how the pill looks: icon, tone, text and tooltip.
+    /// Gets how the pill looks: icon, tone, text and tooltip. While one pass runs, its text names the profile, e.g.
+    /// "Syncing Work 12 of 201".
     /// </summary>
-    public SyncStatusPresentation Pill => syncStatusPresenter.Present(syncService.Status, connectivityService.Status);
+    public SyncStatusPresentation Pill
+    {
+        get
+        {
+            var status = syncService.Status;
+            var pill = syncStatusPresenter.Present(status, connectivityService.Status);
+            if (pill.IsSyncing && status.Passes.Count == 1)
+            {
+                var pass = status.Passes[0];
+                pill.Text = syncStatusPresenter.PresentPass(pass, NameOf(pass.Profile)).Text;
+            }
+
+            return pill;
+        }
+    }
+
+    /// <summary>
+    /// Gets a pill for each running pass, each naming its profile with its own progress, e.g. "Syncing Work 12 of 201",
+    /// while more than one runs at once. Empty otherwise: a single pass's progress is in <see cref="Pill"/>.
+    /// </summary>
+    public IReadOnlyList<SyncPassPresentation> Passes
+    {
+        get
+        {
+            var status = syncService.Status;
+            return status.Passes.Count < 2
+                ? []
+                : status.Passes.Select(p => syncStatusPresenter.PresentPass(p, NameOf(p.Profile))).ToList();
+        }
+    }
 
     /// <summary>
     /// Gets the sync status.
@@ -132,9 +166,20 @@ public partial class SyncPillViewModel : ViewModelBase
         base.Dispose(disposing);
     }
 
+    /// <summary>
+    /// The name a profile is shown by, or null when it has none: the display names fall back to the profile's name,
+    /// which for a profile the user created is its id, and an id is never shown.
+    /// </summary>
+    private string? NameOf(string profile)
+    {
+        var name = displayNames.GetDisplayName(profile);
+        return name == profile ? null : name;
+    }
+
     private void Refresh()
     {
         OnPropertyChanged(nameof(Pill));
+        OnPropertyChanged(nameof(Passes));
         OnPropertyChanged(nameof(Status));
         OnPropertyChanged(nameof(IsSyncEnabled));
         OnPropertyChanged(nameof(CanSyncNow));

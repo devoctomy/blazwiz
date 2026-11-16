@@ -195,7 +195,7 @@ public class SyncProtectedProfileService(
         try
         {
             // The sync status shows it, counting the files deleted from S3.
-            await syncService.TrackAsync(async progress =>
+            await syncService.TrackAsync(profile.Name, async progress =>
             {
                 await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
                 {

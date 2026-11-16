@@ -38,8 +38,8 @@ public class SyncProtectedProfileServiceTests
         mockLock.Setup(x => x.AcquireAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Callback<string, CancellationToken>((name, _) => calls.Add("lock " + name))
             .ReturnsAsync(new Releaser(calls));
-        mockSync.Setup(x => x.TrackAsync(It.IsAny<Func<IProgress<SyncPassProgress>, Task>>()))
-            .Returns((Func<IProgress<SyncPassProgress>, Task> work) => work(new TrackedProgress(tracked)));
+        mockSync.Setup(x => x.TrackAsync(It.IsAny<string>(), It.IsAny<Func<IProgress<SyncPassProgress>, Task>>()))
+            .Returns((string _, Func<IProgress<SyncPassProgress>, Task> work) => work(new TrackedProgress(tracked)));
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class SyncProtectedProfileServiceTests
         await sut.DeleteAsync(scope);
 
         // Assert
-        mockSync.Verify(x => x.TrackAsync(It.IsAny<Func<IProgress<SyncPassProgress>, Task>>()), Times.Once);
+        mockSync.Verify(x => x.TrackAsync(scope.Id, It.IsAny<Func<IProgress<SyncPassProgress>, Task>>()), Times.Once);
         Assert.Equal(["0/2", "1/2", "2/2"], tracked);
     }
 

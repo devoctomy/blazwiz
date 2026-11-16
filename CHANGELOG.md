@@ -8,6 +8,21 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.8.3
+
+### Fixed
+- **Profiles syncing at the same time no longer fight over the status pill.** Each pass's progress was kept in one
+  shared count, so two profiles syncing at once (e.g. a new protected profile's first sync while another syncs) made the
+  pill jump between their counts. Each running pass now has its own entry in the new `SyncStatus.Passes`
+  (`SyncPassStatus`: profile, done, total), and while more than one runs the pill shows a pill for each, with its own
+  progress. The status pill now names the profile being synced, e.g. "Syncing Work 12 of 201" (new
+  `Sync.Status.SyncingProfileChanges` and `Sync.Status.SyncingProfile` resources). A profile with no name to show (e.g.
+  a locked one whose label is not known on this device) shows only the progress, never its id.
+  **Breaking:** `SyncStatus.ChangesDone` and `ChangesTotal` are removed (read `Passes`), `ISyncService.TrackAsync`
+  takes the profile the work is on, `SyncPillViewModel` takes an `ISyncProfileDisplayNames`, and
+  `ISyncStatusPresenter` has a new `PresentPass`. Apps that register the sync module through `AddBlazwizSyncModule`
+  need no change.
+
 ## 0.8.2
 
 ### Changed

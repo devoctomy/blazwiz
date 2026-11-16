@@ -67,6 +67,16 @@
 .sync-pill:hover,
 .sync-pill:focus-visible { background: var(--bw-surface-2); }
 
+/* One pill for each profile syncing, while several sync at once, above the status pill */
+.sync-pass-pills {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
+}
+
+.sync-pass-pill:hover { background: var(--bw-surface); }
+
 .sync-popover-backdrop {
     position: fixed;
     inset: 0;

@@ -19,6 +19,16 @@ public interface ISyncStatusPresenter
     SyncStatusPresentation Present(SyncStatus status, ConnectivityStatus connectivity);
 
     /// <summary>
+    /// Describes one running pass with its profile's name, for the status pill: e.g. "Syncing Work 12 of 201", or
+    /// "Syncing Work" until it has planned its changes.
+    /// </summary>
+    /// <param name="pass">The pass.</param>
+    /// <param name="name">The name its profile is shown by, or null when it has none to show (e.g. a locked profile whose
+    /// label is not known on this device): the text is then the progress alone, e.g. "Syncing 12 of 201".</param>
+    /// <returns>The profile and the pass's progress, with the name in the text when there is one.</returns>
+    SyncPassPresentation PresentPass(SyncPassStatus pass, string? name);
+
+    /// <summary>
     /// Describes the connection for the user, e.g. "Offline: S3 unreachable".
     /// </summary>
     /// <param name="connectivity">The connectivity status.</param>

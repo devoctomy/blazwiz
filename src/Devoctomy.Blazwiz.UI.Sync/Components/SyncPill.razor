@@ -29,6 +29,18 @@
             </div>
         </div>
     }
+    @if (ViewModel.Passes.Count > 0)
+    {
+        <div class="sync-pass-pills" id="sync-pass-pills">
+            @foreach (var pass in ViewModel.Passes)
+            {
+                <div class="sync-pill sync-pass-pill sync-tone-info" data-profile="@pass.Profile">
+                    <i class="bi bi-arrow-repeat sync-spin"></i>
+                    <span class="sync-pill-text">@pass.Text</span>
+                </div>
+            }
+        </div>
+    }
     <div class="sync-pill-row">
         <E2eLockIndicator />
         <button type="button"

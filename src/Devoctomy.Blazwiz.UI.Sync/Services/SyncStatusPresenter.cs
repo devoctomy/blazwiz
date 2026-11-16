@@ -28,8 +28,9 @@ public class SyncStatusPresenter(IStringLocalizer<SyncUiText> text, ITextPlurals
 
         if (status.State == SyncState.Syncing)
         {
-            var syncing = status.ChangesTotal > 0
-                ? text["Sync.Status.SyncingChanges", status.ChangesDone, status.ChangesTotal]
+            // One pass shows its count here; with several, each is shown apart (PresentPass), so none is picked.
+            var syncing = status.Passes.Count == 1
+                ? DescribeProgress(status.Passes[0])
                 : text["Sync.Status.Syncing"];
             return Create(syncing, text["Sync.Status.Syncing.Tooltip"], "bi-arrow-repeat", "info", isSyncing: true);
         }
@@ -76,8 +77,29 @@ public class SyncStatusPresenter(IStringLocalizer<SyncUiText> text, ITextPlurals
         return connectivity.Reason is { } reason ? text["Sync.Connectivity." + reason] : text["Sync.Connectivity.Checking"];
     }
 
+    /// <inheritdoc/>
+    public SyncPassPresentation PresentPass(SyncPassStatus pass, string? name)
+    {
+        ArgumentNullException.ThrowIfNull(pass);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            // No name to show (never the profile's id): the progress alone.
+            return new SyncPassPresentation { Profile = pass.Profile, Text = DescribeProgress(pass) };
+        }
+
+        var progress = pass.Total > 0
+            ? text["Sync.Status.SyncingProfileChanges", name, pass.Done, pass.Total]
+            : text["Sync.Status.SyncingProfile", name];
+        return new SyncPassPresentation { Profile = pass.Profile, Name = name, Text = progress };
+    }
+
     private static SyncStatusPresentation Create(string text, string tooltip, string icon, string tone, bool isSyncing = false, bool isOffline = false) =>
         new SyncStatusPresentation { Text = text, Tooltip = tooltip, Icon = icon, Tone = tone, IsSyncing = isSyncing, IsOffline = isOffline };
+
+    private string DescribeProgress(SyncPassStatus pass) =>
+        pass.Total > 0
+            ? text["Sync.Status.SyncingChanges", pass.Done, pass.Total]
+            : text["Sync.Status.Syncing"];
 
     private SyncStatusPresentation? PresentOffline(ConnectivityStatus connectivity, int pending, string pendingText)
     {

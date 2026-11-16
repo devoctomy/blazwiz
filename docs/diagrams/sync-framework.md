@@ -300,7 +300,7 @@ online, the tab becoming visible, or `SyncNowAsync()`.
 | Service | Use it for |
 |---|---|
 | `ISyncService.Status` / `StatusChanged` | State (idle, syncing, error), last synced time, pending count, last error, worked out from every profile; while syncing, how many of the running pass's (or tracked work's) changes are done |
-| `ISyncService.TrackAsync(work)` | Showing work on synced files done outside a pass (e.g. deleting a protected profile) as syncing, with its count |
+| `ISyncService.TrackAsync(profile, work)` | Showing work on synced files done outside a pass (e.g. deleting a protected profile) as syncing, with its count, as that profile's entry in `SyncStatus.Passes` |
 | `ISyncService.FilesChanged` | Reloading views after downloads or remote deletes |
 | `IConnectivityService.Status` / `StatusChanged` | Online, or why not (offline mode, sync off, no network, no credentials, unreachable) |
 | `IConnectivityService.SetSyncEnabledAsync(bool)` | A "sync on/off" switch, remembered through `ISyncEnabledStore` |

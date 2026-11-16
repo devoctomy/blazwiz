@@ -143,6 +143,14 @@ Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.Id.set -> void
 Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.IsExpanded.get -> bool
 Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.IsExpanded.set -> void
 Devoctomy.Blazwiz.UI.Sync.Models.SyncLogRow.SyncLogRow() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation
+Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation.Name.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation.Name.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation.Profile.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation.Profile.set -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation.SyncPassPresentation() -> void
+Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation.Text.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation.Text.set -> void
 Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation
 Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Icon.get -> string!
 Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation.Icon.set -> void
@@ -209,6 +217,7 @@ Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncProfileDisplayNames.GetDispla
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter.DescribeConnectivity(Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> string!
 Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter.Present(Devoctomy.Blazwiz.Sync.Models.SyncStatus! status, Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
+Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter.PresentPass(Devoctomy.Blazwiz.Sync.Models.SyncPassStatus! pass, string? name) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation!
 Devoctomy.Blazwiz.UI.Sync.Services.KeyRotationSignOutHandler
 Devoctomy.Blazwiz.UI.Sync.Services.KeyRotationSignOutHandler.KeyRotationSignOutHandler(System.IServiceProvider! services) -> void
 Devoctomy.Blazwiz.UI.Sync.Services.KeyRotationSignOutHandler.OnSigningOutEverywhereAsync(Devoctomy.Blazwiz.Auth.Models.UserSession! session, Devoctomy.Blazwiz.Auth.Models.SignOutReason reason, string! deviceName) -> System.Threading.Tasks.Task!
@@ -253,6 +262,7 @@ Devoctomy.Blazwiz.UI.Sync.Services.SyncSessionHandler.SyncSessionHandler(Devocto
 Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter
 Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.DescribeConnectivity(Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> string!
 Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.Present(Devoctomy.Blazwiz.Sync.Models.SyncStatus! status, Devoctomy.Blazwiz.Sync.Connectivity.ConnectivityStatus! connectivity) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
+Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.PresentPass(Devoctomy.Blazwiz.Sync.Models.SyncPassStatus! pass, string? name) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation!
 Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.SyncStatusPresenter(Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.Core.Text.Interfaces.ITextPlurals! plurals, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
 Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText
 Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel
@@ -370,10 +380,11 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.CanSyncNow.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.ClosePopover() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.IsPopoverOpen.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.IsSyncEnabled.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.Passes.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation!>!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.Pill.get -> Devoctomy.Blazwiz.UI.Sync.Models.SyncStatusPresentation!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.Status.get -> Devoctomy.Blazwiz.Sync.Models.SyncStatus!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.SyncNowAsync() -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.SyncPillViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter! syncStatusPresenter) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.SyncPillViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncService! syncService, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivityService, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! syncScheduler, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncStatusPresenter! syncStatusPresenter, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncProfileDisplayNames! displayNames) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.TogglePopover() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncPillViewModel.ToggleSyncAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncSettingsViewModel
