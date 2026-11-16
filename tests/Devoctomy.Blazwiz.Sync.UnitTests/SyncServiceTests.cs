@@ -67,6 +67,111 @@ public class SyncServiceTests
     }
 
     [Fact]
+    public async Task GivenAPassWithChanges_WhenSyncAsync_ThenTheStatusShowsHowFarItHasGot_AndTheCallerGetsEveryReport()
+    {
+        // Arrange
+        var times = new Queue<DateTimeOffset>([Now, Now.AddMilliseconds(100), Now.AddMilliseconds(300), Now.AddMilliseconds(400), Now.AddMilliseconds(500)]);
+        mockClock.Setup(x => x.GetUtcNow()).Returns(() => times.Count > 0 ? times.Dequeue() : Now);
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback<SyncProfile, bool, IProgress<SyncPassProgress>?, CancellationToken>((_, _, progress, _) =>
+            {
+                for (var done = 0; done <= 4; done++)
+                {
+                    progress!.Report(new SyncPassProgress(done, 4));
+                }
+            })
+            .ReturnsAsync(new SyncResult { Profile = "notes" });
+        var sut = CreateSut();
+        var shown = new List<string>();
+        sut.StatusChanged += (_, s) => shown.Add($"{s.State} {s.ChangesDone}/{s.ChangesTotal}");
+        var reported = new List<int>();
+
+        // Act
+        await sut.SyncAsync("notes", progress: new SyncProgressRecorder(reported));
+
+        // Assert
+        // 1 is within 250ms of 0 and skipped; 2 is 300ms after 0; 3 is within 250ms of 2; 4 ends the pass.
+        Assert.Equal(["Syncing 0/0", "Syncing 0/4", "Syncing 2/4", "Syncing 4/4", "Idle 0/0"], shown);
+        Assert.Equal([0, 1, 2, 3, 4], reported);
+        Assert.Equal(0, sut.Status.ChangesDone);
+        Assert.Equal(0, sut.Status.ChangesTotal);
+    }
+
+    [Fact]
+    public async Task GivenAPassWithNothingToChange_WhenSyncAsync_ThenTheStatusShowsNoCount()
+    {
+        // Arrange
+        mockEngine.Setup(x => x.SyncAsync(notes, It.IsAny<bool>(), It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback<SyncProfile, bool, IProgress<SyncPassProgress>?, CancellationToken>((_, _, progress, _) => progress!.Report(new SyncPassProgress(0, 0)))
+            .ReturnsAsync(new SyncResult { Profile = "notes" });
+        var sut = CreateSut();
+        var shown = new List<string>();
+        sut.StatusChanged += (_, s) => shown.Add($"{s.State} {s.ChangesDone}/{s.ChangesTotal}");
+
+        // Act
+        await sut.SyncAsync("notes");
+
+        // Assert
+        Assert.Equal(["Syncing 0/0", "Idle 0/0"], shown);
+    }
+
+    [Fact]
+    public async Task GivenTrackedWork_WhenItRuns_ThenTheStatusSaysSyncingWithItsCount_ThenGoesBackToIdle()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var shown = new List<string>();
+        sut.StatusChanged += (_, s) => shown.Add($"{s.State} {s.ChangesDone}/{s.ChangesTotal}");
+
+        // Act
+        await sut.TrackAsync(progress =>
+        {
+            progress.Report(new SyncPassProgress(0, 2));
+            progress.Report(new SyncPassProgress(2, 2));
+            return Task.CompletedTask;
+        });
+
+        // Assert
+        Assert.Equal(["Syncing 0/0", "Syncing 0/2", "Syncing 2/2", "Idle 0/0"], shown);
+    }
+
+    [Fact]
+    public async Task GivenTrackedWorkThatFails_WhenItRuns_ThenItThrows_AndTheStatusGoesBackToIdle()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.TrackAsync(_ => throw new InvalidOperationException("failed")));
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+    }
+
+    [Fact]
+    public async Task GivenTrackedWorkStillRunning_WhenAPassEnds_ThenTheStatusStillSaysSyncing()
+    {
+        // Arrange
+        var sut = CreateSut();
+        var release = new TaskCompletionSource();
+        var tracked = sut.TrackAsync(_ => release.Task);
+
+        // Act
+        await sut.SyncAsync("notes");
+
+        // Assert
+        Assert.Equal(SyncState.Syncing, sut.Status.State);
+        release.SetResult();
+        await tracked;
+        Assert.Equal(SyncState.Idle, sut.Status.State);
+    }
+
+    [Fact]
+    public async Task GivenNoWork_WhenTracked_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => CreateSut().TrackAsync(null!));
+    }
+
+    [Fact]
     public async Task GivenOneProfile_WhenSyncAsync_ThenOnlyThatProfileRunsWithVerify()
     {
         // Act
@@ -507,4 +612,13 @@ public class SyncServiceTests
 
     private SyncService CreateSut() =>
         new(FakeSyncProfileRegistry.Of(notes, photos), mockEngine.Object, mockTargets.Object, mockConnectivity.Object, mockUser.Object, mockLog.Object, mockClock.Object, []);
+
+    /// <summary>
+    /// Records each report as it is made (unlike <see cref="Progress{T}"/>, which posts them).
+    /// </summary>
+    private sealed class SyncProgressRecorder(List<int> done)
+        : IProgress<SyncPassProgress>
+    {
+        public void Report(SyncPassProgress value) => done.Add(value.Done);
+    }
 }

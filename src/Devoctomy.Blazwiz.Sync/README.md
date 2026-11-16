@@ -137,7 +137,13 @@ new passphrase: it syncs, then encrypts again and uploads only the files not yet
 again but not uploaded are still marked to upload.
 
 `ISyncService.SyncAsync` and `ISyncEngine.SyncAsync` take an optional `IProgress<SyncPassProgress>`, told how many of
-a pass's planned changes are done.
+a pass's planned changes are done. While a pass runs, `SyncStatus.ChangesDone` and `ChangesTotal` say the same, so the
+status pill shows "Syncing 120 of 2000".
+
+Work on synced files done outside a pass goes through `ISyncService.TrackAsync(work)`: the status says syncing, with the
+count the work reports, until it ends. Deleting a protected profile (`ISyncProtectedProfileService.DeleteAsync`) does
+this, counting the files deleted from S3, and the profile is listed with `IsDeleting` until it is gone, so an app can
+show it as being deleted and keep it from being opened.
 
 When an unlocked profile meets a file under a key it does not hold, every registered `ISyncKeyMissingHandler` is told
 before the read fails with `E2e.CannotDecrypt`. The sync module registers one that checks the session, so a device

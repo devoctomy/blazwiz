@@ -47,7 +47,7 @@ The template's `Program.cs` passes it the settings in `sync.json` and the `SyncP
 | Whether persistent storage was asked for | localStorage | `myapp_storage_persistence` | |
 | Scheduler state per profile (`Running`, `RunAgain`, `VerifyPending`, debounce timer) | Memory | `SyncScheduler.states` | Reset on start |
 | Connectivity status (online, reason, last checked) | Memory | `ConnectivityService.status` | Reused for 30 seconds |
-| Sync status (state, last error, pending count, last synced), worked out from each profile's last pass | Memory | `SyncService.status`, `SyncService.outcomes` | Shown in the status pill |
+| Sync status (state, last error, pending count, last synced, and the running pass's changes done of planned), worked out from each profile's last pass | Memory | `SyncService.status`, `SyncService.outcomes` | Shown in the status pill |
 | AWS credentials and S3 client | Memory | see [authentication.md](authentication.md) | |
 | A profile's master and file keys | Memory | `IDerivedKeyStore` `e2e:{profile id}:master`, `e2e:{profile id}:file:{key id}`, through its `E2eKeyRing` (`E2eKeyRings`, one ring per profile) | Only while the profile is unlocked |
 | Each profile's keys document | S3 data bucket (localStorage `myapp_e2e_browser_keys_{profile id}_{user}` without a data bucket) | `{identityId}/keys/{profile id}` | Master key wrapped by the passphrase (Argon2id), file keys wrapped by the master key (one active, earlier ones retired), and `rotation_in_progress` while a passphrase change is unfinished |

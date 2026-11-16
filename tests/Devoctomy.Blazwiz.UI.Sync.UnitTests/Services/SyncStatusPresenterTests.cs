@@ -28,6 +28,18 @@ public class SyncStatusPresenterTests
     }
 
     [Fact]
+    public void GivenSyncingWithPlannedChanges_WhenPresent_ThenSaysHowFarItHasGot()
+    {
+        // Act
+        var result = sut.Present(new SyncStatus { State = SyncState.Syncing, ChangesDone = 120, ChangesTotal = 2000 }, Online);
+
+        // Assert
+        Assert.Equal("Syncing 120 of 2000", result.Text);
+        Assert.Equal("Syncing your changes", result.Tooltip);
+        Assert.True(result.IsSyncing);
+    }
+
+    [Fact]
     public void GivenOffline_WhenPresent_ThenOfflineWithReasonInTooltip()
     {
         // Act

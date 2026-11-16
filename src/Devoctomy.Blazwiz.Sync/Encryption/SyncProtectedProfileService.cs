@@ -22,6 +22,7 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// <param name="options">The settings of the profiles users create.</param>
 /// <param name="idleLock">Locks a profile left unused for its idle timeout.</param>
 /// <param name="labelStore">The labels the user's profiles are shown by on this device.</param>
+/// <param name="syncService">Shows a profile's deletion in the sync status.</param>
 public class SyncProtectedProfileService(
     IE2eProtectedProfileManager manager,
     ISyncProfileRegistry registry,
@@ -31,7 +32,8 @@ public class SyncProtectedProfileService(
     IE2eLockChannel lockChannel,
     SyncOptions options,
     IE2eIdleLock idleLock,
-    IE2eProfileLabelStore labelStore)
+    IE2eProfileLabelStore labelStore,
+    ISyncService syncService)
     : ISyncProtectedProfileService
 {
     private readonly IE2eProtectedProfileManager manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -43,8 +45,10 @@ public class SyncProtectedProfileService(
     private readonly SyncOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly IE2eIdleLock idleLock = idleLock ?? throw new ArgumentNullException(nameof(idleLock));
     private readonly IE2eProfileLabelStore labelStore = labelStore ?? throw new ArgumentNullException(nameof(labelStore));
+    private readonly ISyncService syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
     private readonly Dictionary<string, string> labels = new Dictionary<string, string>(StringComparer.Ordinal);
     private readonly HashSet<E2eKeyScope> setUp = [];
+    private readonly HashSet<E2eKeyScope> deleting = [];
     private bool listening;
 
     /// <inheritdoc/>
@@ -64,6 +68,7 @@ public class SyncProtectedProfileService(
                 IsCreatedByUser = IsCreatedByUser(p),
                 IsSetUp = setUp.Contains(p.KeyScope!),
                 Label = IsCreatedByUser(p) ? labels.GetValueOrDefault(p.KeyScope!.Id) : null,
+                IsDeleting = deleting.Contains(p.KeyScope!),
                 Settings = p.Settings,
             })
             .OrderBy(p => p.IsCreatedByUser)
@@ -84,7 +89,9 @@ public class SyncProtectedProfileService(
 
         var entries = await manager.GetProfilesAsync(ct);
         var scopes = entries.Select(p => new E2eKeyScope(p.Id)).ToList();
-        foreach (var gone in CreatedProfiles().Where(p => !scopes.Contains(p.KeyScope!)).ToList())
+
+        // One being deleted here is left to DeleteAsync, which removes it when it is done.
+        foreach (var gone in CreatedProfiles().Where(p => !scopes.Contains(p.KeyScope!) && !deleting.Contains(p.KeyScope!)).ToList())
         {
             if (await manager.TryRestoreToIndexAsync(gone.KeyScope!, ct))
             {
@@ -125,7 +132,15 @@ public class SyncProtectedProfileService(
 
         setUp.Clear();
         setUp.UnionWith(scopes);
-        labels.Clear();
+
+        // Labels set this session are kept for the profiles still here: without the passkey's key the store keeps none,
+        // so they are only in memory. The stored ones are laid over them.
+        var present = scopes.Concat(deleting).Select(s => s.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var id in labels.Keys.Where(id => !present.Contains(id)).ToList())
+        {
+            labels.Remove(id);
+        }
+
         foreach (var (id, label) in await labelStore.GetAllAsync())
         {
             labels[id] = label;
@@ -169,30 +184,45 @@ public class SyncProtectedProfileService(
         var profile = CreatedProfiles().FirstOrDefault(p => p.KeyScope == scope)
             ?? throw new ArgumentException($"There is no profile '{scope}' created by the user; profiles set up in code are not deleted.", nameof(scope));
 
+        if (!deleting.Add(scope))
+        {
+            throw new InvalidOperationException($"Profile '{scope}' is already being deleted.");
+        }
+
+        // Shown as being deleted at once, before anything is awaited, so a list redrawn now already shows it.
+        ProfilesChanged?.Invoke(this, EventArgs.Empty);
         var keysDeleted = false;
         try
         {
-            await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
+            // The sync status shows it, counting the files deleted from S3.
+            await syncService.TrackAsync(async progress =>
             {
-                // Its files in S3 are found before anything is deleted, so a profile is never left without keys but with
-                // files it could not reach.
-                var syncProfile = registry.GetSyncProfile(profile.Name);
-                var remoteFiles = await ListRemoteAsync(syncProfile, ct);
-
-                // Then the keys: whatever happens to the files after this, they can no longer be decrypted.
-                await manager.DeleteAsync(scope, ct);
-                keysDeleted = true;
-
-                foreach (var remote in remoteFiles)
+                await using (await lockService.AcquireAsync(SyncDefaults.LockNamePrefix + profile.Name, ct))
                 {
-                    await syncProfile.RemoteStore.DeleteAsync(remote.Key, ifMatch: null, ct);
-                }
+                    // Its files in S3 are found before anything is deleted, so a profile is never left without keys but
+                    // with files it could not reach.
+                    var syncProfile = registry.GetSyncProfile(profile.Name);
+                    var remoteFiles = await ListRemoteAsync(syncProfile, ct);
+                    progress.Report(new SyncPassProgress(0, remoteFiles.Count));
 
-                await DeleteLocalFilesAsync(profile.Name, ct);
-            }
+                    // Then the keys: whatever happens to the files after this, they can no longer be decrypted.
+                    await manager.DeleteAsync(scope, ct);
+                    keysDeleted = true;
+
+                    for (var i = 0; i < remoteFiles.Count; i++)
+                    {
+                        await syncProfile.RemoteStore.DeleteAsync(remoteFiles[i].Key, ifMatch: null, ct);
+                        progress.Report(new SyncPassProgress(i + 1, remoteFiles.Count));
+                    }
+
+                    await DeleteLocalFilesAsync(profile.Name, ct);
+                }
+            });
         }
         finally
         {
+            deleting.Remove(scope);
+
             // Once its keys are gone the profile is gone, here and (through the index) on every device, even if some of
             // its files could not be deleted: they can never be read again, and the error still reaches the caller.
             if (keysDeleted)
@@ -201,8 +231,9 @@ public class SyncProtectedProfileService(
                 setUp.Remove(scope);
                 labels.Remove(scope.Id);
                 await labelStore.RemoveAsync(scope.Id);
-                ProfilesChanged?.Invoke(this, EventArgs.Empty);
             }
+
+            ProfilesChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 
