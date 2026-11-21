@@ -24,14 +24,4 @@ public partial class E2eProfileDialog : ComponentBase
     /// </summary>
     [Parameter]
     public EventCallback OnClosed { get; set; }
-
-    // Closing is refused while the dialog's change is running: only say it closed when it did.
-    private async Task CloseAsync()
-    {
-        Model.CloseDialogCommand.Execute(null);
-        if (Model.ActiveDialog == null)
-        {
-            await OnClosed.InvokeAsync();
-        }
-    }
 }

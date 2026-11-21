@@ -1,7 +1,10 @@
 using System.Text;
 using Devoctomy.Blazwiz.Cryptography;
 using Devoctomy.Blazwiz.Cryptography.Configuration;
+using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Devoctomy.Blazwiz.Cryptography.Models;
+using Microsoft.Extensions.Time.Testing;
+using Moq;
 
 namespace Devoctomy.Blazwiz.Cryptography.UnitTests;
 
@@ -94,6 +97,62 @@ public class BouncyCastleArgon2idKeyDerivationServiceTests
     {
         // Act & Assert
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.DeriveKeyAsync("apple", new byte[16], Small, new CancellationToken(true)));
+    }
+
+    [Fact]
+    public async Task GivenTheBrowser_WhenDeriveKeyAsync_ThenWaitsForAFrameToBePaintedBeforeDeriving()
+    {
+        // Arrange
+        var environment = new Mock<IRuntimeEnvironment>();
+        environment.SetupGet(e => e.IsBrowser).Returns(true);
+        var clock = new FakeTimeProvider();
+        var browser = new BouncyCastleArgon2idKeyDerivationService(environment.Object, clock);
+        var expected = await sut.DeriveKeyAsync("apple", new byte[16], Small);
+
+        // Act
+        var derivation = browser.DeriveKeyAsync("apple", new byte[16], Small);
+        var completedBeforeTheWait = derivation.IsCompleted;
+        clock.Advance(TimeSpan.FromMilliseconds(50));
+        var key = await derivation;
+
+        // Assert
+        Assert.False(completedBeforeTheWait);
+        Assert.Equal(expected, key);
+    }
+
+    [Fact]
+    public async Task GivenTheBrowserAndACancelledToken_WhenDeriveKeyAsync_ThenThrowsOperationCanceledExceptionAfterTheWait()
+    {
+        // Arrange
+        var environment = new Mock<IRuntimeEnvironment>();
+        environment.SetupGet(e => e.IsBrowser).Returns(true);
+        var clock = new FakeTimeProvider();
+        var browser = new BouncyCastleArgon2idKeyDerivationService(environment.Object, clock);
+
+        // Act
+        var derivation = browser.DeriveKeyAsync("apple", new byte[16], Small, new CancellationToken(true));
+        clock.Advance(TimeSpan.FromMilliseconds(50));
+
+        // Assert
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => derivation);
+    }
+
+    [Fact]
+    public void GivenNoEnvironmentOrClock_WhenConstructing_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => new BouncyCastleArgon2idKeyDerivationService(null!, TimeProvider.System));
+        Assert.Throws<ArgumentNullException>(() => new BouncyCastleArgon2idKeyDerivationService(new RuntimeEnvironment(), null!));
+    }
+
+    [Fact]
+    public void GivenTheTestHost_WhenAskingTheRuntimeEnvironment_ThenItIsNotTheBrowser()
+    {
+        // Act
+        var isBrowser = new RuntimeEnvironment().IsBrowser;
+
+        // Assert
+        Assert.False(isBrowser);
     }
 
     [Fact]

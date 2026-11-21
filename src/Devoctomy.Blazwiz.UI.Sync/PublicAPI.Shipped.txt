@@ -7,7 +7,6 @@ Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Compact.get -> bool
 Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Compact.set -> void
 Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Disabled.get -> bool
 Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Disabled.set -> void
-Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Dispose() -> void
 Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.IdPrefix.get -> string!
 Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.IdPrefix.set -> void
 Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Model.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel!
@@ -29,7 +28,6 @@ Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.ChildContent.get -> Micro
 Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.ChildContent.set -> void
 Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Disabled.get -> bool
 Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Disabled.set -> void
-Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Dispose() -> void
 Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.E2ePassphraseForm() -> void
 Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.FirstTabTitle.get -> string?
 Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.FirstTabTitle.set -> void
@@ -374,6 +372,7 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.AsksForNewPassphrase.g
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CanConfirmDialog.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CanLockAll.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CloseDialog() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CloseDialogAsync(System.Func<System.Threading.Tasks.Task!>! closed) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.ConfirmDialogAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CreatedId.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CreatedProfiles.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow!>!
@@ -538,9 +537,7 @@ const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions
 const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.ConfigurationSection = "AwsS3" -> string!
 const Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.MinKeyLength = 16 -> int
 const Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.PageSize = 200 -> int
-override Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.OnParametersSet() -> void
 override Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog.OnInitializedAsync() -> System.Threading.Tasks.Task!
-override Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.OnParametersSet() -> void
 override Devoctomy.Blazwiz.UI.Sync.Components.E2eUnlockPanel.OnParametersSetAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eLockIndicatorViewModel.Dispose(bool disposing) -> void
@@ -558,8 +555,6 @@ override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.Dispose(bool disposi
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
 static Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.AddBlazwizSyncModule(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Action<Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static readonly Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SearchDebounce -> System.TimeSpan
-virtual Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Dispose(bool disposing) -> void
-virtual Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Dispose(bool disposing) -> void
 ~override Devoctomy.Blazwiz.UI.Sync.Components.Argon2idBenchmarkPanel.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Sync.Components.E2eBanner.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

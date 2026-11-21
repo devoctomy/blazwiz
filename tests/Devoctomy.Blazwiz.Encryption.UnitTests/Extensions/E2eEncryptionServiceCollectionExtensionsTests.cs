@@ -43,6 +43,7 @@ public class E2eEncryptionServiceCollectionExtensionsTests
         Assert.IsType<EncryptedFileFormat>(sp.GetRequiredService<IEncryptedFileFormat>());
         Assert.Same(sp.GetRequiredService<IE2eKeyRings>(), provider.GetRequiredService<IE2eKeyRings>());
         Assert.IsType<BouncyCastleArgon2idKeyDerivationService>(sp.GetRequiredService<IArgon2idKeyDerivationService>());
+        Assert.IsType<RuntimeEnvironment>(sp.GetRequiredService<IRuntimeEnvironment>());
     }
 
     [Fact]

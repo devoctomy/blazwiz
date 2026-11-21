@@ -31,6 +31,8 @@ public class CryptographyServiceCollectionExtensionsTests
         Assert.IsType<BouncyCastleAesGcmAeadCipher>(provider.GetRequiredService<IAeadCipher>());
         Assert.IsType<AeadKeyWrapService>(provider.GetRequiredService<IKeyWrapService>());
         Assert.IsType<BouncyCastleArgon2idKeyDerivationService>(provider.GetRequiredService<IArgon2idKeyDerivationService>());
+        Assert.IsType<RuntimeEnvironment>(provider.GetRequiredService<IRuntimeEnvironment>());
+        Assert.Same(TimeProvider.System, provider.GetRequiredService<TimeProvider>());
         Assert.NotNull(provider.GetRequiredService<Argon2idOptions>());
     }
 }

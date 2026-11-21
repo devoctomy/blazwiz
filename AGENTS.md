@@ -23,6 +23,12 @@ Instructions for AI coding agents working in this repository.
    configuration, what was skipped and why. A pass with rules or tests switched off is not a pass. If something
    failed and you could not find out why, say so.
 6. **When reviewing the maintainer's own edits, list the fixes.** Don't hand back a rewritten copy of their work.
+7. **Never depart from a rule in this file without the maintainer's agreement first.** If a design seems to need an
+   exception (a component that cannot inherit `MvvmComponentBase`, logic that will not fit in a view model, code no
+   unit test can reach), stop and say so before writing it. An exception found afterwards, in a review or in Codacy,
+   is a broken rule, whatever the reason for it.
+8. **Keep the code quality the repository has.** Work is not done while it lowers test coverage, adds untested code or
+   breaks a design rule, even when every test passes. See "Code quality" below.
 
 ## Project
 
@@ -82,6 +88,38 @@ The project is in development and unreleased. Nobody uses it yet.
 - User-facing text comes from `.resx` resources (`UiText`, `SyncUiText`), never literals, so apps can reword and
   translate it. Sidebar items use `NavigationItem.TextResource`. `PseudoLocalizationTests` (template UI tests) fails
   on visible framework text that does not come from resources.
+
+## Code quality
+
+Codacy checks every pull request: its issues, and the unit tests' coverage of the lines the pull request adds or
+changes (diff coverage) and of the whole repository. Passing tests say nothing about either. Check both before
+reporting work as done, not after the maintainer has merged it.
+
+- **Every line added or changed in `src` and in the template's `Application` project is covered by a unit test.**
+  Only the unit tests count: the integration and UI tests do not feed coverage, so code that only they exercise is
+  uncovered.
+- **Measure it, don't assume it.** Run the unit tests as CI does, with coverage collected, and read the Cobertura
+  reports for the files that were changed:
+
+  ```powershell
+  dotnet test blazwiz.slnx --no-build --filter "FullyQualifiedName~UnitTests" --collect:"XPlat Code Coverage"
+  ```
+
+  Report the result with the test results: which changed files are fully covered, and every changed line that is not.
+- **Code-behind (`.razor.cs`) holds parameters only.** No subscriptions, no decisions, no computed properties: all of
+  that goes in the view model, where it is unit tested. The one thing it may do is hand a parameter to its view model
+  (as `E2eUnlockPanel` does with `SetProfileAsync`). A view that needs its view model's changes gets them from
+  `MvvmComponentBase<TViewModel>`, not from hand-written `PropertyChanged` handlers. A component that shows a view
+  model it is given as a parameter is shown again when its parent is, so the parent's view model raises
+  `PropertyChanged` when the one it owns changes (as `E2eProfilesViewModel` does for its `PassphraseForm`).
+- **Razor markup is not rendered by any unit test**, so every line of markup added is an uncovered line. Keep markup
+  to what the view needs, and tell the maintainer how many uncovered markup lines a change adds before it is merged.
+  Don't add a component testing library, or leave files out of the coverage report, without the maintainer's
+  agreement.
+- **Code that only runs in the browser** (`OperatingSystem.IsBrowser()` and the like) is put behind an injectable
+  service, so a unit test can take both branches.
+- **Never report a pass that hides a drop.** If coverage goes down, or a changed line cannot be covered, say so in
+  the report, with the file and lines, and why.
 
 ## Keeping the template valid
 

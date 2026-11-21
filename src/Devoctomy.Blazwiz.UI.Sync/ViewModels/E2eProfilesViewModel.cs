@@ -484,6 +484,25 @@ public partial class E2eProfilesViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Closes the dialog, then tells whoever opened it. While the dialog's change is running it stays open, and nothing
+    /// is told.
+    /// </summary>
+    /// <param name="closed">What to do once the dialog has closed.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    public async Task CloseDialogAsync(Func<Task> closed)
+    {
+        ArgumentNullException.ThrowIfNull(closed);
+
+        if (IsWorking)
+        {
+            return;
+        }
+
+        CloseDialog();
+        await closed();
+    }
+
+    /// <summary>
     /// Runs the dialog's change, once its fields are valid.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
@@ -739,21 +758,6 @@ public partial class E2eProfilesViewModel : ViewModelBase
         }
     }
 
-    private async Task RunActionAsync(Func<Task> action)
-    {
-        Error = null;
-        try
-        {
-            await action();
-        }
-        catch (Exception ex)
-        {
-            Error = Describe(ex);
-        }
-
-        await RefreshAsync();
-    }
-
     private string Describe(Exception ex) => ex is E2eWrongPassphraseException ? text["Sync.E2e.Error.WrongPassphrase"] : errorText.Describe(ex);
 
     private void ApplyProgress(E2eProgress progress)
@@ -821,9 +825,11 @@ public partial class E2eProfilesViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanLockAll));
     }
 
-    // The dialog's confirm button follows the form: disabled while its Argon2id settings need a benchmark.
+    // The dialog shows the form again whenever it changes, and its confirm button follows the form: disabled while its
+    // Argon2id settings need a benchmark.
     private void OnPassphraseFormChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(PassphraseForm));
         if (e.PropertyName == nameof(E2ePassphraseFormViewModel.CanConfirm))
         {
             OnPropertyChanged(nameof(CanConfirmDialog));

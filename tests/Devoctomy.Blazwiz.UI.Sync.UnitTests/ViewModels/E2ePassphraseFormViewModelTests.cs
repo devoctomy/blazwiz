@@ -194,6 +194,22 @@ public class E2ePassphraseFormViewModelTests
     }
 
     [Fact]
+    public async Task GivenTheForm_WhenItsArgon2SettingsChange_ThenTheFormSaysSoForTheViewsShowingIt()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        await sut.ResetAsync();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        sut.Argon2.Iterations = 300;
+
+        // Assert
+        Assert.Contains(nameof(E2ePassphraseFormViewModel.Argon2), changed);
+    }
+
+    [Fact]
     public async Task GivenDisposed_WhenTheSettingsChange_ThenNothingIsRaised()
     {
         // Arrange
@@ -207,7 +223,7 @@ public class E2ePassphraseFormViewModelTests
         sut.Argon2.Iterations = 300;
 
         // Assert
-        Assert.DoesNotContain(nameof(E2ePassphraseFormViewModel.CanConfirm), changed);
+        Assert.Empty(changed);
     }
 
     [Fact]

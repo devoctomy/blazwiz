@@ -91,6 +91,13 @@ await profiles.CreateAsync(PassphraseForm.Passphrase, PassphraseForm.GetArgon2Pa
 PassphraseForm.ClearPassphrases();                                     // once used
 ```
 
+The form has no view model of its own to follow: it is shown again whenever your view is. So your view model says when
+the form changes, which also keeps your confirm button in step with `PassphraseForm.CanConfirm`:
+
+```csharp
+PassphraseForm.PropertyChanged += (_, _) => OnPropertyChanged(nameof(PassphraseForm)); // and remove it in Dispose
+```
+
 `ISyncProtectedProfileService.CreateAsync` and `SetUpAsync`, and `ISyncKeyRotationService.RotateAsync`, take the chosen
 settings. The template's new notebook dialog is built this way.
 

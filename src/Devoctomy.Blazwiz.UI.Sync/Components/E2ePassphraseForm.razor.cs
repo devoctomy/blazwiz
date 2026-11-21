@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Microsoft.AspNetCore.Components;
 
@@ -9,13 +8,11 @@ namespace Devoctomy.Blazwiz.UI.Sync.Components;
 /// derived with, and their benchmark). Put it in the form of any dialog that sets a passphrase, with the dialog's own
 /// fields as its content, shown at the top of the first tab:
 /// <c>&lt;E2ePassphraseForm Form="ViewModel.PassphraseForm" IdPrefix="photos"&gt;...&lt;/E2ePassphraseForm&gt;</c>. It
-/// shows the view model it is given, which the dialog's view model owns. Logic lives in
-/// <see cref="E2ePassphraseFormViewModel"/>.
+/// shows the view model it is given, which the dialog's view model owns, and is shown again whenever the dialog is: the
+/// dialog's view model says when the form changes. Logic lives in <see cref="E2ePassphraseFormViewModel"/>.
 /// </summary>
-public partial class E2ePassphraseForm : ComponentBase, IDisposable
+public partial class E2ePassphraseForm : ComponentBase
 {
-    private E2ePassphraseFormViewModel? subscribed;
-
     /// <summary>
     /// Gets or sets the form's view model, owned by the view model of the dialog showing it.
     /// </summary>
@@ -53,52 +50,4 @@ public partial class E2ePassphraseForm : ComponentBase, IDisposable
     /// </summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnParametersSet()
-    {
-        if (ReferenceEquals(subscribed, Form))
-        {
-            return;
-        }
-
-        Unsubscribe();
-        subscribed = Form;
-        subscribed.PropertyChanged += OnFormChanged;
-        subscribed.Argon2.PropertyChanged += OnFormChanged;
-    }
-
-    /// <summary>
-    /// Stops listening to the form.
-    /// </summary>
-    /// <param name="disposing">Whether called from <see cref="Dispose()"/>.</param>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            Unsubscribe();
-        }
-    }
-
-    private void Unsubscribe()
-    {
-        if (subscribed != null)
-        {
-            subscribed.PropertyChanged -= OnFormChanged;
-            subscribed.Argon2.PropertyChanged -= OnFormChanged;
-            subscribed = null;
-        }
-    }
-
-    private void OnFormChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        _ = InvokeAsync(StateHasChanged);
-    }
 }

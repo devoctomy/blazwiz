@@ -14,6 +14,7 @@ Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.NonceSize.get -> int
 Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.TagSize.get -> int
 Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService
 Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService.BouncyCastleArgon2idKeyDerivationService() -> void
+Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService.BouncyCastleArgon2idKeyDerivationService(Devoctomy.Blazwiz.Cryptography.Interfaces.IRuntimeEnvironment! environment, System.TimeProvider! timeProvider) -> void
 Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService.DeriveKeyAsync(string! passphrase, byte[]! salt, Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters! parameters, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<byte[]!>!
 Devoctomy.Blazwiz.Cryptography.BouncyCastleHkdfKeyDerivationService
 Devoctomy.Blazwiz.Cryptography.BouncyCastleHkdfKeyDerivationService.BouncyCastleHkdfKeyDerivationService() -> void
@@ -70,6 +71,8 @@ Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService.Unwrap(byte[]! keyEncr
 Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyWrapService.Wrap(byte[]! keyEncryptionKey, byte[]! key, byte[]? associatedData = null) -> Devoctomy.Blazwiz.Cryptography.Models.WrappedKey!
 Devoctomy.Blazwiz.Cryptography.Interfaces.IPrfKeyDerivator
 Devoctomy.Blazwiz.Cryptography.Interfaces.IPrfKeyDerivator.DeriveKeys(byte[]! prfOutput) -> void
+Devoctomy.Blazwiz.Cryptography.Interfaces.IRuntimeEnvironment
+Devoctomy.Blazwiz.Cryptography.Interfaces.IRuntimeEnvironment.IsBrowser.get -> bool
 Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters
 Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.Argon2idParameters() -> void
 Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters.Clone() -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
@@ -92,6 +95,9 @@ Devoctomy.Blazwiz.Cryptography.Models.WrappedKey.WrappedKey() -> void
 Devoctomy.Blazwiz.Cryptography.PrfKeyDerivator
 Devoctomy.Blazwiz.Cryptography.PrfKeyDerivator.DeriveKeys(byte[]! prfOutput) -> void
 Devoctomy.Blazwiz.Cryptography.PrfKeyDerivator.PrfKeyDerivator(Devoctomy.Blazwiz.Cryptography.Configuration.PrfKeyDerivationOptions! options, Devoctomy.Blazwiz.Cryptography.Interfaces.IKeyDerivationService! keyDerivationService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
+Devoctomy.Blazwiz.Cryptography.RuntimeEnvironment
+Devoctomy.Blazwiz.Cryptography.RuntimeEnvironment.IsBrowser.get -> bool
+Devoctomy.Blazwiz.Cryptography.RuntimeEnvironment.RuntimeEnvironment() -> void
 const Devoctomy.Blazwiz.Cryptography.BouncyCastleAesGcmAeadCipher.AlgorithmName = "aes-256-gcm" -> string!
 const Devoctomy.Blazwiz.Cryptography.BouncyCastleArgon2idKeyDerivationService.MinSaltLength = 8 -> int
 const Devoctomy.Blazwiz.Cryptography.BouncyCastleHkdfKeyDerivationService.MaxKeyLength = 8160 -> int
