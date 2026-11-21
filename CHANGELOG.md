@@ -8,6 +8,17 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.9.2
+
+### Fixed
+- **A deploy from Linux or macOS now clears CloudFront's cache.** `deploy.ps1` invalidated `/*`, but PowerShell on
+  those systems replaced that argument with the machine's own root folders (`/bin`, `/etc`, ...) before the AWS CLI
+  saw it, so the invalidation succeeded and cleared nothing. CloudFront kept serving the previous copies of files
+  whose names do not change (stylesheets, for example) for up to a day, and an installed app's update then failed
+  while downloading: the service worker rejects a file that does not match the new version's hash. The path is now
+  passed in a file. Deploys from Windows were not affected. An environment deployed before this fix needs one
+  invalidation of `/*` made by hand, or a day for the old copies to expire.
+
 ## 0.9.1
 
 ### Changed

@@ -414,11 +414,23 @@ if (-not $SkipPortal) {
     Write-Ok "Uploaded"
 
     Write-Step "Invalidating CloudFront cache"
-    $invalidation = Invoke-Aws -Json -Arguments @(
-        'cloudfront', 'create-invalidation',
-        '--distribution-id', $outputs['DistributionId'],
-        '--paths', '/*'
-    )
+    # The path goes in a file, never on the command line. On Linux and macOS, PowerShell replaces a wildcard argument
+    # to a native command with the files it matches, so '/*' reached the AWS CLI as the machine's own root folders
+    # (/bin, /etc, ...): the invalidation succeeded and cleared nothing of the portal.
+    $invalidationFile = New-TempJsonFile @{
+        Paths           = @{ Quantity = 1; Items = @('/*') }
+        CallerReference = [Guid]::NewGuid().ToString('N')
+    }
+    try {
+        $invalidation = Invoke-Aws -Json -Arguments @(
+            'cloudfront', 'create-invalidation',
+            '--distribution-id', $outputs['DistributionId'],
+            '--invalidation-batch', "file://$invalidationFile"
+        )
+    }
+    finally {
+        Remove-Item -Force $invalidationFile -ErrorAction SilentlyContinue
+    }
     Write-Ok "Invalidation $($invalidation.Invalidation.Id) started (usually completes within a minute or two)"
 }
 
