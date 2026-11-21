@@ -17,6 +17,9 @@ public class BouncyCastleArgon2idKeyDerivationService : IArgon2idKeyDerivationSe
     /// </summary>
     public const int MinSaltLength = 8;
 
+    // Long enough for the browser to paint a frame (about 16 ms each) before the derivation blocks its only thread.
+    private static readonly TimeSpan PaintDelay = TimeSpan.FromMilliseconds(50);
+
     /// <inheritdoc/>
     public async Task<byte[]> DeriveKeyAsync(string passphrase, byte[] salt, Argon2idParameters parameters, CancellationToken ct = default)
     {
@@ -33,8 +36,18 @@ public class BouncyCastleArgon2idKeyDerivationService : IArgon2idKeyDerivationSe
         ArgumentOutOfRangeException.ThrowIfLessThan(parameters.MemoryKib, 8 * parameters.Parallelism, nameof(parameters));
         ArgumentOutOfRangeException.ThrowIfLessThan(parameters.KeyLength, 16, nameof(parameters));
 
-        // Let the caller's UI update before the long, blocking computation.
-        await Task.Yield();
+        // Let the caller's UI update before the long, blocking computation. In the browser there is one thread, and
+        // Task.Yield resumes without the browser getting a turn, so nothing rendered just before (a spinner, a disabled
+        // button) would be painted until the key is derived: a short timer gives the browser a frame to paint first.
+        if (OperatingSystem.IsBrowser())
+        {
+            await Task.Delay(PaintDelay, CancellationToken.None);
+        }
+        else
+        {
+            await Task.Yield();
+        }
+
         ct.ThrowIfCancellationRequested();
 
         var argon2Parameters = new Argon2Parameters.Builder(Argon2Parameters.Argon2id)

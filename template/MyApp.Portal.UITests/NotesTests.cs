@@ -157,16 +157,30 @@ public class NotesTests : TestBase
     }
 
     [TestMethod]
-    public async Task GivenNoPassphrase_WhenOpeningFiles_ThenThePanelPointsToSettings()
+    public async Task GivenNoPassphrase_WhenOpeningFiles_ThenThePanelSetsOneThereAndTheFilesAreShown()
     {
         await LoginAsync();
         await OpenNotesAsync();
 
-        await Expect(Page.Locator("#e2e-unlock-message")).ToHaveTextAsync("Notes needs a passphrase before it can be used. Set one in Settings.");
+        await Expect(Page.Locator("#e2e-unlock-message")).ToHaveTextAsync("Notes needs a passphrase before it can be used.");
         await Expect(Page.Locator("#new-note-button")).ToHaveCountAsync(0);
         await ScreenshotAsync("NeedsPassphrase");
-        await Page.Locator("#e2e-unlock-settings").ClickAsync();
-        await Expect(Page.Locator("#e2e-section")).ToBeVisibleAsync();
+        var url = Page.Url;
+        await Page.Locator("#e2e-unlock-set-passphrase").ClickAsync();
+
+        // The dialog opens in place: no trip to Settings.
+        await Expect(Page.Locator("#e2e-panel-dialog")).ToBeVisibleAsync();
+        Assert.AreEqual(url, Page.Url);
+        await Expect(Page.Locator("#e2e-panel-tab-advanced")).ToBeVisibleAsync();
+        await Page.Locator("#e2e-panel-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-panel-confirm-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-panel-acknowledge").CheckAsync();
+        await ScreenshotAsync("SetPassphraseInPlace");
+        await Page.Locator("#e2e-panel-confirm").ClickAsync();
+
+        await Expect(Page.Locator("#e2e-panel-dialog")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#e2e-unlock-panel")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#new-note-button")).ToBeVisibleAsync();
     }
 
     [TestMethod]

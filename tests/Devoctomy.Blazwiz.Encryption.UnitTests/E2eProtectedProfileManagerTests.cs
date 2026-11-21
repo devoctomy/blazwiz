@@ -203,6 +203,56 @@ public class E2eProtectedProfileManagerTests
     }
 
     [Fact]
+    public async Task GivenAProfileCreatedWithItsOwnCosts_WhenItsArgon2ParametersAreRead_ThenThoseOfItsKeysDocument()
+    {
+        // Arrange
+        var costs = new Argon2idParameters { MemoryKib = 128, Iterations = 2, Parallelism = 2, KeyLength = 32 };
+        var scope = await device.Manager.CreateAsync(Passphrase, new E2eProfileSettings { Argon2 = costs });
+
+        // Act
+        var parameters = await device.Manager.GetArgon2ParametersAsync(scope);
+
+        // Assert
+        Assert.NotNull(parameters);
+        Assert.Equal(128, parameters.MemoryKib);
+        Assert.Equal(2, parameters.Iterations);
+        Assert.Equal(2, parameters.Parallelism);
+        Assert.Equal(32, parameters.KeyLength);
+    }
+
+    [Fact]
+    public async Task GivenAProfileWithoutKeys_WhenItsArgon2ParametersAreRead_ThenNull()
+    {
+        // Act
+        var parameters = await device.Manager.GetArgon2ParametersAsync(new E2eKeyScope(Guid.NewGuid().ToString("D")));
+
+        // Assert
+        Assert.Null(parameters);
+    }
+
+    [Fact]
+    public async Task GivenOfflineWithACopy_WhenArgon2ParametersAreRead_ThenThoseOfThisDevicesCopy()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        userKeys.Failure = new HttpRequestException("offline");
+
+        // Act
+        var parameters = await device.Manager.GetArgon2ParametersAsync(scope);
+
+        // Assert
+        Assert.NotNull(parameters);
+        Assert.Equal(64, parameters.MemoryKib);
+    }
+
+    [Fact]
+    public async Task GivenANameThatIsNotAGuid_WhenArgon2ParametersAreRead_ThenThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => device.Manager.GetArgon2ParametersAsync(new E2eKeyScope("notes")));
+    }
+
+    [Fact]
     public async Task GivenOffline_WhenListed_ThenThisDevicesCopyOfTheIndexIsUsed()
     {
         // Arrange

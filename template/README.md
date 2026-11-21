@@ -102,7 +102,8 @@ your own services in `AddAppServices`.
 The framework's own parts plug into the app the same way, so you can add to them or change them in `Program.cs`:
 `AddShellComponent` (banners, top bar buttons, floating items, overlays), `AddSettingsSection`, `AddSignInOption`,
 `AddSessionLifecycleHandler`, `AddPageAssembly`, and `ReplacePage` or `DisablePage` for the framework's pages
-(`BlazwizPages`). Text comes from resources you can reword or translate with
+(`BlazwizPages`). `RemoveSettingsSection<T>()` takes any section off the Settings page, the framework's included.
+Text comes from resources you can reword or translate with
 `AddBlazwizText(text => text.AddOverrides<YourText>())`.
 <!--#if (IncludeShowcase)-->
 
@@ -122,7 +123,9 @@ the data bucket.
   is a protected profile the user creates (`NotebookService`), with its pages under `profiles/<id>/` and its name kept
   encrypted inside it, so a locked notebook is shown by its id. For a user remembered with a passkey, a notebook
   unlocked with "Unlock with biometrics next time on this device" ticked shows a fingerprint while locked, and opens
-  with the passkey (`IE2eDeviceUnlockService`); its eraser button forgets that, after asking.
+  with the passkey (`IE2eDeviceUnlockService`); its eraser button forgets that, after asking. The new notebook dialog
+  is the framework's passphrase form (`E2ePassphraseForm`) with the notebook's name added to its first tab, so it has
+  the form's Advanced tab too.
 - **Storage**: pages are `.md` files and folders are paths (`notes/Work/Ideas.md`), kept by the notebook's file store,
   which encrypts them. `NoteServiceFactory` creates a `NoteService` for each notebook over its store, so every change
   is tracked for sync automatically.
@@ -148,6 +151,14 @@ Changing a profile's passphrase, in Settings, gives it new keys and encrypts eve
 old passphrase can read nothing written afterwards. The user is shown how long it will take first. It cannot be
 skipped, and it ends by signing them out on every device. If it is cut short, the profile cannot be used until it is
 finished.
+
+Every dialog that sets a passphrase has an Advanced tab with the Argon2id settings its key is derived with. They start
+at the settings in use, can be set to anything, and once changed must be benchmarked on the device before they are
+accepted.
+
+The Settings page's End to end encryption section is where passphrases are set, changed and profiles deleted. If your
+app does that on its own pages, take the section off with
+`builder.Services.RemoveSettingsSection<E2eProfilesSection>()` in `Program.cs`.
 
 <!--#endif-->
 ### Add a service

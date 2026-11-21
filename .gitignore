@@ -440,6 +440,8 @@ secrets.json
 
 temp/
 
+# Playwright MCP output (page snapshots and console logs from browser checks)
+.playwright-mcp/
 
 #Ignore vscode AI rules
 .github\instructions\codacy.instructions.md

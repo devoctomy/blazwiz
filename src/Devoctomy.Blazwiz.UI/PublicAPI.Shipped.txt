@@ -269,7 +269,10 @@ Devoctomy.Blazwiz.UI.Shell.SettingsSectionRegistration.Order.get -> int
 Devoctomy.Blazwiz.UI.Shell.SettingsSectionRegistration.SettingsSectionRegistration(System.Type! componentType, int order) -> void
 Devoctomy.Blazwiz.UI.Shell.SettingsSectionRegistry
 Devoctomy.Blazwiz.UI.Shell.SettingsSectionRegistry.GetSections() -> System.Collections.Generic.IReadOnlyList<System.Type!>!
-Devoctomy.Blazwiz.UI.Shell.SettingsSectionRegistry.SettingsSectionRegistry(System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Shell.SettingsSectionRegistration!>! registrations) -> void
+Devoctomy.Blazwiz.UI.Shell.SettingsSectionRegistry.SettingsSectionRegistry(System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Shell.SettingsSectionRegistration!>! registrations, System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Shell.SettingsSectionRemoval!>! removals) -> void
+Devoctomy.Blazwiz.UI.Shell.SettingsSectionRemoval
+Devoctomy.Blazwiz.UI.Shell.SettingsSectionRemoval.ComponentType.get -> System.Type!
+Devoctomy.Blazwiz.UI.Shell.SettingsSectionRemoval.SettingsSectionRemoval(System.Type! componentType) -> void
 Devoctomy.Blazwiz.UI.Shell.ShellComponentRegistration
 Devoctomy.Blazwiz.UI.Shell.ShellComponentRegistration.ComponentType.get -> System.Type!
 Devoctomy.Blazwiz.UI.Shell.ShellComponentRegistration.Order.get -> int
@@ -522,6 +525,7 @@ static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.AddSetti
 static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.AddShellComponent<TComponent>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Devoctomy.Blazwiz.UI.Shell.ShellRegion region, int order = 0) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.AddSignInOption<TOption, TComponent>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.DisablePage(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! key) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.RemoveSettingsSection<TComponent>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.ShellServiceCollectionExtensions.ReplacePage<TComponent>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! key) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.TextUiServiceCollectionExtensions.AddBlazwizUiText(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Devoctomy.Blazwiz.UI.Extensions.TextUiServiceCollectionExtensions.AddErrorText<TResource>(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

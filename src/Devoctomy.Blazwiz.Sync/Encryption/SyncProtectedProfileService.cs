@@ -1,3 +1,5 @@
+using Devoctomy.Blazwiz.Cryptography.Configuration;
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Configuration;
@@ -23,6 +25,7 @@ namespace Devoctomy.Blazwiz.Sync.Encryption;
 /// <param name="idleLock">Locks a profile left unused for its idle timeout.</param>
 /// <param name="labelStore">The labels the user's profiles are shown by on this device.</param>
 /// <param name="syncService">Shows a profile's deletion in the sync status.</param>
+/// <param name="argon2Options">The app's Argon2id costs, for profiles whose settings name none.</param>
 public class SyncProtectedProfileService(
     IE2eProtectedProfileManager manager,
     ISyncProfileRegistry registry,
@@ -33,9 +36,11 @@ public class SyncProtectedProfileService(
     SyncOptions options,
     IE2eIdleLock idleLock,
     IE2eProfileLabelStore labelStore,
-    ISyncService syncService)
+    ISyncService syncService,
+    Argon2idOptions argon2Options)
     : ISyncProtectedProfileService
 {
+    private readonly Argon2idOptions argon2Options = argon2Options ?? throw new ArgumentNullException(nameof(argon2Options));
     private readonly IE2eProtectedProfileManager manager = manager ?? throw new ArgumentNullException(nameof(manager));
     private readonly ISyncProfileRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly ISyncStorageResolver storageResolver = storageResolver ?? throw new ArgumentNullException(nameof(storageResolver));
@@ -152,9 +157,21 @@ public class SyncProtectedProfileService(
     }
 
     /// <inheritdoc/>
-    public async Task<E2eKeyScope> CreateAsync(string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    public async Task<Argon2idParameters> GetArgon2ParametersAsync(E2eKeyScope? scope = null, CancellationToken ct = default)
     {
-        var scope = await manager.CreateAsync(passphrase, options.ProfileDefaults, progress, ct);
+        if (scope == null)
+        {
+            return (options.ProfileDefaults.Argon2 ?? argon2Options.Parameters).Clone();
+        }
+
+        var profile = FindProfile(scope) ?? throw new ArgumentException($"There is no profile '{scope}'.", nameof(scope));
+        return (await manager.GetArgon2ParametersAsync(scope, ct) ?? profile.Settings.Argon2 ?? argon2Options.Parameters).Clone();
+    }
+
+    /// <inheritdoc/>
+    public async Task<E2eKeyScope> CreateAsync(string passphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    {
+        var scope = await manager.CreateAsync(passphrase, WithArgon2(options.ProfileDefaults, argon2), progress, ct);
         registry.Add(CreateOptions(scope, options.ProfileDefaults));
         setUp.Add(scope);
         ProfilesChanged?.Invoke(this, EventArgs.Empty);
@@ -162,19 +179,22 @@ public class SyncProtectedProfileService(
     }
 
     /// <inheritdoc/>
-    public async Task SetUpAsync(E2eKeyScope scope, string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    public async Task SetUpAsync(E2eKeyScope scope, string passphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
         var profile = FindProfile(scope) ?? throw new ArgumentException($"There is no profile '{scope}'.", nameof(scope));
-        await manager.CreateKeysAsync(scope, passphrase, profile.Settings, progress, ct);
+        await manager.CreateKeysAsync(scope, passphrase, WithArgon2(profile.Settings, argon2), progress, ct);
         setUp.Add(scope);
         ProfilesChanged?.Invoke(this, EventArgs.Empty);
     }
 
     /// <inheritdoc/>
-    public Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    public async Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
         var profile = FindProfile(scope) ?? throw new ArgumentException($"There is no profile '{scope}'.", nameof(scope));
-        return manager.ChangePassphraseAsync(scope, currentPassphrase, newPassphrase, profile.Settings, progress, ct);
+
+        // Without costs chosen for the new passphrase, the profile keeps the ones it has.
+        argon2 ??= await manager.GetArgon2ParametersAsync(scope, ct);
+        await manager.ChangePassphraseAsync(scope, currentPassphrase, newPassphrase, WithArgon2(profile.Settings, argon2), progress, ct);
     }
 
     /// <inheritdoc/>
@@ -336,6 +356,17 @@ public class SyncProtectedProfileService(
         MinimumPassphraseLength = settings.MinimumPassphraseLength,
         Argon2 = settings.Argon2,
     };
+
+    // The settings with the Argon2id costs chosen for one passphrase; the profile's own settings stay as they are.
+    private static E2eProfileSettings WithArgon2(E2eProfileSettings settings, Argon2idParameters? argon2) => argon2 == null
+        ? settings
+        : new E2eProfileSettings
+        {
+            IdleTimeout = settings.IdleTimeout,
+            AllowDeviceUnlock = settings.AllowDeviceUnlock,
+            MinimumPassphraseLength = settings.MinimumPassphraseLength,
+            Argon2 = argon2.Clone(),
+        };
 
     private static SyncProfileOptions CreateOptions(E2eKeyScope scope, E2eProfileSettings settings)
     {

@@ -6,6 +6,72 @@ in `UPGRADING.md` from 1.0.
 
 Before 1.0 any release may break, and nothing is kept for earlier builds: no data migrations, no compatibility code.
 
+## Unreleased
+
+## 0.9.0
+
+### Added
+- **Any Settings section can be taken off the page.** `services.RemoveSettingsSection<TComponent>()` hides a section
+  whoever added it (the framework, a module or the app), whether it is added before or after the call. New
+  `SettingsSectionRemoval`. **Breaking:** `SettingsSectionRegistry`'s constructor takes the removals too; apps that
+  register through `AddBlazwizUi` need no change.
+- **Every dialog that sets a passphrase has an Advanced tab with its Argon2id settings.** New protected profile, Set
+  passphrase and Change passphrase in Settings, and the template's new notebook dialog, are now two tabs: what the
+  dialog asked for before, and Advanced (memory, iterations and parallelism, with a Benchmark button). The settings
+  start at the ones that apply: the app's for a new passphrase, the profile's current ones when changing a passphrase.
+  Anything Argon2id can run may be entered; there is no upper limit. Settings left as they start are used as they are;
+  changed settings are only accepted once a benchmark has completed with exactly those values on the device, and the
+  dialog's confirm button is disabled until then (`E2ePassphraseFormViewModel.CanConfirm`). The key
+  length is fixed, because the key wraps the profile's master key. New components `E2ePassphraseForm` (the form, for
+  any dialog of your own that sets a passphrase) and `Argon2idEditor`, new `E2ePassphraseFormViewModel` and
+  `E2ePassphraseFormTab`, new `Argon2idBenchmarkViewModel` members `Reset`, `GetParameters`, `IsChanged`,
+  `IsBenchmarked`, `NeedsBenchmark` and `IsKeyLengthFixed`, and new resources `Sync.E2e.Tab.Passphrase`,
+  `Sync.E2e.Tab.Advanced`, `Sync.E2e.Advanced.Text` and `Sync.Argon2id.NeedsBenchmark`.
+- **Change passphrase can be opened from an app's own page.** New component `E2eChangePassphraseDialog`
+  (`<E2eChangePassphraseDialog Profile="@id" OnClose="..." />`, rendered while it should be open) shows the same change
+  passphrase dialog as Settings for one profile: the passphrases with the Advanced tab, the estimate, the progress and
+  the sign out everywhere. The dialog itself is now its own component, `E2eProfileDialog`, which the Settings section
+  uses; with change passphrase on its own pages, an app can remove the section.
+- **A passphrase can be given its own Argon2id costs.** `ISyncProtectedProfileService.CreateAsync`, `SetUpAsync` and
+  `ChangePassphraseAsync`, and `ISyncKeyRotationService.RotateAsync`, take an optional `Argon2idParameters`. New
+  `ISyncProtectedProfileService.GetArgon2ParametersAsync` says which costs apply to a profile, and
+  `IE2eProtectedProfileManager.GetArgon2ParametersAsync` reads the ones in its keys document. **Breaking:** the new
+  parameter comes before `progress`, so calls that pass `progress` by position name it or pass the costs (or `null`)
+  first, and `SyncProtectedProfileService` takes the app's `Argon2idOptions`.
+
+### Changed
+- **End to end encryption is a Settings section of its own.** `E2eProfilesSection` was drawn inside the Sync section;
+  it is now registered separately, between Sync and the Argon2id benchmark, and shown as its own panel, so an app
+  whose own pages set and change the passphrases can remove it: `services.RemoveSettingsSection<E2eProfilesSection>()`.
+- **Changing a passphrase keeps the profile's Argon2id costs.** A passphrase change reset the costs to the app's
+  configured ones. It now keeps the ones in the profile's keys document unless others are chosen (on the Advanced tab,
+  or by passing them).
+- **A keys document's Argon2id settings have no upper limit.** Reading a keys document refused more than 4 GiB of
+  memory, 100 iterations or 16 lanes, which put a ceiling on what a user may choose, and would have left a profile made
+  with higher costs unable to unlock. Only what Argon2id and the cipher cannot use is refused now: no iterations or
+  lanes, less than 8 KiB of memory for each lane, and a key length other than the cipher's. **Breaking:**
+  `E2eKeysDocumentService.MaxMemoryKib`, `MaxIterations` and `MaxParallelism` are removed.
+- **The passphrase dialogs' view model.** **Breaking:** `E2eProfilesViewModel` takes an `E2ePassphraseFormViewModel`,
+  and its `ConfirmPassphrase`, `CurrentPassphrase` and `AcknowledgedNoRecovery` are now on its `PassphraseForm`, where
+  a new passphrase is entered (`Passphrase` is only the one entered to unlock). `OpenSetPassphrase`, `OpenCreate` and
+  `OpenChangePassphrase` are `OpenSetPassphraseAsync`, `OpenCreateAsync` and `OpenChangePassphraseAsync` (the commands
+  keep their names): they read the Argon2id settings that apply before the dialog opens. `Sync.Argon2id.Text` is
+  reworded. In the template, `INotebookService.CreateAsync` takes the Argon2id settings, and `NotebooksViewModel` uses
+  the framework's passphrase form in place of its own passphrase fields and validation.
+
+- **A profile's first passphrase is set where its pages are.** The panel shown in place of a profile with no
+  passphrase yet (`E2eUnlockPanel`) sent the user to Settings. Its Set passphrase button now opens the dialog there,
+  with the same two tabs, and the profile's pages show once it is set. `Sync.E2e.Panel.NeedsPassphrase` no longer says
+  "Set one in Settings." **Breaking:** `E2eUnlockPanelViewModel` takes an `E2ePassphraseFormViewModel` in place of the
+  `INavigationService`, and `OpenSettings` is replaced by `OpenSetPassphraseAsync`, `SetPassphraseAsync` and
+  `CloseSetPassphrase`.
+
+### Fixed
+- **Buttons and spinners are repainted before a key is derived.** Argon2id runs on the page's only thread, and the
+  running state rendered just before it (the Benchmark button disabled with its spinner, the "Deriving key" step) was
+  not painted until it finished. `BouncyCastleArgon2idKeyDerivationService` now gives the browser a frame to paint
+  first.
+
 ## 0.8.4
 
 ### Changed

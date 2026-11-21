@@ -9,7 +9,8 @@ public class ShellRegistriesTests
     {
         // Act & Assert
         Assert.Equal("registrations", Assert.Throws<ArgumentNullException>(() => new ShellRegistry(null!)).ParamName);
-        Assert.Equal("registrations", Assert.Throws<ArgumentNullException>(() => new SettingsSectionRegistry(null!)).ParamName);
+        Assert.Equal("registrations", Assert.Throws<ArgumentNullException>(() => new SettingsSectionRegistry(null!, [])).ParamName);
+        Assert.Equal("removals", Assert.Throws<ArgumentNullException>(() => new SettingsSectionRegistry([], null!)).ParamName);
         Assert.Equal("registrations", Assert.Throws<ArgumentNullException>(() => new PageRegistry(null!)).ParamName);
     }
 
@@ -58,6 +59,26 @@ public class ShellRegistriesTests
         [
             new SettingsSectionRegistration(typeof(int), 10_000),
             new SettingsSectionRegistration(typeof(string), 100),
+        ],
+        []);
+
+        // Act & Assert
+        Assert.Equal([typeof(string), typeof(int)], sut.GetSections());
+    }
+
+    [Fact]
+    public void GivenSectionRemoved_WhenGetSections_ThenTheOthersInOrder()
+    {
+        // Arrange
+        var sut = new SettingsSectionRegistry(
+        [
+            new SettingsSectionRegistration(typeof(int), 10_000),
+            new SettingsSectionRegistration(typeof(bool), 500),
+            new SettingsSectionRegistration(typeof(string), 100),
+        ],
+        [
+            new SettingsSectionRemoval(typeof(bool)),
+            new SettingsSectionRemoval(typeof(long)),
         ]);
 
         // Act & Assert
@@ -119,6 +140,7 @@ public class ShellRegistriesTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => new ShellComponentRegistration(ShellRegion.Banners, null!, 0));
         Assert.Throws<ArgumentNullException>(() => new SettingsSectionRegistration(null!, 0));
+        Assert.Throws<ArgumentNullException>(() => new SettingsSectionRemoval(null!));
         Assert.Throws<ArgumentNullException>(() => new SignInOptionRegistration(null!, typeof(string)));
         Assert.Throws<ArgumentNullException>(() => new SignInOptionRegistration(typeof(string), null!));
     }

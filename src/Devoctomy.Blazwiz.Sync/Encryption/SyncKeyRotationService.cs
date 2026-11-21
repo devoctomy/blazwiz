@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Devoctomy.Blazwiz.Cryptography.Interfaces;
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
@@ -96,10 +97,10 @@ public class SyncKeyRotationService(
     }
 
     /// <inheritdoc/>
-    public async Task RotateAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
+    public async Task RotateAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default)
     {
         var name = FindProfileName(scope);
-        await profiles.ChangePassphraseAsync(scope, currentPassphrase, newPassphrase, progress, ct);
+        await profiles.ChangePassphraseAsync(scope, currentPassphrase, newPassphrase, argon2, progress, ct);
         await ReencryptAsync(scope, name, progress, ct);
     }
 

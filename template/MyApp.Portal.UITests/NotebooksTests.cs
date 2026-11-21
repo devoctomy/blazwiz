@@ -41,6 +41,46 @@ public class NotebooksTests : TestBase
     }
 
     [TestMethod]
+    public async Task GivenTheNewNotebookDialog_WhenItsArgon2idSettingsAreChanged_ThenTheNotebookIsOnlyCreatedOnceTheyAreBenchmarked()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-notebooks").ClickAsync();
+        await Page.Locator("#new-notebook-button").ClickAsync();
+
+        // The dialog's two tabs: what it always asked for, and the framework's Advanced tab.
+        await Expect(Page.Locator("#notebook-tab-passphrase")).ToHaveTextAsync("Notebook");
+        await Expect(Page.Locator("#notebook-tab-advanced")).ToHaveTextAsync("Advanced");
+        await Page.Locator("#notebook-title").FillAsync("Work");
+        await Page.Locator("#notebook-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#notebook-confirm-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#notebook-acknowledge").CheckAsync();
+        await ScreenshotAsync("NewNotebook");
+
+        await Page.Locator("#notebook-tab-advanced").ClickAsync();
+        await Expect(Page.Locator("#notebook-argon2id-iterations")).ToHaveValueAsync($"{TestArgon2idIterations}");
+        await Expect(Page.Locator("#notebook-argon2id-key-length")).ToBeDisabledAsync();
+        await Page.Locator("#notebook-argon2id-memory").FillAsync("1");
+        await Page.Locator("#notebook-argon2id-memory").BlurAsync();
+        await ScreenshotAsync("NewNotebookAdvanced");
+
+        // Changed and not benchmarked: the notebook cannot be created.
+        await Expect(Page.Locator("#notebook-argon2id-needs-benchmark")).ToHaveTextAsync("Benchmark these settings on this device before they can be used.");
+        await Expect(Page.Locator("#notebook-create")).ToBeDisabledAsync();
+
+        await Page.Locator("#notebook-argon2id-benchmark").ClickAsync();
+        await Expect(Page.Locator("#notebook-argon2id-result")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#notebook-create")).ToBeEnabledAsync();
+        await Page.Locator("#notebook-create").ClickAsync();
+        await Expect(Page.Locator("h1.page-title")).ToContainTextAsync("Work");
+
+        // The notebook's keys were made with the settings chosen: changing its passphrase starts at them.
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#e2e-created-profiles .e2e-change").ClickAsync();
+        await Page.Locator("#e2e-tab-advanced").ClickAsync();
+        await Expect(Page.Locator("#e2e-argon2id-memory")).ToHaveValueAsync("1");
+    }
+
+    [TestMethod]
     public async Task GivenANotebookAfterAPasswordSignIn_WhenReloaded_ThenItIsLockedAndShownById_AndItsNameWasNotKept()
     {
         // Names are kept on the device only encrypted with the key derived from the passkey; signed in with a password

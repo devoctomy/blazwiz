@@ -1,9 +1,12 @@
+using System.ComponentModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
+using Devoctomy.Blazwiz.UI.Sync.Models;
+using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Devoctomy.Blazwiz.UI.Text.Interfaces;
 using MyApp.Portal.Application.Exceptions;
 using MyApp.Portal.Application.Services.Interfaces;
@@ -13,7 +16,9 @@ namespace MyApp.Portal.Application.ViewModels;
 
 /// <summary>
 /// ViewModel for the notebooks page: the user's notebooks, each with its own passphrase, and a dialog to create one.
-/// Opening a notebook shows its pages on the files page. Passphrases are cleared from the view model once used.
+/// Opening a notebook shows its pages on the files page. The dialog's passphrase fields and Advanced tab are the
+/// framework's passphrase form (<see cref="E2ePassphraseFormViewModel"/>); only the notebook's name is the app's.
+/// Passphrases are cleared once used.
 /// </summary>
 public partial class NotebooksViewModel : ViewModelBase
 {
@@ -27,9 +32,6 @@ public partial class NotebooksViewModel : ViewModelBase
     private bool isLoading = true;
     private bool isCreateDialogOpen;
     private string title = string.Empty;
-    private string passphrase = string.Empty;
-    private string confirmPassphrase = string.Empty;
-    private bool acknowledgedNoRecovery;
     private bool isWorking;
     private string? dialogError;
     private string? openingNotebook;
@@ -44,13 +46,16 @@ public partial class NotebooksViewModel : ViewModelBase
     /// <param name="manager">Says when a notebook is unlocked or locked.</param>
     /// <param name="navigationService">Opens a notebook.</param>
     /// <param name="errorText">Describes the framework's errors (e.g. a passphrase too short).</param>
+    /// <param name="passphraseForm">The framework's form for a new passphrase and its Argon2id settings.</param>
     public NotebooksViewModel(
         INotebookService notebookService,
         ISyncProtectedProfileService profiles,
         IE2eProtectedProfileManager manager,
         INavigationService navigationService,
-        IErrorText errorText)
+        IErrorText errorText,
+        E2ePassphraseFormViewModel passphraseForm)
     {
+        PassphraseForm = passphraseForm ?? throw new ArgumentNullException(nameof(passphraseForm));
         this.notebookService = notebookService ?? throw new ArgumentNullException(nameof(notebookService));
         this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
@@ -58,7 +63,14 @@ public partial class NotebooksViewModel : ViewModelBase
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.profiles.ProfilesChanged += OnProfilesChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
+        PassphraseForm.PropertyChanged += OnPassphraseFormChanged;
     }
+
+    /// <summary>
+    /// Gets a value indicating whether the notebook may be created: false while it is being created, and while the
+    /// Argon2id settings on the Advanced tab were changed and not benchmarked yet.
+    /// </summary>
+    public bool CanCreate => !IsWorking && PassphraseForm.CanConfirm;
 
     /// <summary>
     /// Gets the user's notebooks: the default notebook first.
@@ -97,31 +109,10 @@ public partial class NotebooksViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Gets or sets the new notebook's passphrase.
+    /// Gets the new notebook's passphrase form: the passphrase on the dialog's first tab, and on its Advanced tab the
+    /// Argon2id settings of the passphrase's key.
     /// </summary>
-    public string Passphrase
-    {
-        get => passphrase;
-        set => SetProperty(ref passphrase, value ?? string.Empty);
-    }
-
-    /// <summary>
-    /// Gets or sets the passphrase entered again, to confirm it.
-    /// </summary>
-    public string ConfirmPassphrase
-    {
-        get => confirmPassphrase;
-        set => SetProperty(ref confirmPassphrase, value ?? string.Empty);
-    }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the user has confirmed there is no passphrase recovery.
-    /// </summary>
-    public bool AcknowledgedNoRecovery
-    {
-        get => acknowledgedNoRecovery;
-        set => SetProperty(ref acknowledgedNoRecovery, value);
-    }
+    public E2ePassphraseFormViewModel PassphraseForm { get; }
 
     /// <summary>
     /// Gets a value indicating whether the notebook is being created.
@@ -129,7 +120,13 @@ public partial class NotebooksViewModel : ViewModelBase
     public bool IsWorking
     {
         get => isWorking;
-        private set => SetProperty(ref isWorking, value);
+        private set
+        {
+            if (SetProperty(ref isWorking, value))
+            {
+                OnPropertyChanged(nameof(CanCreate));
+            }
+        }
     }
 
     /// <summary>
@@ -277,12 +274,13 @@ public partial class NotebooksViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Opens the new notebook dialog with empty fields.
+    /// Opens the new notebook dialog with empty fields, and the Argon2id settings new notebooks are given.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
-    public void ShowCreateDialog()
+    public async Task ShowCreateDialogAsync()
     {
-        ClearInputs();
+        await PassphraseForm.ResetAsync();
         Title = string.Empty;
         DialogError = null;
         IsCreateDialogOpen = true;
@@ -299,12 +297,13 @@ public partial class NotebooksViewModel : ViewModelBase
             return;
         }
 
-        ClearInputs();
+        PassphraseForm.ClearPassphrases();
         IsCreateDialogOpen = false;
     }
 
     /// <summary>
-    /// Creates the notebook, once the dialog's fields are valid, and opens it.
+    /// Creates the notebook, once the dialog's fields are valid, and opens it. Argon2id settings that were changed must
+    /// have been benchmarked first.
     /// </summary>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
@@ -324,8 +323,8 @@ public partial class NotebooksViewModel : ViewModelBase
         IsWorking = true;
         try
         {
-            var notebook = await notebookService.CreateAsync(Title, Passphrase);
-            ClearInputs();
+            var notebook = await notebookService.CreateAsync(Title, PassphraseForm.Passphrase, PassphraseForm.GetArgon2Parameters());
+            PassphraseForm.ClearPassphrases();
             IsCreateDialogOpen = false;
             navigationService.NavigateTo(NoteEditorViewModel.GetFilesUrl(notebook.Name));
         }
@@ -346,41 +345,36 @@ public partial class NotebooksViewModel : ViewModelBase
         {
             profiles.ProfilesChanged -= OnProfilesChanged;
             manager.LockStateChanged -= OnLockStateChanged;
+            PassphraseForm.PropertyChanged -= OnPassphraseFormChanged;
         }
 
         base.Dispose(disposing);
     }
 
+    // The name is the app's; the passphrase and its Argon2id settings are checked by the framework's form.
     private string? Validate()
     {
         if (string.IsNullOrWhiteSpace(Title))
         {
+            PassphraseForm.ShowTab(E2ePassphraseFormTab.Passphrase);
             return "Give the notebook a name.";
         }
 
-        if (string.IsNullOrEmpty(Passphrase))
-        {
-            return "Enter a passphrase.";
-        }
-
-        if (!string.Equals(Passphrase, ConfirmPassphrase, StringComparison.Ordinal))
-        {
-            return "The passphrases do not match.";
-        }
-
-        return AcknowledgedNoRecovery ? null : "Confirm you understand there is no passphrase recovery.";
-    }
-
-    private void ClearInputs()
-    {
-        Passphrase = string.Empty;
-        ConfirmPassphrase = string.Empty;
-        AcknowledgedNoRecovery = false;
+        return PassphraseForm.Validate();
     }
 
     private async Task RefreshAsync()
     {
         Notebooks = await notebookService.GetNotebooksAsync();
+    }
+
+    // The Create button follows the form: disabled while its Argon2id settings need a benchmark.
+    private void OnPassphraseFormChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(E2ePassphraseFormViewModel.CanConfirm))
+        {
+            OnPropertyChanged(nameof(CanCreate));
+        }
     }
 
     private async void OnProfilesChanged(object? sender, EventArgs e)

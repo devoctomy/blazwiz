@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Models;
 
@@ -36,13 +37,25 @@ public interface ISyncProtectedProfileService
     Task<IReadOnlyList<E2eKeyScope>> LoadAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Gets the Argon2id costs a new passphrase would be given unless others are chosen: for a profile with keys, the
+    /// costs its passphrase key is derived with now; for a profile set up in code without keys yet, its settings' or
+    /// the app's; and without a profile, those of the profiles users create.
+    /// </summary>
+    /// <param name="scope">The profile's scope, or null for a profile about to be created.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>The costs, as a copy that can be changed.</returns>
+    Task<Argon2idParameters> GetArgon2ParametersAsync(E2eKeyScope? scope = null, CancellationToken ct = default);
+
+    /// <summary>
     /// Creates a protected profile with its own passphrase and adds it as a sync profile. It is unlocked.
     /// </summary>
     /// <param name="passphrase">The profile's passphrase.</param>
+    /// <param name="argon2">The Argon2id costs chosen for its passphrase key, or null for those of the profiles users
+    /// create.</param>
     /// <param name="progress">Told about each step.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>The new profile's scope; its id is the sync profile's name.</returns>
-    Task<E2eKeyScope> CreateAsync(string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
+    Task<E2eKeyScope> CreateAsync(string passphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
     /// Sets the passphrase of a profile set up in code the first time, creating its keys with its settings. It is
@@ -50,22 +63,25 @@ public interface ISyncProtectedProfileService
     /// </summary>
     /// <param name="scope">The profile's scope (its id, from <c>UseKeyId</c>).</param>
     /// <param name="passphrase">The passphrase.</param>
+    /// <param name="argon2">The Argon2id costs chosen for its passphrase key, or null for its settings'.</param>
     /// <param name="progress">Told about each step.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task SetUpAsync(E2eKeyScope scope, string passphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
+    Task SetUpAsync(E2eKeyScope scope, string passphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Changes a profile's passphrase and rotates its keys, with its passphrase rules and Argon2id costs. Its files are
-    /// not encrypted again here: <see cref="ISyncKeyRotationService"/> runs the whole passphrase change.
+    /// Changes a profile's passphrase and rotates its keys, with its passphrase rules. Its files are not encrypted
+    /// again here: <see cref="ISyncKeyRotationService"/> runs the whole passphrase change.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>
     /// <param name="currentPassphrase">The current passphrase.</param>
     /// <param name="newPassphrase">The new passphrase.</param>
+    /// <param name="argon2">The Argon2id costs chosen for the new passphrase key, or null to keep the costs the profile
+    /// has now.</param>
     /// <param name="progress">Told about each step.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
+    Task ChangePassphraseAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
     /// Deletes a protected profile, under its sync lock: finds its files in S3 (and stops, with nothing deleted, if S3

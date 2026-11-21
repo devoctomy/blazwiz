@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Configuration;
@@ -62,14 +63,14 @@ public class NotebookService(
     }
 
     /// <inheritdoc/>
-    public async Task<Notebook> CreateAsync(string title, string passphrase, IProgress<E2eProgress>? progress = null)
+    public async Task<Notebook> CreateAsync(string title, string passphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null)
     {
         if (string.IsNullOrWhiteSpace(title))
         {
             throw new NotesException("Give the notebook a name.");
         }
 
-        var scope = await profiles.CreateAsync(passphrase, progress);
+        var scope = await profiles.CreateAsync(passphrase, argon2, progress);
         var json = JsonSerializer.SerializeToUtf8Bytes(new NotebookTitle { Title = title.Trim() });
         await registry.GetFileStore(scope.Id).WriteAsync(RootOf(scope.Id) + TitleFile, json);
         await profiles.SetLabelAsync(scope, title.Trim());

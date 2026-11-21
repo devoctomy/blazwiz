@@ -192,24 +192,42 @@ public class E2eKeysDocumentServiceTests
     }
 
     [Theory]
-    [InlineData(nameof(KdfSettings.MemoryKib), E2eKeysDocumentService.MaxMemoryKib + 1)]
     [InlineData(nameof(KdfSettings.MemoryKib), 7)]
     [InlineData(nameof(KdfSettings.Iterations), 0)]
-    [InlineData(nameof(KdfSettings.Iterations), E2eKeysDocumentService.MaxIterations + 1)]
     [InlineData(nameof(KdfSettings.Parallelism), 0)]
-    [InlineData(nameof(KdfSettings.Parallelism), E2eKeysDocumentService.MaxParallelism + 1)]
     [InlineData(nameof(KdfSettings.KeyLength), 16)]
     [InlineData(nameof(KdfSettings.KeyLength), 64)]
-    public async Task GivenKeyDerivationSettingsOutOfRange_WhenParsed_ThenThrowsInvalidData(string setting, int value)
+    public async Task GivenKeyDerivationSettingsArgon2idOrTheCipherCannotUse_WhenParsed_ThenThrowsInvalidData(string setting, int value)
     {
-        // Arrange: the settings come from the document, so a tampered one must not exhaust memory or get as far as the
-        // cipher with the wrong key length.
+        // Arrange: a document must not get as far as Argon2id with less than it needs, or the cipher with the wrong key
+        // length.
         using var keys = await sut.CreateAsync("correct horse");
         typeof(KdfSettings).GetProperty(setting)!.SetValue(keys.Document.Kdf, value);
         var json = sut.Serialize(keys.Document);
 
         // Act & Assert
         Assert.Throws<InvalidDataException>(() => sut.Parse(json));
+    }
+
+    [Theory]
+    [InlineData(nameof(KdfSettings.MemoryKib), int.MaxValue)]
+    [InlineData(nameof(KdfSettings.Iterations), 100_000)]
+    [InlineData(nameof(KdfSettings.Parallelism), 1024)]
+    public async Task GivenKeyDerivationSettingsHoweverHigh_WhenParsed_ThenTheyAreKept(string setting, int value)
+    {
+        // Arrange: the costs are the user's to choose, so there is no upper limit on what a document may ask for. The
+        // memory is enough for any number of lanes here (Argon2id needs 8 KiB for each).
+        using var keys = await sut.CreateAsync("correct horse");
+        keys.Document.Kdf.MemoryKib = 1024 * 1024;
+        var property = typeof(KdfSettings).GetProperty(setting)!;
+        property.SetValue(keys.Document.Kdf, value);
+        var json = sut.Serialize(keys.Document);
+
+        // Act
+        var parsed = sut.Parse(json);
+
+        // Assert
+        Assert.Equal(value, property.GetValue(parsed.Kdf));
     }
 
     [Fact]

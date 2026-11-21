@@ -125,7 +125,10 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddShellComponent<SyncPill>(ShellRegion.Floating, order: 0);
         services.AddShellComponent<StorageMigrationOverlay>(ShellRegion.Overlays, order: 0);
 
+        // Each is a section of its own, so an app can take any of them off the page (RemoveSettingsSection), e.g. the
+        // end to end encryption section when its own pages set and change the passphrases.
         services.AddSettingsSection<SyncSettingsSection>(UiServiceCollectionExtensions.SettingsOrder.Offline + 100);
+        services.AddSettingsSection<E2eProfilesSection>(UiServiceCollectionExtensions.SettingsOrder.Offline + 150);
         services.AddSettingsSection<Argon2idBenchmarkPanel>(UiServiceCollectionExtensions.SettingsOrder.Offline + 200);
 
         services.AddSignInOption<StartSyncOffSignInOption, StartSyncOffOption>();

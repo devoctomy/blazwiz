@@ -157,4 +157,83 @@ public class E2eEncryptionTests : TestBase
         await Expect(Page.Locator("#argon2id-result")).ToBeVisibleAsync();
         await Expect(Page.Locator("#argon2id-error")).ToHaveCountAsync(0);
     }
+
+    [TestMethod]
+    public async Task GivenTheSettingsPage_WhenShown_ThenEndToEndEncryptionIsASectionOfItsOwnBetweenSyncAndTheBenchmark()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+
+        await Expect(Page.Locator("#e2e-section.panel")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#sync-card #e2e-section")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#sync-card + #e2e-section + #argon2id-card")).ToBeVisibleAsync();
+    }
+
+    [TestMethod]
+    public async Task GivenChangedArgon2idSettingsInTheNewProfileDialog_WhenConfirmed_ThenRefusedUntilTheyAreBenchmarked()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#e2e-new").ClickAsync();
+        await Expect(Page.Locator("#e2e-tab-passphrase")).ToHaveTextAsync("Passphrase");
+        await Expect(Page.Locator("#e2e-tab-advanced")).ToHaveTextAsync("Advanced");
+        await Page.Locator("#e2e-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-confirm-passphrase").FillAsync(Passphrase);
+        await Page.Locator("#e2e-acknowledge").CheckAsync();
+
+        // The Advanced tab starts at the settings new passphrases use, which need no benchmark as they are.
+        await Page.Locator("#e2e-tab-advanced").ClickAsync();
+        await Expect(Page.Locator("#e2e-argon2id-memory")).ToHaveValueAsync((TestArgon2idMemoryKib / 1024.0).ToString(CultureInfo.InvariantCulture));
+        await Expect(Page.Locator("#e2e-argon2id-iterations")).ToHaveValueAsync($"{TestArgon2idIterations}");
+        await Expect(Page.Locator("#e2e-argon2id-key-length")).ToHaveValueAsync("32");
+        await Expect(Page.Locator("#e2e-argon2id-key-length")).ToBeDisabledAsync();
+        await Expect(Page.Locator("#e2e-argon2id-needs-benchmark")).ToHaveCountAsync(0);
+
+        // Changed, they are refused until a benchmark has run with them.
+        await Page.Locator("#e2e-argon2id-iterations").FillAsync("2");
+        await Page.Locator("#e2e-argon2id-iterations").BlurAsync();
+        await Expect(Page.Locator("#e2e-argon2id-needs-benchmark")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#e2e-argon2id-needs-benchmark")).ToHaveTextAsync("Benchmark these settings on this device before they can be used.");
+        await Expect(Page.Locator("#e2e-confirm")).ToBeDisabledAsync();
+        await ScreenshotAsync("AdvancedTab");
+
+        await Page.Locator("#e2e-argon2id-benchmark").ClickAsync();
+        await Expect(Page.Locator("#e2e-argon2id-result")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#e2e-argon2id-needs-benchmark")).ToHaveCountAsync(0);
+        await Expect(Page.Locator("#e2e-confirm")).ToBeEnabledAsync();
+
+        // The passphrase entered on the first tab is still there.
+        await Page.Locator("#e2e-tab-passphrase").ClickAsync();
+        await Expect(Page.Locator("#e2e-passphrase")).ToHaveValueAsync(Passphrase);
+        await Page.Locator("#e2e-confirm").ClickAsync();
+        await Expect(Page.Locator("#e2e-finished")).ToContainTextAsync("Created ");
+    }
+
+    [TestMethod]
+    public async Task GivenAPassphraseSetWithItsOwnArgon2idSettings_WhenChangingIt_ThenTheAdvancedTabStartsAtThoseSettings()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+        await Page.Locator("#e2e-app-profiles .e2e-set-passphrase").First.ClickAsync();
+        await Page.Locator("#e2e-tab-advanced").ClickAsync();
+        await Page.Locator("#e2e-argon2id-memory").FillAsync("1");
+        await Page.Locator("#e2e-argon2id-memory").BlurAsync();
+        await Page.Locator("#e2e-argon2id-iterations").FillAsync("3");
+        await Page.Locator("#e2e-argon2id-iterations").BlurAsync();
+        await Page.Locator("#e2e-argon2id-benchmark").ClickAsync();
+        await Expect(Page.Locator("#e2e-argon2id-result")).ToBeVisibleAsync();
+        await Page.Locator("#e2e-tab-passphrase").ClickAsync();
+        await EnterNewPassphraseAsync();
+        await CloseFinishedDialogAsync();
+
+        await Page.Locator("#e2e-app-profiles .e2e-change").First.ClickAsync();
+
+        // The change passphrase dialog has the same two tabs, and its Advanced tab reads the profile's own settings.
+        await Expect(Page.Locator("#e2e-current-passphrase")).ToBeVisibleAsync();
+        await Page.Locator("#e2e-tab-advanced").ClickAsync();
+        await Expect(Page.Locator("#e2e-argon2id-memory")).ToHaveValueAsync("1");
+        await Expect(Page.Locator("#e2e-argon2id-iterations")).ToHaveValueAsync("3");
+        await Expect(Page.Locator("#e2e-argon2id-needs-benchmark")).ToHaveCountAsync(0);
+        await ScreenshotAsync("ChangePassphraseAdvancedTab");
+    }
 }

@@ -17,6 +17,7 @@ public class ShellServiceCollectionExtensionsTests
         Assert.Throws<ArgumentNullException>(() => ShellServiceCollectionExtensions.AddBlazwizShell(null!));
         Assert.Throws<ArgumentNullException>(() => ShellServiceCollectionExtensions.AddShellComponent<FakeComponent>(null!, ShellRegion.Banners));
         Assert.Throws<ArgumentNullException>(() => ShellServiceCollectionExtensions.AddSettingsSection<FakeComponent>(null!, 0));
+        Assert.Throws<ArgumentNullException>(() => ShellServiceCollectionExtensions.RemoveSettingsSection<FakeComponent>(null!));
         Assert.Throws<ArgumentNullException>(() => ShellServiceCollectionExtensions.AddNavigationItem(null!, new NavigationItem()));
         Assert.Throws<ArgumentNullException>(() => new ServiceCollection().AddNavigationItem(null!));
         Assert.Throws<ArgumentNullException>(() => ShellServiceCollectionExtensions.AddSignInOption<FakeOption, FakeComponent>(null!));
@@ -58,6 +59,25 @@ public class ShellServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void GivenSectionsAdded_WhenOneIsRemovedBeforeOrAfterItIsAdded_ThenItIsNotShown()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddBlazwizShell();
+
+        // Act
+        services.RemoveSettingsSection<OtherComponent>();
+        services.AddSettingsSection<FakeComponent>(order: 50);
+        services.AddSettingsSection<OtherComponent>(order: 10);
+        services.AddSettingsSection<ThirdComponent>(order: 20);
+        services.RemoveSettingsSection<ThirdComponent>();
+
+        // Assert
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
+        Assert.Equal([typeof(FakeComponent)], provider.GetRequiredService<ISettingsSectionRegistry>().GetSections());
+    }
+
+    [Fact]
     public void GivenNullArguments_WhenAddPageAssembly_ThenThrowsArgumentNullException()
     {
         // Act & Assert
@@ -85,6 +105,10 @@ public class ShellServiceCollectionExtensionsTests
     }
 
     private sealed class OtherComponent : ComponentBase
+    {
+    }
+
+    private sealed class ThirdComponent : ComponentBase
     {
     }
 
