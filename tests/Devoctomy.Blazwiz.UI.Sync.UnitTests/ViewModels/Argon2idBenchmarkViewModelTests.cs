@@ -328,5 +328,166 @@ public class Argon2idBenchmarkViewModelTests
         Assert.False(sut.IsRunning);
     }
 
+    [Fact]
+    public void GivenSettingsLeftAsTheyStart_WhenAskedWhetherTheyNeedABenchmark_ThenTheyDoNot()
+    {
+        // Act
+        var sut = CreateSut();
+
+        // Assert
+        Assert.False(sut.IsChanged);
+        Assert.False(sut.IsBenchmarked);
+        Assert.False(sut.NeedsBenchmark);
+        Assert.False(sut.IsKeyLengthFixed);
+    }
+
+    [Fact]
+    public async Task GivenSettingsChanged_WhenBenchmarkedWithExactlyThoseValues_ThenTheyNoLongerNeedABenchmark()
+    {
+        // Arrange
+        mockArgon2.Setup(x => x.DeriveKeyAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<Argon2idParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new byte[32]);
+        var sut = CreateSut();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+        sut.MemoryMib = 100_000;
+        sut.Iterations = 1_000;
+        sut.Parallelism = 256;
+        var neededBefore = sut.NeedsBenchmark;
+
+        // Act
+        await sut.BenchmarkAsync();
+
+        // Assert
+        Assert.True(neededBefore);
+        Assert.True(sut.IsChanged);
+        Assert.True(sut.IsBenchmarked);
+        Assert.False(sut.NeedsBenchmark);
+        Assert.Contains(nameof(Argon2idBenchmarkViewModel.NeedsBenchmark), changed);
+        var parameters = sut.GetParameters();
+        Assert.Equal(100_000 * 1024, parameters.MemoryKib);
+        Assert.Equal(1_000, parameters.Iterations);
+        Assert.Equal(256, parameters.Parallelism);
+    }
+
+    [Fact]
+    public async Task GivenBenchmarkedSettings_WhenAValueIsChangedAfterwards_ThenTheyNeedABenchmarkAgainUntilPutBack()
+    {
+        // Arrange
+        mockArgon2.Setup(x => x.DeriveKeyAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<Argon2idParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new byte[32]);
+        var sut = CreateSut();
+        sut.Iterations = 7;
+        await sut.BenchmarkAsync();
+
+        // Act
+        sut.Iterations = 8;
+        var afterChange = sut.NeedsBenchmark;
+        sut.Iterations = 7;
+        var putBack = sut.NeedsBenchmark;
+        sut.Iterations = options.Parameters.Iterations;
+
+        // Assert
+        Assert.True(afterChange);
+        Assert.False(putBack);
+        Assert.False(sut.NeedsBenchmark);
+        Assert.False(sut.IsChanged);
+    }
+
+    [Fact]
+    public async Task GivenSettingsChanged_WhenTheBenchmarkFails_ThenTheyStillNeedABenchmark()
+    {
+        // Arrange
+        mockArgon2.Setup(x => x.DeriveKeyAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<Argon2idParameters>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OutOfMemoryException("no memory"));
+        var sut = CreateSut();
+        sut.MemoryMib = 1_000_000;
+
+        // Act
+        await sut.BenchmarkAsync();
+
+        // Assert
+        Assert.NotNull(sut.Error);
+        Assert.False(sut.IsBenchmarked);
+        Assert.True(sut.NeedsBenchmark);
+    }
+
+    [Fact]
+    public async Task GivenMoreMemoryThanTheParametersCanHold_WhenBenchmarked_ThenItFailsAndNothingIsDerived()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.MemoryMib = 1e12;
+
+        // Act
+        await sut.BenchmarkAsync();
+
+        // Assert
+        Assert.Null(sut.Invalid);
+        Assert.NotNull(sut.Error);
+        Assert.True(sut.NeedsBenchmark);
+        Assert.Throws<OverflowException>(() => sut.GetParameters());
+        mockArgon2.Verify(x => x.DeriveKeyAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<Argon2idParameters>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenABenchmarkAndChanges_WhenReset_ThenTheValuesStartAtTheGivenOnesWithNothingBenchmarked()
+    {
+        // Arrange
+        mockArgon2.Setup(x => x.DeriveKeyAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<Argon2idParameters>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new byte[32]);
+        var sut = CreateSut();
+        sut.Iterations = 7;
+        sut.ToggleMemoryMenu();
+        await sut.BenchmarkAsync();
+        var startAt = new Argon2idParameters { MemoryKib = 128 * 1024, Iterations = 5, Parallelism = 4, KeyLength = 32 };
+
+        // Act
+        sut.Reset(startAt, fixKeyLength: true);
+        startAt.Iterations = 99;
+        sut.KeyLength = 64;
+
+        // Assert
+        Assert.Equal(128, sut.MemoryMib);
+        Assert.Equal(5, sut.Iterations);
+        Assert.Equal(4, sut.Parallelism);
+        Assert.Equal(32, sut.KeyLength);
+        Assert.True(sut.IsKeyLengthFixed);
+        Assert.False(sut.IsMemoryMenuOpen);
+        Assert.Null(sut.Result);
+        Assert.Null(sut.Error);
+        Assert.False(sut.IsChanged);
+        Assert.False(sut.IsBenchmarked);
+        Assert.False(sut.NeedsBenchmark);
+        Assert.Same(options.Parameters, sut.Parameters);
+    }
+
+    [Fact]
+    public void GivenAFixedKeyLength_WhenResetWithoutFixingIt_ThenItCanBeChangedAgain()
+    {
+        // Arrange
+        var sut = CreateSut();
+        sut.Reset(options.Parameters, fixKeyLength: true);
+
+        // Act
+        sut.Reset(new Argon2idParameters { MemoryKib = 64, Iterations = 1, Parallelism = 1, KeyLength = 48 }, fixKeyLength: false);
+        sut.KeyLength = 64;
+
+        // Assert
+        Assert.False(sut.IsKeyLengthFixed);
+        Assert.Equal(64, sut.KeyLength);
+        Assert.True(sut.IsChanged);
+    }
+
+    [Fact]
+    public void GivenNoValues_WhenReset_ThenThrowsArgumentNullException()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => sut.Reset(null!, fixKeyLength: false));
+    }
+
     private Argon2idBenchmarkViewModel CreateSut() => new(mockArgon2.Object, options, time, testText.Sync, testText.Errors);
 }

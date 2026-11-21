@@ -12,8 +12,11 @@ using Microsoft.Extensions.Localization;
 namespace Devoctomy.Blazwiz.UI.Sync.ViewModels;
 
 /// <summary>
-/// ViewModel for the Argon2id benchmark: times one derivation on this device with the values entered, which start at
-/// the parameters the app derives passphrase keys with. The benchmark never changes those parameters.
+/// ViewModel for the Argon2id settings editor and its benchmark: times one derivation on this device with the values
+/// entered, which start at the parameters the app derives passphrase keys with, or at those given to
+/// <see cref="Reset"/>. The benchmark never changes the app's parameters. Where the values entered are to be used (a
+/// new passphrase), values that differ from where they started are only accepted once a benchmark has completed with
+/// exactly those values (<see cref="NeedsBenchmark"/>); there is no upper limit on them.
 /// </summary>
 public partial class Argon2idBenchmarkViewModel : ViewModelBase
 {
@@ -38,6 +41,9 @@ public partial class Argon2idBenchmarkViewModel : ViewModelBase
     private bool isMemoryMenuOpen;
     private string? result;
     private string? error;
+    private Argon2idParameters defaults;
+    private Argon2idParameters? benchmarked;
+    private bool isKeyLengthFixed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="Argon2idBenchmarkViewModel"/> class.
@@ -55,16 +61,43 @@ public partial class Argon2idBenchmarkViewModel : ViewModelBase
         this.text = text ?? throw new ArgumentNullException(nameof(text));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
 
-        memoryMib = options.Parameters.MemoryKib / 1024.0;
-        iterations = options.Parameters.Iterations;
-        parallelism = options.Parameters.Parallelism;
-        keyLength = options.Parameters.KeyLength;
+        defaults = options.Parameters.Clone();
+        memoryMib = defaults.MemoryKib / 1024.0;
+        iterations = defaults.Iterations;
+        parallelism = defaults.Parallelism;
+        keyLength = defaults.KeyLength;
     }
 
     /// <summary>
     /// Gets the parameters the app derives passphrase keys with.
     /// </summary>
     public Argon2idParameters Parameters => options.Parameters;
+
+    /// <summary>
+    /// Gets a value indicating whether the key length cannot be changed, because the key is used with a cipher that
+    /// needs that length.
+    /// </summary>
+    public bool IsKeyLengthFixed
+    {
+        get => isKeyLengthFixed;
+        private set => SetProperty(ref isKeyLengthFixed, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the values entered differ from the ones they started at.
+    /// </summary>
+    public bool IsChanged => !Matches(defaults);
+
+    /// <summary>
+    /// Gets a value indicating whether a benchmark has completed with exactly the values entered.
+    /// </summary>
+    public bool IsBenchmarked => benchmarked != null && Matches(benchmarked);
+
+    /// <summary>
+    /// Gets a value indicating whether the values entered cannot be used yet: they were changed, and no benchmark has
+    /// completed with exactly these values.
+    /// </summary>
+    public bool NeedsBenchmark => IsChanged && !IsBenchmarked;
 
     /// <summary>
     /// Gets the common memory sizes to choose from, in MiB.
@@ -113,7 +146,13 @@ public partial class Argon2idBenchmarkViewModel : ViewModelBase
     public int KeyLength
     {
         get => keyLength;
-        set => SetBenchmarkValue(ref keyLength, value);
+        set
+        {
+            if (!IsKeyLengthFixed)
+            {
+                SetBenchmarkValue(ref keyLength, value);
+            }
+        }
     }
 
     /// <summary>
@@ -189,6 +228,42 @@ public partial class Argon2idBenchmarkViewModel : ViewModelBase
     private double MemoryKib => Math.Round(MemoryMib * 1024);
 
     /// <summary>
+    /// Starts the values again at the given ones, forgetting any benchmark: for choosing the settings of one passphrase.
+    /// </summary>
+    /// <param name="startAt">The values to start at, e.g. the ones the passphrase has now.</param>
+    /// <param name="fixKeyLength">Whether the key length must stay as given.</param>
+    public void Reset(Argon2idParameters startAt, bool fixKeyLength)
+    {
+        ArgumentNullException.ThrowIfNull(startAt);
+
+        defaults = startAt.Clone();
+        benchmarked = null;
+        IsKeyLengthFixed = false;
+        MemoryMib = defaults.MemoryKib / 1024.0;
+        Iterations = defaults.Iterations;
+        Parallelism = defaults.Parallelism;
+        KeyLength = defaults.KeyLength;
+        IsKeyLengthFixed = fixKeyLength;
+        IsMemoryMenuOpen = false;
+        Result = null;
+        Error = null;
+        RaiseValuesChanged();
+    }
+
+    /// <summary>
+    /// Gets the values entered as Argon2id parameters.
+    /// </summary>
+    /// <returns>The parameters, as a new instance.</returns>
+    /// <exception cref="OverflowException">The memory is more than the parameters can hold.</exception>
+    public Argon2idParameters GetParameters() => new Argon2idParameters
+    {
+        MemoryKib = checked((int)MemoryKib),
+        Iterations = Iterations,
+        Parallelism = Parallelism,
+        KeyLength = KeyLength,
+    };
+
+    /// <summary>
     /// Opens or closes the menu of common memory sizes.
     /// </summary>
     [RelayCommand]
@@ -234,19 +309,14 @@ public partial class Argon2idBenchmarkViewModel : ViewModelBase
         Error = null;
         try
         {
-            var parameters = new Argon2idParameters
-            {
-                MemoryKib = checked((int)MemoryKib),
-                Iterations = Iterations,
-                Parallelism = Parallelism,
-                KeyLength = KeyLength,
-            };
+            var parameters = GetParameters();
             var passphrase = Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
             var salt = RandomNumberGenerator.GetBytes(16);
             var started = timeProvider.GetTimestamp();
             var key = await argon2.DeriveKeyAsync(passphrase, salt, parameters);
             var elapsed = timeProvider.GetElapsedTime(started);
             CryptographicOperations.ZeroMemory(key);
+            benchmarked = parameters;
             Result = text["Sync.Argon2id.Took", elapsed.TotalSeconds];
         }
         catch (Exception ex)
@@ -256,15 +326,30 @@ public partial class Argon2idBenchmarkViewModel : ViewModelBase
         finally
         {
             IsRunning = false;
+            RaiseValuesChanged();
         }
     }
+
+    private bool Matches(Argon2idParameters parameters) =>
+        MemoryKib == parameters.MemoryKib
+        && Iterations == parameters.Iterations
+        && Parallelism == parameters.Parallelism
+        && KeyLength == parameters.KeyLength;
 
     private void SetBenchmarkValue<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (SetProperty(ref field, value, propertyName))
         {
-            OnPropertyChanged(nameof(Invalid));
-            OnPropertyChanged(nameof(CanBenchmark));
+            RaiseValuesChanged();
         }
+    }
+
+    private void RaiseValuesChanged()
+    {
+        OnPropertyChanged(nameof(Invalid));
+        OnPropertyChanged(nameof(CanBenchmark));
+        OnPropertyChanged(nameof(IsChanged));
+        OnPropertyChanged(nameof(IsBenchmarked));
+        OnPropertyChanged(nameof(NeedsBenchmark));
     }
 }

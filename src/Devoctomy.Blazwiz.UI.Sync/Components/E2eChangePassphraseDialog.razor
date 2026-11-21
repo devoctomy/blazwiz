@@ -1,0 +1,19 @@
+@inherits MvvmComponentBase<E2eProfilesViewModel>
+@inject IStringLocalizer<UiText> Text
+@inject IStringLocalizer<SyncUiText> SyncText
+
+@if (ViewModel.ActiveDialog != null)
+{
+    <E2eProfileDialog Model="ViewModel" OnClosed="OnClose" />
+}
+else if (!string.IsNullOrEmpty(ViewModel.Error))
+{
+    <ModalDialog Id="e2e-dialog" Title="@SyncText["Sync.E2e.ChangePassphrase"]" Icon="bi-shield-lock" OnClose="OnClose">
+        <ChildContent>
+            <div class="text-danger" id="e2e-error">@ViewModel.Error</div>
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-primary" id="e2e-close" @onclick="OnClose">@Text["Common.Close"]</button>
+        </Footer>
+    </ModalDialog>
+}

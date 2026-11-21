@@ -1,0 +1,63 @@
+@using Devoctomy.Blazwiz.UI.Sync.Models
+@inject IStringLocalizer<SyncUiText> SyncText
+
+<ul class="nav nav-tabs mb-3" role="tablist" id="@(IdPrefix)-tabs">
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link @(Form.ActiveTab == E2ePassphraseFormTab.Passphrase ? "active" : null)" role="tab"
+                id="@(IdPrefix)-tab-passphrase" aria-selected="@(Form.ActiveTab == E2ePassphraseFormTab.Passphrase ? "true" : "false")"
+                @onclick="() => Form.ShowTabCommand.Execute(E2ePassphraseFormTab.Passphrase)">
+            @(FirstTabTitle ?? SyncText["Sync.E2e.Tab.Passphrase"])
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link @(Form.ActiveTab == E2ePassphraseFormTab.Advanced ? "active" : null)" role="tab"
+                id="@(IdPrefix)-tab-advanced" aria-selected="@(Form.ActiveTab == E2ePassphraseFormTab.Advanced ? "true" : "false")"
+                @onclick="() => Form.ShowTabCommand.Execute(E2ePassphraseFormTab.Advanced)">
+            @SyncText["Sync.E2e.Tab.Advanced"]
+        </button>
+    </li>
+</ul>
+@if (Form.ActiveTab == E2ePassphraseFormTab.Passphrase)
+{
+    <div role="tabpanel" id="@(IdPrefix)-panel-passphrase" aria-labelledby="@(IdPrefix)-tab-passphrase">
+        @ChildContent
+        @if (Form.AsksForCurrentPassphrase)
+        {
+            <div class="mb-3">
+                <label class="form-label" for="@(IdPrefix)-current-passphrase">@SyncText["Sync.E2e.CurrentPassphrase"]</label>
+                <input type="password" class="form-control" id="@(IdPrefix)-current-passphrase" autocomplete="current-password" disabled="@Disabled"
+                       @bind="Form.CurrentPassphrase" @bind:event="oninput" />
+            </div>
+        }
+        <div class="mb-3">
+            <label class="form-label" for="@(IdPrefix)-passphrase">@SyncText["Sync.E2e.NewPassphrase"]</label>
+            <input type="password" class="form-control" id="@(IdPrefix)-passphrase" autocomplete="new-password" disabled="@Disabled"
+                   @bind="Form.Passphrase" @bind:event="oninput" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="@(IdPrefix)-confirm-passphrase">@SyncText["Sync.E2e.ConfirmPassphrase"]</label>
+            <input type="password" class="form-control" id="@(IdPrefix)-confirm-passphrase" autocomplete="new-password" disabled="@Disabled"
+                   @bind="Form.ConfirmPassphrase" @bind:event="oninput" />
+        </div>
+        <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="@(IdPrefix)-acknowledge" disabled="@Disabled" @bind="Form.AcknowledgedNoRecovery" />
+            <label class="form-check-label" for="@(IdPrefix)-acknowledge">@(AcknowledgeText ?? SyncText["Sync.E2e.Acknowledge"])</label>
+        </div>
+    </div>
+}
+else
+{
+    <div role="tabpanel" id="@(IdPrefix)-panel-advanced" aria-labelledby="@(IdPrefix)-tab-advanced">
+        <p>@SyncText["Sync.E2e.Advanced.Text"]</p>
+        <div class="alert alert-warning" role="alert" id="@(IdPrefix)-argon2id-memory-limit">
+            <i class="bi bi-exclamation-triangle me-1"></i>@SyncText["Sync.Argon2id.MemoryLimit"]
+        </div>
+        <Argon2idEditor Model="Form.Argon2" IdPrefix="@(IdPrefix + "-argon2id")" Disabled="Disabled" Compact="true" />
+        @if (Form.Argon2.NeedsBenchmark)
+        {
+            <p class="text-warning-emphasis mt-2 mb-0" id="@(IdPrefix)-argon2id-needs-benchmark">
+                <i class="bi bi-exclamation-triangle me-1"></i>@SyncText["Sync.Argon2id.NeedsBenchmark"]
+            </p>
+        }
+    </div>
+}

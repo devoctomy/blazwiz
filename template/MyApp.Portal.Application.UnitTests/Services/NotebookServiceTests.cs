@@ -1,4 +1,5 @@
 using System.Text;
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
@@ -124,7 +125,7 @@ public class NotebookServiceTests
     {
         // Arrange
         var id = Guid.NewGuid().ToString("D");
-        mockProfiles.Setup(x => x.CreateAsync("correct horse battery", null, It.IsAny<CancellationToken>()))
+        mockProfiles.Setup(x => x.CreateAsync("correct horse battery", null, null, It.IsAny<CancellationToken>()))
             .Callback(() =>
             {
                 Add(id, isCreatedByUser: true, isSetUp: true);
@@ -147,7 +148,29 @@ public class NotebookServiceTests
     {
         // Act & Assert
         await Assert.ThrowsAsync<NotesException>(() => CreateSut().CreateAsync(" ", "correct horse battery"));
-        mockProfiles.Verify(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
+        mockProfiles.Verify(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<Argon2idParameters?>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenArgon2SettingsChosen_WhenCreated_ThenTheProfileIsCreatedWithThem()
+    {
+        // Arrange
+        var id = Guid.NewGuid().ToString("D");
+        var chosen = new Argon2idParameters { MemoryKib = 4096, Iterations = 9, Parallelism = 2, KeyLength = 32 };
+        mockProfiles.Setup(x => x.CreateAsync("correct horse battery", chosen, null, It.IsAny<CancellationToken>()))
+            .Callback(() =>
+            {
+                Add(id, isCreatedByUser: true, isSetUp: true);
+                unlocked.Add(new E2eKeyScope(id));
+            })
+            .ReturnsAsync(new E2eKeyScope(id));
+
+        // Act
+        var notebook = await CreateSut().CreateAsync("Work", "correct horse battery", chosen);
+
+        // Assert
+        Assert.Equal(id, notebook.Name);
+        mockProfiles.Verify(x => x.CreateAsync("correct horse battery", chosen, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -208,7 +231,7 @@ public class NotebookServiceTests
     {
         // Arrange
         var id = Guid.NewGuid().ToString("D");
-        mockProfiles.Setup(x => x.CreateAsync("correct horse battery", null, It.IsAny<CancellationToken>())).ReturnsAsync(new E2eKeyScope(id));
+        mockProfiles.Setup(x => x.CreateAsync("correct horse battery", null, null, It.IsAny<CancellationToken>())).ReturnsAsync(new E2eKeyScope(id));
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSut().CreateAsync("Work", "correct horse battery"));

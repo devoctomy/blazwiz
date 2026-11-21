@@ -8,7 +8,7 @@ or their own `Add*` method. Each extension point is an `IServiceCollection` exte
 | Extension point | Register with | Read by | Shown |
 |---|---|---|---|
 | Shell regions | `AddShellComponent<TComponent>(ShellRegion, order)` | `ShellRegistry`, `MainLayoutViewModel.Banners` / `TopBarActions` / `Floating` / `Overlays` | In `MainLayout`, in order |
-| Settings sections | `AddSettingsSection<TComponent>(order)` | `SettingsSectionRegistry`, `SettingsView` | On the Settings page, in order (`UiServiceCollectionExtensions.SettingsOrder`) |
+| Settings sections | `AddSettingsSection<TComponent>(order)`, `RemoveSettingsSection<TComponent>()` | `SettingsSectionRegistry`, `SettingsView` | On the Settings page, in order (`UiServiceCollectionExtensions.SettingsOrder`). A removed section is not shown, whoever added it and whichever call came first |
 | Sign-in options | `AddSignInOption<TOption, TComponent>()` | `LoginViewModel` (`ISignInOption`, `SignInOptionRegistration`) | Under "Advanced options" on the sign-in page, expanded when one is set |
 | Session lifecycle handlers | `AddSessionLifecycleHandler<THandler>()` (Auth) | `SessionLifecycle` | Not shown: run at sign in, shell loading, session start, signing out, signed out ([session-management.md](session-management.md), diagram 1) |
 | Sign out everywhere handlers | `AddSignOutEverywhereHandler<THandler>()` (Auth) | `SignOutEverywhereNotifier` | Not shown: run while the user signs out everywhere, e.g. to tell their other devices. With one registered, the Profile page offers "Sign out everywhere" ([user-events.md](user-events.md)) |
@@ -38,10 +38,11 @@ flowchart TB
         S1["Appearance 100"]
         S2["Language 150"]
         S3["Offline 200"]
-        S4["Sync 300 (SyncSettingsSection, with the profiles)"]
+        S4["Sync 300 (SyncSettingsSection)"]
+        S4b["End to end encryption 350 (E2eProfilesSection)"]
         S5["Argon2id 400 (Argon2idBenchmarkPanel)"]
         S6["About 10000"]
-        S1 --> S2 --> S3 --> S4 --> S5 --> S6
+        S1 --> S2 --> S3 --> S4 --> S4b --> S5 --> S6
     end
 
     subgraph LoginPage["Sign-in page (login)"]
@@ -56,6 +57,10 @@ flowchart TB
 Items from the sync module are added by `AddBlazwizSyncModule`; everything else by `AddBlazwizUi`. The template's own
 sidebar items (Dashboard, Showcase, and the notes example's Notebooks) are added by the app.
 
+An app takes any Settings section off the page with `RemoveSettingsSection<TComponent>()`, e.g.
+`services.RemoveSettingsSection<E2eProfilesSection>()` when its own pages set and change the passphrases. Each of the
+sync module's three sections is registered on its own, so each can be removed without the others.
+
 ## 2. How a module plugs in
 
 The sync module's `AddBlazwizSyncModule` (`src/Devoctomy.Blazwiz.UI.Sync/Extensions/SyncModuleServiceCollectionExtensions.cs`)
@@ -65,7 +70,7 @@ uses every kind of extension point:
 flowchart LR
     Mod["AddBlazwizSyncModule"]
     Mod -- "AddShellComponent" --> R1["E2eBanner, FolderAccessBanner (Banners)<br/>SyncPill (Floating)<br/>StorageMigrationOverlay (Overlays)"]
-    Mod -- "AddSettingsSection" --> R2["SyncSettingsSection, Argon2idBenchmarkPanel"]
+    Mod -- "AddSettingsSection" --> R2["SyncSettingsSection, E2eProfilesSection,<br/>Argon2idBenchmarkPanel"]
     Mod -- "AddSignInOption" --> R3["StartSyncOffSignInOption + StartSyncOffOption"]
     Mod -- "AddSessionLifecycleHandler" --> R4["SyncSessionHandler"]
     Mod -- "AddNavigationItem" --> R5["Sync (Nav.Sync from SyncUiText, PageKey sync)"]

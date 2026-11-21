@@ -1,4 +1,5 @@
 @inherits MvvmComponentBase<E2eUnlockPanelViewModel>
+@inject IStringLocalizer<UiText> Text
 @inject IStringLocalizer<SyncUiText> SyncText
 
 @if (ViewModel.IsUnlocked)
@@ -68,7 +69,7 @@ else
         }
         else if (ViewModel.NeedsPassphrase)
         {
-            <button type="button" class="btn btn-primary" id="e2e-unlock-settings" @onclick="() => ViewModel.OpenSettingsCommand.Execute(null)">
+            <button type="button" class="btn btn-primary" id="e2e-unlock-set-passphrase" @onclick="() => ViewModel.OpenSetPassphraseCommand.ExecuteAsync(null)">
                 <i class="bi bi-key me-1"></i>@SyncText["Sync.E2e.SetPassphrase"]
             </button>
         }
@@ -77,4 +78,34 @@ else
             <div class="text-danger mt-2" id="e2e-unlock-error">@ViewModel.Error</div>
         }
     </div>
+}
+
+@if (ViewModel.IsSetPassphraseOpen)
+{
+    <ModalDialog Id="e2e-panel-dialog" Title="@SyncText["Sync.E2e.SetPassphrase"]" Icon="bi-shield-lock" OnClose="() => ViewModel.CloseSetPassphraseCommand.Execute(null)">
+        <ChildContent>
+            <form id="e2e-panel-form" @onsubmit="() => ViewModel.SetPassphraseCommand.ExecuteAsync(null)" @onsubmit:preventDefault>
+                <E2ePassphraseForm Form="ViewModel.PassphraseForm" IdPrefix="e2e-panel" Disabled="ViewModel.IsWorking">
+                    <p>@ViewModel.SetPassphraseText</p>
+                    <div class="alert alert-warning" role="alert" id="e2e-panel-no-recovery">
+                        <i class="bi bi-exclamation-triangle me-1"></i><strong>@ViewModel.NoRecoveryWarning</strong>
+                    </div>
+                </E2ePassphraseForm>
+            </form>
+            @if (!string.IsNullOrEmpty(ViewModel.SetPassphraseError))
+            {
+                <div class="text-danger mt-3" id="e2e-panel-error">@ViewModel.SetPassphraseError</div>
+            }
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" disabled="@ViewModel.IsWorking" @onclick="() => ViewModel.CloseSetPassphraseCommand.Execute(null)">@Text["Common.Cancel"]</button>
+            <button type="submit" form="e2e-panel-form" class="btn btn-primary" id="e2e-panel-confirm" disabled="@(!ViewModel.CanSetPassphrase)">
+                @if (ViewModel.IsWorking)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                @SyncText["Sync.E2e.SetPassphrase"]
+            </button>
+        </Footer>
+    </ModalDialog>
 }

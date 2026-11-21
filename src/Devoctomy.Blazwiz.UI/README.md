@@ -22,6 +22,8 @@ Add to the shell, or change it, with:
 - `AddNavigationItem`: a sidebar item.
 - `AddShellComponent<T>(region)`: a component in a region of the layout.
 - `AddSettingsSection<T>(order)`: a section on the Settings page.
+- `RemoveSettingsSection<T>()`: takes a section off the Settings page, whoever added it (the framework, a module or
+  the app) and whether it is added before or after the call.
 - `AddSignInOption<TOption, TComponent>()`: another way to sign in.
 - `AddPageAssembly`: pages from another assembly.
 - `ReplacePage<T>(BlazwizPages.Login)` and `DisablePage(BlazwizPages.Sync)`: replace or turn off a framework page.

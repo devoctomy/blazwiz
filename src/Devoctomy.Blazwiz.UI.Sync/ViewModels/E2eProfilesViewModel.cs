@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Core.Offline.Interfaces;
@@ -48,10 +49,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
     private E2eDialogKind? activeDialog;
     private E2eProfileRow? dialogProfile;
     private string passphrase = string.Empty;
-    private string confirmPassphrase = string.Empty;
-    private string currentPassphrase = string.Empty;
     private string deleteConfirmation = string.Empty;
-    private bool acknowledgedNoRecovery;
     private bool isWorking;
     private bool isFinished;
     private string? dialogError;
@@ -74,6 +72,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
     /// <param name="errorText">Describes errors.</param>
     /// <param name="rotation">Changes a passphrase: syncs, estimates, rotates the keys and encrypts the files again.</param>
     /// <param name="rotationSignOut">Signs every device out once a passphrase change has encrypted the files again.</param>
+    /// <param name="passphraseForm">The form a new passphrase is entered in, with its Argon2id settings.</param>
     public E2eProfilesViewModel(
         ISyncProtectedProfileService profiles,
         IE2eProtectedProfileManager manager,
@@ -82,8 +81,10 @@ public partial class E2eProfilesViewModel : ViewModelBase
         IStringLocalizer<SyncUiText> text,
         IErrorText errorText,
         ISyncKeyRotationService rotation,
-        IE2eRotationSignOut rotationSignOut)
+        IE2eRotationSignOut rotationSignOut,
+        E2ePassphraseFormViewModel passphraseForm)
     {
+        PassphraseForm = passphraseForm ?? throw new ArgumentNullException(nameof(passphraseForm));
         this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         this.presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
@@ -95,7 +96,14 @@ public partial class E2eProfilesViewModel : ViewModelBase
         this.profiles.ProfilesChanged += OnProfilesChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
         this.offlineModeService.Changed += OnOfflineModeChanged;
+        PassphraseForm.PropertyChanged += OnPassphraseFormChanged;
     }
+
+    /// <summary>
+    /// Gets the form a new passphrase is entered in (setting a first passphrase, creating a profile, changing a
+    /// passphrase): the passphrase on its first tab, and the Argon2id settings of its key on Advanced.
+    /// </summary>
+    public E2ePassphraseFormViewModel PassphraseForm { get; }
 
     /// <summary>
     /// Gets a value indicating whether the user's profiles are loaded.
@@ -252,36 +260,24 @@ public partial class E2eProfilesViewModel : ViewModelBase
     };
 
     /// <summary>
-    /// Gets a value indicating whether the dialog asks for a new passphrase, with its confirmation and the no recovery
-    /// acknowledgement.
+    /// Gets a value indicating whether the dialog asks for a new passphrase, in <see cref="PassphraseForm"/>.
     /// </summary>
-    public bool AsksForNewPassphrase => ActiveDialog is E2eDialogKind.SetPassphrase or E2eDialogKind.Create or E2eDialogKind.ChangePassphrase;
+    public bool AsksForNewPassphrase => IsNewPassphraseDialog(ActiveDialog);
 
     /// <summary>
-    /// Gets or sets the passphrase being entered (the new one, when changing it).
+    /// Gets a value indicating whether the dialog may be confirmed: false while it asks for a new passphrase whose
+    /// Argon2id settings were changed and not benchmarked yet.
+    /// </summary>
+    public bool CanConfirmDialog => !AsksForNewPassphrase || PassphraseForm.CanConfirm;
+
+    /// <summary>
+    /// Gets or sets the passphrase entered to unlock a profile. A new passphrase is entered in
+    /// <see cref="PassphraseForm"/>.
     /// </summary>
     public string Passphrase
     {
         get => passphrase;
         set => SetProperty(ref passphrase, value ?? string.Empty);
-    }
-
-    /// <summary>
-    /// Gets or sets the new passphrase entered again, to confirm it.
-    /// </summary>
-    public string ConfirmPassphrase
-    {
-        get => confirmPassphrase;
-        set => SetProperty(ref confirmPassphrase, value ?? string.Empty);
-    }
-
-    /// <summary>
-    /// Gets or sets the current passphrase, when changing it.
-    /// </summary>
-    public string CurrentPassphrase
-    {
-        get => currentPassphrase;
-        set => SetProperty(ref currentPassphrase, value ?? string.Empty);
     }
 
     /// <summary>
@@ -291,15 +287,6 @@ public partial class E2eProfilesViewModel : ViewModelBase
     {
         get => deleteConfirmation;
         set => SetProperty(ref deleteConfirmation, value ?? string.Empty);
-    }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the user has confirmed there is no passphrase recovery.
-    /// </summary>
-    public bool AcknowledgedNoRecovery
-    {
-        get => acknowledgedNoRecovery;
-        set => SetProperty(ref acknowledgedNoRecovery, value);
     }
 
     /// <summary>
@@ -378,17 +365,20 @@ public partial class E2eProfilesViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Opens the dialog setting the first passphrase of a profile set up in code.
+    /// Opens the dialog setting the first passphrase of a profile set up in code, with the Argon2id settings its
+    /// settings (or the app's) give it.
     /// </summary>
     /// <param name="name">The profile's name.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
-    public void OpenSetPassphrase(string name) => OpenDialog(E2eDialogKind.SetPassphrase, name);
+    public Task OpenSetPassphraseAsync(string name) => OpenDialogAsync(E2eDialogKind.SetPassphrase, name);
 
     /// <summary>
-    /// Opens the dialog creating a protected profile.
+    /// Opens the dialog creating a protected profile, with the Argon2id settings of the profiles users create.
     /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
-    public void OpenCreate() => OpenDialog(E2eDialogKind.Create, null);
+    public Task OpenCreateAsync() => OpenDialogAsync(E2eDialogKind.Create, null);
 
     /// <summary>
     /// Opens the dialog unlocking a profile with its passphrase.
@@ -398,11 +388,12 @@ public partial class E2eProfilesViewModel : ViewModelBase
     public void OpenUnlock(string name) => OpenDialog(E2eDialogKind.Unlock, name);
 
     /// <summary>
-    /// Opens the dialog changing a profile's passphrase.
+    /// Opens the dialog changing a profile's passphrase, with the Argon2id settings the profile has now.
     /// </summary>
     /// <param name="name">The profile's name.</param>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     [RelayCommand]
-    public void OpenChangePassphrase(string name) => OpenDialog(E2eDialogKind.ChangePassphrase, name);
+    public Task OpenChangePassphraseAsync(string name) => OpenDialogAsync(E2eDialogKind.ChangePassphrase, name);
 
     /// <summary>
     /// Opens the dialog deleting a protected profile the user created.
@@ -432,10 +423,11 @@ public partial class E2eProfilesViewModel : ViewModelBase
         }
 
         var scope = new E2eKeyScope(row.Id);
-        var value = Passphrase;
-        var current = CurrentPassphrase;
+        var value = PassphraseForm.Passphrase;
+        var current = PassphraseForm.CurrentPassphrase;
+        var argon2 = PassphraseForm.GetArgon2Parameters();
         Estimate = null;
-        if (await RunStepsAsync(RotationSteps, reporter => rotation.RotateAsync(scope, current, value, reporter), finish: false))
+        if (await RunStepsAsync(RotationSteps, reporter => rotation.RotateAsync(scope, current, value, argon2, reporter), finish: false))
         {
             await SignOutEverywhereAsync();
         }
@@ -510,11 +502,12 @@ public partial class E2eProfilesViewModel : ViewModelBase
         }
 
         var scope = DialogProfile is { } row ? new E2eKeyScope(row.Id) : null;
-        var value = Passphrase;
+        var value = AsksForNewPassphrase ? PassphraseForm.Passphrase : Passphrase;
+        var argon2 = AsksForNewPassphrase ? PassphraseForm.GetArgon2Parameters() : null;
         return ActiveDialog switch
         {
-            E2eDialogKind.SetPassphrase => RunStepsAsync(KeySteps, reporter => profiles.SetUpAsync(scope!, value, reporter)),
-            E2eDialogKind.Create => RunStepsAsync(KeySteps, async reporter => CreatedId = (await profiles.CreateAsync(value, reporter)).Id),
+            E2eDialogKind.SetPassphrase => RunStepsAsync(KeySteps, reporter => profiles.SetUpAsync(scope!, value, argon2, reporter)),
+            E2eDialogKind.Create => RunStepsAsync(KeySteps, async reporter => CreatedId = (await profiles.CreateAsync(value, argon2, reporter)).Id),
             E2eDialogKind.Unlock => RunAsync(() => manager.UnlockAsync(scope!, value)),
             E2eDialogKind.Delete => RunAsync(() => profiles.DeleteAsync(scope!)),
             E2eDialogKind.FinishRotation => FinishRotationAsync(scope!),
@@ -530,10 +523,14 @@ public partial class E2eProfilesViewModel : ViewModelBase
             profiles.ProfilesChanged -= OnProfilesChanged;
             manager.LockStateChanged -= OnLockStateChanged;
             offlineModeService.Changed -= OnOfflineModeChanged;
+            PassphraseForm.PropertyChanged -= OnPassphraseFormChanged;
         }
 
         base.Dispose(disposing);
     }
+
+    private static bool IsNewPassphraseDialog(E2eDialogKind? kind) =>
+        kind is E2eDialogKind.SetPassphrase or E2eDialogKind.Create or E2eDialogKind.ChangePassphrase;
 
     private E2eProfileRow? FindRow(string name) => rows.FirstOrDefault(r => r.Name == name);
 
@@ -549,6 +546,31 @@ public partial class E2eProfilesViewModel : ViewModelBase
         DialogProfile = name == null ? null : FindRow(name);
         ActiveDialog = kind;
         RefreshDialog();
+    }
+
+    // A dialog asking for a new passphrase: its form starts at the Argon2id settings that apply to the profile, which
+    // are read first. If they cannot be read the dialog is not opened, so a passphrase is never given other settings
+    // than the ones shown.
+    private async Task OpenDialogAsync(E2eDialogKind kind, string? name)
+    {
+        if (IsWorking)
+        {
+            return;
+        }
+
+        Error = null;
+        var profile = name == null ? null : FindRow(name);
+        try
+        {
+            await PassphraseForm.ResetAsync(profile == null ? null : new E2eKeyScope(profile.Id), kind == E2eDialogKind.ChangePassphrase);
+        }
+        catch (Exception ex)
+        {
+            Error = Describe(ex);
+            return;
+        }
+
+        OpenDialog(kind, name);
     }
 
     private void ResetDialogState()
@@ -646,27 +668,12 @@ public partial class E2eProfilesViewModel : ViewModelBase
                 : text["Sync.E2e.Error.DeleteConfirmationDiffers"].Value;
         }
 
-        if (ActiveDialog == E2eDialogKind.ChangePassphrase && string.IsNullOrEmpty(CurrentPassphrase))
+        if (AsksForNewPassphrase)
         {
-            return text["Sync.E2e.Error.CurrentPassphraseRequired"];
+            return PassphraseForm.Validate();
         }
 
-        if (string.IsNullOrEmpty(Passphrase))
-        {
-            return text["Sync.E2e.Error.PassphraseRequired"];
-        }
-
-        return AsksForNewPassphrase ? ValidateNewPassphrase() : null;
-    }
-
-    private string? ValidateNewPassphrase()
-    {
-        if (!string.Equals(Passphrase, ConfirmPassphrase, StringComparison.Ordinal))
-        {
-            return text["Sync.E2e.Error.PassphrasesDiffer"];
-        }
-
-        return AcknowledgedNoRecovery ? null : text["Sync.E2e.Error.AcknowledgeNoRecovery"].Value;
+        return string.IsNullOrEmpty(Passphrase) ? text["Sync.E2e.Error.PassphraseRequired"].Value : null;
     }
 
     private async Task RunAsync(Func<Task> action)
@@ -788,10 +795,8 @@ public partial class E2eProfilesViewModel : ViewModelBase
     private void ClearInputs()
     {
         Passphrase = string.Empty;
-        ConfirmPassphrase = string.Empty;
-        CurrentPassphrase = string.Empty;
         DeleteConfirmation = string.Empty;
-        AcknowledgedNoRecovery = false;
+        PassphraseForm.ClearPassphrases();
     }
 
     private void RefreshDialog()
@@ -804,6 +809,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
         OnPropertyChanged(nameof(DialogText));
         OnPropertyChanged(nameof(FinishedText));
         OnPropertyChanged(nameof(AsksForNewPassphrase));
+        OnPropertyChanged(nameof(CanConfirmDialog));
     }
 
     private async Task RefreshAsync()
@@ -813,6 +819,15 @@ public partial class E2eProfilesViewModel : ViewModelBase
         OnPropertyChanged(nameof(AppProfiles));
         OnPropertyChanged(nameof(CreatedProfiles));
         OnPropertyChanged(nameof(CanLockAll));
+    }
+
+    // The dialog's confirm button follows the form: disabled while its Argon2id settings need a benchmark.
+    private void OnPassphraseFormChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(E2ePassphraseFormViewModel.CanConfirm))
+        {
+            OnPropertyChanged(nameof(CanConfirmDialog));
+        }
     }
 
     private async void OnProfilesChanged(object? sender, EventArgs e)

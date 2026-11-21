@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
@@ -19,7 +20,7 @@ namespace Devoctomy.Blazwiz.UI.Sync.ViewModels;
 
 /// <summary>
 /// ViewModel for the unlock panel, shown in place of a profile's content while it is locked: its passphrase, and the
-/// passkey when this device can use it. A profile with no passphrase yet points to Settings, where it is set. Online, the
+/// passkey when this device can use it. A profile with no passphrase yet offers to set one, in a dialog here. Online, the
 /// profile is synced before it is unlocked, so what it shows once open is up to date. A user with a passkey on this
 /// device can choose to unlock it with biometrics from then on; they are asked for the passkey whenever its key is not
 /// in memory.
@@ -29,7 +30,6 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     private readonly ISyncProtectedProfileService profiles;
     private readonly IE2eProtectedProfileManager manager;
     private readonly IE2eProfilePresenter presenter;
-    private readonly INavigationService navigationService;
     private readonly IStringLocalizer<SyncUiText> text;
     private readonly IErrorText errorText;
     private readonly ISyncScheduler scheduler;
@@ -49,6 +49,8 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     private int filesTotal;
     private bool needsSignOut;
     private Dictionary<E2eStep, (int Done, int Total)> fileSteps = [];
+    private bool isSetPassphraseOpen;
+    private string? setPassphraseError;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="E2eUnlockPanelViewModel"/> class.
@@ -56,7 +58,7 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     /// <param name="profiles">The user's profiles.</param>
     /// <param name="manager">Unlocks the profile.</param>
     /// <param name="presenter">Describes the profile.</param>
-    /// <param name="navigationService">Opens Settings.</param>
+    /// <param name="passphraseForm">The form a first passphrase is entered in, with its Argon2id settings.</param>
     /// <param name="text">The sync UI's text.</param>
     /// <param name="errorText">Describes errors.</param>
     /// <param name="scheduler">Syncs the profile before it is unlocked.</param>
@@ -68,7 +70,7 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         ISyncProtectedProfileService profiles,
         IE2eProtectedProfileManager manager,
         IE2eProfilePresenter presenter,
-        INavigationService navigationService,
+        E2ePassphraseFormViewModel passphraseForm,
         IStringLocalizer<SyncUiText> text,
         IErrorText errorText,
         ISyncScheduler scheduler,
@@ -86,11 +88,12 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         this.profiles = profiles ?? throw new ArgumentNullException(nameof(profiles));
         this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         this.presenter = presenter ?? throw new ArgumentNullException(nameof(presenter));
-        this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+        PassphraseForm = passphraseForm ?? throw new ArgumentNullException(nameof(passphraseForm));
         this.text = text ?? throw new ArgumentNullException(nameof(text));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.profiles.ProfilesChanged += OnProfilesChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
+        PassphraseForm.PropertyChanged += OnPassphraseFormChanged;
     }
 
     /// <summary>
@@ -113,9 +116,48 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     public bool IsLocked => Profile?.State == E2eProfileState.Locked;
 
     /// <summary>
-    /// Gets a value indicating whether the profile has no passphrase yet, so the panel points to Settings.
+    /// Gets a value indicating whether the profile has no passphrase yet, so the panel offers to set one.
     /// </summary>
     public bool NeedsPassphrase => Profile?.State == E2eProfileState.NotSetUp;
+
+    /// <summary>
+    /// Gets the form the profile's first passphrase is entered in, in the set passphrase dialog.
+    /// </summary>
+    public E2ePassphraseFormViewModel PassphraseForm { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the set passphrase dialog is open.
+    /// </summary>
+    public bool IsSetPassphraseOpen
+    {
+        get => isSetPassphraseOpen;
+        private set => SetProperty(ref isSetPassphraseOpen, value);
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the set passphrase dialog may be confirmed: false while the passphrase is being
+    /// set, and while its Argon2id settings were changed and not benchmarked yet.
+    /// </summary>
+    public bool CanSetPassphrase => !IsWorking && PassphraseForm.CanConfirm;
+
+    /// <summary>
+    /// Gets why the passphrase was not set, or null.
+    /// </summary>
+    public string? SetPassphraseError
+    {
+        get => setPassphraseError;
+        private set => SetProperty(ref setPassphraseError, value);
+    }
+
+    /// <summary>
+    /// Gets the set passphrase dialog's explanation, naming the profile.
+    /// </summary>
+    public string SetPassphraseText => text["Sync.E2e.Dialog.SetPassphrase.Text", Profile?.DisplayName ?? string.Empty];
+
+    /// <summary>
+    /// Gets the warning shown before a passphrase is set.
+    /// </summary>
+    public string NoRecoveryWarning => text["Sync.E2e.NoRecoveryWarning"];
 
     /// <summary>
     /// Gets a value indicating whether a passphrase change of the profile was cut short, so it must be finished before
@@ -217,7 +259,13 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     public bool IsWorking
     {
         get => isWorking;
-        private set => SetProperty(ref isWorking, value);
+        private set
+        {
+            if (SetProperty(ref isWorking, value))
+            {
+                OnPropertyChanged(nameof(CanSetPassphrase));
+            }
+        }
     }
 
     /// <summary>
@@ -337,12 +385,83 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Opens Settings, where a first passphrase is set.
+    /// Opens the dialog setting the profile's first passphrase, here, in place of going to Settings.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task OpenSetPassphraseAsync()
+    {
+        if (IsWorking || !NeedsPassphrase || Profile is not { } current)
+        {
+            return;
+        }
+
+        Error = null;
+        try
+        {
+            await PassphraseForm.ResetAsync(new E2eKeyScope(current.Id));
+        }
+        catch (Exception ex)
+        {
+            Error = errorText.Describe(ex);
+            return;
+        }
+
+        SetPassphraseError = null;
+        IsSetPassphraseOpen = true;
+    }
+
+    /// <summary>
+    /// Closes the set passphrase dialog. Ignored while the passphrase is being set.
     /// </summary>
     [RelayCommand]
-    public void OpenSettings()
+    public void CloseSetPassphrase()
     {
-        navigationService.NavigateTo("/settings");
+        if (IsWorking)
+        {
+            return;
+        }
+
+        PassphraseForm.ClearPassphrases();
+        SetPassphraseError = null;
+        IsSetPassphraseOpen = false;
+    }
+
+    /// <summary>
+    /// Sets the profile's first passphrase, once the dialog's fields are valid: its keys are created and it is unlocked,
+    /// so its content is shown.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task SetPassphraseAsync()
+    {
+        if (IsWorking || !IsSetPassphraseOpen || Profile is not { } current)
+        {
+            return;
+        }
+
+        SetPassphraseError = PassphraseForm.Validate();
+        if (SetPassphraseError != null)
+        {
+            return;
+        }
+
+        IsWorking = true;
+        try
+        {
+            await profiles.SetUpAsync(new E2eKeyScope(current.Id), PassphraseForm.Passphrase, PassphraseForm.GetArgon2Parameters());
+            PassphraseForm.ClearPassphrases();
+            IsSetPassphraseOpen = false;
+        }
+        catch (Exception ex)
+        {
+            SetPassphraseError = errorText.Describe(ex);
+        }
+        finally
+        {
+            IsWorking = false;
+            await RefreshAsync();
+        }
     }
 
     /// <inheritdoc/>
@@ -352,6 +471,7 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         {
             profiles.ProfilesChanged -= OnProfilesChanged;
             manager.LockStateChanged -= OnLockStateChanged;
+            PassphraseForm.PropertyChanged -= OnPassphraseFormChanged;
         }
 
         base.Dispose(disposing);
@@ -479,6 +599,16 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         OnPropertyChanged(nameof(NeedsPassphrase));
         OnPropertyChanged(nameof(IsRotationInProgress));
         OnPropertyChanged(nameof(Message));
+        OnPropertyChanged(nameof(SetPassphraseText));
+    }
+
+    // The dialog's confirm button follows the form: disabled while its Argon2id settings need a benchmark.
+    private void OnPassphraseFormChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(E2ePassphraseFormViewModel.CanConfirm))
+        {
+            OnPropertyChanged(nameof(CanSetPassphrase));
+        }
     }
 
     private async void OnProfilesChanged(object? sender, EventArgs e)

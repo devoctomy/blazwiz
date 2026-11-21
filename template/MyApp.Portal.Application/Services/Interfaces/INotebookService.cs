@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Models;
 using MyApp.Portal.Models.Notes;
 
@@ -30,9 +31,10 @@ public interface INotebookService
     /// </summary>
     /// <param name="title">The notebook's name.</param>
     /// <param name="passphrase">Its passphrase. There is no recovery if it is lost.</param>
+    /// <param name="argon2">The Argon2id settings chosen for its passphrase key, or null for the app's.</param>
     /// <param name="progress">Told about each step of creating its keys.</param>
     /// <returns>The new notebook.</returns>
-    Task<Notebook> CreateAsync(string title, string passphrase, IProgress<E2eProgress>? progress = null);
+    Task<Notebook> CreateAsync(string title, string passphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null);
 
     /// <summary>
     /// Unlocks a notebook with biometrics (<see cref="Notebook.CanUnlockWithBiometrics"/>), syncing it first when

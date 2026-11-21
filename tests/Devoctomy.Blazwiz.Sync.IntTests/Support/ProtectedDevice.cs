@@ -69,7 +69,8 @@ public sealed class ProtectedDevice
             new SyncOptions(),
             Mock.Of<IE2eIdleLock>(),
             Labels.Object,
-            syncService.Object);
+            syncService.Object,
+            LightArgon2);
         var connectivity = new Mock<IConnectivityService>();
         connectivity.Setup(x => x.RecheckAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new Connectivity.ConnectivityStatus { IsOnline = true });
         var target = new Mock<IS3SyncTargetProvider>();

@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Models;
 
 namespace Devoctomy.Blazwiz.Encryption.Interfaces;
@@ -54,6 +55,16 @@ public interface IE2eProtectedProfileManager
     /// <exception cref="Exceptions.E2ePassphraseTooShortException">The passphrase is too short.</exception>
     /// <exception cref="InvalidOperationException">The profile already has keys.</exception>
     Task CreateKeysAsync(E2eKeyScope scope, string passphrase, E2eProfileSettings settings, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the Argon2id costs a protected profile's passphrase key is derived with now, from its keys document or,
+    /// when that cannot be reached, from this device's copy of it.
+    /// </summary>
+    /// <param name="scope">The profile's scope.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>The costs, or null when the profile has no keys yet.</returns>
+    /// <exception cref="InvalidDataException">The keys document is not valid.</exception>
+    Task<Argon2idParameters?> GetArgon2ParametersAsync(E2eKeyScope scope, CancellationToken ct = default);
 
     /// <summary>
     /// Unlocks a protected profile with its passphrase, from its keys document or, when that cannot be reached, from

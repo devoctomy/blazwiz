@@ -68,6 +68,21 @@ public static class ShellServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Takes a section off the Settings page, whoever added it (the framework, a module or the app) and whether it is
+    /// added before or after this call.
+    /// </summary>
+    /// <typeparam name="TComponent">The component showing the section.</typeparam>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for method chaining.</returns>
+    public static IServiceCollection RemoveSettingsSection<TComponent>(this IServiceCollection services)
+        where TComponent : IComponent
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddSingleton(new SettingsSectionRemoval(typeof(TComponent)));
+        return services;
+    }
+
+    /// <summary>
     /// Adds an item to the sidebar. Its <see cref="NavigationItem.Order"/> sets its position.
     /// </summary>
     /// <param name="services">The service collection.</param>

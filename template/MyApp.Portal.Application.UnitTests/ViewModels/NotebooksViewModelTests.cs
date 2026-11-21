@@ -1,10 +1,15 @@
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
+using Devoctomy.Blazwiz.Cryptography.Configuration;
+using Devoctomy.Blazwiz.Cryptography.Interfaces;
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Testing;
+using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Text;
+using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Moq;
 using MyApp.Portal.Application.Exceptions;
 using MyApp.Portal.Application.Services.Interfaces;
@@ -22,6 +27,8 @@ public class NotebooksViewModelTests
     private readonly Mock<ISyncProtectedProfileService> mockProfiles = new();
     private readonly Mock<IE2eProtectedProfileManager> mockManager = new();
     private readonly Mock<INavigationService> mockNavigation = new();
+    private readonly Mock<IArgon2idKeyDerivationService> mockArgon2 = new();
+    private readonly E2ePassphraseFormViewModel form;
     private readonly List<Notebook> notebooks =
     [
         new Notebook { Name = "notes", Id = Guid.NewGuid().ToString("D"), Title = "Notes", IsDefault = true },
@@ -30,17 +37,23 @@ public class NotebooksViewModelTests
     public NotebooksViewModelTests()
     {
         mockNotebooks.Setup(x => x.GetNotebooksAsync()).ReturnsAsync(() => notebooks.ToList());
+        mockProfiles.Setup(x => x.GetArgon2ParametersAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(() => AppCosts());
+        mockArgon2.Setup(x => x.DeriveKeyAsync(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<Argon2idParameters>(), It.IsAny<CancellationToken>())).ReturnsAsync(() => new byte[32]);
+        var text = testText.For<SyncUiText>();
+        var benchmark = new Argon2idBenchmarkViewModel(mockArgon2.Object, new Argon2idOptions { Parameters = AppCosts() }, TimeProvider.System, text, testText.Errors);
+        form = new E2ePassphraseFormViewModel(mockProfiles.Object, benchmark, text);
     }
 
     [Fact]
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("notebookService", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(null!, mockProfiles.Object, mockManager.Object, mockNavigation.Object, testText.Errors)).ParamName);
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, null!, mockManager.Object, mockNavigation.Object, testText.Errors)).ParamName);
-        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, mockProfiles.Object, null!, mockNavigation.Object, testText.Errors)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, mockProfiles.Object, mockManager.Object, null!, testText.Errors)).ParamName);
-        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, mockProfiles.Object, mockManager.Object, mockNavigation.Object, null!)).ParamName);
+        Assert.Equal("notebookService", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(null!, mockProfiles.Object, mockManager.Object, mockNavigation.Object, testText.Errors, form)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, null!, mockManager.Object, mockNavigation.Object, testText.Errors, form)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, mockProfiles.Object, null!, mockNavigation.Object, testText.Errors, form)).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, mockProfiles.Object, mockManager.Object, null!, testText.Errors, form)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, mockProfiles.Object, mockManager.Object, mockNavigation.Object, null!, form)).ParamName);
+        Assert.Equal("passphraseForm", Assert.Throws<ArgumentNullException>(() => new NotebooksViewModel(mockNotebooks.Object, mockProfiles.Object, mockManager.Object, mockNavigation.Object, testText.Errors, null!)).ParamName);
     }
 
     [Fact]
@@ -253,7 +266,7 @@ public class NotebooksViewModelTests
 
     [Theory]
     [InlineData("", Pass, Pass, true, "Give the notebook a name.")]
-    [InlineData("Work", "", "", true, "Enter a passphrase.")]
+    [InlineData("Work", "", "", true, "Enter your passphrase.")]
     [InlineData("Work", Pass, "different", true, "The passphrases do not match.")]
     [InlineData("Work", Pass, Pass, false, "Confirm you understand there is no passphrase recovery.")]
     public async Task GivenInvalidFields_WhenCreating_ThenNothingIsCreated(string title, string passphrase, string confirmation, bool acknowledged, string error)
@@ -262,9 +275,9 @@ public class NotebooksViewModelTests
         using var sut = CreateSut();
         sut.ShowCreateDialogCommand.Execute(null);
         sut.Title = title;
-        sut.Passphrase = passphrase;
-        sut.ConfirmPassphrase = confirmation;
-        sut.AcknowledgedNoRecovery = acknowledged;
+        sut.PassphraseForm.Passphrase = passphrase;
+        sut.PassphraseForm.ConfirmPassphrase = confirmation;
+        sut.PassphraseForm.AcknowledgedNoRecovery = acknowledged;
 
         // Act
         await sut.CreateCommand.ExecuteAsync(null);
@@ -272,41 +285,116 @@ public class NotebooksViewModelTests
         // Assert
         Assert.Equal(error, sut.DialogError);
         Assert.True(sut.IsCreateDialogOpen);
-        mockNotebooks.Verify(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IProgress<E2eProgress>?>()), Times.Never);
+        mockNotebooks.Verify(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Argon2idParameters?>(), It.IsAny<IProgress<E2eProgress>?>()), Times.Never);
     }
 
     [Fact]
     public async Task GivenValidFields_WhenCreating_ThenTheNotebookIsCreatedAndOpened()
     {
         // Arrange
-        mockNotebooks.Setup(x => x.CreateAsync("Work", Pass, null)).ReturnsAsync(new Notebook { Name = "nb1", Title = "Work" });
+        mockNotebooks.Setup(x => x.CreateAsync("Work", Pass, It.IsAny<Argon2idParameters?>(), null)).ReturnsAsync(new Notebook { Name = "nb1", Title = "Work" });
         using var sut = CreateSut();
         sut.ShowCreateDialogCommand.Execute(null);
         sut.Title = "Work";
-        sut.Passphrase = Pass;
-        sut.ConfirmPassphrase = Pass;
-        sut.AcknowledgedNoRecovery = true;
+        sut.PassphraseForm.Passphrase = Pass;
+        sut.PassphraseForm.ConfirmPassphrase = Pass;
+        sut.PassphraseForm.AcknowledgedNoRecovery = true;
 
         // Act
         await sut.CreateCommand.ExecuteAsync(null);
 
         // Assert
         Assert.False(sut.IsCreateDialogOpen);
-        Assert.Empty(sut.Passphrase);
+        Assert.Empty(sut.PassphraseForm.Passphrase);
         mockNavigation.Verify(x => x.NavigateTo("files?notebook=nb1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenTheDialogOpened_WhenShown_ThenTheAdvancedTabStartsAtTheSettingsNewNotebooksAreGiven()
+    {
+        // Arrange
+        using var sut = CreateSut();
+
+        // Act
+        await sut.ShowCreateDialogCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(sut.IsCreateDialogOpen);
+        Assert.Equal(E2ePassphraseFormTab.Passphrase, sut.PassphraseForm.ActiveTab);
+        Assert.Equal(19, sut.PassphraseForm.Argon2.MemoryMib);
+        Assert.Equal(2, sut.PassphraseForm.Argon2.Iterations);
+        Assert.True(sut.PassphraseForm.Argon2.IsKeyLengthFixed);
+        Assert.False(sut.PassphraseForm.Argon2.NeedsBenchmark);
+    }
+
+    [Fact]
+    public async Task GivenArgon2SettingsChanged_WhenCreating_ThenRefusedUntilTheyAreBenchmarkedThenCreatedWithThem()
+    {
+        // Arrange
+        Argon2idParameters? used = null;
+        mockNotebooks.Setup(x => x.CreateAsync("Work", Pass, It.IsAny<Argon2idParameters?>(), null))
+            .Callback<string, string, Argon2idParameters?, IProgress<E2eProgress>?>((_, _, argon2, _) => used = argon2)
+            .ReturnsAsync(new Notebook { Name = "nb1", Title = "Work" });
+        using var sut = CreateSut();
+        sut.ShowCreateDialogCommand.Execute(null);
+        sut.Title = "Work";
+        sut.PassphraseForm.Passphrase = Pass;
+        sut.PassphraseForm.ConfirmPassphrase = Pass;
+        sut.PassphraseForm.AcknowledgedNoRecovery = true;
+        sut.PassphraseForm.Argon2.MemoryMib = 4096;
+        sut.PassphraseForm.Argon2.Iterations = 250;
+
+        // Act
+        var canCreateBefore = sut.CanCreate;
+        await sut.CreateCommand.ExecuteAsync(null);
+        var refused = sut.DialogError;
+        var tab = sut.PassphraseForm.ActiveTab;
+        var createdBeforeBenchmark = used;
+        await sut.PassphraseForm.Argon2.BenchmarkCommand.ExecuteAsync(null);
+        var canCreateAfter = sut.CanCreate;
+        await sut.CreateCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.False(canCreateBefore);
+        Assert.True(canCreateAfter);
+        Assert.Equal("Benchmark these settings on this device before they can be used.", refused);
+        Assert.Equal(E2ePassphraseFormTab.Advanced, tab);
+        Assert.Null(createdBeforeBenchmark);
+        Assert.NotNull(used);
+        Assert.Equal(4096 * 1024, used.MemoryKib);
+        Assert.Equal(250, used.Iterations);
+        Assert.Equal(32, used.KeyLength);
+        Assert.False(sut.IsCreateDialogOpen);
+        mockNavigation.Verify(x => x.NavigateTo("files?notebook=nb1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenNoNameAndTheAdvancedTabShown_WhenCreating_ThenTheFirstTabIsShownWithTheError()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        sut.ShowCreateDialogCommand.Execute(null);
+        sut.PassphraseForm.ShowTabCommand.Execute(E2ePassphraseFormTab.Advanced);
+
+        // Act
+        await sut.CreateCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("Give the notebook a name.", sut.DialogError);
+        Assert.Equal(E2ePassphraseFormTab.Passphrase, sut.PassphraseForm.ActiveTab);
     }
 
     [Fact]
     public async Task GivenAShortPassphrase_WhenCreating_ThenTheErrorIsShown()
     {
         // Arrange
-        mockNotebooks.Setup(x => x.CreateAsync("Work", "short", null)).ThrowsAsync(new E2ePassphraseTooShortException(12));
+        mockNotebooks.Setup(x => x.CreateAsync("Work", "short", It.IsAny<Argon2idParameters?>(), null)).ThrowsAsync(new E2ePassphraseTooShortException(12));
         using var sut = CreateSut();
         sut.ShowCreateDialogCommand.Execute(null);
         sut.Title = "Work";
-        sut.Passphrase = "short";
-        sut.ConfirmPassphrase = "short";
-        sut.AcknowledgedNoRecovery = true;
+        sut.PassphraseForm.Passphrase = "short";
+        sut.PassphraseForm.ConfirmPassphrase = "short";
+        sut.PassphraseForm.AcknowledgedNoRecovery = true;
 
         // Act
         await sut.CreateCommand.ExecuteAsync(null);
@@ -339,13 +427,13 @@ public class NotebooksViewModelTests
 
         // Act
         sut.Title = null!;
-        sut.Passphrase = null!;
-        sut.ConfirmPassphrase = null!;
+        sut.PassphraseForm.Passphrase = null!;
+        sut.PassphraseForm.ConfirmPassphrase = null!;
 
         // Assert
         Assert.Equal(string.Empty, sut.Title);
-        Assert.Equal(string.Empty, sut.Passphrase);
-        Assert.Equal(string.Empty, sut.ConfirmPassphrase);
+        Assert.Equal(string.Empty, sut.PassphraseForm.Passphrase);
+        Assert.Equal(string.Empty, sut.PassphraseForm.ConfirmPassphrase);
     }
 
     [Fact]
@@ -355,18 +443,18 @@ public class NotebooksViewModelTests
         using var sut = CreateSut();
         sut.ShowCreateDialogCommand.Execute(null);
         sut.Title = "Work";
-        sut.Passphrase = Pass;
-        sut.ConfirmPassphrase = Pass;
-        sut.AcknowledgedNoRecovery = true;
+        sut.PassphraseForm.Passphrase = Pass;
+        sut.PassphraseForm.ConfirmPassphrase = Pass;
+        sut.PassphraseForm.AcknowledgedNoRecovery = true;
 
         // Act
         sut.CloseCreateDialogCommand.Execute(null);
 
         // Assert
         Assert.False(sut.IsCreateDialogOpen);
-        Assert.Empty(sut.Passphrase);
-        Assert.Empty(sut.ConfirmPassphrase);
-        Assert.False(sut.AcknowledgedNoRecovery);
+        Assert.Empty(sut.PassphraseForm.Passphrase);
+        Assert.Empty(sut.PassphraseForm.ConfirmPassphrase);
+        Assert.False(sut.PassphraseForm.AcknowledgedNoRecovery);
     }
 
     [Fact]
@@ -374,13 +462,13 @@ public class NotebooksViewModelTests
     {
         // Arrange
         var created = new TaskCompletionSource<Notebook>();
-        mockNotebooks.Setup(x => x.CreateAsync("Work", Pass, null)).Returns(created.Task);
+        mockNotebooks.Setup(x => x.CreateAsync("Work", Pass, It.IsAny<Argon2idParameters?>(), null)).Returns(created.Task);
         using var sut = CreateSut();
         sut.ShowCreateDialogCommand.Execute(null);
         sut.Title = "Work";
-        sut.Passphrase = Pass;
-        sut.ConfirmPassphrase = Pass;
-        sut.AcknowledgedNoRecovery = true;
+        sut.PassphraseForm.Passphrase = Pass;
+        sut.PassphraseForm.ConfirmPassphrase = Pass;
+        sut.PassphraseForm.AcknowledgedNoRecovery = true;
         var creating = sut.CreateAsync();
 
         // Act
@@ -388,7 +476,7 @@ public class NotebooksViewModelTests
         await sut.CreateAsync();
         var openWhileWorking = sut.IsCreateDialogOpen;
         var workingWhileCreating = sut.IsWorking;
-        var passphraseWhileWorking = sut.Passphrase;
+        var passphraseWhileWorking = sut.PassphraseForm.Passphrase;
         created.SetResult(new Notebook { Name = "nb1", Title = "Work" });
         await creating;
 
@@ -398,7 +486,7 @@ public class NotebooksViewModelTests
         Assert.Equal(Pass, passphraseWhileWorking);
         Assert.False(sut.IsWorking);
         Assert.False(sut.IsCreateDialogOpen);
-        mockNotebooks.Verify(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IProgress<E2eProgress>?>()), Times.Once);
+        mockNotebooks.Verify(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Argon2idParameters?>(), It.IsAny<IProgress<E2eProgress>?>()), Times.Once);
         mockNavigation.Verify(x => x.NavigateTo("files?notebook=nb1"), Times.Once);
     }
 
@@ -406,13 +494,13 @@ public class NotebooksViewModelTests
     public async Task GivenTheNameIsRejected_WhenCreating_ThenItsMessageIsShown()
     {
         // Arrange
-        mockNotebooks.Setup(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<IProgress<E2eProgress>?>())).ThrowsAsync(new NotesException("Give the notebook a name."));
+        mockNotebooks.Setup(x => x.CreateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Argon2idParameters?>(), It.IsAny<IProgress<E2eProgress>?>())).ThrowsAsync(new NotesException("Give the notebook a name."));
         using var sut = CreateSut();
         sut.ShowCreateDialogCommand.Execute(null);
         sut.Title = "Work";
-        sut.Passphrase = Pass;
-        sut.ConfirmPassphrase = Pass;
-        sut.AcknowledgedNoRecovery = true;
+        sut.PassphraseForm.Passphrase = Pass;
+        sut.PassphraseForm.ConfirmPassphrase = Pass;
+        sut.PassphraseForm.AcknowledgedNoRecovery = true;
 
         // Act
         await sut.CreateCommand.ExecuteAsync(null);
@@ -456,5 +544,7 @@ public class NotebooksViewModelTests
         mockNotebooks.Verify(x => x.GetNotebooksAsync(), Times.Exactly(3));
     }
 
-    private NotebooksViewModel CreateSut() => new(mockNotebooks.Object, mockProfiles.Object, mockManager.Object, mockNavigation.Object, testText.Errors);
+    private static Argon2idParameters AppCosts() => new() { MemoryKib = 19 * 1024, Iterations = 2, Parallelism = 1, KeyLength = 32 };
+
+    private NotebooksViewModel CreateSut() => new(mockNotebooks.Object, mockProfiles.Object, mockManager.Object, mockNavigation.Object, testText.Errors, form);
 }

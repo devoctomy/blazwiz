@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Devoctomy.Blazwiz.Cryptography;
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
@@ -77,7 +78,7 @@ public class SyncKeyRotationServiceTests
             .Returns(Task.CompletedTask);
         mockSync.Setup(x => x.SyncAsync(scope.Id, false, It.IsAny<IProgress<SyncPassProgress>?>(), It.IsAny<CancellationToken>()))
             .Returns<string?, bool, IProgress<SyncPassProgress>?, CancellationToken>((_, _, progress, _) => PushAsync(progress));
-        mockProfiles.Setup(x => x.ChangePassphraseAsync(scope, "old", "new", It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
+        mockProfiles.Setup(x => x.ChangePassphraseAsync(scope, "old", "new", It.IsAny<Argon2idParameters?>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
             .Callback(() => ring.Load(RandomNumberGenerator.GetBytes(32), new Dictionary<string, byte[]> { [OldKeyId] = oldKey, [NewKeyId] = newKey }, NewKeyId))
             .Returns(Task.CompletedTask);
         ring.Load(RandomNumberGenerator.GetBytes(32), new Dictionary<string, byte[]> { [OldKeyId] = oldKey }, OldKeyId);
@@ -186,7 +187,7 @@ public class SyncKeyRotationServiceTests
         var sut = CreateSut();
 
         // Act
-        await sut.RotateAsync(scope, "old", "new", new Reporter(reported));
+        await sut.RotateAsync(scope, "old", "new", progress: new Reporter(reported));
 
         // Assert
         Assert.Equal(["profiles/a.md", "profiles/b.md"], (await files.ListAsync()).Where(f => !f.IsFolder).Select(f => f.Key).Order());
@@ -288,6 +289,20 @@ public class SyncKeyRotationServiceTests
         Assert.Equal(2, passes);
         Assert.Equal("theirs", Encoding.UTF8.GetString((await store.ReadAsync("profiles/a.md"))!.Content));
         Assert.Equal(NewKeyId, (await index.GetAsync(scope.Id, Owner, "profiles/a.md"))!.KeyId);
+    }
+
+    [Fact]
+    public async Task GivenArgon2CostsChosen_WhenRotated_ThenThePassphraseIsChangedWithThem()
+    {
+        // Arrange
+        var chosen = new Argon2idParameters { MemoryKib = 2048, Iterations = 5, Parallelism = 2, KeyLength = 32 };
+        var sut = CreateSut();
+
+        // Act
+        await sut.RotateAsync(scope, "old", "new", chosen);
+
+        // Assert
+        mockProfiles.Verify(x => x.ChangePassphraseAsync(scope, "old", "new", chosen, It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

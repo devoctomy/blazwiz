@@ -1,10 +1,48 @@
 #nullable enable
-Devoctomy.Blazwiz.UI.Sync.Components.Argon2idPanel
-Devoctomy.Blazwiz.UI.Sync.Components.Argon2idPanel.Argon2idPanel() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idBenchmarkPanel
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idBenchmarkPanel.Argon2idBenchmarkPanel() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Argon2idEditor() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Compact.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Compact.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Disabled.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Disabled.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Dispose() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.IdPrefix.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.IdPrefix.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Model.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel!
+Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Model.set -> void
 Devoctomy.Blazwiz.UI.Sync.Components.E2eBanner
 Devoctomy.Blazwiz.UI.Sync.Components.E2eBanner.E2eBanner() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog
+Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog.E2eChangePassphraseDialog() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog.OnClose.get -> Microsoft.AspNetCore.Components.EventCallback
+Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog.OnClose.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog.Profile.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog.Profile.set -> void
 Devoctomy.Blazwiz.UI.Sync.Components.E2eLockIndicator
 Devoctomy.Blazwiz.UI.Sync.Components.E2eLockIndicator.E2eLockIndicator() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.AcknowledgeText.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.AcknowledgeText.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.ChildContent.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Disabled.get -> bool
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Disabled.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Dispose() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.E2ePassphraseForm() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.FirstTabTitle.get -> string?
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.FirstTabTitle.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Form.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel!
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Form.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.IdPrefix.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.IdPrefix.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eProfileDialog
+Devoctomy.Blazwiz.UI.Sync.Components.E2eProfileDialog.E2eProfileDialog() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eProfileDialog.Model.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel!
+Devoctomy.Blazwiz.UI.Sync.Components.E2eProfileDialog.Model.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.E2eProfileDialog.OnClosed.get -> Microsoft.AspNetCore.Components.EventCallback
+Devoctomy.Blazwiz.UI.Sync.Components.E2eProfileDialog.OnClosed.set -> void
 Devoctomy.Blazwiz.UI.Sync.Components.E2eProfilesSection
 Devoctomy.Blazwiz.UI.Sync.Components.E2eProfilesSection.E2eProfilesSection() -> void
 Devoctomy.Blazwiz.UI.Sync.Components.E2eUnlockPanel
@@ -37,6 +75,9 @@ Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Delete = 4 -> Devoctomy.Blazwiz.U
 Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.FinishRotation = 5 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
 Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.SetPassphrase = 0 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
 Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind.Unlock = 2 -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind
+Devoctomy.Blazwiz.UI.Sync.Models.E2ePassphraseFormTab
+Devoctomy.Blazwiz.UI.Sync.Models.E2ePassphraseFormTab.Advanced = 1 -> Devoctomy.Blazwiz.UI.Sync.Models.E2ePassphraseFormTab
+Devoctomy.Blazwiz.UI.Sync.Models.E2ePassphraseFormTab.Passphrase = 0 -> Devoctomy.Blazwiz.UI.Sync.Models.E2ePassphraseFormTab
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.AllowDeviceUnlock.get -> bool
 Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow.AllowDeviceUnlock.set -> void
@@ -265,24 +306,34 @@ Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.Present(Devoctomy.Blazwiz
 Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.PresentPass(Devoctomy.Blazwiz.Sync.Models.SyncPassStatus! pass, string? name) -> Devoctomy.Blazwiz.UI.Sync.Models.SyncPassPresentation!
 Devoctomy.Blazwiz.UI.Sync.Services.SyncStatusPresenter.SyncStatusPresenter(Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.Core.Text.Interfaces.ITextPlurals! plurals, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
 Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Argon2idSettingsViewModel(Devoctomy.Blazwiz.Cryptography.Interfaces.IArgon2idKeyDerivationService! argon2, Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions! options, System.TimeProvider! timeProvider, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.BenchmarkAsync() -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.CanBenchmark.get -> bool
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.CommonMemoryMib.get -> System.Collections.Generic.IReadOnlyList<int>!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Error.get -> string?
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Invalid.get -> string?
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.IsRunning.get -> bool
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Iterations.get -> int
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Iterations.set -> void
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.KeyLength.get -> int
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.KeyLength.set -> void
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MemoryMib.get -> double
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MemoryMib.set -> void
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Parallelism.get -> int
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Parallelism.set -> void
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Parameters.get -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Result.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Argon2idBenchmarkViewModel(Devoctomy.Blazwiz.Cryptography.Interfaces.IArgon2idKeyDerivationService! argon2, Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions! options, System.TimeProvider! timeProvider, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.BenchmarkAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.CanBenchmark.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.ChooseMemory(int mib) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.CloseMemoryMenu() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.CommonMemoryMib.get -> System.Collections.Generic.IReadOnlyList<int>!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.GetParameters() -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Invalid.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.IsBenchmarked.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.IsChanged.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.IsKeyLengthFixed.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.IsMemoryMenuOpen.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.IsRunning.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Iterations.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Iterations.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.KeyLength.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.KeyLength.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.MemoryMib.get -> double
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.MemoryMib.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.NeedsBenchmark.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Parallelism.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Parallelism.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Parameters.get -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Reset(Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters! startAt, bool fixKeyLength) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.Result.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.ToggleMemoryMenu() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.E2eBannerViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.ISyncProfileDisplayNames! displayNames, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.IsVisible.get -> bool
@@ -297,28 +348,42 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eLockIndicatorViewModel.LockAll() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eLockIndicatorViewModel.Text.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eLockIndicatorViewModel.ToggleMenu() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eLockIndicatorViewModel.UnlockedCount.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.AcknowledgedNoRecovery.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.AcknowledgedNoRecovery.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.ActiveTab.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2ePassphraseFormTab
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.Argon2.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.AsksForCurrentPassphrase.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.CanConfirm.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.ClearPassphrases() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.ConfirmPassphrase.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.ConfirmPassphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.CurrentPassphrase.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.CurrentPassphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.E2ePassphraseFormViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel! argon2, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.GetArgon2Parameters() -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.Passphrase.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.Passphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.ResetAsync(Devoctomy.Blazwiz.Encryption.Models.E2eKeyScope? scope = null, bool asksForCurrentPassphrase = false, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.ShowTab(Devoctomy.Blazwiz.UI.Sync.Models.E2ePassphraseFormTab tab) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.Validate() -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.AcknowledgedNoRecovery.get -> bool
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.AcknowledgedNoRecovery.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.ActiveDialog.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2eDialogKind?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.AppProfiles.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow!>!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.AsksForNewPassphrase.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CanConfirmDialog.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CanLockAll.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CloseDialog() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.ConfirmDialogAsync() -> System.Threading.Tasks.Task!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.ConfirmPassphrase.get -> string!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.ConfirmPassphrase.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CreatedId.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CreatedProfiles.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow!>!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CurrentPassphrase.get -> string!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.CurrentPassphrase.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DeleteConfirmation.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DeleteConfirmation.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogError.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogProfile.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.DialogTitle.get -> string!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.E2eProfilesViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncKeyRotationService! rotation, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eRotationSignOut! rotationSignOut) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.E2eProfilesViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncKeyRotationService! rotation, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eRotationSignOut! rotationSignOut, Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel! passphraseForm) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Error.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Estimate.get -> Devoctomy.Blazwiz.Sync.Models.SyncKeyRotationEstimate?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.EstimateText.get -> string!
@@ -337,21 +402,24 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Lock(string! name) -> 
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.LockAll() -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.NeedsSignOut.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.NoRecoveryWarning.get -> string!
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenChangePassphrase(string! name) -> void
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenCreate() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenChangePassphraseAsync(string! name) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenCreateAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenDelete(string! name) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenFinishRotation(string! name) -> void
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenSetPassphrase(string! name) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenSetPassphraseAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OpenUnlock(string! name) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Passphrase.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Passphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.PassphraseForm.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.RetrySignOutAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.RotationWarning.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.StartRotationAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Steps.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Sync.Models.E2eStepItem!>!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.WorkingText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.E2eUnlockPanelViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! scheduler, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys, Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService! toasts, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncKeyRotationService! rotation, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eRotationSignOut! rotationSignOut) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.CanSetPassphrase.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.CloseSetPassphrase() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.E2eUnlockPanelViewModel(Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncProtectedProfileService! profiles, Devoctomy.Blazwiz.Encryption.Interfaces.IE2eProtectedProfileManager! manager, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eProfilePresenter! presenter, Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel! passphraseForm, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.Sync.Interfaces.ISyncScheduler! scheduler, Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService! passkeys, Devoctomy.Blazwiz.UI.Services.Interfaces.IToastService! toasts, Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncKeyRotationService! rotation, Devoctomy.Blazwiz.UI.Sync.Services.Interfaces.IE2eRotationSignOut! rotationSignOut) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Error.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.FilesDone.get -> int
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.FilesPercent.get -> int
@@ -360,19 +428,25 @@ Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.FinishRotationAsync
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsFinishingRotation.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsLocked.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsRotationInProgress.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsSetPassphraseOpen.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsUnlocked.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.IsWorking.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Message.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.NeedsPassphrase.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.NeedsSignOut.get -> bool
-Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.OpenSettings() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.NoRecoveryWarning.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.OpenSetPassphraseAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Passphrase.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Passphrase.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.PassphraseForm.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Profile.get -> Devoctomy.Blazwiz.UI.Sync.Models.E2eProfileRow?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RememberBiometrics.get -> bool
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RememberBiometrics.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RetrySignOutAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.RotationWarning.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.SetPassphraseAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.SetPassphraseError.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.SetPassphraseText.get -> string!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.SetProfileAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.UnlockAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.UnlockWithDeviceAsync() -> System.Threading.Tasks.Task!
@@ -462,12 +536,15 @@ Devoctomy.Blazwiz.UI.Sync._Imports.Execute() -> void
 Devoctomy.Blazwiz.UI.Sync._Imports._Imports() -> void
 const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.Argon2idConfigurationSection = "Argon2id" -> string!
 const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.ConfigurationSection = "AwsS3" -> string!
-const Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MaxMemoryMib = 4096 -> int
-const Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MinKeyLength = 16 -> int
+const Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idBenchmarkViewModel.MinKeyLength = 16 -> int
 const Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.PageSize = 200 -> int
+override Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.OnParametersSet() -> void
+override Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog.OnInitializedAsync() -> System.Threading.Tasks.Task!
+override Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.OnParametersSet() -> void
 override Devoctomy.Blazwiz.UI.Sync.Components.E2eUnlockPanel.OnParametersSetAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eLockIndicatorViewModel.Dispose(bool disposing) -> void
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2ePassphraseFormViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eProfilesViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eUnlockPanelViewModel.Dispose(bool disposing) -> void
@@ -481,9 +558,15 @@ override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.Dispose(bool disposi
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
 static Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.AddBlazwizSyncModule(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration, System.Action<Devoctomy.Blazwiz.Sync.Configuration.SyncBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static readonly Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.SearchDebounce -> System.TimeSpan
-~override Devoctomy.Blazwiz.UI.Sync.Components.Argon2idPanel.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+virtual Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.Dispose(bool disposing) -> void
+virtual Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.Dispose(bool disposing) -> void
+~override Devoctomy.Blazwiz.UI.Sync.Components.Argon2idBenchmarkPanel.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override Devoctomy.Blazwiz.UI.Sync.Components.Argon2idEditor.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Sync.Components.E2eBanner.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override Devoctomy.Blazwiz.UI.Sync.Components.E2eChangePassphraseDialog.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Sync.Components.E2eLockIndicator.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override Devoctomy.Blazwiz.UI.Sync.Components.E2ePassphraseForm.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override Devoctomy.Blazwiz.UI.Sync.Components.E2eProfileDialog.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Sync.Components.E2eProfilesSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Sync.Components.E2eUnlockPanel.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
 ~override Devoctomy.Blazwiz.UI.Sync.Components.FolderAccessBanner.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

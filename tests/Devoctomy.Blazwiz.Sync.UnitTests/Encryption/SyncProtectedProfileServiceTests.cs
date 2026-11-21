@@ -1,3 +1,5 @@
+using Devoctomy.Blazwiz.Cryptography.Configuration;
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Configuration;
@@ -14,6 +16,7 @@ public class SyncProtectedProfileServiceTests
 {
     private readonly Mock<IE2eProtectedProfileManager> mockManager = new();
     private readonly SyncOptions options = new();
+    private readonly Argon2idOptions argon2Options = new() { Parameters = new Argon2idParameters { MemoryKib = 1024, Iterations = 3, Parallelism = 1, KeyLength = 32 } };
     private readonly FakeSyncProfileRegistry registry;
     private readonly Mock<ISyncStorageResolver> mockResolver = new();
     private readonly Mock<ISyncUserContext> mockUser = new();
@@ -46,16 +49,17 @@ public class SyncProtectedProfileServiceTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(null!, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object)).ParamName);
-        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, null!, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object)).ParamName);
-        Assert.Equal("storageResolver", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, null!, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object)).ParamName);
-        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, null!, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object)).ParamName);
-        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, null!, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object)).ParamName);
-        Assert.Equal("lockChannel", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, null!, options, mockIdle.Object, mockLabels.Object, mockSync.Object)).ParamName);
-        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, null!, mockIdle.Object, mockLabels.Object, mockSync.Object)).ParamName);
-        Assert.Equal("idleLock", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, null!, mockLabels.Object, mockSync.Object)).ParamName);
-        Assert.Equal("labelStore", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, null!, mockSync.Object)).ParamName);
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, null!)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(null!, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("registry", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, null!, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("storageResolver", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, null!, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("userContext", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, null!, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("lockService", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, null!, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("lockChannel", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, null!, options, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("options", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, null!, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("idleLock", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, null!, mockLabels.Object, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("labelStore", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, null!, mockSync.Object, argon2Options)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, null!, argon2Options)).ParamName);
+        Assert.Equal("argon2Options", Assert.Throws<ArgumentNullException>(() => new SyncProtectedProfileService(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -510,6 +514,128 @@ public class SyncProtectedProfileServiceTests
     }
 
     [Fact]
+    public async Task GivenArgon2CostsChosen_WhenCreatedSetUpOrThePassphraseChanged_ThenTheyAreUsedWithTheProfilesOtherSettings()
+    {
+        // Arrange
+        var chosen = new Argon2idParameters { MemoryKib = 2048, Iterations = 5, Parallelism = 2, KeyLength = 32 };
+        var used = new List<E2eProfileSettings>();
+        var scope = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        mockManager.Setup(x => x.CreateAsync("pass", It.IsAny<E2eProfileSettings>(), null, It.IsAny<CancellationToken>()))
+            .Callback<string, E2eProfileSettings, IProgress<E2eProgress>?, CancellationToken>((_, settings, _, _) => used.Add(settings))
+            .ReturnsAsync(scope);
+        mockManager.Setup(x => x.CreateKeysAsync(notes, "pass", It.IsAny<E2eProfileSettings>(), null, It.IsAny<CancellationToken>()))
+            .Callback<E2eKeyScope, string, E2eProfileSettings, IProgress<E2eProgress>?, CancellationToken>((_, _, settings, _, _) => used.Add(settings))
+            .Returns(Task.CompletedTask);
+        mockManager.Setup(x => x.ChangePassphraseAsync(notes, "pass", "new pass", It.IsAny<E2eProfileSettings>(), null, It.IsAny<CancellationToken>()))
+            .Callback<E2eKeyScope, string, string, E2eProfileSettings, IProgress<E2eProgress>?, CancellationToken>((_, _, _, settings, _, _) => used.Add(settings))
+            .Returns(Task.CompletedTask);
+        options.Profiles[0].Settings = new E2eProfileSettings { MinimumPassphraseLength = 4, AllowDeviceUnlock = true, IdleTimeout = TimeSpan.FromMinutes(3) };
+        var sut = CreateSut();
+
+        // Act
+        await sut.CreateAsync("pass", chosen);
+        await sut.SetUpAsync(notes, "pass", chosen);
+        await sut.ChangePassphraseAsync(notes, "pass", "new pass", chosen);
+
+        // Assert
+        Assert.Equal(3, used.Count);
+        Assert.All(used, settings =>
+        {
+            Assert.NotSame(chosen, settings.Argon2);
+            Assert.Equal(2048, settings.Argon2!.MemoryKib);
+            Assert.Equal(5, settings.Argon2.Iterations);
+            Assert.Equal(2, settings.Argon2.Parallelism);
+        });
+        Assert.Equal(options.ProfileDefaults.MinimumPassphraseLength, used[0].MinimumPassphraseLength);
+        Assert.Equal(4, used[1].MinimumPassphraseLength);
+        Assert.True(used[2].AllowDeviceUnlock);
+        Assert.Equal(TimeSpan.FromMinutes(3), used[2].IdleTimeout);
+        Assert.Null(options.Profiles[0].Settings.Argon2);
+        Assert.Null(options.ProfileDefaults.Argon2);
+        mockManager.Verify(x => x.GetArgon2ParametersAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenNoArgon2CostsChosen_WhenThePassphraseIsChanged_ThenTheProfileKeepsTheCostsItHas()
+    {
+        // Arrange
+        var current = new Argon2idParameters { MemoryKib = 4096, Iterations = 7, Parallelism = 1, KeyLength = 32 };
+        E2eProfileSettings? used = null;
+        mockManager.Setup(x => x.GetArgon2ParametersAsync(notes, It.IsAny<CancellationToken>())).ReturnsAsync(current);
+        mockManager.Setup(x => x.ChangePassphraseAsync(notes, "pass", "new pass", It.IsAny<E2eProfileSettings>(), null, It.IsAny<CancellationToken>()))
+            .Callback<E2eKeyScope, string, string, E2eProfileSettings, IProgress<E2eProgress>?, CancellationToken>((_, _, _, settings, _, _) => used = settings)
+            .Returns(Task.CompletedTask);
+        var sut = CreateSut();
+
+        // Act
+        await sut.ChangePassphraseAsync(notes, "pass", "new pass");
+
+        // Assert
+        Assert.NotNull(used);
+        Assert.Equal(4096, used.Argon2!.MemoryKib);
+        Assert.Equal(7, used.Argon2.Iterations);
+    }
+
+    [Fact]
+    public async Task GivenProfilesWithAndWithoutKeys_WhenTheirArgon2CostsAreAskedFor_ThenTheKeysThenTheSettingsThenTheApps()
+    {
+        // Arrange
+        var withKeys = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        var inCode = new E2eKeyScope(Guid.NewGuid().ToString("D"));
+        options.Profiles.Add(new SyncProfileOptions { Name = "keys", RemotePattern = "keys/**/*", KeyScope = withKeys });
+        options.Profiles.Add(new SyncProfileOptions
+        {
+            Name = "code",
+            RemotePattern = "code/**/*",
+            KeyScope = inCode,
+            Settings = new E2eProfileSettings { Argon2 = new Argon2idParameters { MemoryKib = 512, Iterations = 2, Parallelism = 1, KeyLength = 32 } },
+        });
+        var all = FakeSyncProfileRegistry.Of(options);
+        mockManager.Setup(x => x.GetArgon2ParametersAsync(withKeys, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Argon2idParameters { MemoryKib = 8192, Iterations = 9, Parallelism = 4, KeyLength = 32 });
+        var sut = new SyncProtectedProfileService(mockManager.Object, all, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options);
+
+        // Act
+        var fromKeys = await sut.GetArgon2ParametersAsync(withKeys);
+        var fromSettings = await sut.GetArgon2ParametersAsync(inCode);
+        var fromApp = await sut.GetArgon2ParametersAsync(notes);
+        var forNew = await sut.GetArgon2ParametersAsync();
+
+        // Assert
+        Assert.Equal(8192, fromKeys.MemoryKib);
+        Assert.Equal(512, fromSettings.MemoryKib);
+        Assert.NotSame(options.Profiles[2].Settings.Argon2, fromSettings);
+        Assert.Equal(1024, fromApp.MemoryKib);
+        Assert.Equal(1024, forNew.MemoryKib);
+        Assert.NotSame(argon2Options.Parameters, forNew);
+    }
+
+    [Fact]
+    public async Task GivenDefaultsForCreatedProfilesWithTheirOwnCosts_WhenANewProfilesCostsAreAskedFor_ThenThose()
+    {
+        // Arrange
+        options.ProfileDefaults.Argon2 = new Argon2idParameters { MemoryKib = 256, Iterations = 4, Parallelism = 1, KeyLength = 32 };
+        var sut = CreateSut();
+
+        // Act
+        var forNew = await sut.GetArgon2ParametersAsync();
+
+        // Assert
+        Assert.Equal(256, forNew.MemoryKib);
+        Assert.Equal(4, forNew.Iterations);
+    }
+
+    [Fact]
+    public async Task GivenAnUnknownProfile_WhenItsArgon2CostsAreAskedFor_ThenThrowsArgumentException()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => sut.GetArgon2ParametersAsync(new E2eKeyScope(Guid.NewGuid().ToString("D"))));
+    }
+
+    [Fact]
     public async Task GivenTheIndex_WhenLoaded_ThenProfilesListThoseInCodeThenThoseCreatedWithWhetherEachIsSetUp()
     {
         // Arrange
@@ -914,7 +1040,7 @@ public class SyncProtectedProfileServiceTests
         mockIdle.Verify(x => x.Refresh(It.IsAny<E2eKeyScope>()), Times.Never);
     }
 
-    private SyncProtectedProfileService CreateSut() => new(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object);
+    private SyncProtectedProfileService CreateSut() => new(mockManager.Object, registry, mockResolver.Object, mockUser.Object, mockLock.Object, mockChannel.Object, options, mockIdle.Object, mockLabels.Object, mockSync.Object, argon2Options);
 
     /// <summary>
     /// Records each report the tracked work makes, as "done/total".

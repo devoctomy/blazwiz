@@ -49,6 +49,51 @@ it asks for the passphrase in its place:
 
 Its text comes from resources (`SyncUiText`), so apps can reword and translate it.
 
+### Settings sections
+
+The module adds three sections to the Settings page, each registered on its own: Sync (`SyncSettingsSection`), End to
+end encryption (`E2eProfilesSection`) and the Argon2id benchmark (`Argon2idBenchmarkPanel`). An app that does the same
+job on its own pages takes a section off the page:
+
+```csharp
+builder.Services.RemoveSettingsSection<E2eProfilesSection>();
+```
+
+### The passphrase form
+
+Wherever a new passphrase is entered, it is entered in one form, `E2ePassphraseForm`, with two tabs:
+
+- **Passphrase**: the passphrase twice, and the acknowledgement that it cannot be recovered. When changing a
+  passphrase, the current one too.
+- **Advanced**: the Argon2id settings its key is derived with (`Argon2idEditor`: memory, iterations, parallelism), and
+  a Benchmark button. They start at the settings that apply: the app's for a new passphrase, the profile's current
+  ones when changing a passphrase. The user can enter anything Argon2id can run; there is no upper limit. Settings left
+  as they start are used as they are. Changed settings are only accepted once a benchmark has completed with exactly
+  those values on this device, and changing a value afterwards needs another benchmark. The key length is fixed,
+  because the key wraps the profile's master key.
+
+Settings uses it for New protected profile, Set passphrase and Change passphrase. To use it in a dialog of your own,
+have your view model take an `E2ePassphraseFormViewModel` in its constructor (each gets one of its own), and put the
+component in the dialog's form with your own fields as its content, shown at the top of the first tab:
+
+```razor
+<form @onsubmit="() => ViewModel.CreateCommand.ExecuteAsync(null)" @onsubmit:preventDefault>
+    <E2ePassphraseForm Form="ViewModel.PassphraseForm" IdPrefix="album" FirstTabTitle="Album">
+        <input type="text" @bind="ViewModel.Name" />
+    </E2ePassphraseForm>
+</form>
+```
+
+```csharp
+await PassphraseForm.ResetAsync(scope, asksForCurrentPassphrase: true); // when the dialog opens; no scope for a new profile
+var error = PassphraseForm.Validate();                                 // null when it can be used
+await profiles.CreateAsync(PassphraseForm.Passphrase, PassphraseForm.GetArgon2Parameters());
+PassphraseForm.ClearPassphrases();                                     // once used
+```
+
+`ISyncProtectedProfileService.CreateAsync` and `SetUpAsync`, and `ISyncKeyRotationService.RotateAsync`, take the chosen
+settings. The template's new notebook dialog is built this way.
+
 A user remembered on this device with a passkey ("Remember me" at sign in) can tick "Unlock with biometrics next time
 on this device" when unlocking a profile with its passphrase in the panel. To use biometrics from elsewhere, such as a
 list of the user's profiles, inject `IE2eDeviceUnlockService`:
@@ -68,13 +113,24 @@ The template's Notebooks page uses all three.
 Change passphrase, in Settings, rotates the profile's keys and encrypts its files again, so anyone who had the old
 passphrase can read nothing written afterwards. What the user sees:
 
-1. They enter the current and new passphrases. The profile is synced and an upload is timed. Offline, or if the sync
-   fails, the change is refused and nothing has changed.
+1. They enter the current and new passphrases. The Advanced tab shows the Argon2id settings the profile has now: the
+   new passphrase keeps them unless they are changed there (and benchmarked). The profile is synced and an upload is
+   timed. Offline, or if the sync fails, the change is refused and nothing has changed.
 2. An estimate of how long it will take, with a warning: it cannot be skipped or stopped, and every device is signed
    out at the end. They can still cancel.
 3. A progress bar while the files are encrypted again and uploaded. The dialog cannot be closed.
 4. Every device, this one included, is signed out (`IE2eRotationSignOut`). If the sign-in service cannot be reached,
    the dialog says so and keeps offering Sign out everywhere until it works.
+
+To offer it from a page of your own, in place of or as well as the Settings section, render
+`E2eChangePassphraseDialog` while it should be open. It is the same dialog, for one profile:
+
+```razor
+@if (ViewModel.IsChangingPassphrase)
+{
+    <E2eChangePassphraseDialog Profile="@ViewModel.ProfileName" OnClose="() => ViewModel.CloseChangePassphraseCommand.Execute(null)" />
+}
+```
 
 If the change is cut short (the tab is closed, the connection drops), the profile is unusable until it is finished.
 `E2eUnlockPanel` shows a warning and Finish passphrase change in place of the profile's pages, on whichever device

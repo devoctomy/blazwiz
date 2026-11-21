@@ -22,6 +22,14 @@ version (`StoredDocument.ETag`), and a write made from an older version throws `
 manager then reads the document again and reapplies its change, up to `E2eProtectedProfileManager.MaxWriteAttempts`
 times. A device's copy of a keys document keeps its version too (`E2eLocalKeys.CachedDocumentETag`).
 
+## Argon2id costs
+
+A passphrase key is derived with the costs given when the passphrase is set (`E2eProfileSettings.Argon2`), or the
+app's. They are kept in the profile's keys document and read from it whenever the profile is unlocked;
+`IE2eProtectedProfileManager.GetArgon2ParametersAsync` returns them. A keys document may ask for any costs Argon2id can
+run: there is no upper limit, since they are the user's to choose. Only less than Argon2id needs (no iterations or
+lanes, less than 8 KiB of memory for each lane) and a key length other than the cipher's are refused.
+
 ## Changing a passphrase rotates the keys
 
 `IE2eProtectedProfileManager.ChangePassphraseAsync` does more than wrap the same keys again

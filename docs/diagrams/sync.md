@@ -156,8 +156,8 @@ sequenceDiagram
 
     rect rgb(245,245,245)
     Note over User,KS: Setting the passphrase (or creating a profile)
-    User->>UI: Passphrase (at least 12 characters by default)
-    UI->>Prof: SetUpAsync(scope, passphrase) / CreateAsync(passphrase)
+    User->>UI: Passphrase (at least 12 characters by default), and on the Advanced tab its Argon2id costs (benchmarked if changed)
+    UI->>Prof: SetUpAsync(scope, passphrase, Argon2id costs) / CreateAsync(passphrase, Argon2id costs)
     Prof->>Mgr: CreateKeysAsync / CreateAsync (a new GUID for a new profile)
     Mgr->>Doc: CreateAsync(passphrase, Argon2id costs)
     Doc->>Doc: New master key and file key, the master key wrapped by Argon2id(passphrase)
@@ -517,7 +517,7 @@ sequenceDiagram
 
     rect rgb(245,245,245)
     Note over User,S3: Nothing changes yet
-    User->>UI: Current and new passphrase, Change passphrase
+    User->>UI: Current and new passphrase (the Advanced tab starts at the profile's Argon2id costs), Change passphrase
     UI->>Rot: PrepareAsync(scope)
     Rot->>Sync: SyncAsync(profile), under the profile's lock
     alt Offline, or the pass failed
@@ -532,7 +532,7 @@ sequenceDiagram
     rect rgb(245,245,245)
     Note over User,S3: The change
     User->>UI: Change passphrase
-    UI->>Rot: RotateAsync(scope, current, new, progress)
+    UI->>Rot: RotateAsync(scope, current, new, Argon2id costs, progress)
     Rot->>Mgr: ChangePassphraseAsync (through SyncProtectedProfileService)
     Mgr->>KS: GetObject "{identityId}/keys/{profile id}" (with its ETag)
     Mgr->>Doc: RotateAsync: new master key and active file key, earlier file keys wrapped again and retired, rotation_in_progress = true

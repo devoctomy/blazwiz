@@ -289,6 +289,11 @@ effect), and how confident the finding is. Line numbers refer to the working tre
   and `key_len` other than the cipher's key size, with `InvalidDataException`.
 - **Functional change needed:** no.
 - **Confidence:** confirmed by reading.
+- **Update, 2026-11-21:** the upper limits on memory, iterations and lanes were removed again, at the maintainer's
+  decision; the key length check stays. They put a ceiling on the Argon2id costs a user may choose, which was never
+  wanted: users can now enter any costs, gated only by a successful benchmark on the device. They also protected
+  nothing worth protecting. A tampered copy on the device is replaced by signing out and syncing again, and anyone who
+  can write the copy in S3 can delete the keys, which is worse than a tab that has to be reloaded.
 
 #### SR37 (Informational). Random GCM nonces per file key with no rotation trigger
 
@@ -851,7 +856,7 @@ section. How they were checked:
 | SR27 | Low | Build | Security analyzers at SDK defaults | Injection and crypto regressions are not caught at build time | No | Yes: `AnalysisModeSecurity` `All` in both `Directory.Build.props`; the one finding (CA5394, `Random` for test bytes) was fixed, not suppressed |
 | SR28 | Low | Repo | `.gitignore` gaps for keys and production settings | A future accidental commit of a secret is not stopped | No | Yes, in both `.gitignore` files |
 | SR29 | Low | Template | Title and description substituted without escaping | A quote or angle bracket breaks the generated app's JSON, HTML and tests | No | Yes: a `safeText` form strips `" < > & \`; `test-template.ps1` creates an app with all of them in its title and description |
-| SR30 | Low | Key management | Stored Argon2id parameters have no upper bounds; wrong key length escapes untyped | A tampered document hangs or crashes the tab on unlock; no key exposure | No | Yes: `Parse` rejects memory over 4 GiB, more than 100 passes or 16 lanes, and a key length other than the cipher's (`IKeyWrapService.KeySize`); unit tests |
+| SR30 | Low | Key management | Stored Argon2id parameters have no upper bounds; wrong key length escapes untyped | A tampered document hangs or crashes the tab on unlock; no key exposure | No | Partly: `Parse` rejects a key length other than the cipher's (`IKeyWrapService.KeySize`); unit tests. The upper limits on memory, passes and lanes were added, then removed on 2026-11-21 at the maintainer's decision (see SR30's update) |
 | SR31 | Low | Hosting | CSP added only by `deploy.ps1`, not by the build; `style-src 'unsafe-inline'` | Apps hosted another way ship with no CSP, so an XSS reaches tokens and keys unhindered | No (build change) | No: where the CSP is produced is a design decision, and tightening `style-src` needs a browser check against the deployed app |
 | SR32 | Low | Passkeys | User handle embeds the email; `userId` parameter mismatch | Email leaks via the authenticator; a latent misuse of the register call | No | Yes: random 32-byte user handle; the parameter is gone from `IWebAuthnService.RegisterAsync` |
 | SR33 | Low | Template | Note keys from the URL only prefix-checked | Odd keys inside the user's own store; no access to anything else | No | Yes: `IsNoteKey` rejects empty, `.`, `..` and control-character segments; unit tests |

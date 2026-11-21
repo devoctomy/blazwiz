@@ -28,7 +28,9 @@ profile is end to end encrypted with its own keys and its own passphrase, named 
 fixed id to reach the same keys every time, or generate one. Until the passphrase is entered the profile is locked:
 its files cannot be read or written, and it does not sync. `UseProfileSettings` sets when it locks itself again, whether
 it can be unlocked with the passkey, its passphrase rules and Argon2id costs; `UseProfileDefaults` sets them for the
-profiles users create while the app runs. To use the engine without the module, call `AddBlazwizSync` and provide its
+profiles users create while the app runs. Those costs are where a passphrase starts: `ISyncProtectedProfileService`'s
+`CreateAsync`, `SetUpAsync` and `ChangePassphraseAsync` take other costs for one passphrase (the user's choice, with no
+upper limit), and `GetArgon2ParametersAsync` says which apply to a profile. To use the engine without the module, call `AddBlazwizSync` and provide its
 services yourself (the S3 target, the signed-in user and the keys).
 
 Each profile's keys document, and the index of the profiles, are kept in the user's prefix of the data bucket under
@@ -126,8 +128,9 @@ Changing a profile's passphrase locks out anyone who had the old one. `ISyncKeyR
    `scratch/` in the user's prefix (`ISyncScratchStore`, `SyncDefaults.ScratchFolder`) and deleted again. No profile
    may match `scratch/`, so sync never sees it. Offline, or if the sync fails, it throws `SyncKeyRotationException` and
    nothing has changed.
-2. `RotateAsync(scope, current, new, progress)` rotates the keys (see `Devoctomy.Blazwiz.Encryption`), encrypts every
-   file again on this device with the new key, then uploads them in one sync pass. Progress is reported as
+2. `RotateAsync(scope, current, new, argon2, progress)` rotates the keys (see `Devoctomy.Blazwiz.Encryption`), encrypts
+   every file again on this device with the new key, then uploads them in one sync pass. `argon2` is the Argon2id
+   costs chosen for the new passphrase; without it the profile keeps the costs it has. Progress is reported as
    `E2eStep.ReencryptFiles` and `E2eStep.UploadFiles`, with counts.
 3. The caller signs the user out on every device. While it does, `CompleteAsync()` clears the rotation mark of each
    profile in `ReadyToComplete`. The sync module's UI does this.

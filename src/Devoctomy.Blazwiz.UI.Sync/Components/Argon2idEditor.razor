@@ -1,0 +1,77 @@
+@inject IStringLocalizer<SyncUiText> SyncText
+
+<div class="row g-3">
+    <div class="@ColumnClass">
+        <label class="form-label" for="@(IdPrefix)-memory">@SyncText["Sync.Argon2id.Memory"]</label>
+        @if (Model.IsMemoryMenuOpen)
+        {
+            <div class="sync-popover-backdrop" @onclick="() => Model.CloseMemoryMenuCommand.Execute(null)"></div>
+        }
+        <div class="input-group">
+            <input type="number" class="form-control" id="@(IdPrefix)-memory" min="0" step="any"
+                   disabled="@IsDisabled" @bind="Model.MemoryMib" />
+            <button type="button" class="btn btn-outline-secondary dropdown-toggle" id="@(IdPrefix)-memory-sizes-toggle"
+                    disabled="@IsDisabled" aria-expanded="@Model.IsMemoryMenuOpen.ToString().ToLowerInvariant()"
+                    @onclick="() => Model.ToggleMemoryMenuCommand.Execute(null)">
+                @SyncText["Sync.Argon2id.MibUnit"]
+            </button>
+            @if (Model.IsMemoryMenuOpen)
+            {
+                <ul class="dropdown-menu show argon2id-memory-menu" id="@(IdPrefix)-memory-sizes">
+                    @foreach (var size in Model.CommonMemoryMib)
+                    {
+                        <li>
+                            <button type="button" class="dropdown-item" @onclick="() => Model.ChooseMemoryCommand.Execute(size)">
+                                @SyncText["Sync.Argon2id.MemoryMib", size]
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+    <div class="@ColumnClass">
+        <label class="form-label" for="@(IdPrefix)-iterations">@SyncText["Sync.Argon2id.Iterations"]</label>
+        <input type="number" class="form-control" id="@(IdPrefix)-iterations" min="1" step="1"
+               disabled="@IsDisabled" @bind="Model.Iterations" />
+    </div>
+    <div class="@ColumnClass">
+        <label class="form-label" for="@(IdPrefix)-parallelism">@SyncText["Sync.Argon2id.Parallelism"]</label>
+        <input type="number" class="form-control" id="@(IdPrefix)-parallelism" min="1" step="1"
+               disabled="@IsDisabled" @bind="Model.Parallelism" />
+    </div>
+    <div class="@ColumnClass">
+        <label class="form-label" for="@(IdPrefix)-key-length">@SyncText["Sync.Argon2id.KeyLength"]</label>
+        <div class="input-group">
+            <input type="number" class="form-control" id="@(IdPrefix)-key-length" min="@Argon2idBenchmarkViewModel.MinKeyLength" step="1"
+                   disabled="@(IsDisabled || Model.IsKeyLengthFixed)" @bind="Model.KeyLength" />
+            <span class="input-group-text">@SyncText["Sync.Argon2id.BytesUnit"]</span>
+        </div>
+    </div>
+</div>
+@if (Model.Invalid != null)
+{
+    <p class="text-danger mt-2 mb-0" id="@(IdPrefix)-invalid">@Model.Invalid</p>
+}
+<div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+    <button type="button" class="btn btn-outline-primary" id="@(IdPrefix)-benchmark" disabled="@(Disabled || !Model.CanBenchmark)"
+            @onclick="() => Model.BenchmarkCommand.ExecuteAsync(null)">
+        @if (Model.IsRunning)
+        {
+            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+        }
+        else
+        {
+            <i class="bi bi-stopwatch me-1"></i>
+        }
+        @SyncText["Sync.Argon2id.Benchmark"]
+    </button>
+    @if (Model.Result != null)
+    {
+        <span id="@(IdPrefix)-result">@Model.Result</span>
+    }
+    @if (Model.Error != null)
+    {
+        <span class="text-danger" id="@(IdPrefix)-error">@Model.Error</span>
+    }
+</div>

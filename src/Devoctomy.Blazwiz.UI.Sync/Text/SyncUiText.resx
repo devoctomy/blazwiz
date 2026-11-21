@@ -126,11 +126,14 @@
   <data name="Sync.Argon2id.MibUnit" xml:space="preserve">
     <value>MiB</value>
   </data>
+  <data name="Sync.Argon2id.NeedsBenchmark" xml:space="preserve">
+    <value>Benchmark these settings on this device before they can be used.</value>
+  </data>
   <data name="Sync.Argon2id.Parallelism" xml:space="preserve">
     <value>Parallelism</value>
   </data>
   <data name="Sync.Argon2id.Text" xml:space="preserve">
-    <value>Your end to end encryption passphrase is turned into a key with Argon2id, which is slow and memory hungry on purpose so passphrases are hard to guess. The settings below start at the ones new passphrases use; existing passphrases keep the settings they were made with. Change them to time other settings on this device with the benchmark: new passphrases still use the configured settings.</value>
+    <value>Your end to end encryption passphrase is turned into a key with Argon2id, which is slow and memory hungry on purpose so passphrases are hard to guess. The settings below start at the ones new passphrases use; existing passphrases keep the settings they were made with. Change them to time other settings on this device with the benchmark: that changes nothing else. To give a passphrase other settings, choose them on the Advanced tab when you set or change it.</value>
   </data>
   <data name="Sync.Argon2id.Title" xml:space="preserve">
     <value>Argon2id Benchmarking</value>
@@ -161,6 +164,9 @@
   </data>
   <data name="Sync.E2e.Acknowledge" xml:space="preserve">
     <value>I understand that if I forget this passphrase, my encrypted files cannot be recovered.</value>
+  </data>
+  <data name="Sync.E2e.Advanced.Text" xml:space="preserve">
+    <value>The passphrase is turned into a key with Argon2id. These settings decide how slow and memory hungry that is, on every device that uses this passphrase. They start at the settings in use. If you change them, benchmark them on this device before they can be used.</value>
   </data>
   <data name="Sync.E2e.AppProfiles" xml:space="preserve">
     <value>Encrypted by this app</value>
@@ -277,7 +283,7 @@
     <value>{0} is locked. Enter its passphrase to use it.</value>
   </data>
   <data name="Sync.E2e.Panel.NeedsPassphrase" xml:space="preserve">
-    <value>{0} needs a passphrase before it can be used. Set one in Settings.</value>
+    <value>{0} needs a passphrase before it can be used.</value>
   </data>
   <data name="Sync.E2e.Rotation.Estimate" xml:space="preserve">
     <value>Files to encrypt again and upload: {0} ({1} MB). Time needed: {2}.</value>
@@ -356,6 +362,12 @@
   </data>
   <data name="Sync.E2e.Step.Waiting" xml:space="preserve">
     <value>Waiting</value>
+  </data>
+  <data name="Sync.E2e.Tab.Advanced" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="Sync.E2e.Tab.Passphrase" xml:space="preserve">
+    <value>Passphrase</value>
   </data>
   <data name="Sync.E2e.Text" xml:space="preserve">
     <value>Your files are encrypted on this device, with keys only you hold, before they are synced. Each set of files has its own passphrase.</value>

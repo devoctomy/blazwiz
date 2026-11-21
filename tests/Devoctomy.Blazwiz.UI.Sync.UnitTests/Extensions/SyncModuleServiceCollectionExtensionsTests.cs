@@ -16,6 +16,7 @@ using Devoctomy.Blazwiz.UI.Shell;
 using Devoctomy.Blazwiz.UI.Shell.Interfaces;
 using Devoctomy.Blazwiz.Auth.Cognito.Extensions;
 using Devoctomy.Blazwiz.Auth.Cognito.Models;
+using Devoctomy.Blazwiz.UI.Sync.Components;
 using Devoctomy.Blazwiz.UI.Sync.Extensions;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services;
@@ -119,6 +120,56 @@ public class SyncModuleServiceCollectionExtensionsTests
         Assert.Equal(typeof(SyncView), scope.ServiceProvider.GetRequiredService<IPageRegistry>().GetComponent(BlazwizPages.Sync));
         Assert.Contains(scope.ServiceProvider.GetServices<PageAssemblyRegistration>(), p => p.Assembly == typeof(SyncView).Assembly);
         Assert.Contains(scope.ServiceProvider.GetServices<NavigationItem>(), i => i.PageKey == BlazwizPages.Sync);
+    }
+
+    [Fact]
+    public async Task GivenUi_WhenAddBlazwizSyncModule_ThenItsSettingsSectionsAreEachTheirOwnAndCanBeRemoved()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder().Build();
+        var shown = TestServices.Create();
+        shown.AddBlazwizUi(configuration);
+        shown.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
+        shown.AddBlazwizSyncModule(configuration, sync => { });
+        var hidden = TestServices.Create();
+        hidden.AddBlazwizUi(configuration);
+        hidden.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
+        hidden.AddBlazwizSyncModule(configuration, sync => { });
+
+        // Act
+        hidden.RemoveSettingsSection<E2eProfilesSection>();
+
+        // Assert
+        await using var shownProvider = shown.BuildValidated();
+        await using var hiddenProvider = hidden.BuildValidated();
+        var all = shownProvider.GetRequiredService<ISettingsSectionRegistry>().GetSections().ToList();
+        var sync = all.IndexOf(typeof(SyncSettingsSection));
+        Assert.True(sync >= 0);
+        Assert.Equal([typeof(SyncSettingsSection), typeof(E2eProfilesSection), typeof(Argon2idBenchmarkPanel)], all.Skip(sync).Take(3));
+        Assert.Equal(all.Where(s => s != typeof(E2eProfilesSection)), hiddenProvider.GetRequiredService<ISettingsSectionRegistry>().GetSections());
+    }
+
+    [Fact]
+    public async Task GivenUi_WhenAddBlazwizSyncModule_ThenEachDialogGetsAPassphraseFormOfItsOwn()
+    {
+        // Arrange
+        var configuration = new ConfigurationBuilder().Build();
+        var services = TestServices.Create();
+        services.AddBlazwizUi(configuration);
+        services.AddBlazwizCognito(configuration, allowPlaceholderSignIn: true);
+
+        // Act
+        services.AddBlazwizSyncModule(configuration, sync => { });
+
+        // Assert
+        await using var provider = services.BuildValidated();
+        await using var scope = provider.CreateAsyncScope();
+        var first = scope.ServiceProvider.GetRequiredService<E2eProfilesViewModel>();
+        var second = scope.ServiceProvider.GetRequiredService<E2eProfilesViewModel>();
+        var panel = scope.ServiceProvider.GetRequiredService<Argon2idBenchmarkViewModel>();
+        Assert.NotSame(first.PassphraseForm, second.PassphraseForm);
+        Assert.NotSame(first.PassphraseForm.Argon2, second.PassphraseForm.Argon2);
+        Assert.NotSame(panel, first.PassphraseForm.Argon2);
     }
 
     [Fact]

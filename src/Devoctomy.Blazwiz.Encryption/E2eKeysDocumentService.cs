@@ -35,22 +35,6 @@ public class E2eKeysDocumentService(
     /// </summary>
     public const string KeyIdPrefix = "k_";
 
-    /// <summary>
-    /// The most Argon2id memory a document may ask for, in KiB (4 GiB). The settings come from the document, so a
-    /// tampered or corrupted one must not be able to exhaust the browser's memory.
-    /// </summary>
-    public const int MaxMemoryKib = 4 * 1024 * 1024;
-
-    /// <summary>
-    /// The most Argon2id passes a document may ask for.
-    /// </summary>
-    public const int MaxIterations = 100;
-
-    /// <summary>
-    /// The most Argon2id lanes a document may ask for.
-    /// </summary>
-    public const int MaxParallelism = 16;
-
     private const string Base32Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
     private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions();
@@ -317,10 +301,12 @@ public class E2eKeysDocumentService(
             throw new InvalidDataException($"Key derivation '{kdf.Algorithm}' is not supported.");
         }
 
+        // Only what Argon2id and the cipher cannot work with is refused. There is no upper limit: the costs are the
+        // user's to choose, however high.
         if (kdf.KeyLength != keyWrapService.KeySize
-            || kdf.Iterations < 1 || kdf.Iterations > MaxIterations
-            || kdf.Parallelism < 1 || kdf.Parallelism > MaxParallelism
-            || kdf.MemoryKib < 8 * kdf.Parallelism || kdf.MemoryKib > MaxMemoryKib)
+            || kdf.Iterations < 1
+            || kdf.Parallelism < 1
+            || kdf.MemoryKib < 8L * kdf.Parallelism)
         {
             throw new InvalidDataException("The keys document's key derivation settings are out of range.");
         }

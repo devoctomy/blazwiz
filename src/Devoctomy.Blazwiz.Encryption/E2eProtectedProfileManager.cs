@@ -124,6 +124,25 @@ public class E2eProtectedProfileManager(
     }
 
     /// <inheritdoc/>
+    public async Task<Argon2idParameters?> GetArgon2ParametersAsync(E2eKeyScope scope, CancellationToken ct = default)
+    {
+        CheckProtected(scope);
+
+        string? json;
+        try
+        {
+            json = (await userKeysStore.GetAsync(scope, ct))?.Value;
+        }
+        catch (HttpRequestException)
+        {
+            // Offline: this device's copy, if it has one.
+            json = (await localKeyStore.GetAsync(scope))?.CachedDocument;
+        }
+
+        return json == null ? null : keysDocuments.Parse(json).Kdf.ToParameters();
+    }
+
+    /// <inheritdoc/>
     public async Task UnlockAsync(E2eKeyScope scope, string passphrase, CancellationToken ct = default)
     {
         CheckProtected(scope);

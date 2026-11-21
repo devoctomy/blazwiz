@@ -1,3 +1,4 @@
+using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Models;
@@ -41,11 +42,13 @@ public interface ISyncKeyRotationService
     /// <param name="scope">The profile's scope.</param>
     /// <param name="currentPassphrase">The current passphrase.</param>
     /// <param name="newPassphrase">The new passphrase.</param>
+    /// <param name="argon2">The Argon2id costs chosen for the new passphrase key, or null to keep the costs the profile
+    /// has now.</param>
     /// <param name="progress">Told about each step, and how many files are done.</param>
     /// <param name="ct">A cancellation token.</param>
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     /// <exception cref="SyncKeyRotationException">This device went offline, or the files could not be uploaded.</exception>
-    Task RotateAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
+    Task RotateAsync(E2eKeyScope scope, string currentPassphrase, string newPassphrase, Argon2idParameters? argon2 = null, IProgress<E2eProgress>? progress = null, CancellationToken ct = default);
 
     /// <summary>
     /// Finishes a passphrase change cut short: syncs the unlocked profile, then encrypts again and uploads every file
