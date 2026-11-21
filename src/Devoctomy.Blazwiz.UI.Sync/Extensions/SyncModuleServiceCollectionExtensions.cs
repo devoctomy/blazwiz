@@ -126,7 +126,7 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddShellComponent<StorageMigrationOverlay>(ShellRegion.Overlays, order: 0);
 
         services.AddSettingsSection<SyncSettingsSection>(UiServiceCollectionExtensions.SettingsOrder.Offline + 100);
-        services.AddSettingsSection<Argon2idPanel>(UiServiceCollectionExtensions.SettingsOrder.Offline + 200);
+        services.AddSettingsSection<Argon2idBenchmarkPanel>(UiServiceCollectionExtensions.SettingsOrder.Offline + 200);
 
         services.AddSignInOption<StartSyncOffSignInOption, StartSyncOffOption>();
 

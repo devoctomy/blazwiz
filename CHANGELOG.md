@@ -6,7 +6,30 @@ in `UPGRADING.md` from 1.0.
 
 Before 1.0 any release may break, and nothing is kept for earlier builds: no data migrations, no compatibility code.
 
-## Unreleased
+## 0.8.4
+
+### Changed
+- **The Argon2id benchmark has no upper limit on memory.** Any memory of at least 8 KiB per lane can be benchmarked;
+  if the device cannot provide it, the benchmark says it failed. `Sync.Argon2id.InvalidMemory` now takes only the
+  minimum (`{0}`). **Breaking:** `Argon2idSettingsViewModel.MaxMemoryMib` is removed.
+- **The Argon2id panel is named for what it is: a benchmark.** It shows the parameters the app derives passphrase keys
+  with and times them, or other values, on this device; it does not change them. **Breaking:** `Argon2idPanel` is
+  renamed `Argon2idBenchmarkPanel`, and `Argon2idSettingsViewModel` is renamed `Argon2idBenchmarkViewModel`, with the
+  same members, and the panel is titled "Argon2id Benchmarking" (`Sync.Argon2id.Title`). Apps that register
+  `AddBlazwizSyncModule` need no change.
+- **The Argon2id benchmark warns about the browser's memory limit.** A note under its description (new resource
+  `Sync.Argon2id.MemoryLimit`) says the app can use at most 2 GiB in the browser, so large memory values can run out
+  and stop the app until the page is reloaded.
+- **The Argon2id benchmark in Settings runs with settings you choose.** Memory, iterations, parallelism and key length
+  are now fields, starting at the settings new passphrases use. Memory is in MiB: pick a common size (16 to
+  512 MiB) or type any value. The benchmark times one key with the values entered; they never change the settings new
+  passphrases use. Values Argon2id cannot use (e.g. less than 8 KiB of memory per lane) are explained under the fields
+  and the benchmark stays disabled until they are fixed. New `Argon2idSettingsViewModel` members: `MemoryMib`,
+  `Iterations`, `Parallelism`, `KeyLength`, `CommonMemoryMib`, `Invalid`, `CanBenchmark`, `MaxMemoryMib` and
+  `MinKeyLength`; new resources `Sync.Argon2id.MibUnit`, `BytesUnit`, `InvalidMemory`, `InvalidIterations`,
+  `InvalidParallelism` and `InvalidKeyLength`, and `Sync.Argon2id.Text` reworded. **Breaking:**
+  `Argon2idSettingsViewModel.MemoryText` and the `Sync.Argon2id.MemoryKib` and `Sync.Argon2id.Bytes` resources are
+  removed; apps that override those resources remove the overrides.
 
 ## 0.8.3
 

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace MyApp.Portal.UITests;
 
 /// <summary>
@@ -126,11 +128,33 @@ public class E2eEncryptionTests : TestBase
         await Page.Locator("#nav-settings").ClickAsync();
 
         await Expect(Page.Locator("#argon2id-card")).ToBeVisibleAsync();
-        await Expect(Page.Locator("#argon2id-memory")).ToHaveTextAsync($"{TestArgon2idMemoryKib} KiB");
-        await Expect(Page.Locator("#argon2id-iterations")).ToHaveTextAsync($"{TestArgon2idIterations}");
-        await Expect(Page.Locator("#argon2id-parallelism")).ToHaveTextAsync("1");
-        await Expect(Page.Locator("#argon2id-key-length")).ToHaveTextAsync("32 bytes");
+        await Expect(Page.Locator("#argon2id-memory")).ToHaveValueAsync((TestArgon2idMemoryKib / 1024.0).ToString(CultureInfo.InvariantCulture));
+        await Expect(Page.Locator("#argon2id-iterations")).ToHaveValueAsync($"{TestArgon2idIterations}");
+        await Expect(Page.Locator("#argon2id-parallelism")).ToHaveValueAsync("1");
+        await Expect(Page.Locator("#argon2id-key-length")).ToHaveValueAsync("32");
         await Expect(Page.Locator("#argon2id-benchmark")).ToBeEnabledAsync();
         await ScreenshotAsync("Argon2idPanel");
+    }
+
+    [TestMethod]
+    public async Task GivenChangedArgon2idSettings_WhenBenchmarking_ThenTheBenchmarkRunsWithThem()
+    {
+        await LoginAsync();
+        await Page.Locator("#nav-settings").ClickAsync();
+
+        await Page.Locator("#argon2id-iterations").FillAsync("0");
+        await Page.Locator("#argon2id-iterations").BlurAsync();
+        await Expect(Page.Locator("#argon2id-invalid")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#argon2id-benchmark")).ToBeDisabledAsync();
+
+        await Page.Locator("#argon2id-iterations").FillAsync("1");
+        await Page.Locator("#argon2id-iterations").BlurAsync();
+        await Page.Locator("#argon2id-key-length").FillAsync("64");
+        await Page.Locator("#argon2id-key-length").BlurAsync();
+        await Expect(Page.Locator("#argon2id-invalid")).ToHaveCountAsync(0);
+        await Page.Locator("#argon2id-benchmark").ClickAsync();
+
+        await Expect(Page.Locator("#argon2id-result")).ToBeVisibleAsync();
+        await Expect(Page.Locator("#argon2id-error")).ToHaveCountAsync(0);
     }
 }

@@ -1,0 +1,85 @@
+@inherits MvvmComponentBase<Argon2idBenchmarkViewModel>
+@inject IStringLocalizer<SyncUiText> SyncText
+
+<div class="panel mb-4" id="argon2id-card">
+    <h2 class="panel-title">@SyncText["Sync.Argon2id.Title"]</h2>
+    <p class="panel-text">@SyncText["Sync.Argon2id.Text"]</p>
+    <div class="alert alert-warning" role="alert" id="argon2id-memory-limit">
+        <i class="bi bi-exclamation-triangle me-1"></i>@SyncText["Sync.Argon2id.MemoryLimit"]
+    </div>
+    <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+            <label class="form-label" for="argon2id-memory">@SyncText["Sync.Argon2id.Memory"]</label>
+            @if (ViewModel.IsMemoryMenuOpen)
+            {
+                <div class="sync-popover-backdrop" @onclick="() => ViewModel.CloseMemoryMenuCommand.Execute(null)"></div>
+            }
+            <div class="input-group">
+                <input type="number" class="form-control" id="argon2id-memory" min="0" step="any"
+                       disabled="@ViewModel.IsRunning" @bind="ViewModel.MemoryMib" />
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" id="argon2id-memory-sizes-toggle"
+                        disabled="@ViewModel.IsRunning" aria-expanded="@ViewModel.IsMemoryMenuOpen.ToString().ToLowerInvariant()"
+                        @onclick="() => ViewModel.ToggleMemoryMenuCommand.Execute(null)">
+                    @SyncText["Sync.Argon2id.MibUnit"]
+                </button>
+                @if (ViewModel.IsMemoryMenuOpen)
+                {
+                    <ul class="dropdown-menu show argon2id-memory-menu" id="argon2id-memory-sizes">
+                        @foreach (var size in ViewModel.CommonMemoryMib)
+                        {
+                            <li>
+                                <button type="button" class="dropdown-item" @onclick="() => ViewModel.ChooseMemoryCommand.Execute(size)">
+                                    @SyncText["Sync.Argon2id.MemoryMib", size]
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <label class="form-label" for="argon2id-iterations">@SyncText["Sync.Argon2id.Iterations"]</label>
+            <input type="number" class="form-control" id="argon2id-iterations" min="1" step="1"
+                   disabled="@ViewModel.IsRunning" @bind="ViewModel.Iterations" />
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <label class="form-label" for="argon2id-parallelism">@SyncText["Sync.Argon2id.Parallelism"]</label>
+            <input type="number" class="form-control" id="argon2id-parallelism" min="1" step="1"
+                   disabled="@ViewModel.IsRunning" @bind="ViewModel.Parallelism" />
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <label class="form-label" for="argon2id-key-length">@SyncText["Sync.Argon2id.KeyLength"]</label>
+            <div class="input-group">
+                <input type="number" class="form-control" id="argon2id-key-length" min="@Argon2idBenchmarkViewModel.MinKeyLength" step="1"
+                       disabled="@ViewModel.IsRunning" @bind="ViewModel.KeyLength" />
+                <span class="input-group-text">@SyncText["Sync.Argon2id.BytesUnit"]</span>
+            </div>
+        </div>
+    </div>
+    @if (ViewModel.Invalid != null)
+    {
+        <p class="text-danger mt-2 mb-0" id="argon2id-invalid">@ViewModel.Invalid</p>
+    }
+    <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+        <button type="button" class="btn btn-outline-primary" id="argon2id-benchmark" disabled="@(!ViewModel.CanBenchmark)"
+                @onclick="() => ViewModel.BenchmarkCommand.ExecuteAsync(null)">
+            @if (ViewModel.IsRunning)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            }
+            else
+            {
+                <i class="bi bi-stopwatch me-1"></i>
+            }
+            @SyncText["Sync.Argon2id.Benchmark"]
+        </button>
+        @if (ViewModel.Result != null)
+        {
+            <span id="argon2id-result">@ViewModel.Result</span>
+        }
+        @if (ViewModel.Error != null)
+        {
+            <span class="text-danger" id="argon2id-error">@ViewModel.Error</span>
+        }
+    </div>
+</div>

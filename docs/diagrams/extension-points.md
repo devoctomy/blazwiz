@@ -39,7 +39,7 @@ flowchart TB
         S2["Language 150"]
         S3["Offline 200"]
         S4["Sync 300 (SyncSettingsSection, with the profiles)"]
-        S5["Argon2id 400 (Argon2idPanel)"]
+        S5["Argon2id 400 (Argon2idBenchmarkPanel)"]
         S6["About 10000"]
         S1 --> S2 --> S3 --> S4 --> S5 --> S6
     end
@@ -65,7 +65,7 @@ uses every kind of extension point:
 flowchart LR
     Mod["AddBlazwizSyncModule"]
     Mod -- "AddShellComponent" --> R1["E2eBanner, FolderAccessBanner (Banners)<br/>SyncPill (Floating)<br/>StorageMigrationOverlay (Overlays)"]
-    Mod -- "AddSettingsSection" --> R2["SyncSettingsSection, Argon2idPanel"]
+    Mod -- "AddSettingsSection" --> R2["SyncSettingsSection, Argon2idBenchmarkPanel"]
     Mod -- "AddSignInOption" --> R3["StartSyncOffSignInOption + StartSyncOffOption"]
     Mod -- "AddSessionLifecycleHandler" --> R4["SyncSessionHandler"]
     Mod -- "AddNavigationItem" --> R5["Sync (Nav.Sync from SyncUiText, PageKey sync)"]
