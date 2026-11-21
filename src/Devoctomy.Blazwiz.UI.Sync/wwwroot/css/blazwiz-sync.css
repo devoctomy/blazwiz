@@ -82,6 +82,12 @@
     inset: 0;
 }
 
+/* The Argon2id benchmark's common memory sizes, opened from the MiB button under the memory field. */
+.argon2id-memory-menu {
+    top: 100%;
+    right: 0;
+}
+
 .sync-popover {
     position: relative;
     width: min(20rem, calc(100vw - 2rem));

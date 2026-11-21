@@ -268,9 +268,19 @@ Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText
 Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel
 Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Argon2idSettingsViewModel(Devoctomy.Blazwiz.Cryptography.Interfaces.IArgon2idKeyDerivationService! argon2, Devoctomy.Blazwiz.Cryptography.Configuration.Argon2idOptions! options, System.TimeProvider! timeProvider, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.BenchmarkAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.CanBenchmark.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.CommonMemoryMib.get -> System.Collections.Generic.IReadOnlyList<int>!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Invalid.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.IsRunning.get -> bool
-Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MemoryText.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Iterations.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Iterations.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.KeyLength.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.KeyLength.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MemoryMib.get -> double
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MemoryMib.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Parallelism.get -> int
+Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Parallelism.set -> void
 Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Parameters.get -> Devoctomy.Blazwiz.Cryptography.Models.Argon2idParameters!
 Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.Result.get -> string?
 Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel
@@ -452,6 +462,8 @@ Devoctomy.Blazwiz.UI.Sync._Imports.Execute() -> void
 Devoctomy.Blazwiz.UI.Sync._Imports._Imports() -> void
 const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.Argon2idConfigurationSection = "Argon2id" -> string!
 const Devoctomy.Blazwiz.UI.Sync.Extensions.SyncModuleServiceCollectionExtensions.ConfigurationSection = "AwsS3" -> string!
+const Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MaxMemoryMib = 4096 -> int
+const Devoctomy.Blazwiz.UI.Sync.ViewModels.Argon2idSettingsViewModel.MinKeyLength = 16 -> int
 const Devoctomy.Blazwiz.UI.Sync.ViewModels.SyncViewModel.PageSize = 200 -> int
 override Devoctomy.Blazwiz.UI.Sync.Components.E2eUnlockPanel.OnParametersSetAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.Sync.ViewModels.E2eBannerViewModel.Dispose(bool disposing) -> void

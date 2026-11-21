@@ -90,11 +90,23 @@
   <data name="Sync.Argon2id.Benchmark" xml:space="preserve">
     <value>Benchmark</value>
   </data>
-  <data name="Sync.Argon2id.Bytes" xml:space="preserve">
-    <value>{0} bytes</value>
+  <data name="Sync.Argon2id.BytesUnit" xml:space="preserve">
+    <value>bytes</value>
   </data>
   <data name="Sync.Argon2id.Failed" xml:space="preserve">
     <value>The benchmark failed: {0}</value>
+  </data>
+  <data name="Sync.Argon2id.InvalidIterations" xml:space="preserve">
+    <value>Iterations must be at least 1.</value>
+  </data>
+  <data name="Sync.Argon2id.InvalidKeyLength" xml:space="preserve">
+    <value>Key length must be at least {0} bytes.</value>
+  </data>
+  <data name="Sync.Argon2id.InvalidMemory" xml:space="preserve">
+    <value>Memory must be at least {0} KiB (8 KiB for each lane).</value>
+  </data>
+  <data name="Sync.Argon2id.InvalidParallelism" xml:space="preserve">
+    <value>Parallelism must be at least 1.</value>
   </data>
   <data name="Sync.Argon2id.Iterations" xml:space="preserve">
     <value>Iterations</value>
@@ -105,20 +117,23 @@
   <data name="Sync.Argon2id.Memory" xml:space="preserve">
     <value>Memory</value>
   </data>
-  <data name="Sync.Argon2id.MemoryKib" xml:space="preserve">
-    <value>{0} KiB</value>
+  <data name="Sync.Argon2id.MemoryLimit" xml:space="preserve">
+    <value>This app can use at most 2 GiB of memory in the browser, for everything it does, however much memory the device has. Argon2id needs its memory on top of that, so large values (above about 512 MiB) can run out: the app then stops with an error and the page has to be reloaded.</value>
   </data>
   <data name="Sync.Argon2id.MemoryMib" xml:space="preserve">
     <value>{0} MiB</value>
+  </data>
+  <data name="Sync.Argon2id.MibUnit" xml:space="preserve">
+    <value>MiB</value>
   </data>
   <data name="Sync.Argon2id.Parallelism" xml:space="preserve">
     <value>Parallelism</value>
   </data>
   <data name="Sync.Argon2id.Text" xml:space="preserve">
-    <value>Your end to end encryption passphrase is turned into a key with Argon2id, which is slow and memory hungry on purpose so passphrases are hard to guess. New passphrases use these settings; existing ones keep the settings they were made with.</value>
+    <value>Your end to end encryption passphrase is turned into a key with Argon2id, which is slow and memory hungry on purpose so passphrases are hard to guess. The settings below start at the ones new passphrases use; existing passphrases keep the settings they were made with. Change them to time other settings on this device with the benchmark: new passphrases still use the configured settings.</value>
   </data>
   <data name="Sync.Argon2id.Title" xml:space="preserve">
-    <value>Argon2id</value>
+    <value>Argon2id Benchmarking</value>
   </data>
   <data name="Sync.Argon2id.Took" xml:space="preserve">
     <value>Took {0:0.0} s</value>

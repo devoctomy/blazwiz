@@ -154,6 +154,9 @@ These are the steps CI runs (`.github/workflows/ci.yml`). Test namespaces must c
 - The UI tests start the portal themselves (`dotnet run -c Release` on a free port). They take about two minutes.
   The portal's output goes to `template/MyApp.Portal.UITests/bin/Debug/net10.0/TestResults/portal.log`. Don't build
   while they run.
+- **Never give the maintainer a URL to test until it works.** Before handing over a URL, check that the server is
+  running, the page loads with no console errors, and the change to be tested works there. While something is still
+  building or restarting, say so, and give no URL.
 - Integration scenarios tagged `@aws` are skipped unless the `BLAZWIZ_INTTEST_AWS_*` environment variables are set.
   Skipping them locally is expected. The maintainer tests real S3 sync in the deployed app.
 - Warnings are errors (`Directory.Build.props`), and StyleCop runs on the packages. Rules turned off for the whole
