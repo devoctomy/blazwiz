@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Microsoft.AspNetCore.Components;
 
@@ -7,12 +6,11 @@ namespace Devoctomy.Blazwiz.UI.Sync.Components;
 /// <summary>
 /// The Argon2id settings as fields, with the button that benchmarks them on this device. It shows the view model it is
 /// given, so whoever owns that reads the values entered: the benchmark panel in Settings, and the Advanced tab of
-/// <see cref="E2ePassphraseForm"/>. Logic lives in <see cref="Argon2idBenchmarkViewModel"/>.
+/// <see cref="E2ePassphraseForm"/>. It is shown again whenever the view showing it is, so that view follows the view
+/// model. Logic lives in <see cref="Argon2idBenchmarkViewModel"/>.
 /// </summary>
-public partial class Argon2idEditor : ComponentBase, IDisposable
+public partial class Argon2idEditor : ComponentBase
 {
-    private Argon2idBenchmarkViewModel? subscribed;
-
     /// <summary>
     /// Gets or sets the settings shown and benchmarked.
     /// </summary>
@@ -38,54 +36,4 @@ public partial class Argon2idEditor : ComponentBase, IDisposable
     /// </summary>
     [Parameter]
     public bool Compact { get; set; }
-
-    private string ColumnClass => Compact ? "col-sm-6" : "col-sm-6 col-lg-3";
-
-    private bool IsDisabled => Disabled || Model.IsRunning;
-
-    /// <inheritdoc/>
-    public void Dispose()
-    {
-        Dispose(true);
-        GC.SuppressFinalize(this);
-    }
-
-    /// <inheritdoc/>
-    protected override void OnParametersSet()
-    {
-        if (ReferenceEquals(subscribed, Model))
-        {
-            return;
-        }
-
-        Unsubscribe();
-        subscribed = Model;
-        subscribed.PropertyChanged += OnModelChanged;
-    }
-
-    /// <summary>
-    /// Stops listening to the settings.
-    /// </summary>
-    /// <param name="disposing">Whether called from <see cref="Dispose()"/>.</param>
-    protected virtual void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            Unsubscribe();
-        }
-    }
-
-    private void Unsubscribe()
-    {
-        if (subscribed != null)
-        {
-            subscribed.PropertyChanged -= OnModelChanged;
-            subscribed = null;
-        }
-    }
-
-    private void OnModelChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        _ = InvokeAsync(StateHasChanged);
-    }
 }

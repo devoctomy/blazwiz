@@ -761,6 +761,82 @@ public class E2eProfilesViewModelTests
     }
 
     [Fact]
+    public async Task GivenADialogOpen_WhenClosedForWhoeverOpenedIt_ThenItClosesAndTheyAreTold()
+    {
+        // Arrange
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenUnlockCommand.Execute(created.Name);
+        var told = 0;
+
+        // Act
+        await sut.CloseDialogAsync(() =>
+        {
+            told++;
+            return Task.CompletedTask;
+        });
+
+        // Assert
+        Assert.Null(sut.ActiveDialog);
+        Assert.Equal(1, told);
+    }
+
+    [Fact]
+    public async Task GivenADialogRunning_WhenClosedForWhoeverOpenedIt_ThenItStaysOpenAndTheyAreNotTold()
+    {
+        // Arrange
+        var release = new TaskCompletionSource();
+        mockManager.Setup(x => x.UnlockAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(release.Task);
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenUnlockCommand.Execute(created.Name);
+        sut.Passphrase = Pass;
+        var running = sut.ConfirmDialogAsync();
+        var told = 0;
+
+        // Act
+        await sut.CloseDialogAsync(() =>
+        {
+            told++;
+            return Task.CompletedTask;
+        });
+
+        // Assert
+        Assert.Equal(E2eDialogKind.Unlock, sut.ActiveDialog);
+        Assert.Equal(0, told);
+        release.SetResult();
+        await running;
+    }
+
+    [Fact]
+    public async Task GivenNobodyToTell_WhenClosedForWhoeverOpenedIt_ThenThrowsArgumentNullException()
+    {
+        // Arrange
+        using var sut = await CreateInitializedSutAsync();
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentNullException>(() => sut.CloseDialogAsync(null!));
+    }
+
+    [Fact]
+    public async Task GivenADialogWithThePassphraseForm_WhenTheFormChanges_ThenTheDialogIsToldToShowItAgain()
+    {
+        // Arrange
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenCreateCommand.Execute(null);
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        sut.PassphraseForm.ShowTab(E2ePassphraseFormTab.Advanced);
+        var afterTab = changed.Count(c => c == nameof(E2eProfilesViewModel.PassphraseForm));
+        sut.PassphraseForm.Argon2.Iterations = 500;
+        var afterSettings = changed.Count(c => c == nameof(E2eProfilesViewModel.PassphraseForm));
+
+        // Assert
+        Assert.Equal(1, afterTab);
+        Assert.True(afterSettings > afterTab);
+    }
+
+    [Fact]
     public async Task GivenADialogRunning_WhenConfirmedAgainOrAnotherDialogOpened_ThenBothAreIgnored()
     {
         // Arrange
@@ -774,6 +850,7 @@ public class E2eProfilesViewModelTests
         // Act
         await sut.ConfirmDialogAsync();
         await sut.OpenCreateAsync();
+        sut.OpenDelete(created.Name);
         await sut.StartRotationAsync();
 
         // Assert

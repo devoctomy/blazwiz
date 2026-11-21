@@ -602,9 +602,11 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
         OnPropertyChanged(nameof(SetPassphraseText));
     }
 
-    // The dialog's confirm button follows the form: disabled while its Argon2id settings need a benchmark.
+    // The dialog shows the form again whenever it changes, and its confirm button follows the form: disabled while its
+    // Argon2id settings need a benchmark.
     private void OnPassphraseFormChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(PassphraseForm));
         if (e.PropertyName == nameof(E2ePassphraseFormViewModel.CanConfirm))
         {
             OnPropertyChanged(nameof(CanSetPassphrase));

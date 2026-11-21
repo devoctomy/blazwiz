@@ -285,6 +285,28 @@ public class E2eUnlockPanelViewModelTests
     }
 
     [Fact]
+    public async Task GivenTheSetPassphraseDialog_WhenItsFormChanges_ThenThePanelIsToldToShowItAgain()
+    {
+        // Arrange
+        notes.State = E2eProfileState.NotSetUp;
+        using var sut = CreateSut();
+        await sut.SetProfileAsync("notes");
+        await sut.OpenSetPassphraseAsync();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        sut.PassphraseForm.ShowTab(E2ePassphraseFormTab.Advanced);
+        var afterTab = changed.Count(c => c == nameof(E2eUnlockPanelViewModel.PassphraseForm));
+        sut.PassphraseForm.Argon2.Iterations = 500;
+        var afterSettings = changed.Count(c => c == nameof(E2eUnlockPanelViewModel.PassphraseForm));
+
+        // Assert
+        Assert.Equal(1, afterTab);
+        Assert.True(afterSettings > afterTab);
+    }
+
+    [Fact]
     public async Task GivenTheSetPassphraseDialog_WhenClosed_ThenThePassphrasesAreForgotten()
     {
         // Arrange

@@ -4,7 +4,7 @@
 
 @if (Model.ActiveDialog is E2eDialogKind dialog)
 {
-    <ModalDialog Id="e2e-dialog" Title="@Model.DialogTitle" Icon="bi-shield-lock" OnClose="CloseAsync">
+    <ModalDialog Id="e2e-dialog" Title="@Model.DialogTitle" Icon="bi-shield-lock" OnClose="() => Model.CloseDialogAsync(OnClosed.InvokeAsync)">
         <ChildContent>
             @if (Model.IsEditing)
             {
@@ -114,26 +114,26 @@
         <Footer>
             @if (Model.IsEditing)
             {
-                <button type="button" class="btn btn-secondary" @onclick="CloseAsync">@Text["Common.Cancel"]</button>
+                <button type="button" class="btn btn-secondary" @onclick="() => Model.CloseDialogAsync(OnClosed.InvokeAsync)">@Text["Common.Cancel"]</button>
                 <button type="submit" form="e2e-form" class="btn @(dialog == E2eDialogKind.Delete ? "btn-danger" : "btn-primary")" id="e2e-confirm" disabled="@(!Model.CanConfirmDialog)">@Model.DialogTitle</button>
             }
             else if (Model.IsConfirmingRotation)
             {
-                <button type="button" class="btn btn-secondary" @onclick="CloseAsync">@Text["Common.Cancel"]</button>
+                <button type="button" class="btn btn-secondary" @onclick="() => Model.CloseDialogAsync(OnClosed.InvokeAsync)">@Text["Common.Cancel"]</button>
                 <button type="button" class="btn btn-primary" id="e2e-rotation-start"
                         @onclick="() => Model.StartRotationCommand.ExecuteAsync(null)">@Model.DialogTitle</button>
             }
             else if (Model.NeedsSignOut)
             {
                 <button type="button" class="btn btn-secondary" id="e2e-close" disabled="@Model.IsWorking"
-                        @onclick="CloseAsync">@Text["Common.Close"]</button>
+                        @onclick="() => Model.CloseDialogAsync(OnClosed.InvokeAsync)">@Text["Common.Close"]</button>
                 <button type="button" class="btn btn-primary" id="e2e-rotation-sign-out" disabled="@Model.IsWorking"
                         @onclick="() => Model.RetrySignOutCommand.ExecuteAsync(null)">@SyncText["Sync.E2e.Rotation.SignOut"]</button>
             }
             else
             {
                 <button type="button" class="btn btn-primary" id="e2e-close" disabled="@Model.IsWorking"
-                        @onclick="CloseAsync">@Text["Common.Close"]</button>
+                        @onclick="() => Model.CloseDialogAsync(OnClosed.InvokeAsync)">@Text["Common.Close"]</button>
             }
         </Footer>
     </ModalDialog>

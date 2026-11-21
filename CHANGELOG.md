@@ -8,6 +8,27 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.9.1
+
+### Changed
+- **The passphrase form's components hold no logic of their own.** `E2ePassphraseForm` and `Argon2idEditor` no longer
+  listen to the view model they are given: they are shown again whenever the view showing them is, so the view model
+  that owns an `E2ePassphraseFormViewModel` says when it changes. `E2eProfilesViewModel`, `E2eUnlockPanelViewModel`
+  and the template's `NotebooksViewModel` raise `PropertyChanged` for their `PassphraseForm` whenever the form does,
+  and `E2ePassphraseFormViewModel` raises it for `Argon2` whenever the Argon2id settings do. **Breaking:** a view model
+  of your own that owns the form does the same (see the `Devoctomy.Blazwiz.UI.Sync` README), and the two components'
+  `Dispose` and `OnParametersSet` members are gone.
+- **Closing the profile dialog is decided in its view model.** New `E2eProfilesViewModel.CloseDialogAsync(closed)`
+  closes the dialog and then calls `closed`, and does neither while the dialog's change is running; `E2eProfileDialog`
+  uses it for its `OnClosed`.
+- **The wait before an Argon2id derivation in the browser can be tested.** `BouncyCastleArgon2idKeyDerivationService`
+  has a second constructor taking the new `IRuntimeEnvironment` (`IsBrowser`; implemented by `RuntimeEnvironment`) and
+  a `TimeProvider`, both registered by `AddBlazwizCryptography` and `AddBlazwizE2eEncryption`. Its behaviour is the
+  same.
+
+### Removed
+- `E2eProfilesViewModel`'s unused private `RunActionAsync`.
+
 ## 0.9.0
 
 ### Added

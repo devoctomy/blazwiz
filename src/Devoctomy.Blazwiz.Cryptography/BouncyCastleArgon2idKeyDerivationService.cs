@@ -20,6 +20,29 @@ public class BouncyCastleArgon2idKeyDerivationService : IArgon2idKeyDerivationSe
     // Long enough for the browser to paint a frame (about 16 ms each) before the derivation blocks its only thread.
     private static readonly TimeSpan PaintDelay = TimeSpan.FromMilliseconds(50);
 
+    private readonly IRuntimeEnvironment environment;
+    private readonly TimeProvider timeProvider;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BouncyCastleArgon2idKeyDerivationService"/> class, for where the
+    /// code is running, with the system clock.
+    /// </summary>
+    public BouncyCastleArgon2idKeyDerivationService()
+        : this(new RuntimeEnvironment(), TimeProvider.System)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BouncyCastleArgon2idKeyDerivationService"/> class.
+    /// </summary>
+    /// <param name="environment">Says whether the code is running in the browser.</param>
+    /// <param name="timeProvider">The clock the wait before a derivation in the browser runs on.</param>
+    public BouncyCastleArgon2idKeyDerivationService(IRuntimeEnvironment environment, TimeProvider timeProvider)
+    {
+        this.environment = environment ?? throw new ArgumentNullException(nameof(environment));
+        this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    }
+
     /// <inheritdoc/>
     public async Task<byte[]> DeriveKeyAsync(string passphrase, byte[] salt, Argon2idParameters parameters, CancellationToken ct = default)
     {
@@ -39,9 +62,9 @@ public class BouncyCastleArgon2idKeyDerivationService : IArgon2idKeyDerivationSe
         // Let the caller's UI update before the long, blocking computation. In the browser there is one thread, and
         // Task.Yield resumes without the browser getting a turn, so nothing rendered just before (a spinner, a disabled
         // button) would be painted until the key is derived: a short timer gives the browser a frame to paint first.
-        if (OperatingSystem.IsBrowser())
+        if (environment.IsBrowser)
         {
-            await Task.Delay(PaintDelay, CancellationToken.None);
+            await Task.Delay(PaintDelay, timeProvider, CancellationToken.None);
         }
         else
         {

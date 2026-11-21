@@ -368,9 +368,11 @@ public partial class NotebooksViewModel : ViewModelBase
         Notebooks = await notebookService.GetNotebooksAsync();
     }
 
-    // The Create button follows the form: disabled while its Argon2id settings need a benchmark.
+    // The dialog shows the form again whenever it changes, and the Create button follows the form: disabled while its
+    // Argon2id settings need a benchmark.
     private void OnPassphraseFormChanged(object? sender, PropertyChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(PassphraseForm));
         if (e.PropertyName == nameof(E2ePassphraseFormViewModel.CanConfirm))
         {
             OnPropertyChanged(nameof(CanCreate));

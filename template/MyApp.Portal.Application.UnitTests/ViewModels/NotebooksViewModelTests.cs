@@ -328,6 +328,26 @@ public class NotebooksViewModelTests
     }
 
     [Fact]
+    public void GivenTheCreateDialog_WhenItsPassphraseFormChanges_ThenThePageIsToldToShowItAgain()
+    {
+        // Arrange
+        using var sut = CreateSut();
+        sut.ShowCreateDialogCommand.Execute(null);
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        sut.PassphraseForm.ShowTab(E2ePassphraseFormTab.Advanced);
+        var afterTab = changed.Count(c => c == nameof(NotebooksViewModel.PassphraseForm));
+        sut.PassphraseForm.Argon2.Iterations = 250;
+        var afterSettings = changed.Count(c => c == nameof(NotebooksViewModel.PassphraseForm));
+
+        // Assert
+        Assert.Equal(1, afterTab);
+        Assert.True(afterSettings > afterTab);
+    }
+
+    [Fact]
     public async Task GivenArgon2SettingsChanged_WhenCreating_ThenRefusedUntilTheyAreBenchmarkedThenCreatedWithThem()
     {
         // Arrange

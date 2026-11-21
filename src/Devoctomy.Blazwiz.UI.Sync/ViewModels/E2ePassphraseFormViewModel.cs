@@ -16,7 +16,10 @@ namespace Devoctomy.Blazwiz.UI.Sync.ViewModels;
 /// acknowledgement that it cannot be recovered), and Advanced, the Argon2id settings its key is derived with. Those
 /// start at the settings that apply, can be set to anything, and once changed are only accepted after a benchmark has
 /// completed with exactly those values. The view model of the dialog showing the form owns this one: it is given one of
-/// its own, resets it when the dialog opens, validates it and reads what was entered.
+/// its own, resets it when the dialog opens, validates it and reads what was entered. The form's view has no view model
+/// of its own to follow, so the owner also says when the form changes: on this view model's
+/// <see cref="INotifyPropertyChanged.PropertyChanged"/> it raises its own for the property holding the form, and its
+/// view shows the form again.
 /// </summary>
 public partial class E2ePassphraseFormViewModel : ViewModelBase
 {
@@ -185,8 +188,10 @@ public partial class E2ePassphraseFormViewModel : ViewModelBase
         base.Dispose(disposing);
     }
 
+    // The views showing the form follow this view model alone, so a change to the Argon2id settings is said here too.
     private void OnArgon2Changed(object? sender, PropertyChangedEventArgs e)
     {
+        OnPropertyChanged(nameof(Argon2));
         if (e.PropertyName == nameof(Argon2idBenchmarkViewModel.NeedsBenchmark))
         {
             OnPropertyChanged(nameof(CanConfirm));

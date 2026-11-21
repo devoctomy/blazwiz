@@ -1,7 +1,7 @@
 @inject IStringLocalizer<SyncUiText> SyncText
 
 <div class="row g-3">
-    <div class="@ColumnClass">
+    <div class="col-sm-6 @(Compact ? null : "col-lg-3")">
         <label class="form-label" for="@(IdPrefix)-memory">@SyncText["Sync.Argon2id.Memory"]</label>
         @if (Model.IsMemoryMenuOpen)
         {
@@ -9,9 +9,9 @@
         }
         <div class="input-group">
             <input type="number" class="form-control" id="@(IdPrefix)-memory" min="0" step="any"
-                   disabled="@IsDisabled" @bind="Model.MemoryMib" />
+                   disabled="@(Disabled || Model.IsRunning)" @bind="Model.MemoryMib" />
             <button type="button" class="btn btn-outline-secondary dropdown-toggle" id="@(IdPrefix)-memory-sizes-toggle"
-                    disabled="@IsDisabled" aria-expanded="@Model.IsMemoryMenuOpen.ToString().ToLowerInvariant()"
+                    disabled="@(Disabled || Model.IsRunning)" aria-expanded="@Model.IsMemoryMenuOpen.ToString().ToLowerInvariant()"
                     @onclick="() => Model.ToggleMemoryMenuCommand.Execute(null)">
                 @SyncText["Sync.Argon2id.MibUnit"]
             </button>
@@ -30,21 +30,21 @@
             }
         </div>
     </div>
-    <div class="@ColumnClass">
+    <div class="col-sm-6 @(Compact ? null : "col-lg-3")">
         <label class="form-label" for="@(IdPrefix)-iterations">@SyncText["Sync.Argon2id.Iterations"]</label>
         <input type="number" class="form-control" id="@(IdPrefix)-iterations" min="1" step="1"
-               disabled="@IsDisabled" @bind="Model.Iterations" />
+               disabled="@(Disabled || Model.IsRunning)" @bind="Model.Iterations" />
     </div>
-    <div class="@ColumnClass">
+    <div class="col-sm-6 @(Compact ? null : "col-lg-3")">
         <label class="form-label" for="@(IdPrefix)-parallelism">@SyncText["Sync.Argon2id.Parallelism"]</label>
         <input type="number" class="form-control" id="@(IdPrefix)-parallelism" min="1" step="1"
-               disabled="@IsDisabled" @bind="Model.Parallelism" />
+               disabled="@(Disabled || Model.IsRunning)" @bind="Model.Parallelism" />
     </div>
-    <div class="@ColumnClass">
+    <div class="col-sm-6 @(Compact ? null : "col-lg-3")">
         <label class="form-label" for="@(IdPrefix)-key-length">@SyncText["Sync.Argon2id.KeyLength"]</label>
         <div class="input-group">
             <input type="number" class="form-control" id="@(IdPrefix)-key-length" min="@Argon2idBenchmarkViewModel.MinKeyLength" step="1"
-                   disabled="@(IsDisabled || Model.IsKeyLengthFixed)" @bind="Model.KeyLength" />
+                   disabled="@(Disabled || Model.IsRunning || Model.IsKeyLengthFixed)" @bind="Model.KeyLength" />
             <span class="input-group-text">@SyncText["Sync.Argon2id.BytesUnit"]</span>
         </div>
     </div>
