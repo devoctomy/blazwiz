@@ -33,7 +33,7 @@ namespace Devoctomy.Blazwiz.UI.Sync.Extensions;
 
 /// <summary>
 /// Extension methods for the sync module: files kept in IndexedDB, OPFS or a folder the user picks (chosen per device in
-/// Settings), synced with the user's prefix in the data bucket, with optional end to end encryption.
+/// Settings), synced with the user's prefix in the data bucket, and always end to end encrypted.
 /// </summary>
 public static class SyncModuleServiceCollectionExtensions
 {

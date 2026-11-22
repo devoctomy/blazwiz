@@ -38,7 +38,10 @@ Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult.Username.set -> void
 Devoctomy.Blazwiz.Browser.Models.WebAuthnRegisterResult.WebAuthnRegisterResult() -> void
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.BrowserInteropService(Microsoft.JSInterop.IJSRuntime! jsRuntime) -> void
-Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.FocusFirstInputAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.FocusAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.FocusAutofocusAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.FocusFirstButtonAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.FocusFirstInputAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.GetPreferredThemeAsync() -> System.Threading.Tasks.Task<string!>!
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.SetDocumentLanguageAsync(string! language) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.BrowserInteropService.SetThemeAsync(string! theme) -> System.Threading.Tasks.Task!
@@ -52,7 +55,10 @@ Devoctomy.Blazwiz.Browser.Services.DeviceNameService.GetNameAsync() -> System.Th
 Devoctomy.Blazwiz.Browser.Services.DeviceNameService.Sanitize(string? name) -> string?
 Devoctomy.Blazwiz.Browser.Services.DeviceNameService.SetNameAsync(string! name) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService
-Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.FocusFirstInputAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.FocusAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.FocusAutofocusAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.FocusFirstButtonAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.FocusFirstInputAsync(Microsoft.AspNetCore.Components.ElementReference element) -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.GetPreferredThemeAsync() -> System.Threading.Tasks.Task<string!>!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.SetDocumentLanguageAsync(string! language) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService.SetThemeAsync(string! theme) -> System.Threading.Tasks.Task!

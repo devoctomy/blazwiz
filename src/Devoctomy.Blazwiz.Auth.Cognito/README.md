@@ -8,7 +8,7 @@ the session's AWS credentials from a Cognito identity pool.
 After `AddBlazwizUi`:
 
 ```csharp
-builder.Services.AddBlazwizCognito(builder.Configuration);
+builder.Services.AddBlazwizCognito(builder.Configuration, allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment());
 ```
 
 It reads the `AwsCognito` section of the configuration (`wwwroot/appsettings.json`). The base stack in
@@ -23,9 +23,9 @@ It reads the `AwsCognito` section of the configuration (`wwwroot/appsettings.jso
 }
 ```
 
-While no user pool is configured, the placeholder sign in (any credentials) stays in use only where the app allows it:
-`AddBlazwizCognito(configuration, allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment())`. Anywhere else,
-missing settings stop the app from starting rather than letting anyone in.
+While no user pool is configured, the placeholder sign in (any credentials) stays in use only where
+`allowPlaceholderSignIn` is true, as it is above in development. Anywhere else, missing settings stop the app from
+starting rather than letting anyone in.
 
 Signing out everywhere (`IAuthenticationService.SignOutEverywhereAsync`) calls Cognito's `GlobalSignOut`, which
 revokes every refresh token the user has and, because the app client has `EnableTokenRevocation`, their access tokens

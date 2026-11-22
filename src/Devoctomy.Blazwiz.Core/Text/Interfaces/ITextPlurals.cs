@@ -21,7 +21,7 @@ public interface ITextPlurals
     /// back to <c>&lt;key&gt;.Other</c>. The count is placeholder <c>{0}</c>; any further arguments follow it.
     /// </summary>
     /// <param name="text">The resources to look in.</param>
-    /// <param name="key">The text's key without the form, e.g. <c>Sync.Storage.FileCount</c>.</param>
+    /// <param name="key">The text's key without the form, e.g. <c>Sync.Status.PendingChanges</c>.</param>
     /// <param name="count">The count.</param>
     /// <param name="arguments">Values for placeholders <c>{1}</c> onwards.</param>
     /// <returns>The text.</returns>

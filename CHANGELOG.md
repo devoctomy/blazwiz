@@ -8,6 +8,21 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.9.3
+
+### Added
+- **`ModalDialog` has a `FocusMode` parameter** that says what is focused when the dialog opens: `FirstInput` (the
+  default), `FirstButton`, `Dialog`, `Autofocus` (the first element marked `autofocus`) or `None`. `ModalDialog`'s
+  logic now lives in `ModalDialogViewModel`.
+- **A guide for building apps on blazwiz**, in `docs/blazwiz`.
+
+### Changed
+- **A dialog with no inputs focuses the dialog itself, not its first footer button.** This applies with the default
+  `FirstInput`, so pressing Enter in a confirmation no longer presses its first button. Set
+  `FocusMode="ModalDialogFocusMode.FirstButton"` to keep the old behaviour. **Breaking:**
+  `IBrowserInteropService.FocusFirstInputAsync` returns `Task<bool>` (whether it found an input) and no longer falls
+  back to a footer button. `FocusFirstButtonAsync`, `FocusAutofocusAsync` and `FocusAsync` are new.
+
 ## 0.9.2
 
 ### Fixed

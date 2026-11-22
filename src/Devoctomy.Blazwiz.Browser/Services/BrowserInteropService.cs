@@ -40,10 +40,33 @@ public sealed class BrowserInteropService(IJSRuntime jsRuntime)
     }
 
     /// <inheritdoc/>
-    public async Task FocusFirstInputAsync(ElementReference element)
+    public Task<bool> FocusFirstInputAsync(ElementReference element)
+    {
+        return InvokeFocusAsync("focusFirstInput", element);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> FocusFirstButtonAsync(ElementReference element)
+    {
+        return InvokeFocusAsync("focusFirstButton", element);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> FocusAutofocusAsync(ElementReference element)
+    {
+        return InvokeFocusAsync("focusAutofocus", element);
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> FocusAsync(ElementReference element)
+    {
+        return InvokeFocusAsync("focusElement", element);
+    }
+
+    private async Task<bool> InvokeFocusAsync(string function, ElementReference element)
     {
         var js = await GetModuleAsync();
-        await js.InvokeVoidAsync("focusFirstInput", element);
+        return await js.InvokeAsync<bool>(function, element);
     }
 
     private async Task<IJSObjectReference> GetModuleAsync()

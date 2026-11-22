@@ -38,11 +38,12 @@ flowchart TB
         S1["Appearance 100"]
         S2["Language 150"]
         S3["Offline 200"]
+        S3b["This device 250 (DeviceSettingsSection)"]
         S4["Sync 300 (SyncSettingsSection)"]
         S4b["End to end encryption 350 (E2eProfilesSection)"]
         S5["Argon2id 400 (Argon2idBenchmarkPanel)"]
         S6["About 10000"]
-        S1 --> S2 --> S3 --> S4 --> S4b --> S5 --> S6
+        S1 --> S2 --> S3 --> S3b --> S4 --> S4b --> S5 --> S6
     end
 
     subgraph LoginPage["Sign-in page (login)"]

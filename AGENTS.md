@@ -139,6 +139,9 @@ reporting work as done, not after the maintainer has merged it.
 
 After a change, update the documentation it affects in the same piece of work, if any is. Check:
 
+- `docs/blazwiz`: the guide for engineers building an app on blazwiz. **Every change that affects consumers** (a new
+  or changed component, parameter, service, extension point, configuration key, or anything else an app uses or
+  sees) is documented there in the same piece of work, in the guide's plain, friendly style.
 - `src/Devoctomy.Blazwiz.<Package>/README.md`: what the package does and how to use it (it ships in the NuGet
   package), for any change to a package's setup, configuration or behaviour.
 - `template/README.md` and the root `README.md`: the template's options and what a generated app contains, the

@@ -3,7 +3,7 @@ namespace Devoctomy.Blazwiz.Core.Text;
 /// <summary>
 /// The plural forms languages use, as in the Unicode CLDR plural rules. English uses <see cref="One"/> and
 /// <see cref="Other"/>; other languages use more. Text that depends on a count has one resource per form, named
-/// <c>&lt;key&gt;.&lt;form&gt;</c> (e.g. <c>Sync.Storage.FileCount.One</c>).
+/// <c>&lt;key&gt;.&lt;form&gt;</c> (e.g. <c>Sync.Status.PendingChanges.One</c>).
 /// </summary>
 public enum PluralCategory
 {
