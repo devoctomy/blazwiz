@@ -65,7 +65,7 @@ public class UiServiceCollectionExtensionsTests
         Assert.IsType<SessionEndedNoticeService>(scope.ServiceProvider.GetRequiredService<ISessionEndedNoticeService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ProfileViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<DeviceSettingsViewModel>());
-        Assert.Contains(typeof(Components.Settings.DeviceSettingsSection), scope.ServiceProvider.GetRequiredService<ISettingsSectionRegistry>().GetSections());
+        Assert.Contains(typeof(Devoctomy.Blazwiz.UI.Components.Settings.DeviceSettingsSection), scope.ServiceProvider.GetRequiredService<ISettingsSectionRegistry>().GetSections());
     }
 
     [Fact]
