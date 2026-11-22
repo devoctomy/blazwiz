@@ -6,7 +6,7 @@ namespace Devoctomy.Blazwiz.UI.Sync.Components;
 
 /// <summary>
 /// Shows a profile's content while it is unlocked, and in its place, while it is locked, a panel asking for its
-/// passphrase (or pointing to Settings while it has none). Wrap any page's content of a profile in it:
+/// passphrase (or, while it has none, a button that opens a dialog to set one). Wrap any page's content of a profile in it:
 /// <c>&lt;E2eUnlockPanel Profile="notes"&gt;...&lt;/E2eUnlockPanel&gt;</c>. Logic lives in
 /// <see cref="E2eUnlockPanelViewModel"/>.
 /// </summary>

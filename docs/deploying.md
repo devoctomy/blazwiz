@@ -63,8 +63,8 @@ The workflows need an IAM role that GitHub can assume. None of this can be done 
    }
    ```
 
-   - **Use a new role, not clypse's.** A role per repository keeps each repository's workflows to its own policy.
-     Clypse's role trusts only clypse's repository.
+   - **Use a new role, not another repository's.** A role per repository keeps each repository's workflows to its own
+     policy, and a role made for another repository trusts only that repository.
    - **The subject contains numeric ids.** GitHub's token names the repository with its owner's and its own numeric
      ids (`devoctomy@14939242/blazwiz@1394831664`), so a repository later renamed or recreated with the same name
      doesn't match.

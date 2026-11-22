@@ -14,6 +14,8 @@ Devoctomy.Blazwiz.UI.Components.ForgotPasswordLink.ForgotPasswordLink() -> void
 Devoctomy.Blazwiz.UI.Components.ModalDialog
 Devoctomy.Blazwiz.UI.Components.ModalDialog.ChildContent.get -> Microsoft.AspNetCore.Components.RenderFragment?
 Devoctomy.Blazwiz.UI.Components.ModalDialog.ChildContent.set -> void
+Devoctomy.Blazwiz.UI.Components.ModalDialog.FocusMode.get -> Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode
+Devoctomy.Blazwiz.UI.Components.ModalDialog.FocusMode.set -> void
 Devoctomy.Blazwiz.UI.Components.ModalDialog.Footer.get -> Microsoft.AspNetCore.Components.RenderFragment?
 Devoctomy.Blazwiz.UI.Components.ModalDialog.Footer.set -> void
 Devoctomy.Blazwiz.UI.Components.ModalDialog.Icon.get -> string?
@@ -27,6 +29,12 @@ Devoctomy.Blazwiz.UI.Components.ModalDialog.SizeClass.get -> string?
 Devoctomy.Blazwiz.UI.Components.ModalDialog.SizeClass.set -> void
 Devoctomy.Blazwiz.UI.Components.ModalDialog.Title.get -> string!
 Devoctomy.Blazwiz.UI.Components.ModalDialog.Title.set -> void
+Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode
+Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode.Autofocus = 3 -> Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode
+Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode.Dialog = 2 -> Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode
+Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode.FirstButton = 1 -> Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode
+Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode.FirstInput = 0 -> Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode
+Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode.None = 4 -> Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode
 Devoctomy.Blazwiz.UI.Components.OfflineBanner
 Devoctomy.Blazwiz.UI.Components.OfflineBanner.OfflineBanner() -> void
 Devoctomy.Blazwiz.UI.Components.OfflineModeSwitch
@@ -434,6 +442,12 @@ Devoctomy.Blazwiz.UI.ViewModels.MainLayoutViewModel.ToggleSidebarAsync() -> Syst
 Devoctomy.Blazwiz.UI.ViewModels.MainLayoutViewModel.ToggleThemeAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.ViewModels.MainLayoutViewModel.TopBarActions.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
 Devoctomy.Blazwiz.UI.ViewModels.MainLayoutViewModel.UserInitials.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.ModalDialogViewModel
+Devoctomy.Blazwiz.UI.ViewModels.ModalDialogViewModel.Element.get -> Microsoft.AspNetCore.Components.ElementReference
+Devoctomy.Blazwiz.UI.ViewModels.ModalDialogViewModel.Element.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.ModalDialogViewModel.ModalDialogViewModel(Devoctomy.Blazwiz.Browser.Services.Interfaces.IBrowserInteropService! browserInterop) -> void
+Devoctomy.Blazwiz.UI.ViewModels.ModalDialogViewModel.OnKeyDownAsync(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs! e) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.ModalDialogViewModel.SetParameters(Devoctomy.Blazwiz.UI.Components.ModalDialogFocusMode focusMode, Microsoft.AspNetCore.Components.EventCallback onClose) -> void
 Devoctomy.Blazwiz.UI.ViewModels.OfflineBannerViewModel
 Devoctomy.Blazwiz.UI.ViewModels.OfflineBannerViewModel.IsVisible.get -> bool
 Devoctomy.Blazwiz.UI.ViewModels.OfflineBannerViewModel.Message.get -> string!
@@ -502,7 +516,7 @@ const Devoctomy.Blazwiz.UI.Shell.BlazwizPages.Sync = "sync" -> string!
 const Devoctomy.Blazwiz.UI.Text.ErrorText.UnknownKey = "Error.Unknown" -> string!
 const Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.RememberMeNameMaxLength = 50 -> int
 const Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.SavedUsersStorageKey = "saved_users" -> string!
-override Devoctomy.Blazwiz.UI.Components.ModalDialog.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
+override Devoctomy.Blazwiz.UI.Components.ModalDialog.OnParametersSet() -> void
 override Devoctomy.Blazwiz.UI.Components.Shell.BlazwizRouter.OnParametersSet() -> void
 override Devoctomy.Blazwiz.UI.Components.Shell.PageHost.OnParametersSet() -> void
 override Devoctomy.Blazwiz.UI.ViewModels.AppUpdateIndicatorViewModel.Dispose(bool disposing) -> void
@@ -512,6 +526,7 @@ override Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.OnInitializedAs
 override Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.ViewModels.MainLayoutViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.MainLayoutViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+override Devoctomy.Blazwiz.UI.ViewModels.ModalDialogViewModel.OnAfterRenderAsync(bool firstRender) -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.ViewModels.OfflineBannerViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.OfflineModeSwitchViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.ProfileViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!

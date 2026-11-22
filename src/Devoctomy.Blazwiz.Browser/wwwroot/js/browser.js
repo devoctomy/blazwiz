@@ -12,18 +12,44 @@ export function getPreferredTheme() {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-// Focuses (and selects the text of) the first input in an element, or its first button if it has no inputs. Used by
-// ModalDialog; the autofocus attribute only works when a page first loads.
+// Focus helpers used by ModalDialog (the autofocus attribute only works when a page first loads). Each returns whether
+// it found something to focus; the caller decides what to do when it did not.
+
+// Focuses (and selects the text of) the first input, select or textarea in an element.
 export function focusFirstInput(element) {
-    if (!element) {
-        return;
+    const target = element ? element.querySelector('input:not([type=hidden]), select, textarea') : null;
+    if (!target) {
+        return false;
     }
 
-    const target = element.querySelector('input:not([type=hidden]), select, textarea') || element.querySelector('.modal-footer button');
-    if (target) {
-        target.focus();
-        if (typeof target.select === 'function' && target.tagName === 'INPUT') {
-            target.select();
-        }
+    target.focus();
+    if (typeof target.select === 'function' && target.tagName === 'INPUT') {
+        target.select();
     }
+
+    return true;
+}
+
+// Focuses the first button in an element's modal footer.
+export function focusFirstButton(element) {
+    return focusTarget(element ? element.querySelector('.modal-footer button') : null);
+}
+
+// Focuses the first element marked autofocus in an element.
+export function focusAutofocus(element) {
+    return focusTarget(element ? element.querySelector('[autofocus]') : null);
+}
+
+// Focuses the element itself.
+export function focusElement(element) {
+    return focusTarget(element);
+}
+
+function focusTarget(target) {
+    if (!target) {
+        return false;
+    }
+
+    target.focus();
+    return true;
 }

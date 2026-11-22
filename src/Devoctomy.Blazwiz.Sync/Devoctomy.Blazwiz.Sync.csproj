@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <Description>Offline-first file sync for blazwiz apps: files kept in IndexedDB, OPFS or a local folder and synced with S3, with optional end to end encryption.</Description>
+    <Description>Offline-first file sync for blazwiz apps: files kept in IndexedDB, OPFS or a local folder and synced with S3, with configurable end to end encryption.</Description>
   </PropertyGroup>
   <ItemGroup>
     <SupportedPlatform Include="browser" />

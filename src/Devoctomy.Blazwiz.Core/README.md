@@ -5,11 +5,12 @@ apps can reword and translate, and coded errors. Every other blazwiz package dep
 
 ## Usage
 
-Call `AddBlazwizApp` first, with the app's display name and its ID (lower case letters and numbers). Browser storage is
-named after the ID, so `session` is kept as `myapp_session`.
+Call `AddBlazwizApp` first, with the app's name (lower case letters and numbers, starting with a letter) and its unique
+ID (a GUID other than the empty one). Browser storage is named after the name, so `session` is kept as
+`myapp_session`.
 
 ```csharp
-builder.Services.AddBlazwizApp("My App", "myapp");
+builder.Services.AddBlazwizApp("myapp", "3f2a6c1e-8d4b-4f7a-9c2e-5b1d7e9a0c34");
 ```
 
 `AddBlazwizText` changes the framework's text: override wording, add languages, or turn on pseudo-localisation to find

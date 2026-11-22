@@ -66,17 +66,30 @@ public class BrowserInteropServiceTests
         mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("setLanguage", It.Is<object?[]>(a => (string?)a[0] == "fr-FR")), Times.Once);
     }
 
-    [Fact]
-    public async Task GivenElement_WhenFocusFirstInputAsync_ThenModuleFocusesIt()
+    [Theory]
+    [InlineData(nameof(BrowserInteropService.FocusFirstInputAsync), "focusFirstInput", true)]
+    [InlineData(nameof(BrowserInteropService.FocusFirstButtonAsync), "focusFirstButton", false)]
+    [InlineData(nameof(BrowserInteropService.FocusAutofocusAsync), "focusAutofocus", true)]
+    [InlineData(nameof(BrowserInteropService.FocusAsync), "focusElement", false)]
+    public async Task GivenElement_WhenFocusing_ThenModuleFocusesItAndResultReturned(string method, string function, bool found)
     {
         // Arrange
         var element = new ElementReference("dialog");
+        mockModule.Setup(x => x.InvokeAsync<bool>(function, It.Is<object?[]>(a => ((ElementReference)a[0]!).Id == "dialog"))).ReturnsAsync(found);
         var sut = new BrowserInteropService(mockJs.Object);
+        Func<ElementReference, Task<bool>> focus = method switch
+        {
+            nameof(BrowserInteropService.FocusFirstInputAsync) => sut.FocusFirstInputAsync,
+            nameof(BrowserInteropService.FocusFirstButtonAsync) => sut.FocusFirstButtonAsync,
+            nameof(BrowserInteropService.FocusAutofocusAsync) => sut.FocusAutofocusAsync,
+            _ => sut.FocusAsync,
+        };
 
         // Act
-        await sut.FocusFirstInputAsync(element);
+        var result = await focus(element);
 
         // Assert
-        mockModule.Verify(x => x.InvokeAsync<IJSVoidResult>("focusFirstInput", It.Is<object?[]>(a => ((ElementReference)a[0]!).Id == "dialog")), Times.Once);
+        Assert.Equal(found, result);
+        mockModule.Verify(x => x.InvokeAsync<bool>(function, It.IsAny<object?[]>()), Times.Once);
     }
 }

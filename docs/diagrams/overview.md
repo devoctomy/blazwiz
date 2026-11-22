@@ -72,7 +72,7 @@ its package's services, view models and configuration section, and calls the met
 ```csharp
 builder.Services.AddBlazwizApp(AppIdentity.Name, AppIdentity.Id);   // "myapp": names everything kept in the browser
 builder.Services.AddBlazwizUi(builder.Configuration);               // the shell and its pages, AppSettings and Text settings
-builder.Services.AddBlazwizCognito(builder.Configuration);          // Cognito sign in once AwsCognito is configured
+builder.Services.AddBlazwizCognito(builder.Configuration, allowPlaceholderSignIn: builder.HostEnvironment.IsDevelopment()); // Cognito sign in once AwsCognito is configured
 builder.Services.AddBlazwizAppSyncEvents(builder.Configuration, allowLocalChannel: ...); // user events, once Events is configured
 builder.Services.AddBlazwizSyncModule(builder.Configuration, sync => sync
     .UseEmbeddedConfiguration(typeof(Program).Assembly, "sync.json")
@@ -94,7 +94,7 @@ flowchart LR
     subgraph Program["Program.cs"]
         App["AddBlazwizApp(name, id)"]
         Ui["AddBlazwizUi(configuration)"]
-        Cog["AddBlazwizCognito(configuration)"]
+        Cog["AddBlazwizCognito(configuration, allowPlaceholderSignIn)"]
         Mod["AddBlazwizSyncModule(configuration, sync => ...)"]
         Own["The app's own Add* calls"]
     end
@@ -122,13 +122,14 @@ flowchart LR
 |---|---|---|
 | `AddBlazwizApp(name, id)` | Core | None: the name (lower case letters and digits) prefixes every storage name, the id salts the passkey keys |
 | `AddBlazwizUi(configuration)` | UI | `AppSettings`, `Text:SupportedCultures`, `Text:PseudoLocalization` |
-| `AddBlazwizCognito(configuration)` | Auth.Cognito | `AwsCognito` (region, user pool, app client, identity pool) |
+| `AddBlazwizCognito(configuration, allowPlaceholderSignIn)` | Auth.Cognito | `AwsCognito` (region, user pool, app client, identity pool) |
 | `AddBlazwizAppSyncEvents(configuration, allowLocalChannel)` | Events.AppSync | `Events` (the AppSync Events API's HTTP and real-time hosts) |
 | `AddBlazwizSyncModule(configuration, sync => ...)` | UI.Sync | `AwsS3`, `Argon2id`, and `Sync` through the builder (`UseConfiguration` / `UseEmbeddedConfiguration`) |
 
 `AddBlazwizApp` must come first: the packages read the app's name and id from it, and refuse to start without it
 ("Call AddBlazwizApp(name, id) before adding the rest of the framework"). Without a user pool configured
-(local development), `AddBlazwizCognito` keeps the local sign in, and without a data bucket configured, `AddBlazwizSync`
+(local development), `AddBlazwizCognito` keeps the local sign in where `allowPlaceholderSignIn` is true and stops the
+app from starting anywhere else, and without a data bucket configured, `AddBlazwizSync`
 keeps the keys in the browser instead of the bucket.
 
 ## 3. At run time

@@ -30,7 +30,7 @@ public class TextBuilder(TextOptions options)
     /// <summary>
     /// Overrides one text in code.
     /// </summary>
-    /// <param name="key">The text's key, e.g. <c>Sync.E2eBanner.Locked</c>.</param>
+    /// <param name="key">The text's key, e.g. <c>Sync.E2e.SetPassphrase</c>.</param>
     /// <param name="text">The new text. It must have the same placeholders as the original.</param>
     /// <param name="culture">The culture it is for, e.g. <c>fr</c>; null for every culture.</param>
     /// <returns>The builder for method chaining.</returns>

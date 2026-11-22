@@ -1,17 +1,16 @@
-using Devoctomy.Blazwiz.Browser.Services.Interfaces;
+using Blazing.Mvvm.Components;
+using Devoctomy.Blazwiz.UI.ViewModels;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 
 namespace Devoctomy.Blazwiz.UI.Components;
 
 /// <summary>
-/// A themed Bootstrap modal dialog. Render it while the dialog should be open; it focuses its first input
-/// (or button) when shown and calls <see cref="OnClose"/> when Escape or the close button is pressed.
+/// A themed Bootstrap modal dialog. Render it while the dialog should be open; it focuses what
+/// <see cref="FocusMode"/> says when shown and calls <see cref="OnClose"/> when Escape or the close button is pressed.
+/// Logic lives in <see cref="ModalDialogViewModel"/>.
 /// </summary>
-public partial class ModalDialog : ComponentBase
+public partial class ModalDialog : MvvmComponentBase<ModalDialogViewModel>
 {
-    private ElementReference element;
-
     /// <summary>
     /// Gets or sets the element id, also used to label the dialog with its title.
     /// </summary>
@@ -38,6 +37,12 @@ public partial class ModalDialog : ComponentBase
     public string? SizeClass { get; set; }
 
     /// <summary>
+    /// Gets or sets what is focused when the dialog is shown. Defaults to <see cref="ModalDialogFocusMode.FirstInput"/>.
+    /// </summary>
+    [Parameter]
+    public ModalDialogFocusMode FocusMode { get; set; } = ModalDialogFocusMode.FirstInput;
+
+    /// <summary>
     /// Gets or sets the body of the dialog.
     /// </summary>
     [Parameter]
@@ -55,23 +60,10 @@ public partial class ModalDialog : ComponentBase
     [Parameter]
     public EventCallback OnClose { get; set; }
 
-    [Inject]
-    private IBrowserInteropService BrowserInterop { get; set; } = default!;
-
     /// <inheritdoc/>
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnParametersSet()
     {
-        if (firstRender)
-        {
-            await BrowserInterop.FocusFirstInputAsync(element);
-        }
-    }
-
-    private async Task OnKeyDownAsync(KeyboardEventArgs e)
-    {
-        if (e.Key == "Escape")
-        {
-            await OnClose.InvokeAsync();
-        }
+        base.OnParametersSet();
+        ViewModel.SetParameters(FocusMode, OnClose);
     }
 }
