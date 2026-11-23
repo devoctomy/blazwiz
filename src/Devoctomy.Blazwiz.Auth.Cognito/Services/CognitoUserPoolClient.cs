@@ -370,16 +370,22 @@ public class CognitoUserPoolClient : ICognitoUserPoolClient
 
     private static CognitoSignInResult ToResult(AuthenticationResultType? tokens, ChallengeNameType? challengeName, string? sessionId)
     {
+        var result = tokens == null ? new CognitoSignInResult() : FromTokens(tokens);
+        result.ChallengeName = challengeName?.Value;
+        result.SessionId = sessionId;
+        return result;
+    }
+
+    private static CognitoSignInResult FromTokens(AuthenticationResultType tokens)
+    {
         return new CognitoSignInResult
         {
-            IdToken = tokens?.IdToken,
-            AccessToken = tokens?.AccessToken,
-            RefreshToken = tokens?.RefreshToken,
-            ExpiresIn = tokens?.ExpiresIn ?? 0,
-            ChallengeName = challengeName?.Value,
-            SessionId = sessionId,
-            NewDeviceKey = tokens?.NewDeviceMetadata?.DeviceKey,
-            NewDeviceGroupKey = tokens?.NewDeviceMetadata?.DeviceGroupKey,
+            IdToken = tokens.IdToken,
+            AccessToken = tokens.AccessToken,
+            RefreshToken = tokens.RefreshToken,
+            ExpiresIn = tokens.ExpiresIn.GetValueOrDefault(),
+            NewDeviceKey = tokens.NewDeviceMetadata?.DeviceKey,
+            NewDeviceGroupKey = tokens.NewDeviceMetadata?.DeviceGroupKey,
         };
     }
 
