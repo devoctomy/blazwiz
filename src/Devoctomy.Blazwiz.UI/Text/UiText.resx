@@ -345,6 +345,18 @@
   <data name="Error.Auth.PasswordResetFailed" xml:space="preserve">
     <value>Your password could not be reset. Try again later.</value>
   </data>
+  <data name="Error.Auth.MfaCodeRequired" xml:space="preserve">
+    <value>Enter the code from your authenticator app.</value>
+  </data>
+  <data name="Error.Auth.AccountChangeOffline" xml:space="preserve">
+    <value>This needs a connection. Turn offline mode off and try again.</value>
+  </data>
+  <data name="Error.Auth.MfaChangeFailed" xml:space="preserve">
+    <value>Two-step verification could not be changed. Try again later.</value>
+  </data>
+  <data name="Error.Auth.DevicesFailed" xml:space="preserve">
+    <value>Your remembered devices could not be changed. Try again later.</value>
+  </data>
   <data name="Profile.ChangePassword.Title" xml:space="preserve">
     <value>Change password</value>
   </data>

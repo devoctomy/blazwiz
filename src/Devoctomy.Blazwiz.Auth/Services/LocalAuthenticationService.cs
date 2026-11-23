@@ -40,6 +40,7 @@ public class LocalAuthenticationService(
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     private bool isListening;
+    private string? pendingMfaUsername;
 
     /// <inheritdoc/>
     public event EventHandler<SessionEndedEventArgs>? SessionEnded;
@@ -62,8 +63,16 @@ public class LocalAuthenticationService(
     }
 
     /// <inheritdoc/>
-    public async Task<LoginResult> LoginAsync(string username, string password)
+    public Task<LoginResult> LoginAsync(string username, string password)
     {
+        return LoginAsync(username, password, null);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>The placeholder never remembers a device, so a code is asked for whenever two-step verification is on.</remarks>
+    public async Task<LoginResult> LoginAsync(string username, string password, string? rememberedDevice)
+    {
+        pendingMfaUsername = null;
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             return new LoginResult
@@ -73,29 +82,65 @@ public class LocalAuthenticationService(
             };
         }
 
-        var now = timeProvider.GetUtcNow();
         var trimmedUsername = username.Trim();
-        var session = new UserSession
+        if (LocalMfaService.IsEnabledFor(await LocalMfaService.LoadAsync(localStorageService), trimmedUsername))
         {
-            Username = trimmedUsername,
-            DisplayName = userDisplayService.GetDisplayNameFromUsername(trimmedUsername),
-            Email = trimmedUsername.Contains('@') ? trimmedUsername : null,
-            SignedInAt = now,
-            ExpiresAt = now.Add(SessionDuration),
-        };
+            pendingMfaUsername = trimmedUsername;
+            return new LoginResult
+            {
+                Success = false,
+                MfaCodeRequired = true,
+            };
+        }
 
-        await localStorageService.SetObjectAsync(SessionStorageKey, session);
+        return await StartSessionAsync(trimmedUsername);
+    }
 
-        return new LoginResult
+    /// <inheritdoc/>
+    /// <remarks>Accepts any six-digit code.</remarks>
+    public async Task<LoginResult> CompleteMfaAsync(string code)
+    {
+        if (pendingMfaUsername == null)
         {
-            Success = true,
-            Session = session,
-        };
+            return new LoginResult { Success = false, ErrorCode = AuthErrorCodes.SignInAgain };
+        }
+
+        if (!LocalMfaService.IsValidCode(code))
+        {
+            return new LoginResult
+            {
+                Success = false,
+                ErrorCode = string.IsNullOrWhiteSpace(code) ? AuthErrorCodes.MfaCodeRequired : AuthErrorCodes.CodeMismatch,
+            };
+        }
+
+        var username = pendingMfaUsername;
+        pendingMfaUsername = null;
+        return await StartSessionAsync(username);
+    }
+
+    /// <inheritdoc/>
+    public Task<LoginResult> CompleteMfaSetupAsync(string code)
+    {
+        // The placeholder never requires an authenticator app to be set up at sign in.
+        return Task.FromResult(new LoginResult
+        {
+            Success = false,
+            ErrorCode = AuthErrorCodes.SignInAgain,
+        });
+    }
+
+    /// <inheritdoc/>
+    public Task<string?> RememberDeviceAsync(string deviceName)
+    {
+        // Nothing to remember: the placeholder has no sign-in service to skip the code with.
+        return Task.FromResult<string?>(null);
     }
 
     /// <inheritdoc/>
     public async Task LogoutAsync()
     {
+        pendingMfaUsername = null;
         offlineSessionStore.Clear();
         await localStorageService.RemoveItemAsync(SessionStorageKey);
     }
@@ -210,6 +255,27 @@ public class LocalAuthenticationService(
     }
 
     private Task EndSessionAsync() => EndSessionAsync(SessionEndedReason.Expired, null);
+
+    private async Task<LoginResult> StartSessionAsync(string trimmedUsername)
+    {
+        var now = timeProvider.GetUtcNow();
+        var session = new UserSession
+        {
+            Username = trimmedUsername,
+            DisplayName = userDisplayService.GetDisplayNameFromUsername(trimmedUsername),
+            Email = trimmedUsername.Contains('@') ? trimmedUsername : null,
+            SignedInAt = now,
+            ExpiresAt = now.Add(SessionDuration),
+        };
+
+        await localStorageService.SetObjectAsync(SessionStorageKey, session);
+
+        return new LoginResult
+        {
+            Success = true,
+            Session = session,
+        };
+    }
 
     private void ListenForOfflineModeChanges()
     {

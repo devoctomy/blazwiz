@@ -33,7 +33,7 @@ backlog:
   - backlog/files-under-retired-keys.md
   - backlog/suggest-key-rotation.md
   - backlog/remove-unused-retired-keys.md
-  - backlog/mfa-totp.md
+  - ../../plans/active/mfa-totp-plan.md (was backlog/mfa-totp.md)
   - backlog/deployer-permissions-boundary.md
   - backlog/csp-in-build.md
 ---
@@ -474,8 +474,8 @@ hardening, not isolation.
 
 #### SR6 (Medium). No MFA and no threat protection on the user pool
 
-- **Where:** `stack.yaml:226-253` (no `MfaConfiguration`, `EnabledMfas` or `UserPoolAddOns`). In the backlog:
-  `docs/reviews/2026-11-08-security-review/backlog/mfa-totp.md`.
+- **Where:** `stack.yaml:226-253` (no `MfaConfiguration`, `EnabledMfas` or `UserPoolAddOns`). In progress:
+  `docs/plans/active/mfa-totp-plan.md`.
 - **What could result:** a phished or reused password gives the ID token, hence the AWS credentials, hence the wrapped
   keys and ciphertext and the power to destroy them (SR4, SR5). The profile passphrase is then the only barrier to
   reading files. Cognito's lockout on repeated failures still applies; there is no compromised-credential check.
@@ -911,7 +911,7 @@ changes (SR1, SR5, SR20, SR21, SR34, SR39), and the key rotation of 2026-11-10 (
 follow-up (files that arrive later under a retired key,
 `docs/reviews/2026-11-08-security-review/backlog/files-under-retired-keys.md`, and removing retired keys no file uses,
 `docs/reviews/2026-11-08-security-review/backlog/remove-unused-retired-keys.md`), SR37's suggested rotation after a set
-time (`docs/reviews/2026-11-08-security-review/backlog/suggest-key-rotation.md`), SR6 (MFA, blocked by the session model as
-`docs/reviews/2026-11-08-security-review/backlog/mfa-totp.md` explains), SR31 (where the CSP is produced, `docs/reviews/2026-11-08-security-review/backlog/csp-in-build.md`),
+time (`docs/reviews/2026-11-08-security-review/backlog/suggest-key-rotation.md`), SR6 (MFA, unblocked by remembered devices and in progress in
+`docs/plans/active/mfa-totp-plan.md`), SR31 (where the CSP is produced, `docs/reviews/2026-11-08-security-review/backlog/csp-in-build.md`),
 SR17's permissions boundary (an account administrator's task, `docs/reviews/2026-11-08-security-review/backlog/deployer-permissions-boundary.md`), SR46 (test package churn), and the deploy that puts the
 stack changes into effect. The next review should start from this table.

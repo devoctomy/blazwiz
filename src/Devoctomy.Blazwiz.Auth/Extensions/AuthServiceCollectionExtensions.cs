@@ -43,6 +43,8 @@ public static class AuthServiceCollectionExtensions
         services.TryAddScoped<IOfflineSessionStore, InMemoryOfflineSessionStore>();
         services.TryAddScoped<IAuthenticationService, LocalAuthenticationService>();
         services.TryAddScoped<IPasswordService, LocalPasswordService>();
+        services.TryAddScoped<IMfaService, LocalMfaService>();
+        services.TryAddScoped<IRememberedDeviceService, LocalRememberedDeviceService>();
         services.TryAddScoped<ISessionLifecycle, SessionLifecycle>();
         services.TryAddScoped<ISignOutEverywhereNotifier, SignOutEverywhereNotifier>();
         services.TryAddScoped<ISessionResumeMonitor, SessionResumeMonitor>();

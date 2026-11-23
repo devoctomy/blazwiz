@@ -1,1 +1,49 @@
 #nullable enable
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.AccountChangeOffline = "Auth.AccountChangeOffline" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.DevicesFailed = "Auth.DevicesFailed" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.MfaChangeFailed = "Auth.MfaChangeFailed" -> string!
+const Devoctomy.Blazwiz.Auth.Exceptions.AuthErrorCodes.MfaCodeRequired = "Auth.MfaCodeRequired" -> string!
+const Devoctomy.Blazwiz.Auth.Services.LocalMfaService.PlaceholderSecret = "JBSWY3DPEHPK3PXP" -> string!
+const Devoctomy.Blazwiz.Auth.Services.LocalMfaService.StorageKey = "placeholder_mfa" -> string!
+Devoctomy.Blazwiz.Auth.Models.LoginResult.MfaCodeRequired.get -> bool
+Devoctomy.Blazwiz.Auth.Models.LoginResult.MfaCodeRequired.set -> void
+Devoctomy.Blazwiz.Auth.Models.LoginResult.MfaSetupSecret.get -> string?
+Devoctomy.Blazwiz.Auth.Models.LoginResult.MfaSetupSecret.set -> void
+Devoctomy.Blazwiz.Auth.Models.LoginResult.RememberedDeviceRejected.get -> bool
+Devoctomy.Blazwiz.Auth.Models.LoginResult.RememberedDeviceRejected.set -> void
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.IsThisDevice.get -> bool
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.IsThisDevice.set -> void
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.Key.get -> string!
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.Key.set -> void
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.LastSignedInAt.get -> System.DateTimeOffset?
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.LastSignedInAt.set -> void
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.Name.get -> string?
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.Name.set -> void
+Devoctomy.Blazwiz.Auth.Models.RememberedDevice.RememberedDevice() -> void
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.CompleteMfaAsync(string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.CompleteMfaSetupAsync(string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.LoginAsync(string! username, string! password, string? rememberedDevice) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.RememberDeviceAsync(string! deviceName) -> System.Threading.Tasks.Task<string?>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IMfaService
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IMfaService.BeginSetupAsync() -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IMfaService.CompleteSetupAsync(string! code) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IMfaService.DisableAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IMfaService.IsEnabledAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService.ForgetAsync(string! deviceKey) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService.ListAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!>!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.CompleteMfaAsync(string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.CompleteMfaSetupAsync(string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.LoginAsync(string! username, string! password, string? rememberedDevice) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Services.LocalAuthenticationService.RememberDeviceAsync(string! deviceName) -> System.Threading.Tasks.Task<string?>!
+Devoctomy.Blazwiz.Auth.Services.LocalMfaService
+Devoctomy.Blazwiz.Auth.Services.LocalMfaService.BeginSetupAsync() -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Services.LocalMfaService.CompleteSetupAsync(string! code) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.LocalMfaService.DisableAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.LocalMfaService.IsEnabledAsync() -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Auth.Services.LocalMfaService.LocalMfaService(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authenticationService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService) -> void
+Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService
+Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService.ForgetAsync(string! deviceKey) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService.ListAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!>!
+Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService.LocalRememberedDeviceService() -> void

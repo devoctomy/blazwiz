@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Devoctomy.Blazwiz.Auth.Cognito.Exceptions;
 using Devoctomy.Blazwiz.Auth.Cognito.Models;
 using Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces;
@@ -14,8 +15,9 @@ namespace Devoctomy.Blazwiz.Auth.Cognito.Services;
 
 /// <summary>
 /// Signs users in to the Cognito user pool (via <see cref="ICognitoUserPoolClient"/>), handles the new
-/// password challenge for invited users, and refreshes the tokens when they expire. The session, with the
-/// short-lived ID and access tokens, is kept in local storage so it survives page reloads and works offline.
+/// password challenge for invited users and the code from the authenticator app (or setting one up, when the pool
+/// requires it), remembers devices so they skip that code, and refreshes the tokens when they expire. The session,
+/// with the short-lived ID and access tokens, is kept in local storage so it survives page reloads and works offline.
 /// </summary>
 /// <remarks>
 /// The refresh token is never stored: it is held in memory, so only this tab can renew the session, and only until
@@ -36,6 +38,7 @@ public class CognitoAuthenticationService(
     IOfflineModeService offlineModeService,
     IOfflineSessionStore offlineSessionStore,
     ISignOutEverywhereNotifier signOutEverywhereNotifier,
+    ICognitoCurrentDevice currentDevice,
     TimeProvider timeProvider)
     : IAuthenticationService, IDisposable
 {
@@ -50,7 +53,11 @@ public class CognitoAuthenticationService(
     public static readonly TimeSpan TokenRefreshMargin = TimeSpan.FromMinutes(5);
 
     private const string NewPasswordRequiredChallenge = "NEW_PASSWORD_REQUIRED";
+    private const string SoftwareTokenMfaChallenge = "SOFTWARE_TOKEN_MFA";
+    private const string MfaSetupChallenge = "MFA_SETUP";
     private const string NotAuthorized = "NotAuthorizedException";
+    private const string CodeMismatch = "CodeMismatchException";
+    private const string ResourceNotFound = "ResourceNotFoundException";
 
     private readonly ICognitoUserPoolClient cognitoClient = cognitoClient ?? throw new ArgumentNullException(nameof(cognitoClient));
     private readonly ILocalStorageService localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
@@ -58,14 +65,23 @@ public class CognitoAuthenticationService(
     private readonly IOfflineModeService offlineModeService = offlineModeService ?? throw new ArgumentNullException(nameof(offlineModeService));
     private readonly IOfflineSessionStore offlineSessionStore = offlineSessionStore ?? throw new ArgumentNullException(nameof(offlineSessionStore));
     private readonly ISignOutEverywhereNotifier signOutEverywhereNotifier = signOutEverywhereNotifier ?? throw new ArgumentNullException(nameof(signOutEverywhereNotifier));
+    private readonly ICognitoCurrentDevice currentDevice = currentDevice ?? throw new ArgumentNullException(nameof(currentDevice));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
-    private PendingNewPassword? pendingNewPassword;
+    private PendingChallenge? pendingChallenge;
+    private NewDevice? newDevice;
     private string? refreshToken;
     private bool isListening;
 
     /// <inheritdoc/>
     public event EventHandler<SessionEndedEventArgs>? SessionEnded;
+
+    private enum ChallengeKind
+    {
+        NewPassword,
+        Mfa,
+        MfaSetup,
+    }
 
     /// <inheritdoc/>
     public bool IsPlaceholder => false;
@@ -87,19 +103,43 @@ public class CognitoAuthenticationService(
     }
 
     /// <inheritdoc/>
-    public async Task<LoginResult> LoginAsync(string username, string password)
+    public Task<LoginResult> LoginAsync(string username, string password)
     {
-        pendingNewPassword = null;
+        return LoginAsync(username, password, null);
+    }
+
+    /// <inheritdoc/>
+    public async Task<LoginResult> LoginAsync(string username, string password, string? rememberedDevice)
+    {
+        pendingChallenge = null;
+        newDevice = null;
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             return Failed(AuthErrorCodes.CredentialsRequired);
         }
 
         var trimmedUsername = username.Trim();
+        var device = ReadDevice(rememberedDevice);
+        var deviceRejected = rememberedDevice != null && device == null;
         try
         {
-            var result = await cognitoClient.SignInAsync(trimmedUsername, password);
-            return await HandleSignInResultAsync(result, trimmedUsername);
+            CognitoSignInResult result;
+            try
+            {
+                result = await cognitoClient.SignInAsync(trimmedUsername, password, device);
+            }
+            catch (CognitoException ex) when (device != null && ex.ErrorType == ResourceNotFound)
+            {
+                // The device was forgotten (e.g. from another device): sign in as a new one, and say so, so whatever
+                // keeps its credential drops it.
+                device = null;
+                deviceRejected = true;
+                result = await cognitoClient.SignInAsync(trimmedUsername, password, null);
+            }
+
+            var login = await HandleSignInResultAsync(result, trimmedUsername, device?.DeviceKey);
+            login.RememberedDeviceRejected = deviceRejected;
+            return login;
         }
         catch (CognitoException ex)
         {
@@ -121,7 +161,7 @@ public class CognitoAuthenticationService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(username);
 
-        pendingNewPassword = null;
+        ForgetSignInState();
         refreshToken = null;
         await localStorageService.RemoveItemAsync(SessionStorageKey);
         var trimmed = username.Trim();
@@ -155,47 +195,76 @@ public class CognitoAuthenticationService(
     }
 
     /// <inheritdoc/>
-    public async Task<LoginResult> CompleteNewPasswordAsync(string newPassword)
+    public Task<LoginResult> CompleteNewPasswordAsync(string newPassword)
     {
-        var pending = pendingNewPassword;
-        if (pending == null)
+        return AnswerChallengeAsync(
+            ChallengeKind.NewPassword,
+            newPassword,
+            AuthErrorCodes.NewPasswordRequired,
+            "InvalidPasswordException",
+            AuthErrorCodes.InvalidPassword,
+            pending => cognitoClient.CompleteNewPasswordAsync(pending.SessionId, newPassword));
+    }
+
+    /// <inheritdoc/>
+    public Task<LoginResult> CompleteMfaAsync(string code)
+    {
+        return AnswerChallengeAsync(
+            ChallengeKind.Mfa,
+            code,
+            AuthErrorCodes.MfaCodeRequired,
+            CodeMismatch,
+            AuthErrorCodes.CodeMismatch,
+            pending => cognitoClient.RespondToMfaAsync(pending.SessionId, code.Trim()));
+    }
+
+    /// <inheritdoc/>
+    public Task<LoginResult> CompleteMfaSetupAsync(string code)
+    {
+        return AnswerChallengeAsync(
+            ChallengeKind.MfaSetup,
+            code,
+            AuthErrorCodes.MfaCodeRequired,
+            CodeMismatch,
+            AuthErrorCodes.CodeMismatch,
+            pending => cognitoClient.CompleteMfaSetupAsync(pending.SessionId, code.Trim()));
+    }
+
+    /// <inheritdoc/>
+    public async Task<string?> RememberDeviceAsync(string deviceName)
+    {
+        ArgumentNullException.ThrowIfNull(deviceName);
+
+        var device = newDevice;
+        if (device == null)
         {
-            return Failed(AuthErrorCodes.SignInAgain);
+            return null;
         }
 
-        if (string.IsNullOrWhiteSpace(newPassword))
+        var session = await GetCurrentUserAsync();
+        if (session == null || session.IsOffline || string.IsNullOrEmpty(session.AccessToken))
         {
-            return Failed(AuthErrorCodes.NewPasswordRequired);
+            return null;
         }
 
         try
         {
-            var result = await cognitoClient.CompleteNewPasswordAsync(pending.SessionId, newPassword);
-            pendingNewPassword = null;
-            return await HandleSignInResultAsync(result, pending.Username);
+            var credential = await cognitoClient.ConfirmDeviceAsync(session.AccessToken, device.Key, device.GroupKey, deviceName.Trim());
+            newDevice = null;
+            currentDevice.DeviceKey = credential.DeviceKey;
+            return JsonSerializer.Serialize(credential);
         }
-        catch (CognitoException ex) when (ex.ErrorType == "InvalidPasswordException")
+        catch (Exception ex) when (ex is CognitoException or HttpRequestException or TaskCanceledException)
         {
-            // Let the user try a different password.
-            return Failed(AuthErrorCodes.InvalidPassword);
-        }
-        catch (CognitoException ex)
-        {
-            pendingNewPassword = null;
-            return Failed(ex.ErrorType == "NotAuthorizedException"
-                ? AuthErrorCodes.SignInExpired
-                : GetErrorCode(ex));
-        }
-        catch (HttpRequestException)
-        {
-            return Failed(AuthErrorCodes.Unreachable);
+            // Signed in all the same: the next sign in from this device asks for a code again, and can remember it.
+            return null;
         }
     }
 
     /// <inheritdoc/>
     public async Task LogoutAsync()
     {
-        pendingNewPassword = null;
+        ForgetSignInState();
         offlineSessionStore.Clear();
         var token = refreshToken;
         refreshToken = null;
@@ -254,6 +323,8 @@ public class CognitoAuthenticationService(
 
         try
         {
+            // Devices first, while the access token still works: each is asked for a code at its next sign in.
+            await ForgetAllDevicesAsync(session.AccessToken);
             await cognitoClient.GlobalSignOutAsync(session.AccessToken);
         }
         catch (CognitoException ex) when (ex.ErrorType == NotAuthorized)
@@ -376,6 +447,30 @@ public class CognitoAuthenticationService(
         }
     }
 
+    // A remembered device's credential, as RememberDeviceAsync returned it, or null when there is none or it is not one.
+    private static CognitoDeviceCredential? ReadDevice(string? rememberedDevice)
+    {
+        if (string.IsNullOrWhiteSpace(rememberedDevice))
+        {
+            return null;
+        }
+
+        try
+        {
+            var device = JsonSerializer.Deserialize<CognitoDeviceCredential>(rememberedDevice);
+            return device != null
+                && !string.IsNullOrEmpty(device.DeviceKey)
+                && !string.IsNullOrEmpty(device.DeviceGroupKey)
+                && !string.IsNullOrEmpty(device.DevicePassword)
+                ? device
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     // Revokes a refresh token, best effort. Never while offline: offline mode makes no calls to Cognito.
     private async Task RevokeAsync(string? token)
     {
@@ -477,11 +572,76 @@ public class CognitoAuthenticationService(
     // Signs out (revoking the refresh token, if this tab has one) and tells the app, so it returns to the login page.
     private Task EndSessionAsync() => EndSessionAsync(SessionEndedReason.Expired, null);
 
-    private async Task<LoginResult> HandleSignInResultAsync(CognitoSignInResult result, string username)
+    private void ForgetSignInState()
+    {
+        pendingChallenge = null;
+        newDevice = null;
+        currentDevice.DeviceKey = null;
+    }
+
+    private async Task ForgetAllDevicesAsync(string accessToken)
+    {
+        foreach (var device in await cognitoClient.ListDevicesAsync(accessToken))
+        {
+            await cognitoClient.ForgetDeviceAsync(accessToken, device.Key);
+        }
+    }
+
+    // Answers the challenge the last sign in is waiting on. The answer's own error (a wrong code, a weak password) can
+    // be tried again; anything else ends the sign in.
+    private async Task<LoginResult> AnswerChallengeAsync(
+        ChallengeKind kind,
+        string answer,
+        string emptyErrorCode,
+        string retryableErrorType,
+        string retryableErrorCode,
+        Func<PendingChallenge, Task<CognitoSignInResult>> respond)
+    {
+        var pending = pendingChallenge;
+        if (pending == null || pending.Kind != kind)
+        {
+            return Failed(AuthErrorCodes.SignInAgain);
+        }
+
+        if (string.IsNullOrWhiteSpace(answer))
+        {
+            return Failed(emptyErrorCode);
+        }
+
+        try
+        {
+            var result = await respond(pending);
+            pendingChallenge = null;
+            return await HandleSignInResultAsync(result, pending.Username, null);
+        }
+        catch (CognitoException ex) when (ex.ErrorType == retryableErrorType)
+        {
+            return Failed(retryableErrorCode);
+        }
+        catch (CognitoException ex)
+        {
+            pendingChallenge = null;
+            return Failed(ex.ErrorType == NotAuthorized ? AuthErrorCodes.SignInExpired : GetErrorCode(ex));
+        }
+        catch (HttpRequestException)
+        {
+            return Failed(AuthErrorCodes.Unreachable);
+        }
+        catch (TaskCanceledException)
+        {
+            return Failed(AuthErrorCodes.Unreachable);
+        }
+    }
+
+    private async Task<LoginResult> HandleSignInResultAsync(CognitoSignInResult result, string username, string? deviceKey)
     {
         if (!string.IsNullOrEmpty(result.IdToken))
         {
             refreshToken = result.RefreshToken;
+            currentDevice.DeviceKey = deviceKey;
+            newDevice = !string.IsNullOrEmpty(result.NewDeviceKey) && !string.IsNullOrEmpty(result.NewDeviceGroupKey)
+                ? new NewDevice(result.NewDeviceKey, result.NewDeviceGroupKey)
+                : null;
             var session = CreateSession(result, username, timeProvider.GetUtcNow());
             await localStorageService.SetObjectAsync(SessionStorageKey, session);
             return new LoginResult
@@ -491,17 +651,30 @@ public class CognitoAuthenticationService(
             };
         }
 
-        if (result.ChallengeName == NewPasswordRequiredChallenge && !string.IsNullOrEmpty(result.SessionId))
+        if (string.IsNullOrEmpty(result.SessionId))
         {
-            pendingNewPassword = new PendingNewPassword(username, result.SessionId);
-            return new LoginResult
-            {
-                Success = false,
-                NewPasswordRequired = true,
-            };
+            return Failed(AuthErrorCodes.ChallengeUnsupported, result.ChallengeName ?? string.Empty);
         }
 
-        return Failed(AuthErrorCodes.ChallengeUnsupported, result.ChallengeName ?? string.Empty);
+        switch (result.ChallengeName)
+        {
+            case NewPasswordRequiredChallenge:
+                pendingChallenge = new PendingChallenge(ChallengeKind.NewPassword, username, result.SessionId);
+                return new LoginResult { Success = false, NewPasswordRequired = true };
+
+            case SoftwareTokenMfaChallenge:
+                pendingChallenge = new PendingChallenge(ChallengeKind.Mfa, username, result.SessionId);
+                return new LoginResult { Success = false, MfaCodeRequired = true };
+
+            case MfaSetupChallenge:
+                // The pool requires an authenticator app and the user has none: get its secret to show them.
+                var (secret, setupSession) = await cognitoClient.BeginMfaSetupAsync(result.SessionId);
+                pendingChallenge = new PendingChallenge(ChallengeKind.MfaSetup, username, setupSession);
+                return new LoginResult { Success = false, MfaSetupSecret = secret };
+
+            default:
+                return Failed(AuthErrorCodes.ChallengeUnsupported, result.ChallengeName ?? string.Empty);
+        }
     }
 
     private UserSession CreateSession(CognitoSignInResult tokens, string fallbackUsername, DateTimeOffset signedInAt)
@@ -522,10 +695,19 @@ public class CognitoAuthenticationService(
         };
     }
 
-    private sealed class PendingNewPassword(string username, string sessionId)
+    private sealed class PendingChallenge(ChallengeKind kind, string username, string sessionId)
     {
+        public ChallengeKind Kind { get; } = kind;
+
         public string Username { get; } = username;
 
         public string SessionId { get; } = sessionId;
+    }
+
+    private sealed class NewDevice(string key, string groupKey)
+    {
+        public string Key { get; } = key;
+
+        public string GroupKey { get; } = groupKey;
     }
 }

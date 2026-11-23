@@ -86,6 +86,8 @@ public class AuthServiceCollectionExtensionsTests
         Assert.IsType<InMemoryOfflineSessionStore>(scope.ServiceProvider.GetRequiredService<IOfflineSessionStore>());
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<LocalPasswordService>(scope.ServiceProvider.GetRequiredService<IPasswordService>());
+        Assert.IsType<LocalMfaService>(scope.ServiceProvider.GetRequiredService<IMfaService>());
+        Assert.IsType<LocalRememberedDeviceService>(scope.ServiceProvider.GetRequiredService<IRememberedDeviceService>());
         Assert.IsType<SessionLifecycle>(scope.ServiceProvider.GetRequiredService<ISessionLifecycle>());
         Assert.IsType<PrfKeyDerivator>(scope.ServiceProvider.GetRequiredService<IPrfKeyDerivator>());
         Assert.IsType<InMemoryDerivedKeyStore>(scope.ServiceProvider.GetRequiredService<IDerivedKeyStore>());

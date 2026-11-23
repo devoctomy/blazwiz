@@ -65,6 +65,7 @@ public static class CognitoServiceCollectionExtensions
                 HttpClientFactory = sp.GetRequiredService<BrowserHttpClientFactory>(),
             }));
         services.TryAddScoped<ICognitoUserPoolClient, CognitoUserPoolClient>();
+        services.TryAddScoped<ICognitoCurrentDevice, CognitoCurrentDevice>();
 
         // The identity pool's GetId / GetCredentialsForIdentity are public APIs, so no credentials.
         services.TryAddSingleton<IAmazonCognitoIdentity>(sp => new AmazonCognitoIdentityClient(
@@ -80,8 +81,8 @@ public static class CognitoServiceCollectionExtensions
         services.TryAddScoped<IAwsCredentialsProvider, CognitoAwsCredentialsProvider>();
         services.AddSessionLifecycleHandler<AwsCredentialsSessionHandler>();
 
-        // Cognito when a user pool is configured (deployed), otherwise the placeholder sign in and password changes
-        // (local development).
+        // Cognito when a user pool is configured (deployed), otherwise the placeholder sign in, password changes,
+        // two-step verification and remembered devices (local development).
         services.Replace(ServiceDescriptor.Scoped<IAuthenticationService>(sp =>
             CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
                 ? ActivatorUtilities.CreateInstance<CognitoAuthenticationService>(sp)
@@ -90,6 +91,14 @@ public static class CognitoServiceCollectionExtensions
             CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
                 ? ActivatorUtilities.CreateInstance<CognitoPasswordService>(sp)
                 : ActivatorUtilities.CreateInstance<LocalPasswordService>(sp)));
+        services.Replace(ServiceDescriptor.Scoped<IMfaService>(sp =>
+            CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
+                ? ActivatorUtilities.CreateInstance<CognitoMfaService>(sp)
+                : ActivatorUtilities.CreateInstance<LocalMfaService>(sp)));
+        services.Replace(ServiceDescriptor.Scoped<IRememberedDeviceService>(sp =>
+            CognitoAuthenticationService.IsConfigured(sp.GetService<AwsCognitoConfig>())
+                ? ActivatorUtilities.CreateInstance<CognitoRememberedDeviceService>(sp)
+                : ActivatorUtilities.CreateInstance<LocalRememberedDeviceService>(sp)));
         return services;
     }
 
