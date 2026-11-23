@@ -476,6 +476,9 @@ hardening, not isolation.
 
 - **Where:** `stack.yaml:226-253` (no `MfaConfiguration`, `EnabledMfas` or `UserPoolAddOns`). In progress:
   `docs/plans/active/mfa-totp-plan.md`.
+- **Status (2026-11-23):** MFA done, waiting for its deployed test: `MfaConfiguration` (the `Mfa` parameter, `OPTIONAL`
+  by default) with `SOFTWARE_TOKEN_MFA`, the code step at sign in, set-up in the Profile, and remembered devices for
+  passkey sign in. Threat protection (`UserPoolAddOns`) is still open.
 - **What could result:** a phished or reused password gives the ID token, hence the AWS credentials, hence the wrapped
   keys and ciphertext and the power to destroy them (SR4, SR5). The profile passphrase is then the only barrier to
   reading files. Cognito's lockout on repeated failures still applies; there is no compromised-credential check.

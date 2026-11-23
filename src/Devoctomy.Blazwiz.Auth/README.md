@@ -1,7 +1,8 @@
 # Devoctomy.Blazwiz.Auth
 
 Sign in for blazwiz apps: the authentication contract (`IAuthenticationService`), sessions and their lifecycle,
-offline sign in, remembered passwords, password changes and resets, and migrations of stored data, run at sign in.
+offline sign in, remembered passwords, password changes and resets, two-step verification with an authenticator app
+and remembered devices, and migrations of stored data, run at sign in.
 It does not talk to an identity provider itself: `Devoctomy.Blazwiz.Auth.Cognito` signs in with AWS Cognito, and
 without it a placeholder sign in is used for local development.
 
@@ -22,11 +23,29 @@ builder.Services.AddDataMigration<MyDataMigration>();
 builder.Services.AddSignOutEverywhereHandler<MySignOutEverywhereHandler>();
 ```
 
+## Two-step verification
+
+A sign in can need a code from the user's authenticator app (TOTP). `LoginAsync` then returns a `LoginResult` with
+`MfaCodeRequired`: pass the code to `CompleteMfaAsync`. When the sign-in service requires an app and the user has none,
+it returns `MfaSetupSecret` instead: show it, then pass the app's first code to `CompleteMfaSetupAsync`. A wrong code
+can be tried again.
+
+A device can be remembered so it is not asked again: after signing in, `RememberDeviceAsync(deviceName)` returns a
+credential to keep, as safely as the password (the sign-in page keeps it encrypted with the passkey), and
+`LoginAsync(username, password, rememberedDevice)` signs in with it. When the result says `RememberedDeviceRejected`
+(it was forgotten elsewhere), drop it.
+
+`IMfaService` turns two-step verification on and off for the signed-in user, and `IRememberedDeviceService` lists and
+forgets their remembered devices. Failures throw a `BlazwizException` with one of `AuthErrorCodes`. Without an identity
+provider, `LocalMfaService` remembers who turned it on, after which the placeholder sign in asks for a code and accepts
+any six digits; `LocalRememberedDeviceService` has no devices.
+
 ## Signing out everywhere
 
 `IAuthenticationService.SignOutEverywhereAsync(reason)` signs the user out on every device:
 
-1. The sign-in service revokes every session they have (Cognito's `GlobalSignOut`).
+1. The sign-in service forgets every remembered device and revokes every session they have (Cognito's
+   `ForgetDevice` and `GlobalSignOut`).
 2. Every `ISignOutEverywhereHandler` runs.
 3. The user is signed out here.
 

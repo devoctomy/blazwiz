@@ -279,6 +279,9 @@ for the target account.
 All scripts take `-AppName` (default `myapp`), `-Environment` (default `dev`), `-Region` and `-AwsProfile`. The stack
 is named `<AppName>-<Environment>`, so several environments can share an account.
 
+Users can turn on two-step verification (a code from an authenticator app) in their Profile. To make every user set
+it up, or to turn it off, deploy with `-Mfa required` or `-Mfa off` (the default is `optional`).
+
 ### The optimal build
 
 By default the portal is published as .NET code run by the WebAssembly interpreter. For production, compile it ahead

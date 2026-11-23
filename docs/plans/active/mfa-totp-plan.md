@@ -170,11 +170,13 @@ Coverage is measured with the unit tests after each phase (AGENTS.md, Code quali
 
 ### Phase 3: stack and docs
 
-- [ ] `stack.yaml` (`Mfa`, `MfaConfiguration`, `EnabledMfas`, `DeviceConfiguration`), `deploy.ps1` `-Mfa`
-- [ ] `docs/blazwiz` guide, package READMEs (Auth, Auth.Cognito, UI, Aws), `template/README.md` if it lists deploy
-      parameters, `docs/diagrams` (sign in, `prf-remember-me.md`)
-- [ ] `CHANGELOG.md`
-- [ ] SR6 in the security review marked done
+- [x] `stack.yaml` (`Mfa`, `MfaConfiguration`, `EnabledMfas`, `DeviceConfiguration`), `deploy.ps1` `-Mfa`
+      (`remove.ps1` unchanged: it updates with the previous template, which a stack from before `Mfa` does not have)
+- [x] `docs/blazwiz` guide (sign in, deploying, components, extension points), package READMEs (Auth, Auth.Cognito,
+      UI, Aws `cloudformation/README.md`), `template/README.md`, `docs/diagrams` (`authentication.md` diagram 8,
+      `prf-remember-me.md`, `session-management.md`, `overview.md`)
+- [x] `CHANGELOG.md`
+- [x] SR6 in the security review: MFA marked done pending the deployed test; threat protection still open
 - [ ] All AGENTS.md build and test steps, `test-template.ps1 -SkipRepositoryTests`, and `-UpgradeFrom latest` for the
       stack change
 - [ ] Maintainer: deploy, and test MFA, a remembered device, passkey sign in and forgetting devices against real

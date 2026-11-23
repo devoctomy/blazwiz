@@ -53,6 +53,25 @@ With user events, the base stack's `Events` parameter is `enabled`. Your app's `
 from `$events`, which the template set from `--events`. To turn events off later, change it to `'disabled'` and deploy
 (and remove `AddBlazwizAppSyncEvents` and its package).
 
+## Two-step verification
+
+The base stack's `Mfa` parameter says whether users sign in with a code from an authenticator app as well as their
+password (see [Sign in and sessions](sign-in-and-sessions.md#two-step-verification)):
+
+| `-Mfa` | What users get |
+|---|---|
+| `optional` (the default) | Each user turns it on, or not, in their Profile. |
+| `required` | Every user sets up an authenticator app the next time they sign in. |
+| `off` | No second step for anyone. |
+
+```powershell
+./cloudformation/deploy.ps1 -Mfa required
+```
+
+Like the other optional parameters, it keeps the stack's current value when you leave it out. The user pool also
+remembers devices whatever you choose, so a user who signs in with a passkey is asked for a code only once on each
+device.
+
 ## The optimal build
 
 By default the app is published as .NET code run by WebAssembly's interpreter. For production, compile it ahead of

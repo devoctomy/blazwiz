@@ -30,6 +30,14 @@ Add to the shell, or change it, with:
 
 Text comes from resources (`UiText`), so apps can reword and translate it.
 
+Two-step verification: the sign-in page asks for the code from the user's authenticator app when the sign-in service
+wants one, or shows how to set one up first when it requires one. The Profile page turns it on and off
+(`MfaSettingsPanel`), and Settings lists the user's remembered devices with a Forget button on each
+(`RememberedDevicesSettingsSection`). Setting up shows the secret three ways (`AuthenticatorSetupPanel`): a link that
+opens the authenticator app on this device, a QR code (drawn with QRCoder, as an SVG `data:` image) and the key with
+a Copy button. A passkey set up on the sign-in page also remembers the device, so passkey sign in is not asked for a
+code.
+
 When something registers an `ISignOutEverywhereHandler` (user events, `Devoctomy.Blazwiz.Events`), the Profile page
 offers "Sign out everywhere", and Settings shows a This device section where the user names the device. When a session
 ends because of another device (`SessionEnded` with a reason), the sign-in page says why, e.g. "You were signed out

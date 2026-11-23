@@ -14,7 +14,7 @@ An app's own AWS resources go in its `cloudformation/app.yaml`, deployed after t
 
 Every script takes `-AppName`, `-Environment`, `-Region` and `-AwsProfile`; see each script's help for the rest.
 `deploy.ps1` keeps the stack's current value of any optional parameter it is not given (the custom domain and
-certificate, local development origins, deletion protection, audit logging, events), so an upgrade run need not
+certificate, local development origins, deletion protection, audit logging, events, MFA), so an upgrade run need not
 repeat them; pass a value to change one (`-CustomDomainName ''` removes the custom domain).
 
 `deploy.ps1 -Aot` publishes the portal compiled ahead of time to WebAssembly, with SIMD (`RunAOTCompilation`,
@@ -35,6 +35,12 @@ Content-Security-Policy's `connect-src` (`https:` and `wss:`).
   bucket (listing included): their files, and under `<identity id>/keys/` each protected profile's keys document and
   the index of them.
 - **The password never leaves the browser.** The portal's app client allows SRP and token refresh only.
+- **A password alone need not be enough.** `-Mfa` sets two-step verification with an authenticator app (TOTP, no
+  SMS): `optional` (the default) lets each user turn it on in their Profile, `required` makes every user set one up at
+  their next sign in, `off` turns it off. The pool remembers devices: a device the portal confirms after a sign in is
+  not asked for a code again until it is forgotten (in Settings, or by signing out everywhere). The portal confirms a
+  device only when the user's passkey keeps its credential, encrypted with the remembered password, so the device
+  credential is behind the same fingerprint or PIN as the password.
 - **Nothing a user's credentials can do is final.** The data bucket is versioned, so a delete leaves a marker and an
   overwrite keeps the old version for 30 days, and only an operator can remove them: the role is denied
   `s3:DeleteObjectVersion`, `s3:PutBucketVersioning` and `s3:PutLifecycleConfiguration`. So a deleted or overwritten

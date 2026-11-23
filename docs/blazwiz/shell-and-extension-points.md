@@ -89,6 +89,7 @@ The framework's sections, and their positions (`UiServiceCollectionExtensions.Se
 | Language (`LanguageSettingsSection`) | `SettingsOrder.Language` (150) | when the app offers more than one language |
 | Offline mode (`OfflineSettingsSection`) | `SettingsOrder.Offline` (200) | always |
 | This device (`DeviceSettingsSection`) | `SettingsOrder.Device` (250) | when any `ISignOutEverywhereHandler` is registered (user events register one) |
+| Remembered devices (`RememberedDevicesSettingsSection`) | `SettingsOrder.RememberedDevices` (275) | when signed in online |
 | Sync (`SyncSettingsSection`) | 300 | with the sync module |
 | End to end encryption (`E2eProfilesSection`) | 350 | with the sync module |
 | Argon2id benchmark (`Argon2idBenchmarkPanel`) | 400 | with the sync module |

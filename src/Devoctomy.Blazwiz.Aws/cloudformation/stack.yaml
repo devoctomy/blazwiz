@@ -62,7 +62,18 @@ Parameters:
       something changed, e.g. "sign out everywhere". Charged per use: connection minutes and event operations. Off
       unless asked for, so no app gets a resource it does not use: apps created with user events pass enabled.
 
+  Mfa:
+    Type: String
+    Default: optional
+    AllowedValues: ['off', optional, required]
+    Description: >-
+      Two-step verification with an authenticator app (TOTP). optional lets each user turn it on in their Profile;
+      required makes every user set one up at their next sign in; off turns it off for everyone. Devices are remembered
+      either way (passkey sign in keeps the device's credential), so a remembered device is not asked for a code.
+
 Conditions:
+  MfaOn: !Not [!Equals [!Ref Mfa, 'off']]
+  MfaRequired: !Equals [!Ref Mfa, required]
   UseCustomDomain: !And
     - !Not [!Equals [!Ref CustomDomainName, '']]
     - !Not [!Equals [!Ref CertificateArn, '']]
@@ -296,6 +307,14 @@ Resources:
         RecoveryMechanisms:
           - Name: verified_email
             Priority: 1
+      # A code from an authenticator app after the password (see the Mfa parameter). Only software tokens: no SMS.
+      MfaConfiguration: !If [MfaOn, !If [MfaRequired, 'ON', OPTIONAL], 'OFF']
+      EnabledMfas: !If [MfaOn, [SOFTWARE_TOKEN_MFA], !Ref AWS::NoValue]
+      # Remembered devices: a device that has signed in once, and that the portal confirms (only when a passkey keeps
+      # its credential safe), is not asked for the code again until it is forgotten (Settings, or sign out everywhere).
+      DeviceConfiguration:
+        ChallengeRequiredOnNewDevice: true
+        DeviceOnlyRememberedOnUserPrompt: false
       Policies:
         PasswordPolicy:
           MinimumLength: 12

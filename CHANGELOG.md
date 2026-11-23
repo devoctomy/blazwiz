@@ -8,6 +8,33 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+### Added
+- **Two-step verification with an authenticator app (TOTP).** Users turn it on in their Profile
+  (`MfaSettingsPanel`): an "Open in authenticator app" link for a phone, a QR code to scan from another screen, and the
+  key with a Copy button. Signing in then asks for the app's code after the password. The base stack's new `Mfa`
+  parameter (`deploy.ps1 -Mfa`) is `optional` by default; `required` makes every user set up an app at their next sign
+  in, and `off` turns it off. `IMfaService` turns it on and off in code, with a placeholder for local development
+  that accepts any six digits.
+- **Remembered devices.** A device that signs in with a passkey is remembered (Cognito remembered devices; the base
+  stack now sets `DeviceConfiguration`), so it is not asked for a code again. Its credential is kept with the
+  remembered password, encrypted with the passkey. Settings lists the user's remembered devices with a Forget button
+  on each (`RememberedDevicesSettingsSection`, `SettingsOrder.RememberedDevices`), and signing out everywhere forgets
+  them all. `IRememberedDeviceService` lists and forgets them in code.
+- `AuthenticatorSetupPanel` and `AuthenticatorSetupViewModel`, to show an authenticator app's secret in your own
+  pages, and `IQrCodeService`, which draws QR codes (with QRCoder, a new dependency of `Devoctomy.Blazwiz.UI`).
+
+### Changed
+- **Breaking:** `IAuthenticationService` has new members: `LoginAsync(username, password, rememberedDevice)`,
+  `CompleteMfaAsync`, `CompleteMfaSetupAsync` and `RememberDeviceAsync`. `LoginResult` has `MfaCodeRequired`,
+  `MfaSetupSecret` and `RememberedDeviceRejected`. An app that implements `IAuthenticationService` itself must add
+  them.
+- **Breaking:** `CognitoAuthenticationService` takes an `ICognitoCurrentDevice`, and `LoginViewModel` an
+  `IDeviceNameService` and an `AuthenticatorSetupViewModel`. Both are resolved through dependency injection, so this
+  only matters to code that constructs them itself.
+- Signing out everywhere forgets every remembered device before revoking the user's sessions.
+- Deploy after upgrading: the stack's user pool changes in place (MFA and device tracking). No user, session or data
+  is lost.
+
 ## 0.9.3
 
 ### Added

@@ -25,8 +25,8 @@ Storage names use the template's app name, `myapp`, which the storage clients ad
 | PRF output (32 bytes from the authenticator) | Memory, briefly | `WebAuthnService.DeriveKeys` local | Zeroed straight after the keys are derived |
 | `rememberme` key (HKDF of the PRF output), added by Auth | Memory | `InMemoryDerivedKeyStore["rememberme"]` | Until `Clear()`: the login page with nobody signed in, a failed passkey sign in, or a reload |
 | `e2e-kek` and `e2e-labels` keys, added by UI.Sync | Memory | `InMemoryDerivedKeyStore["e2e-kek"]`, `["e2e-labels"]` | Same as above |
-| Saved user: email, optional display name (`AppSettings.EnableRememberMeName`), credential id, user id, created at, **encrypted password** | localStorage | `myapp_saved_users` | Until the user is removed from the list, or the password is changed without the key |
-| Decrypted password | Memory, briefly | `AttemptWebAuthnLoginAsync` local | Passed to `LoginAsync`, then dropped |
+| Saved user: email, optional display name (`AppSettings.EnableRememberMeName`), credential id, user id, created at, **encrypted password**, **encrypted device credential** (`encryptedDevice`) | localStorage | `myapp_saved_users` | Until the user is removed from the list, or the password is changed without the key. The device credential also goes when the device is forgotten |
+| Decrypted password and device credential | Memory, briefly | `AttemptWebAuthnLoginAsync` locals | Passed to `LoginAsync`, then dropped |
 | A profile's master key wrapped by `e2e-kek`, and a copy of its keys document | localStorage | `myapp_e2e_keys_{profile id}_{user}` | Until device unlock is turned off, or the profile is deleted |
 | Labels of the profiles the user created, encrypted with `e2e-labels` | localStorage | `myapp_e2e_labels_{user}` | Until the profile is deleted |
 | Passkey private key | Authenticator (platform or roaming) | n/a | Never leaves the authenticator |
@@ -40,6 +40,11 @@ changes every key, and anything encrypted with the old ones can no longer be dec
 There is no relying party server: the WebAuthn challenge is random and generated in the browser, so the assertion
 itself proves nothing to anyone. What proves the user is that the PRF output (only available after the authenticator
 checks their fingerprint, face or PIN) decrypts the saved password, and that Cognito accepts that password.
+
+The device credential (Cognito remembered devices, [authentication.md](authentication.md) diagram 8) is kept the same
+way, encrypted with the `rememberme` key. With the password, it lets a sign in skip the code from the authenticator
+app, so it is only ever stored here, behind the passkey: anyone wanting to use it needs the user's fingerprint, face or
+PIN on this device, just as for the password. A device without a passkey is never remembered.
 
 ## 1. Setting up a passkey after a password sign in
 
@@ -55,6 +60,7 @@ sequenceDiagram
     participant Authn as Authenticator
     participant KDF as PrfKeyDerivator
     participant PCS as PasswordCryptoService
+    participant Auth as CognitoAuthenticationService
     box rgb(240,240,255) In memory
         participant Mem as Memory (.NET fields)
         participant DKS as DerivedKeyStore (memory)
@@ -94,7 +100,11 @@ sequenceDiagram
         DKS-->>PCS: Key copy
         PCS->>PCS: AES-GCM encrypt, zero key copy
         PCS-->>VM: base64 ciphertext
-        VM->>LS: SET myapp_saved_users ({email, webAuthnCredential {credentialID, userID, createdAt, encryptedPassword}})
+        VM->>Auth: RememberDeviceAsync(device name) (authentication.md, diagram 8)
+        Auth-->>VM: Device credential, or null when there is nothing new to remember
+        VM->>PCS: EncryptAsync(device credential)
+        PCS-->>VM: base64 ciphertext
+        VM->>LS: SET myapp_saved_users ({email, webAuthnCredential {credentialID, userID, createdAt, encryptedPassword, encryptedDevice}})
         VM->>Mem: Password = "" (CompleteLogin)
         VM->>User: Navigate to /
     else No PRF support
@@ -153,14 +163,27 @@ sequenceDiagram
         Note over VM: Diagram 3
     else Online
         VM->>Mem: offlineModeService.Exit()
-        VM->>Auth: LoginAsync(email, password)
-        Auth->>UP: SRP sign in (authentication.md, diagram 1)
+        opt A device credential is saved
+            VM->>PCS: DecryptAsync(encryptedDevice)
+        end
+        VM->>Auth: LoginAsync(email, password, device credential or null)
+        Auth->>UP: SRP sign in, with the remembered device (authentication.md, diagrams 1 and 8)
         alt Signed in
             UP-->>Auth: Tokens
             Auth->>Mem: refreshToken
             Auth->>LS: SET myapp_cognito_session
             VM->>VM: Sign-in options, SessionLifecycle.SignedInAsync()
+            opt Cognito saw a new device
+                VM->>Auth: RememberDeviceAsync(device name)
+                VM->>LS: SET myapp_saved_users (encryptedDevice)
+            end
             VM->>User: Navigate to / (keys stay in DerivedKeyStore)
+        else Code from the authenticator app needed (the device is not remembered yet)
+            VM->>User: Code step (keys stay in DerivedKeyStore)
+            Note over VM: Once the code is right: remember the device and save its credential, as above, then navigate. Back forgets the keys
+        else The saved device was forgotten (RememberedDeviceRejected)
+            VM->>LS: SET myapp_saved_users (encryptedDevice removed)
+            Note over VM: Carries on with whatever the sign in returned (usually the code step)
         else Sign-in service unreachable
             Auth-->>VM: ServiceUnreachable
             Note over VM: Falls back to an offline sign in (diagram 3, reason SignInUnreachable)
@@ -194,7 +217,7 @@ sequenceDiagram
 
     Note over VM,DKS: Passkey checked and password decrypted (diagram 2)
     VM->>Auth: SignInOfflineAsync(email, Chosen or SignInUnreachable)
-    Auth->>Mem: pendingNewPassword = null, refreshToken = null
+    Auth->>Mem: pendingChallenge = null, refreshToken = null
     Auth->>LS: REMOVE myapp_cognito_session
     Auth->>OSS: Start(email, displayName, email)
     OSS->>Mem: Session = {..., ExpiresAt = now + 15 min, IsOffline = true, no tokens}
