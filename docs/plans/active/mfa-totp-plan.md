@@ -157,14 +157,16 @@ Coverage is measured with the unit tests after each phase (AGENTS.md, Code quali
 
 ### Phase 2: UI
 
-- [ ] `IQrCodeService` (QRCoder)
-- [ ] Sign-in code step and set-up step (`LoginViewModel`, `LoginView`)
-- [ ] Device credential with the passkey (`WebAuthnStoredCredential`, `LoginViewModel`)
-- [ ] Profile panel (`MfaSettingsViewModel`, component)
-- [ ] Settings section (`RememberedDevicesViewModel`, component)
-- [ ] `UiText` entries, pseudo-localisation
-- [ ] Unit tests, coverage; the count of uncovered markup lines
-- [ ] Playwright test against the placeholder
+- [x] `IQrCodeService` (QRCoder, an SVG `data:` image, which the CSP's `img-src 'self' data:` allows)
+- [x] `AuthenticatorSetupViewModel` and `AuthenticatorSetupPanel`: app link, QR code, secret with Copy
+- [x] Sign-in code step and set-up step (`LoginViewModel`, `LoginView`)
+- [x] Device credential with the passkey (`WebAuthnStoredCredential.EncryptedDevice`, `LoginViewModel`)
+- [x] Profile panel (`MfaSettingsViewModel`, `MfaSettingsPanel`)
+- [x] Settings section (`RememberedDevicesViewModel`, `RememberedDevicesSettingsSection`)
+- [x] `UiText` entries, pseudo-localisation (UI tests pass)
+- [x] Unit tests, coverage (2026-11-23: every changed view model and service line covered; about 205 lines of
+      markup added, and the two parameters of `AuthenticatorSetupPanel.razor.cs`, which no unit test renders)
+- [x] Playwright tests against the placeholder (`MfaTests`)
 
 ### Phase 3: stack and docs
 

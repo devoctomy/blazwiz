@@ -21,6 +21,8 @@ Devoctomy.Blazwiz.Auth.Models.RememberedDevice.LastSignedInAt.set -> void
 Devoctomy.Blazwiz.Auth.Models.RememberedDevice.Name.get -> string?
 Devoctomy.Blazwiz.Auth.Models.RememberedDevice.Name.set -> void
 Devoctomy.Blazwiz.Auth.Models.RememberedDevice.RememberedDevice() -> void
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.EncryptedDevice.get -> string?
+Devoctomy.Blazwiz.Auth.Models.WebAuthnStoredCredential.EncryptedDevice.set -> void
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.CompleteMfaAsync(string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.CompleteMfaSetupAsync(string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService.LoginAsync(string! username, string! password, string? rememberedDevice) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!

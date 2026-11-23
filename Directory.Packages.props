@@ -26,6 +26,7 @@
     <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
     <!-- Markdown -->
     <PackageVersion Include="Markdig" Version="1.4.0" />
+    <PackageVersion Include="QRCoder" Version="1.6.0" />
     <!-- Cryptography -->
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <!-- MVVM -->

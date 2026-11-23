@@ -87,6 +87,60 @@
             </button>
         </EditForm>
     }
+    else if (ViewModel.IsMfaStep)
+    {
+        <EditForm Model="ViewModel" OnSubmit="() => ViewModel.CompleteMfaCommand.ExecuteAsync(null)" FormName="mfa-code">
+            @if (ViewModel.IsMfaSetupRequired)
+            {
+                <p class="small mb-3" id="mfa-setup-intro">@Text["Login.Mfa.SetupIntro"]</p>
+                <AuthenticatorSetupPanel Setup="ViewModel.MfaSetup" IdPrefix="login-mfa" />
+            }
+            else
+            {
+                <p class="small mb-3" id="mfa-intro">@Text["Login.Mfa.Intro"]</p>
+            }
+            <div class="mb-4">
+                <label for="mfa-code" class="form-label">@Text["Mfa.Code.Label"]</label>
+                <div class="input-icon">
+                    <i class="bi bi-shield-lock"></i>
+                    <InputText id="mfa-code"
+                               class="form-control"
+                               inputmode="numeric"
+                               autocomplete="one-time-code"
+                               maxlength="6"
+                               @bind-Value="ViewModel.MfaCode"
+                               disabled="@ViewModel.IsBusy" />
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+            {
+                <div class="alert alert-danger py-2 small" role="alert" id="login-error">
+                    <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+                </div>
+            }
+
+            <button type="submit" class="btn btn-primary btn-lg w-100" id="mfa-button" disabled="@ViewModel.IsBusy">
+                @if (ViewModel.IsBusy)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                    <span>@Text["Login.Mfa.Verifying"]</span>
+                }
+                else
+                {
+                    <span>@Text["Login.Mfa.Submit"]</span>
+                    <i class="bi bi-arrow-right ms-1"></i>
+                }
+            </button>
+            <button type="button"
+                    class="btn btn-link w-100 mt-2"
+                    id="mfa-cancel"
+                    disabled="@ViewModel.IsBusy"
+                    @onclick="ViewModel.CancelMfaCommand.Execute">
+                @Text["Login.NewPassword.Back"]
+            </button>
+        </EditForm>
+    }
     else if (ViewModel.ShowUsersList && ViewModel.SavedUsers.Any())
     {
         <div id="saved-users">
@@ -242,7 +296,7 @@
         </EditForm>
     }
 
-    @if (!ViewModel.IsNewPasswordRequired && ViewModel.HasSignInOptions)
+    @if (!ViewModel.IsChallenged && ViewModel.HasSignInOptions)
     {
         <div class="advanced-options">
             <button type="button"

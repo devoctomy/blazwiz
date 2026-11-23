@@ -646,6 +646,24 @@ code {
     font-weight: 600;
 }
 
+/* ---------- Authenticator app set-up ---------- */
+
+/* Always dark on white, whatever the theme, so every camera can read it. */
+.authenticator-qr {
+    display: block;
+    width: 11rem;
+    height: 11rem;
+    padding: 0.5rem;
+    background: #fff;
+    border-radius: 0.5rem;
+}
+
+.authenticator-secret {
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    word-break: break-all;
+}
+
 /* ---------- Settings ---------- */
 
 .theme-options {

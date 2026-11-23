@@ -504,4 +504,91 @@
   <data name="Settings.Device.Title" xml:space="preserve">
     <value>This device</value>
   </data>
+  <data name="Login.Mfa.Intro" xml:space="preserve">
+    <value>Enter the 6-digit code from your authenticator app.</value>
+  </data>
+  <data name="Login.Mfa.SetupIntro" xml:space="preserve">
+    <value>This app needs two-step verification. Set up an authenticator app, then enter the code it shows.</value>
+  </data>
+  <data name="Login.Mfa.Submit" xml:space="preserve">
+    <value>Verify</value>
+  </data>
+  <data name="Login.Mfa.Verifying" xml:space="preserve">
+    <value>Verifying...</value>
+  </data>
+  <data name="Mfa.Code.Label" xml:space="preserve">
+    <value>Code from your authenticator app</value>
+  </data>
+  <data name="Mfa.Setup.OpenApp" xml:space="preserve">
+    <value>Open in authenticator app</value>
+  </data>
+  <data name="Mfa.Setup.Scan" xml:space="preserve">
+    <value>Or scan this QR code with your authenticator app:</value>
+  </data>
+  <data name="Mfa.Setup.QrAlt" xml:space="preserve">
+    <value>QR code for your authenticator app</value>
+  </data>
+  <data name="Mfa.Setup.SecretLabel" xml:space="preserve">
+    <value>Or enter this key in your authenticator app:</value>
+  </data>
+  <data name="Mfa.Setup.Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Mfa.Setup.Copied" xml:space="preserve">
+    <value>Copied</value>
+  </data>
+  <data name="Mfa.Setup.CopyFailed" xml:space="preserve">
+    <value>The key could not be copied. Type it into your authenticator app instead.</value>
+  </data>
+  <data name="Profile.Mfa.Title" xml:space="preserve">
+    <value>Two-step verification</value>
+  </data>
+  <data name="Profile.Mfa.On" xml:space="preserve">
+    <value>On. Signing in asks for a code from your authenticator app, except on devices that are remembered.</value>
+  </data>
+  <data name="Profile.Mfa.Off" xml:space="preserve">
+    <value>Off. Turn it on so that your password alone is not enough to sign in as you.</value>
+  </data>
+  <data name="Profile.Mfa.TurnOn" xml:space="preserve">
+    <value>Turn on</value>
+  </data>
+  <data name="Profile.Mfa.TurnOff" xml:space="preserve">
+    <value>Turn off</value>
+  </data>
+  <data name="Profile.Mfa.Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Profile.Mfa.TurnedOn" xml:space="preserve">
+    <value>Two-step verification is on.</value>
+  </data>
+  <data name="Profile.Mfa.TurnedOff" xml:space="preserve">
+    <value>Two-step verification is off.</value>
+  </data>
+  <data name="Profile.Mfa.Disable.Title" xml:space="preserve">
+    <value>Turn off two-step verification?</value>
+  </data>
+  <data name="Profile.Mfa.Disable.Text" xml:space="preserve">
+    <value>Anyone who has your password will be able to sign in as you.</value>
+  </data>
+  <data name="Settings.Devices.Title" xml:space="preserve">
+    <value>Remembered devices</value>
+  </data>
+  <data name="Settings.Devices.Text" xml:space="preserve">
+    <value>These devices sign in without a code from your authenticator app. Forget one you have lost or no longer use, and it is asked for a code again.</value>
+  </data>
+  <data name="Settings.Devices.None" xml:space="preserve">
+    <value>No devices are remembered.</value>
+  </data>
+  <data name="Settings.Devices.Unnamed" xml:space="preserve">
+    <value>Unnamed device</value>
+  </data>
+  <data name="Settings.Devices.ThisDevice" xml:space="preserve">
+    <value>This device</value>
+  </data>
+  <data name="Settings.Devices.LastUsed" xml:space="preserve">
+    <value>Last used {0}</value>
+  </data>
+  <data name="Settings.Devices.Forget" xml:space="preserve">
+    <value>Forget</value>
+  </data>
 </root>

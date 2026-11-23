@@ -1,1 +1,72 @@
 #nullable enable
+*REMOVED*Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.LoginViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService! themeService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService! webAuthnService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService! passwordCryptoService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Shell.Interfaces.ISignInOption!>! signInOptions, System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Shell.SignInOptionRegistration!>! signInOptionRegistrations, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle! sessionLifecycle, Devoctomy.Blazwiz.UI.Models.AppSettings! appSettings, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.UI.Services.Interfaces.ISessionEndedNoticeService! sessionEndedNoticeService) -> void
+const Devoctomy.Blazwiz.UI.Extensions.UiServiceCollectionExtensions.SettingsOrder.RememberedDevices = 275 -> int
+Devoctomy.Blazwiz.UI.Components.AuthenticatorSetupPanel
+Devoctomy.Blazwiz.UI.Components.AuthenticatorSetupPanel.AuthenticatorSetupPanel() -> void
+Devoctomy.Blazwiz.UI.Components.AuthenticatorSetupPanel.IdPrefix.get -> string!
+Devoctomy.Blazwiz.UI.Components.AuthenticatorSetupPanel.IdPrefix.set -> void
+Devoctomy.Blazwiz.UI.Components.AuthenticatorSetupPanel.Setup.get -> Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel!
+Devoctomy.Blazwiz.UI.Components.AuthenticatorSetupPanel.Setup.set -> void
+Devoctomy.Blazwiz.UI.Components.MfaSettingsPanel
+Devoctomy.Blazwiz.UI.Components.MfaSettingsPanel.MfaSettingsPanel() -> void
+Devoctomy.Blazwiz.UI.Components.Settings.RememberedDevicesSettingsSection
+Devoctomy.Blazwiz.UI.Components.Settings.RememberedDevicesSettingsSection.RememberedDevicesSettingsSection() -> void
+Devoctomy.Blazwiz.UI.Services.Interfaces.IQrCodeService
+Devoctomy.Blazwiz.UI.Services.Interfaces.IQrCodeService.CreateImageUrl(string! text) -> string!
+Devoctomy.Blazwiz.UI.Services.QrCodeService
+Devoctomy.Blazwiz.UI.Services.QrCodeService.CreateImageUrl(string! text) -> string!
+Devoctomy.Blazwiz.UI.Services.QrCodeService.QrCodeService() -> void
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.AppLink.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.AuthenticatorSetupViewModel(Devoctomy.Blazwiz.UI.Services.Interfaces.IQrCodeService! qrCodeService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IClipboardService! clipboardService, Devoctomy.Blazwiz.UI.Models.AppSettings! appSettings) -> void
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.Clear() -> void
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.CopyFailed.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.CopySecretAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.GroupedSecret.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.IsCopied.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.IsShown.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.QrCodeImageUrl.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.Secret.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.Show(string! newSecret, string! account) -> void
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.CancelMfa() -> void
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.CompleteMfaAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.IsChallenged.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.IsMfaCodeRequired.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.IsMfaSetupRequired.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.IsMfaStep.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.LoginViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.INavigationService! navigationService, Devoctomy.Blazwiz.UI.Services.Interfaces.IThemeService! themeService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService! webAuthnService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordCryptoService! passwordCryptoService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Shell.Interfaces.ISignInOption!>! signInOptions, System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Shell.SignInOptionRegistration!>! signInOptionRegistrations, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISessionLifecycle! sessionLifecycle, Devoctomy.Blazwiz.UI.Models.AppSettings! appSettings, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Devoctomy.Blazwiz.UI.Services.Interfaces.ISessionEndedNoticeService! sessionEndedNoticeService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IDeviceNameService! deviceNameService, Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel! mfaSetup) -> void
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.MfaCode.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.MfaCode.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.MfaSetup.get -> Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel!
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.AskDisable() -> void
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.BeginSetupAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.CancelDisable() -> void
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.CancelSetup() -> void
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.Code.get -> string!
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.Code.set -> void
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.ConfirmSetupAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.DisableAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.ErrorMessage.get -> string?
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.IsAvailable.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.IsBusy.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.IsConfirmingDisable.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.IsEnabled.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.MfaSettingsViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IMfaService! mfaService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel! setup, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.Setup.get -> Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel!
+Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.SuccessMessage.get -> string?
+Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel
+Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.Devices.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!
+Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.ErrorMessage.get -> string?
+Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.ForgetAsync(Devoctomy.Blazwiz.Auth.Models.RememberedDevice! device) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.IsBusy.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.IsVisible.get -> bool
+Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.RememberedDevicesViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService! deviceService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+override Devoctomy.Blazwiz.UI.ViewModels.LoginViewModel.Dispose(bool disposing) -> void
+override Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.Dispose(bool disposing) -> void
+override Devoctomy.Blazwiz.UI.ViewModels.MfaSettingsViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+override Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+static readonly Devoctomy.Blazwiz.UI.ViewModels.AuthenticatorSetupViewModel.ClipboardLifetime -> System.TimeSpan
+~override Devoctomy.Blazwiz.UI.Components.AuthenticatorSetupPanel.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override Devoctomy.Blazwiz.UI.Components.MfaSettingsPanel.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override Devoctomy.Blazwiz.UI.Components.Settings.RememberedDevicesSettingsSection.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

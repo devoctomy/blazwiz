@@ -1,0 +1,31 @@
+@inject IStringLocalizer<UiText> Text
+
+@if (Setup.IsShown)
+{
+    <div class="authenticator-setup mb-3" id="@(IdPrefix)-setup">
+        <a class="btn btn-outline-primary w-100 mb-3" id="@(IdPrefix)-open-app" href="@Setup.AppLink">
+            <i class="bi bi-box-arrow-up-right me-1"></i>@Text["Mfa.Setup.OpenApp"]
+        </a>
+        <p class="small mb-2">@Text["Mfa.Setup.Scan"]</p>
+        <img class="authenticator-qr mb-3" id="@(IdPrefix)-qr" src="@Setup.QrCodeImageUrl" alt="@Text["Mfa.Setup.QrAlt"]" />
+        <p class="small mb-1">@Text["Mfa.Setup.SecretLabel"]</p>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <code class="authenticator-secret" id="@(IdPrefix)-secret">@Setup.GroupedSecret</code>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="@(IdPrefix)-copy"
+                    @onclick="() => Setup.CopySecretCommand.ExecuteAsync(null)">
+                @if (Setup.IsCopied)
+                {
+                    <i class="bi bi-clipboard-check me-1"></i>@Text["Mfa.Setup.Copied"]
+                }
+                else
+                {
+                    <i class="bi bi-clipboard me-1"></i>@Text["Mfa.Setup.Copy"]
+                }
+            </button>
+        </div>
+        @if (Setup.CopyFailed)
+        {
+            <p class="small text-danger mt-1 mb-0" id="@(IdPrefix)-copy-failed">@Text["Mfa.Setup.CopyFailed"]</p>
+        }
+    </div>
+}
