@@ -3,7 +3,7 @@ title: "Security review 01: blazwiz"
 type: security-review
 number: 1
 date: 2026-11-08
-updated: 2026-11-09
+updated: 2026-11-24
 reviewer: Claude Fable 5.1
 model: claude-fable-5-1
 tool: Claude Code
@@ -23,8 +23,8 @@ findings:
   informational: 15
 status:
   fixed: 40
-  fixed-in-part: 3
-  open: 3
+  fixed-in-part: 4
+  open: 2
   not-applicable: 3
 fixes-applied: 2026-11-08
 fixes-merged: 963afec
@@ -33,7 +33,7 @@ backlog:
   - backlog/files-under-retired-keys.md
   - backlog/suggest-key-rotation.md
   - backlog/remove-unused-retired-keys.md
-  - ../../plans/active/mfa-totp-plan.md (was backlog/mfa-totp.md)
+  - backlog/threat-protection.md (SR6's remainder; its MFA plan, once backlog/mfa-totp.md, is done and removed)
   - backlog/deployer-permissions-boundary.md
   - backlog/csp-in-build.md
 ---
@@ -474,11 +474,11 @@ hardening, not isolation.
 
 #### SR6 (Medium). No MFA and no threat protection on the user pool
 
-- **Where:** `stack.yaml:226-253` (no `MfaConfiguration`, `EnabledMfas` or `UserPoolAddOns`). In progress:
-  `docs/plans/active/mfa-totp-plan.md`.
-- **Status (2026-11-23):** MFA done, waiting for its deployed test: `MfaConfiguration` (the `Mfa` parameter, `OPTIONAL`
-  by default) with `SOFTWARE_TOKEN_MFA`, the code step at sign in, set-up in the Profile, and remembered devices for
-  passkey sign in. Threat protection (`UserPoolAddOns`) is still open.
+- **Where:** `stack.yaml:226-253` (no `MfaConfiguration`, `EnabledMfas` or `UserPoolAddOns`).
+- **Status (2026-11-24):** MFA done and tested on a deployed environment: `MfaConfiguration` (the `Mfa` parameter,
+  `OPTIONAL` by default) with `SOFTWARE_TOKEN_MFA`, the code step at sign in, set-up in the Profile, and remembered
+  devices for passkey sign in. Its plan is finished and removed. Threat protection (`UserPoolAddOns`) is still open:
+  `backlog/threat-protection.md`.
 - **What could result:** a phished or reused password gives the ID token, hence the AWS credentials, hence the wrapped
   keys and ciphertext and the power to destroy them (SR4, SR5). The profile passphrase is then the only barrier to
   reading files. Cognito's lockout on repeated failures still applies; there is no compromised-credential check.
@@ -835,7 +835,7 @@ section. How they were checked:
 | SR3 | Medium | Key management | Passphrase change rewraps the same master key; file keys unchanged; old document kept as `AWSPREVIOUS` | Anyone holding an old keys document and old passphrase, or the master key, keeps reading all current and future files | Yes: key rotation on passphrase change, optional re-encryption, new text | Yes (2026-11-10): a passphrase change makes a new master key and active file key, encrypts every file again and signs every device out; passkey unlock checks the stored keys document. Unit, integration and UI tests. Not tried against a deployed app. Follow-ups: files that arrive later under a retired key (`backlog/files-under-retired-keys.md`), and removing retired keys no file uses (`backlog/remove-unused-retired-keys.md`) |
 | SR4 | Medium | AWS | Data bucket not versioned; role may delete and overwrite | Leaked one-hour credentials or an engine bug permanently destroys a user's files | No (infrastructure) | Yes, not deployed: versioning, old versions expire after 30 days, incomplete uploads after 7; `remove.ps1` deletes every version |
 | SR5 | Medium | AWS / UI.Sync | Keys secrets force-deleted with no recovery window; policy allows it | A hijacked session or a bug irrecoverably destroys a profile's keys, making all its files unreadable | Small: deleted keys linger unreadable for 7 days; test script changes | Yes (later the same day), not deployed: `RecoveryWindowInDays = 7` in the store, a `Deny` on forced deletion in the role, `test-auth.ps1` checks both. **Moved 2026-11-10** (`docs/plans/active/2026-11-10-protected-profile-concurrent-writes-plan.md`): the keys are now in the versioned data bucket; a delete only adds a marker, the role is denied `s3:DeleteObjectVersion` (`NoVersionPurge`), so a deleted keys document is restorable for 30 days; the deploy tests check it (`docs/plans/active/2026-11-10-deploy-tests-plan.md`) |
-| SR6 | Medium | AWS / Auth | No MFA, no threat protection (in backlog) | A phished or reused password yields the tokens, AWS credentials, wrapped keys and ciphertext, and the power to destroy them | Yes: a second sign-in step and Profile page set-up | No (functional, in the backlog) |
+| SR6 | Medium | AWS / Auth | No MFA, no threat protection (in backlog) | A phished or reused password yields the tokens, AWS credentials, wrapped keys and ciphertext, and the power to destroy them | Yes: a second sign-in step and Profile page set-up | In part (2026-11-24): MFA with an authenticator app and remembered devices, tested on a deployed environment; threat protection in `backlog/threat-protection.md` |
 | SR7 | Medium | CI | Actions pinned by tag, including `NuGet/login` in the publish job | A compromised action publishes malicious `Devoctomy.Blazwiz.*` packages that every app restores | No (workflow files) | Yes: every action pinned to the commit its tag pointed at (v4.4.0, v6.1.0, v4.6.2, v4.3.0, v1.2.0), with Dependabot for `github-actions` |
 | SR8 | Medium | Scripts | `test-template.ps1` deletes a pre-existing `-WorkRoot` on failure | Loss of a maintainer's local folder contents | No | Yes: refuses an existing folder; deletes only one it created |
 | SR9 | Low | Passkeys | PRF-derived keys cleared only by the framework login page, not on sign out | Apps with their own login page keep `rememberme` and `e2e-kek` in memory after sign out; next sign in needs no passkey prompt to unwrap | No | Yes: `DerivedKeySessionHandler` (Auth, runs last) wipes the store on sign out, including when the session ends |
@@ -881,8 +881,8 @@ section. How they were checked:
 | SR49 | Info | Docs / AWS | Backlog says no CI and no CSP; README mechanism drift; cross-prefix read not tested end to end; TLS 1.0 with the default certificate; HSTS without `includeSubDomains` | Misleading docs; weaker TLS floor without a custom domain | Docs; no | Yes: backlog and READMEs corrected, TLS and HSTS stated; `test-auth.ps1` also checks reading and listing another prefix and the whole bucket |
 
 Counts: 0 Critical, 0 High, 8 Medium, 26 Low, 15 Informational. Fixed: 40 in full (33 in the first pass, then SR1,
-SR5, SR20, SR21, SR34 and SR39 later the same day, and SR3 on 2026-11-10), 3 in part (SR17, SR37, SR45), 3 left for a
-decision or a plan (SR6, SR31, SR46), 3 not applicable (SR38, SR43, SR47).
+SR5, SR20, SR21, SR34 and SR39 later the same day, and SR3 on 2026-11-10), 4 in part (SR17, SR37, SR45, and SR6 on
+2026-11-24), 2 left for a decision (SR31, SR46), 3 not applicable (SR38, SR43, SR47).
 
 ## Closing assessment
 
@@ -914,7 +914,7 @@ changes (SR1, SR5, SR20, SR21, SR34, SR39), and the key rotation of 2026-11-10 (
 follow-up (files that arrive later under a retired key,
 `docs/reviews/2026-11-08-security-review/backlog/files-under-retired-keys.md`, and removing retired keys no file uses,
 `docs/reviews/2026-11-08-security-review/backlog/remove-unused-retired-keys.md`), SR37's suggested rotation after a set
-time (`docs/reviews/2026-11-08-security-review/backlog/suggest-key-rotation.md`), SR6 (MFA, unblocked by remembered devices and in progress in
-`docs/plans/active/mfa-totp-plan.md`), SR31 (where the CSP is produced, `docs/reviews/2026-11-08-security-review/backlog/csp-in-build.md`),
+time (`docs/reviews/2026-11-08-security-review/backlog/suggest-key-rotation.md`), SR6's threat protection (MFA was done and tested on 2026-11-24,
+`docs/reviews/2026-11-08-security-review/backlog/threat-protection.md`), SR31 (where the CSP is produced, `docs/reviews/2026-11-08-security-review/backlog/csp-in-build.md`),
 SR17's permissions boundary (an account administrator's task, `docs/reviews/2026-11-08-security-review/backlog/deployer-permissions-boundary.md`), SR46 (test package churn), and the deploy that puts the
 stack changes into effect. The next review should start from this table.

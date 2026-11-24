@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.9.4
+
 ### Added
 - **Two-step verification with an authenticator app (TOTP).** Users turn it on in their Profile
   (`MfaSettingsPanel`): an "Open in authenticator app" link for a phone, a QR code to scan from another screen, and the
