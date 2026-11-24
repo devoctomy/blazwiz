@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Auth.Models;
@@ -47,12 +48,17 @@ public partial class LoginViewModel : ViewModelBase
     private readonly IStringLocalizer<UiText> text;
     private readonly IErrorText errorText;
     private readonly ISessionEndedNoticeService sessionEndedNoticeService;
+    private readonly IDeviceNameService deviceNameService;
 
     private string username = string.Empty;
     private string password = string.Empty;
     private string newPassword = string.Empty;
     private string confirmNewPassword = string.Empty;
     private bool isNewPasswordRequired;
+    private bool isMfaCodeRequired;
+    private bool isMfaSetupRequired;
+    private string mfaCode = string.Empty;
+    private SavedUser? passkeyUserChallenged;
     private bool isBusy;
     private string? errorMessage;
     private string? sessionEndedMessage;
@@ -62,7 +68,7 @@ public partial class LoginViewModel : ViewModelBase
     private bool showRememberMe = true;
     private bool rememberMe;
     private string rememberMeName = string.Empty;
-    private bool rememberMeWhenNewPasswordStarted;
+    private bool rememberMeWhenChallenged;
     private bool isUsernameReadonly;
     private bool showWebAuthnPrompt;
     private bool isWebAuthnProcessing;
@@ -88,6 +94,8 @@ public partial class LoginViewModel : ViewModelBase
     /// <param name="text">The UI's text.</param>
     /// <param name="errorText">Describes errors.</param>
     /// <param name="sessionEndedNoticeService">Says why the last session ended, if it ended by itself.</param>
+    /// <param name="deviceNameService">The name a remembered device is listed under.</param>
+    /// <param name="mfaSetup">Shows the secret to set up an authenticator app with, when the app requires one.</param>
     public LoginViewModel(
         IAuthenticationService authService,
         INavigationService navigationService,
@@ -103,7 +111,9 @@ public partial class LoginViewModel : ViewModelBase
         AppSettings appSettings,
         IStringLocalizer<UiText> text,
         IErrorText errorText,
-        ISessionEndedNoticeService sessionEndedNoticeService)
+        ISessionEndedNoticeService sessionEndedNoticeService,
+        IDeviceNameService deviceNameService,
+        AuthenticatorSetupViewModel mfaSetup)
     {
         // #lizard forgives: only checks and stores the injected services.
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
@@ -126,6 +136,9 @@ public partial class LoginViewModel : ViewModelBase
         this.text = text ?? throw new ArgumentNullException(nameof(text));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.sessionEndedNoticeService = sessionEndedNoticeService ?? throw new ArgumentNullException(nameof(sessionEndedNoticeService));
+        this.deviceNameService = deviceNameService ?? throw new ArgumentNullException(nameof(deviceNameService));
+        MfaSetup = mfaSetup ?? throw new ArgumentNullException(nameof(mfaSetup));
+        MfaSetup.PropertyChanged += OnMfaSetupChanged;
     }
 
     /// <summary>
@@ -170,7 +183,72 @@ public partial class LoginViewModel : ViewModelBase
     public bool IsNewPasswordRequired
     {
         get => isNewPasswordRequired;
-        private set => SetProperty(ref isNewPasswordRequired, value);
+        private set
+        {
+            if (SetProperty(ref isNewPasswordRequired, value))
+            {
+                OnPropertyChanged(nameof(IsChallenged));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the code from the user's authenticator app is asked for to finish signing in.
+    /// </summary>
+    public bool IsMfaCodeRequired
+    {
+        get => isMfaCodeRequired;
+        private set
+        {
+            if (SetProperty(ref isMfaCodeRequired, value))
+            {
+                OnPropertyChanged(nameof(IsMfaStep));
+                OnPropertyChanged(nameof(IsChallenged));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the code step is shown: a code is asked for, or an authenticator app must be set
+    /// up first.
+    /// </summary>
+    public bool IsMfaStep => IsMfaCodeRequired || IsMfaSetupRequired;
+
+    /// <summary>
+    /// Gets a value indicating whether a step after the password is shown (a new password, or the code step), when the
+    /// advanced options are hidden.
+    /// </summary>
+    public bool IsChallenged => IsNewPasswordRequired || IsMfaStep;
+
+    /// <summary>
+    /// Gets a value indicating whether the user must set up an authenticator app to finish signing in (the app requires
+    /// two-step verification and they have none yet): <see cref="MfaSetup"/> shows its secret.
+    /// </summary>
+    public bool IsMfaSetupRequired
+    {
+        get => isMfaSetupRequired;
+        private set
+        {
+            if (SetProperty(ref isMfaSetupRequired, value))
+            {
+                OnPropertyChanged(nameof(IsMfaStep));
+                OnPropertyChanged(nameof(IsChallenged));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the authenticator app set-up shown when <see cref="IsMfaSetupRequired"/>.
+    /// </summary>
+    public AuthenticatorSetupViewModel MfaSetup { get; }
+
+    /// <summary>
+    /// Gets or sets the code from the authenticator app.
+    /// </summary>
+    public string MfaCode
+    {
+        get => mfaCode;
+        set => SetProperty(ref mfaCode, value);
     }
 
     /// <summary>
@@ -356,23 +434,15 @@ public partial class LoginViewModel : ViewModelBase
         {
             // A typed password can only be checked by the sign-in service, so this is always an online sign in.
             offlineModeService.Exit();
+            passkeyUserChallenged = null;
+            rememberMeWhenChallenged = RememberMe;
             var result = await authService.LoginAsync(Username, Password);
-            if (result.Success)
-            {
-                await ApplySignInOptionsAsync();
-                var rememberMeEnabled = RememberMe && !string.IsNullOrEmpty(Username);
-                await DoLogin(rememberMeEnabled);
-            }
-            else if (result.NewPasswordRequired)
+            if (result.NewPasswordRequired)
             {
                 Password = string.Empty;
-                rememberMeWhenNewPasswordStarted = RememberMe;
-                IsNewPasswordRequired = true;
             }
-            else
-            {
-                ErrorMessage = DescribeFailure(result, "Login.Error.Failed");
-            }
+
+            await HandleSignInResultAsync(result, "Login.Error.Failed");
         }
         catch (Exception)
         {
@@ -407,19 +477,14 @@ public partial class LoginViewModel : ViewModelBase
         try
         {
             var result = await authService.CompleteNewPasswordAsync(NewPassword);
-            if (result.Success)
+            if (result.Success || result.MfaCodeRequired || result.MfaSetupSecret != null)
             {
                 // The new password is the one to remember, not the temporary one used to sign in.
                 Password = NewPassword;
                 ClearNewPassword();
-                await ApplySignInOptionsAsync();
-                var rememberMeEnabled = rememberMeWhenNewPasswordStarted && !string.IsNullOrEmpty(Username);
-                await DoLogin(rememberMeEnabled);
             }
-            else
-            {
-                ErrorMessage = DescribeFailure(result, "Login.Error.NewPasswordFailed");
-            }
+
+            await HandleSignInResultAsync(result, "Login.Error.NewPasswordFailed");
         }
         catch (Exception)
         {
@@ -439,6 +504,61 @@ public partial class LoginViewModel : ViewModelBase
     {
         ClearNewPassword();
         ErrorMessage = null;
+    }
+
+    /// <summary>
+    /// Finishes signing in with the code from the authenticator app: the code asked for, or the first code of the app
+    /// just set up. A wrong code can be tried again.
+    /// </summary>
+    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
+    [RelayCommand]
+    public async Task CompleteMfaAsync()
+    {
+        if (IsBusy || (!IsMfaCodeRequired && !IsMfaSetupRequired))
+        {
+            return;
+        }
+
+        ErrorMessage = null;
+        IsBusy = true;
+        try
+        {
+            var result = IsMfaSetupRequired
+                ? await authService.CompleteMfaSetupAsync(MfaCode)
+                : await authService.CompleteMfaAsync(MfaCode);
+            if (result.Success)
+            {
+                ClearMfa();
+            }
+
+            MfaCode = string.Empty;
+            await HandleSignInResultAsync(result, "Login.Error.Failed");
+        }
+        catch (Exception)
+        {
+            ErrorMessage = text["Login.Error.Failed"];
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Abandons the code step and goes back to signing in. After a passkey, the keys it gave are forgotten.
+    /// </summary>
+    [RelayCommand]
+    public void CancelMfa()
+    {
+        ClearMfa();
+        ErrorMessage = null;
+        if (passkeyUserChallenged != null)
+        {
+            passkeyUserChallenged = null;
+            keyStore.Clear();
+            Password = string.Empty;
+            ShowUsersList = SavedUsers.Count > 0;
+        }
     }
 
     /// <summary>
@@ -554,6 +674,9 @@ public partial class LoginViewModel : ViewModelBase
                     EncryptedPassword = await passwordCryptoService.EncryptAsync(Password, Username),
                 };
 
+                // The passkey keeps this device's credential safe, so the device can now be remembered: its sign ins
+                // skip the code from the authenticator app.
+                webAuthnCredential.EncryptedDevice = await RememberDeviceAsync(Username);
                 await SaveUserAsync(Username, webAuthnCredential);
                 CompleteLogin();
                 return;
@@ -584,6 +707,128 @@ public partial class LoginViewModel : ViewModelBase
     {
         WebAuthnErrorMessage = null;
         CompleteLogin();
+    }
+
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            MfaSetup.PropertyChanged -= OnMfaSetupChanged;
+        }
+
+        base.Dispose(disposing);
+    }
+
+    // What every sign-in step ends with: signed in, or the next step (a new password, the code from the authenticator
+    // app, or setting one up), or why it failed.
+    private async Task HandleSignInResultAsync(LoginResult result, string fallbackKey)
+    {
+        if (result.Success)
+        {
+            await FinishSignInAsync();
+        }
+        else if (result.NewPasswordRequired)
+        {
+            IsNewPasswordRequired = true;
+        }
+        else if (result.MfaCodeRequired)
+        {
+            MfaCode = string.Empty;
+            IsMfaCodeRequired = true;
+        }
+        else if (result.MfaSetupSecret != null)
+        {
+            MfaCode = string.Empty;
+            MfaSetup.Show(result.MfaSetupSecret, Username);
+            IsMfaSetupRequired = true;
+        }
+        else
+        {
+            ErrorMessage = DescribeFailure(result, fallbackKey);
+        }
+    }
+
+    private async Task FinishSignInAsync()
+    {
+        await ApplySignInOptionsAsync();
+        var passkeyUser = passkeyUserChallenged;
+        passkeyUserChallenged = null;
+        if (passkeyUser == null)
+        {
+            await DoLogin(rememberMeWhenChallenged && !string.IsNullOrEmpty(Username));
+            return;
+        }
+
+        // Signed in with the passkey: remember this device now if it is not yet (e.g. it was just asked for a code).
+        var device = await RememberDeviceAsync(passkeyUser.Email);
+        if (device != null)
+        {
+            passkeyUser.WebAuthnCredential!.EncryptedDevice = device;
+            await SaveUsersAsync();
+        }
+
+        navigationService.NavigateTo("/");
+    }
+
+    // Remembers the device the sign in came from, if there is one to remember, and returns its credential encrypted with
+    // the passkey's key, or null. Best effort: without it, the next sign in here asks for a code again.
+    private async Task<string?> RememberDeviceAsync(string email)
+    {
+        try
+        {
+            var credential = await authService.RememberDeviceAsync(await deviceNameService.GetNameAsync());
+            return credential == null ? null : await passwordCryptoService.EncryptAsync(credential, email);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    private async Task<string?> DecryptDeviceAsync(WebAuthnStoredCredential credential, string email)
+    {
+        var encrypted = credential.EncryptedDevice;
+        if (string.IsNullOrEmpty(encrypted))
+        {
+            return null;
+        }
+
+        try
+        {
+            return await passwordCryptoService.DecryptAsync(encrypted, email);
+        }
+        catch (Exception)
+        {
+            // Unreadable: sign in as a device not remembered, which asks for a code and remembers a new one.
+            return null;
+        }
+    }
+
+    private async Task SaveUsersAsync()
+    {
+        try
+        {
+            await localStorageService.SetObjectAsync(SavedUsersStorageKey, new SavedUsersData { Users = savedUsers });
+        }
+        catch
+        {
+            // Continue silently, as when saving a user.
+        }
+    }
+
+    private void ClearMfa()
+    {
+        MfaCode = string.Empty;
+        IsMfaCodeRequired = false;
+        IsMfaSetupRequired = false;
+        MfaSetup.Clear();
+    }
+
+    // The set-up is shown by a component given it as a parameter: it is shown again when this one says it changed.
+    private void OnMfaSetupChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(MfaSetup));
     }
 
     private async Task DoLogin(bool rememberMe)
@@ -702,12 +947,20 @@ public partial class LoginViewModel : ViewModelBase
                 }
 
                 offlineModeService.Exit();
-                var loginResult = await authService.LoginAsync(user.Email, decryptedPassword);
-
-                if (loginResult.Success)
+                var device = await DecryptDeviceAsync(user.WebAuthnCredential, user.Email);
+                var loginResult = await authService.LoginAsync(user.Email, decryptedPassword, device);
+                if (loginResult.RememberedDeviceRejected)
                 {
-                    await ApplySignInOptionsAsync();
-                    navigationService.NavigateTo("/");
+                    // Forgotten (e.g. from another device): a new one is remembered once this sign in succeeds.
+                    user.WebAuthnCredential.EncryptedDevice = null;
+                    await SaveUsersAsync();
+                }
+
+                if (loginResult.Success || loginResult.MfaCodeRequired || loginResult.MfaSetupSecret != null)
+                {
+                    passkeyUserChallenged = user;
+                    Username = user.Email;
+                    await HandleSignInResultAsync(loginResult, "Login.Passkey.Error.SignInFailed");
                 }
                 else if (loginResult.ServiceUnreachable)
                 {

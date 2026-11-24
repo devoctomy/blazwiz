@@ -62,8 +62,9 @@ Greeting = greetingService.GetGreeting(user?.DisplayName);
 `IdToken` and `AccessToken`.
 
 The sign-in page, the Profile page and the shell call the rest of the service for you: `LoginAsync`,
-`CompleteNewPasswordAsync` (for a user invited with a temporary password), `LogoutAsync`, and the offline and
-sign-out-everywhere methods below. You only call them yourself if you replace those pages.
+`CompleteNewPasswordAsync` (for a user invited with a temporary password), `CompleteMfaAsync` and
+`CompleteMfaSetupAsync` (the code from an authenticator app, below), `RememberDeviceAsync`, `LogoutAsync`, and the
+offline and sign-out-everywhere methods below. You only call them yourself if you replace those pages.
 
 ## How long a session lasts
 
@@ -146,11 +147,55 @@ module uses them to let a profile be unlocked with the passkey (see
 Both go through `IPasswordService` (`ChangePasswordAsync`, `RequestPasswordResetAsync`, `ResetPasswordAsync`), which
 uses Cognito when it is configured and a placeholder otherwise.
 
+## Two-step verification
+
+Users can add a second step to signing in: a six-digit code from an authenticator app (TOTP), such as Google
+Authenticator, Microsoft Authenticator or 1Password. A stolen or reused password is then not enough on its own.
+
+**Who decides.** You do, when you deploy: the base stack's `Mfa` parameter (`deploy.ps1 -Mfa`) is `optional` by
+default, so each user chooses in their Profile. `required` makes every user set up an app the next time they sign in;
+`off` turns it off for everyone. See [Deploying](deploying.md#two-step-verification).
+
+**Turning it on.** The Profile page has a Two-step verification panel (`MfaSettingsPanel`). The user gets three ways
+to add the account to their authenticator app, so it works whatever they are holding:
+
+- **Open in authenticator app**, a link that opens the app on this device with everything filled in. On a phone, which
+  cannot scan its own screen, this is the easy one.
+- **A QR code**, to scan with their phone when they are on a computer.
+- **The key as text**, with a Copy button, to paste or type into the app. It is cleared from the clipboard after two
+  minutes.
+
+They then type the code the app shows, and two-step verification is on. The same panel turns it off again, after
+asking. With `Mfa` set to `required`, the sign-in page shows the same set-up the first time a user signs in.
+
+**Signing in.** After the password, the sign-in page asks for the code. A wrong code can be tried again; Back returns
+to the sign-in form.
+
+**Remembered devices.** Asking for a code every time would make passkey sign in a chore: the session is renewed only
+while the tab is open, so every reload signs in again. So a device the user signs in on **with a passkey** is
+remembered (Cognito's remembered devices), and is not asked for a code again. Its credential is kept with the
+remembered password, encrypted with the passkey's key: anyone wanting to skip the code needs the user's fingerprint or
+PIN on that device, just as they would to use the password. Without a passkey nothing is remembered, and the code is
+asked for every time.
+
+The Settings page lists the user's remembered devices (`RememberedDevicesSettingsSection`), under each device's name
+(`IDeviceNameService`, which the This device section lets the user change), with a Forget button on each: for a lost
+laptop, say. A forgotten device is asked for a code at its next sign
+in. Signing out everywhere forgets every device too.
+
+Offline sign in never asks for a code: it never reaches Cognito.
+
+**In your own code.** `IMfaService` (`IsEnabledAsync`, `BeginSetupAsync`, `CompleteSetupAsync`, `DisableAsync`) and
+`IRememberedDeviceService` (`ListAsync`, `ForgetAsync`) are what the Profile and Settings pages use. Both use Cognito
+when it is configured. With the placeholder sign in, turning two-step verification on makes the placeholder ask for a
+code, and any six digits will do; no device is ever remembered.
+
 ## Signing out everywhere
 
 `IAuthenticationService.SignOutEverywhereAsync(reason)` signs the user out on every device:
 
-1. Cognito revokes every session they have (`GlobalSignOut`).
+1. Cognito forgets every remembered device, so each is asked for a code again, then revokes every session they have
+   (`GlobalSignOut`).
 2. Every registered `ISignOutEverywhereHandler` runs, for example to tell the user's other open devices at once.
 3. The user is signed out on this device.
 

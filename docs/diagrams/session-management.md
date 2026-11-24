@@ -283,7 +283,7 @@ sequenceDiagram
 
     Note over Auth: Expired, refresh refused, no refresh token in the renewal window, offline session expired, or offline mode turned off
     Auth->>Auth: LogoutAsync()
-    Auth->>Mem: pendingNewPassword = null, offline session cleared, refreshToken = null
+    Auth->>Mem: pendingChallenge = null, offline session cleared, refreshToken = null
     Auth->>LS: REMOVE myapp_cognito_session
     opt Had a refresh token and online
         Auth->>UP: RevokeToken (best effort)

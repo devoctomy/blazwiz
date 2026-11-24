@@ -25,6 +25,14 @@ Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials.SecretKey.get -> s
 Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials.SecretKey.set -> void
 Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials.SessionToken.get -> string!
 Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials.SessionToken.set -> void
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential.CognitoDeviceCredential() -> void
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential.DeviceGroupKey.get -> string!
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential.DeviceGroupKey.set -> void
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential.DeviceKey.get -> string!
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential.DeviceKey.set -> void
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential.DevicePassword.get -> string!
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential.DevicePassword.set -> void
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.AccessToken.get -> string?
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.AccessToken.set -> void
@@ -35,6 +43,10 @@ Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.ExpiresIn.get -> int
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.ExpiresIn.set -> void
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.IdToken.get -> string?
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.IdToken.set -> void
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.NewDeviceGroupKey.get -> string?
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.NewDeviceGroupKey.set -> void
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.NewDeviceKey.get -> string?
+Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.NewDeviceKey.set -> void
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.RefreshToken.get -> string?
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.RefreshToken.set -> void
 Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult.SessionId.get -> string?
@@ -50,7 +62,9 @@ Devoctomy.Blazwiz.Auth.Cognito.Services.BufferingHttpHandler
 Devoctomy.Blazwiz.Auth.Cognito.Services.BufferingHttpHandler.BufferingHttpHandler(System.Net.Http.HttpMessageHandler! innerHandler) -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.CheckSessionAsync() -> System.Threading.Tasks.Task<bool>!
-Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.CognitoAuthenticationService(Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient! cognitoClient, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IUserDisplayService! userDisplayService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IOfflineSessionStore! offlineSessionStore, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISignOutEverywhereNotifier! signOutEverywhereNotifier, System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.CognitoAuthenticationService(Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient! cognitoClient, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IUserDisplayService! userDisplayService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IOfflineSessionStore! offlineSessionStore, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISignOutEverywhereNotifier! signOutEverywhereNotifier, Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoCurrentDevice! currentDevice, System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.CompleteMfaAsync(string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.CompleteMfaSetupAsync(string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.CompleteNewPasswordAsync(string! newPassword) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.Dispose() -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.EndSessionAsync(Devoctomy.Blazwiz.Auth.Models.SessionEndedReason reason, string? deviceName) -> System.Threading.Tasks.Task!
@@ -58,8 +72,10 @@ Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.GetCurrentU
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.GoOfflineAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.IsPlaceholder.get -> bool
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.LoginAsync(string! username, string! password) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.LoginAsync(string! username, string! password, string? rememberedDevice) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.LogoutAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.RefreshMargin.get -> System.TimeSpan
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.RememberDeviceAsync(string! deviceName) -> System.Threading.Tasks.Task<string?>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.SessionEnded -> System.EventHandler<Devoctomy.Blazwiz.Auth.Models.SessionEndedEventArgs!>?
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.SignInOfflineAsync(string! username, Devoctomy.Blazwiz.Core.Offline.Models.OfflineEntryReason reason) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Models.LoginResult!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.SignOutEverywhereAsync(Devoctomy.Blazwiz.Auth.Models.SignOutReason reason) -> System.Threading.Tasks.Task<bool>!
@@ -69,40 +85,79 @@ Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAwsCredentialsProvider.CognitoAws
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAwsCredentialsProvider.Dispose() -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAwsCredentialsProvider.GetCredentialsAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials?>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAwsCredentialsProvider.IsConfigured.get -> bool
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoCurrentDevice
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoCurrentDevice.CognitoCurrentDevice() -> void
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoCurrentDevice.DeviceKey.get -> string?
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoCurrentDevice.DeviceKey.set -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoIdentityClient
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoIdentityClient.CognitoIdentityClient(Amazon.CognitoIdentity.IAmazonCognitoIdentity! identity, Devoctomy.Blazwiz.Auth.Cognito.Models.AwsCognitoConfig! cognitoConfig) -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoIdentityClient.GetCredentialsAsync(string! idToken, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoMfaService
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoMfaService.BeginSetupAsync() -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoMfaService.CognitoMfaService(Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient! userPoolClient, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authenticationService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService) -> void
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoMfaService.CompleteSetupAsync(string! code) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoMfaService.DisableAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoMfaService.IsEnabledAsync() -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoPasswordService
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoPasswordService.ChangePasswordAsync(string! currentPassword, string! newPassword) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoPasswordService.CognitoPasswordService(Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient! userPoolClient, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authenticationService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService) -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoPasswordService.RequestPasswordResetAsync(string! email) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoPasswordService.ResetPasswordAsync(string! email, string! code, string! newPassword) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService.CognitoRememberedDeviceService(Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient! userPoolClient, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authenticationService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoCurrentDevice! currentDevice) -> void
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService.ForgetAsync(string! deviceKey) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService.ListAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.AssociateSoftwareTokenAsync(string! accessToken) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.BeginMfaSetupAsync(string! sessionId) -> System.Threading.Tasks.Task<(string! SecretCode, string! SessionId)>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.ChangePasswordAsync(string! username, string! idToken, string! accessToken, System.DateTimeOffset expiresAt, string! currentPassword, string! newPassword) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.CheckAccessTokenAsync(string! accessToken) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.CognitoUserPoolClient(Amazon.CognitoIdentityProvider.IAmazonCognitoIdentityProvider! provider, Devoctomy.Blazwiz.Auth.Cognito.Models.AwsCognitoConfig! cognitoConfig) -> void
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.CompleteMfaSetupAsync(string! sessionId, string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.CompleteNewPasswordAsync(string! sessionId, string! newPassword) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.ConfirmDeviceAsync(string! accessToken, string! deviceKey, string! deviceGroupKey, string! deviceName) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.ConfirmForgotPasswordAsync(string! username, string! code, string! newPassword) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.ForgetDeviceAsync(string! accessToken, string! deviceKey) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.ForgotPasswordAsync(string! username) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.GlobalSignOutAsync(string! accessToken) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.IsSoftwareTokenMfaEnabledAsync(string! accessToken) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.ListDevicesAsync(string! accessToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.RefreshAsync(string! username, string! refreshToken) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.RespondToMfaAsync(string! sessionId, string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.RevokeAsync(string! refreshToken) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.SetSoftwareTokenMfaAsync(string! accessToken, bool enabled) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.SignInAsync(string! username, string! password) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.SignInAsync(string! username, string! password, Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential? device) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.VerifySoftwareTokenAsync(string! accessToken, string! code) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.IAwsCredentialsProvider
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.IAwsCredentialsProvider.Clear() -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.IAwsCredentialsProvider.GetCredentialsAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials?>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoCurrentDevice
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoCurrentDevice.DeviceKey.get -> string?
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoCurrentDevice.DeviceKey.set -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoIdentityClient
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoIdentityClient.GetCredentialsAsync(string! idToken, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.AwsTemporaryCredentials!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.AssociateSoftwareTokenAsync(string! accessToken) -> System.Threading.Tasks.Task<string!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.BeginMfaSetupAsync(string! sessionId) -> System.Threading.Tasks.Task<(string! SecretCode, string! SessionId)>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.ChangePasswordAsync(string! username, string! idToken, string! accessToken, System.DateTimeOffset expiresAt, string! currentPassword, string! newPassword) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.CheckAccessTokenAsync(string! accessToken) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.CompleteMfaSetupAsync(string! sessionId, string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.CompleteNewPasswordAsync(string! sessionId, string! newPassword) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.ConfirmDeviceAsync(string! accessToken, string! deviceKey, string! deviceGroupKey, string! deviceName) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.ConfirmForgotPasswordAsync(string! username, string! code, string! newPassword) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.ForgetDeviceAsync(string! accessToken, string! deviceKey) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.ForgotPasswordAsync(string! username) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.GlobalSignOutAsync(string! accessToken) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.IsSoftwareTokenMfaEnabledAsync(string! accessToken) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.ListDevicesAsync(string! accessToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.RefreshAsync(string! username, string! refreshToken) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.RespondToMfaAsync(string! sessionId, string! code) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.RevokeAsync(string! refreshToken) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.SetSoftwareTokenMfaAsync(string! accessToken, bool enabled) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.SignInAsync(string! username, string! password) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.SignInAsync(string! username, string! password, Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoDeviceCredential? device) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Auth.Cognito.Models.CognitoSignInResult!>!
+Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient.VerifySoftwareTokenAsync(string! accessToken, string! code) -> System.Threading.Tasks.Task!
 const Devoctomy.Blazwiz.Auth.Cognito.Extensions.CognitoServiceCollectionExtensions.ConfigurationSection = "AwsCognito" -> string!
 const Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoAuthenticationService.SessionStorageKey = "cognito_session" -> string!
 override Devoctomy.Blazwiz.Auth.Cognito.Services.BrowserHttpClientFactory.CreateHttpClient(Amazon.Runtime.IClientConfig! clientConfig) -> System.Net.Http.HttpClient!

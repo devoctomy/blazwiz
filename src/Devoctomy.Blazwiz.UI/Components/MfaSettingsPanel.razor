@@ -1,0 +1,72 @@
+@inherits MvvmComponentBase<MfaSettingsViewModel>
+@inject IStringLocalizer<UiText> Text
+
+@if (ViewModel.IsAvailable)
+{
+    <div class="panel mt-4" id="mfa-settings">
+        <h2 class="panel-title">@Text["Profile.Mfa.Title"]</h2>
+        <p class="panel-text" id="mfa-status">@(ViewModel.IsEnabled ? Text["Profile.Mfa.On"] : Text["Profile.Mfa.Off"])</p>
+
+        @if (ViewModel.Setup.IsShown)
+        {
+            <EditForm Model="ViewModel" OnSubmit="() => ViewModel.ConfirmSetupCommand.ExecuteAsync(null)" FormName="mfa-setup">
+                <AuthenticatorSetupPanel Setup="ViewModel.Setup" IdPrefix="profile-mfa" />
+                <label for="profile-mfa-code" class="form-label">@Text["Mfa.Code.Label"]</label>
+                <InputText id="profile-mfa-code"
+                           class="form-control mb-3"
+                           inputmode="numeric"
+                           autocomplete="one-time-code"
+                           maxlength="6"
+                           @bind-Value="ViewModel.Code"
+                           disabled="@ViewModel.IsBusy" />
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary" id="profile-mfa-confirm" disabled="@ViewModel.IsBusy">@Text["Profile.Mfa.Confirm"]</button>
+                    <button type="button" class="btn btn-secondary" id="profile-mfa-cancel" disabled="@ViewModel.IsBusy"
+                            @onclick="ViewModel.CancelSetupCommand.Execute">@Text["Common.Cancel"]</button>
+                </div>
+            </EditForm>
+        }
+        else if (ViewModel.IsEnabled)
+        {
+            <button type="button" class="btn btn-outline-danger" id="profile-mfa-disable" disabled="@ViewModel.IsBusy"
+                    @onclick="ViewModel.AskDisableCommand.Execute">@Text["Profile.Mfa.TurnOff"]</button>
+        }
+        else
+        {
+            <button type="button" class="btn btn-primary" id="profile-mfa-enable" disabled="@ViewModel.IsBusy"
+                    @onclick="() => ViewModel.BeginSetupCommand.ExecuteAsync(null)">@Text["Profile.Mfa.TurnOn"]</button>
+        }
+
+        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+        {
+            <div class="alert alert-danger py-2 small mt-3 mb-0" role="alert" id="profile-mfa-error">
+                <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(ViewModel.SuccessMessage))
+        {
+            <div class="alert alert-success py-2 small mt-3 mb-0" role="status" id="profile-mfa-done">
+                <i class="bi bi-check-circle me-1"></i>@ViewModel.SuccessMessage
+            </div>
+        }
+    </div>
+
+    @if (ViewModel.IsConfirmingDisable)
+    {
+        <ModalDialog Id="mfa-disable-dialog"
+                     Title="@Text["Profile.Mfa.Disable.Title"]"
+                     Icon="bi-shield-x"
+                     OnClose="() => ViewModel.CancelDisableCommand.Execute(null)">
+            <ChildContent>
+                <p class="mb-0">@Text["Profile.Mfa.Disable.Text"]</p>
+            </ChildContent>
+            <Footer>
+                <button type="button" class="btn btn-secondary" id="mfa-disable-cancel" disabled="@ViewModel.IsBusy"
+                        @onclick="() => ViewModel.CancelDisableCommand.Execute(null)">@Text["Common.Cancel"]</button>
+                <button type="button" class="btn btn-danger" id="mfa-disable-confirm" disabled="@ViewModel.IsBusy"
+                        @onclick="() => ViewModel.DisableCommand.ExecuteAsync(null)">@Text["Profile.Mfa.TurnOff"]</button>
+            </Footer>
+        </ModalDialog>
+    }
+}

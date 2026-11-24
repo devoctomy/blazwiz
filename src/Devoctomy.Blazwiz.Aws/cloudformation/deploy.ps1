@@ -7,7 +7,7 @@ The base stack and this script are released with the framework (Devoctomy.Blazwi
 their own cloudformation/deploy.ps1, which passes the app's name, folder and portal project.
 
 Safe to run repeatedly. An optional parameter that is not given (-CustomDomainName, -CertificateArn,
--LocalDevOrigins, -UserPoolDeletionProtection, -AuditLogging, -Events) keeps the value the stack already has, so an upgrade
+-LocalDevOrigins, -UserPoolDeletionProtection, -AuditLogging, -Events, -Mfa) keeps the value the stack already has, so an upgrade
 run need not repeat them. Each run:
   1. Creates / updates the CloudFormation stack "<AppName>-<Environment>" through a change set. The changes
      are listed first, replacements need confirming, and replacing the user pool, identity pool, data bucket,
@@ -84,6 +84,11 @@ param(
     # pass enabled through their own deploy.ps1.
     [ValidateSet('enabled', 'disabled')]
     [string]$Events = 'disabled',
+
+    # Two-step verification with an authenticator app: optional (each user turns it on in their Profile), required
+    # (every user sets one up at their next sign in) or off.
+    [ValidateSet('off', 'optional', 'required')]
+    [string]$Mfa = 'optional',
 
     # Skip the CloudFormation deployment (just publish the portal / manage the user).
     [switch]$SkipInfrastructure,
@@ -199,6 +204,7 @@ if (-not $SkipInfrastructure) {
         UserPoolDeletionProtection = $UserPoolDeletionProtection
         AuditLogging               = $AuditLogging
         Events                     = $Events
+        Mfa                        = $Mfa
     }
     foreach ($key in $optional.Keys) {
         if (-not $PSBoundParameters.ContainsKey($key) -and $previousKeys -contains $key) {

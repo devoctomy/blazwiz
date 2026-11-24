@@ -1,0 +1,111 @@
+# Creates a user in an environment of the template app ("myapp"), deployed with the Deploy workflow. Cognito makes a
+# temporary password and emails it to the user with their invitation; they choose their own password the first time
+# they sign in. Run by hand (Actions > Create user > Run workflow).
+#
+# Tick "Resend the invitation" for a user who has not signed in yet (their invitation expired after 7 days, or went
+# astray): Cognito makes a new temporary password and emails it again. Without it, a user who already exists is
+# refused.
+#
+# Uses the same GitHub environment settings as the Deploy workflow (AWS_DEPLOY_ROLE_ARN, AWS_REGION). It does not need
+# CI to have passed: it deploys nothing. See docs/deploying.md.
+#
+# The repository is public, and so are its run logs. The email address is read from the event, not put in env (whose
+# values the log shows), and masked before anything else runs.
+name: Create user
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment name, e.g. test (the stacks myapp-<environment>).'
+        required: true
+        default: test
+      email:
+        description: "The user's email address: their sign-in name, and where Cognito sends the invitation."
+        required: true
+      resend:
+        description: 'Resend the invitation, with a new temporary password, to a user who has not signed in yet.'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-users-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  create-user:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      # An OIDC token from GitHub, exchanged for short-lived AWS credentials.
+      id-token: write
+    env:
+      # Through the environment, never into the script: an input can hold quotes and $( ).
+      ENVIRONMENT_NAME: ${{ inputs.environment }}
+      RESEND: ${{ inputs.resend }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      AWS_DEPLOY_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - name: Check the inputs
+        shell: pwsh
+        run: |
+          $email = (Get-Content -Raw $env:GITHUB_EVENT_PATH | ConvertFrom-Json).inputs.email
+          if ($email) { Write-Host "::add-mask::$email" }
+          if ($env:ENVIRONMENT_NAME -notmatch '^[a-z][a-z0-9]{0,9}$') { throw "The environment name must be lowercase letters and numbers, starting with a letter (max 10): '$env:ENVIRONMENT_NAME'." }
+          if ($email -notmatch '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$') { throw 'The email address is not valid.' }
+          if (-not $env:AWS_DEPLOY_ROLE_ARN) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_DEPLOY_ROLE_ARN variable." }
+          if (-not $env:AWS_DEPLOY_REGION) { throw "The GitHub environment '$env:ENVIRONMENT_NAME' has no AWS_REGION variable." }
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Create the user
+        shell: pwsh
+        run: |
+          $email = (Get-Content -Raw $env:GITHUB_EVENT_PATH | ConvertFrom-Json).inputs.email
+          Write-Host "::add-mask::$email"
+          $resend = $env:RESEND -eq 'true'
+
+          $stack = "myapp-$env:ENVIRONMENT_NAME"
+          $pool = aws cloudformation describe-stacks --stack-name $stack --region $env:AWS_DEPLOY_REGION --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" --output text 2>$null
+          if ($LASTEXITCODE -ne 0 -or -not $pool -or $pool -eq 'None') { throw "Stack $stack does not exist, or has no user pool. Deploy it first." }
+
+          $errors = New-TemporaryFile
+          $user = aws cognito-idp admin-get-user --user-pool-id $pool --username $email --region $env:AWS_DEPLOY_REGION --output json 2>$errors
+          if ($LASTEXITCODE -eq 0) {
+              $status = ($user | Out-String | ConvertFrom-Json).UserStatus
+          }
+          elseif ((Get-Content -Raw $errors) -match 'UserNotFoundException') {
+              $status = $null
+          }
+          else {
+              throw "Could not look the user up: $(Get-Content -Raw $errors)"
+          }
+
+          if ($resend) {
+              if ($null -eq $status) { throw 'There is no such user to resend the invitation to. Run again without "Resend the invitation" to create them.' }
+              if ($status -ne 'FORCE_CHANGE_PASSWORD') { throw "The user has already signed in and set their own password (status $status), so there is no invitation to resend." }
+              aws cognito-idp admin-create-user --user-pool-id $pool --username $email --message-action RESEND --desired-delivery-mediums EMAIL --region $env:AWS_DEPLOY_REGION --output json 2>$errors | Out-Null
+              if ($LASTEXITCODE -ne 0) { throw "Could not resend the invitation: $(Get-Content -Raw $errors)" }
+              $done = 'Invitation sent again, with a new temporary password.'
+          }
+          else {
+              if ($null -ne $status) {
+                  $hint = if ($status -eq 'FORCE_CHANGE_PASSWORD') { ' They have not signed in yet: run again with "Resend the invitation" ticked to send them a new one.' } else { '' }
+                  throw "The user already exists (status $status).$hint"
+              }
+              aws cognito-idp admin-create-user --user-pool-id $pool --username $email --user-attributes "Name=email,Value=$email" Name=email_verified,Value=true --desired-delivery-mediums EMAIL --region $env:AWS_DEPLOY_REGION --output json 2>$errors | Out-Null
+              if ($LASTEXITCODE -ne 0) { throw "Could not create the user: $(Get-Content -Raw $errors)" }
+              $done = 'User created, and their invitation with a temporary password sent.'
+          }
+
+          Write-Host $done
+          "### $done`n`nEnvironment ``$env:ENVIRONMENT_NAME``. The invitation comes from Cognito (no-reply@verificationemail.com) and may land in spam. The temporary password lasts 7 days." >> $env:GITHUB_STEP_SUMMARY

@@ -141,6 +141,18 @@ The countdown until the session's current token expires, shown under the user's 
 The Profile page's change password form, as a panel: `<ChangePasswordForm />`. Use it if you replace the Profile
 page.
 
+### MfaSettingsPanel
+
+The Profile page's Two-step verification panel, which turns a code from an authenticator app on or off:
+`<MfaSettingsPanel />`. Shown only when signed in online. Use it if you replace the Profile page.
+
+### AuthenticatorSetupPanel
+
+Shows the secret to add an account to an authenticator app with: an "Open in authenticator app" link, a QR code, and
+the key with a Copy button. `MfaSettingsPanel` and the sign-in page use it. It shows an
+`AuthenticatorSetupViewModel` that your own view model owns and fills (`Show(secret, account)`):
+`<AuthenticatorSetupPanel Setup="ViewModel.Setup" IdPrefix="my-mfa" />`.
+
 ### ForgotPasswordLink
 
 The sign-in page's "Forgot password?" link, shown only while the forgot password page is turned on:
@@ -237,7 +249,7 @@ You don't add these to pages. They are listed so you know where they come from.
 | `OfflineBanner` | UI | Banners | Shown in offline mode, with a button to sign in online again. |
 | `ToastHost` | UI | Overlays | Shows the toasts. |
 | `AppUpdateIndicator` | UI | Both layouts | A small indicator while a new version of the app downloads. |
-| `AppearanceSettingsSection`, `LanguageSettingsSection`, `OfflineSettingsSection`, `DeviceSettingsSection`, `AboutSettingsSection` | UI | Settings | The framework's Settings sections. |
+| `AppearanceSettingsSection`, `LanguageSettingsSection`, `OfflineSettingsSection`, `DeviceSettingsSection`, `RememberedDevicesSettingsSection`, `AboutSettingsSection` | UI | Settings | The framework's Settings sections. |
 | `E2eBanner` | UI.Sync | Banners | Shown while a profile set up in code needs a passphrase. |
 | `FolderAccessBanner` | UI.Sync | Banners | Asks the user to allow access again to the folder their files are kept in. |
 | `SyncPill` | UI.Sync | Floating | The sync status pill. |

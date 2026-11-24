@@ -34,4 +34,15 @@ public class CognitoSignInResult
     /// Gets or sets the session to pass back when answering the challenge.
     /// </summary>
     public string? SessionId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the key Cognito gave the device signed in from, when it does not know the device yet. It is only
+    /// remembered once confirmed (<see cref="Services.Interfaces.ICognitoUserPoolClient.ConfirmDeviceAsync"/>).
+    /// </summary>
+    public string? NewDeviceKey { get; set; }
+
+    /// <summary>
+    /// Gets or sets the device group key that goes with <see cref="NewDeviceKey"/>.
+    /// </summary>
+    public string? NewDeviceGroupKey { get; set; }
 }

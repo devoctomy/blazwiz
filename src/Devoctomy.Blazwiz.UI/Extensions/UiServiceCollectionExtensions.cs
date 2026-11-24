@@ -80,6 +80,7 @@ public static class UiServiceCollectionExtensions
         services.TryAddSingleton<IAppBuildInfo, AppBuildInfo>();
         services.TryAddScoped<IToastService, ToastService>();
         services.TryAddScoped<IPasskeyKeysService, PasskeyKeysService>();
+        services.TryAddSingleton<IQrCodeService, QrCodeService>();
         services.TryAddScoped<IAppUpdateMonitor, AppUpdateMonitor>();
         services.TryAddScoped<ISessionEndedNoticeService, SessionEndedNoticeService>();
 
@@ -102,6 +103,7 @@ public static class UiServiceCollectionExtensions
         services.AddSettingsSection<LanguageSettingsSection>(SettingsOrder.Language);
         services.AddSettingsSection<OfflineSettingsSection>(SettingsOrder.Offline);
         services.AddSettingsSection<DeviceSettingsSection>(SettingsOrder.Device);
+        services.AddSettingsSection<RememberedDevicesSettingsSection>(SettingsOrder.RememberedDevices);
         services.AddSettingsSection<AboutSettingsSection>(SettingsOrder.About);
 
         services.AddNavigationItem(new NavigationItem
@@ -142,6 +144,12 @@ public static class UiServiceCollectionExtensions
         /// everywhere.
         /// </summary>
         public const int Device = 250;
+
+        /// <summary>
+        /// The Remembered devices section (those that skip the code from the authenticator app), shown for an online
+        /// session.
+        /// </summary>
+        public const int RememberedDevices = 275;
 
         /// <summary>
         /// The About section (version and build), last.

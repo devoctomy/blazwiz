@@ -6,7 +6,7 @@ each part:
 
 | Doc | What it covers |
 |---|---|
-| [authentication.md](authentication.md) | Signing in with Cognito, AWS credentials, changing and resetting passwords |
+| [authentication.md](authentication.md) | Signing in with Cognito, AWS credentials, changing and resetting passwords, the code from an authenticator app and remembered devices |
 | [session-management.md](session-management.md) | Session lifetimes, renewal, expiry, offline mode, and the session lifecycle modules plug into |
 | [prf-remember-me.md](prf-remember-me.md) | Passkey sign in, the keys derived from the passkey, and unlocking sync profiles with it |
 | [sync.md](sync.md) | How sync runs: starting it, a pass, the decision table, offline, and each profile's keys |

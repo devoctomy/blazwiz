@@ -37,6 +37,9 @@ public class CognitoServiceCollectionExtensionsTests
         await using var scope = provider.CreateAsyncScope();
         Assert.IsType<CognitoAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<CognitoPasswordService>(scope.ServiceProvider.GetRequiredService<IPasswordService>());
+        Assert.IsType<CognitoMfaService>(scope.ServiceProvider.GetRequiredService<IMfaService>());
+        Assert.IsType<CognitoRememberedDeviceService>(scope.ServiceProvider.GetRequiredService<IRememberedDeviceService>());
+        Assert.IsType<CognitoCurrentDevice>(scope.ServiceProvider.GetRequiredService<ICognitoCurrentDevice>());
         Assert.IsType<CognitoUserPoolClient>(scope.ServiceProvider.GetRequiredService<ICognitoUserPoolClient>());
         Assert.IsType<CognitoIdentityClient>(scope.ServiceProvider.GetRequiredService<ICognitoIdentityClient>());
         Assert.IsType<CognitoAwsCredentialsProvider>(scope.ServiceProvider.GetRequiredService<IAwsCredentialsProvider>());
@@ -57,8 +60,12 @@ public class CognitoServiceCollectionExtensionsTests
         await using var scope = provider.CreateAsyncScope();
         Assert.IsType<LocalAuthenticationService>(scope.ServiceProvider.GetRequiredService<IAuthenticationService>());
         Assert.IsType<LocalPasswordService>(scope.ServiceProvider.GetRequiredService<IPasswordService>());
+        Assert.IsType<LocalMfaService>(scope.ServiceProvider.GetRequiredService<IMfaService>());
+        Assert.IsType<LocalRememberedDeviceService>(scope.ServiceProvider.GetRequiredService<IRememberedDeviceService>());
         Assert.Single(services, d => d.ServiceType == typeof(IAuthenticationService));
         Assert.Single(services, d => d.ServiceType == typeof(IPasswordService));
+        Assert.Single(services, d => d.ServiceType == typeof(IMfaService));
+        Assert.Single(services, d => d.ServiceType == typeof(IRememberedDeviceService));
     }
 
     [Fact]

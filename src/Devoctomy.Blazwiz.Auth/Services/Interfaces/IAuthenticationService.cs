@@ -35,9 +35,24 @@ public interface IAuthenticationService
     /// <param name="password">The password.</param>
     /// <returns>
     /// The result of the login attempt. When <see cref="LoginResult.NewPasswordRequired"/> is set, call
-    /// <see cref="CompleteNewPasswordAsync"/> to finish signing in.
+    /// <see cref="CompleteNewPasswordAsync"/> to finish signing in; when <see cref="LoginResult.MfaCodeRequired"/> is
+    /// set, <see cref="CompleteMfaAsync"/>; when <see cref="LoginResult.MfaSetupSecret"/> is set,
+    /// <see cref="CompleteMfaSetupAsync"/>.
     /// </returns>
     Task<LoginResult> LoginAsync(string username, string password);
+
+    /// <summary>
+    /// Attempts to sign in with the given credentials from a remembered device, which is not asked for a code from the
+    /// authenticator app.
+    /// </summary>
+    /// <param name="username">The username.</param>
+    /// <param name="password">The password.</param>
+    /// <param name="rememberedDevice">
+    /// The credential <see cref="RememberDeviceAsync"/> returned on this device, or null. It is a secret like the
+    /// password, and is kept with it.
+    /// </param>
+    /// <returns>The result of the login attempt, as for <see cref="LoginAsync(string, string)"/>.</returns>
+    Task<LoginResult> LoginAsync(string username, string password, string? rememberedDevice);
 
     /// <summary>
     /// Finishes a sign-in that needs a new password (e.g. the user was invited with a temporary one).
@@ -45,6 +60,30 @@ public interface IAuthenticationService
     /// <param name="newPassword">The new password.</param>
     /// <returns>The result of the login attempt.</returns>
     Task<LoginResult> CompleteNewPasswordAsync(string newPassword);
+
+    /// <summary>
+    /// Finishes a sign-in that needs the code from the user's authenticator app. A wrong code can be tried again.
+    /// </summary>
+    /// <param name="code">The code.</param>
+    /// <returns>The result of the login attempt.</returns>
+    Task<LoginResult> CompleteMfaAsync(string code);
+
+    /// <summary>
+    /// Finishes a sign-in that needed an authenticator app set up (<see cref="LoginResult.MfaSetupSecret"/>), with the
+    /// first code the app shows. A wrong code can be tried again.
+    /// </summary>
+    /// <param name="code">The code.</param>
+    /// <returns>The result of the login attempt.</returns>
+    Task<LoginResult> CompleteMfaSetupAsync(string code);
+
+    /// <summary>
+    /// Remembers the device the last sign in came from, so later sign ins from it that pass the credential returned
+    /// here to <see cref="LoginAsync(string, string, string)"/> are not asked for a code. Call it only when the
+    /// credential will be kept safe (e.g. encrypted with the passkey, with the remembered password).
+    /// </summary>
+    /// <param name="deviceName">The name to list the device under.</param>
+    /// <returns>The credential to keep, or null when there is nothing to remember or it could not be done.</returns>
+    Task<string?> RememberDeviceAsync(string deviceName);
 
     /// <summary>
     /// Signs in offline, without the sign-in service, and turns offline mode on. Call only once the user has proved
@@ -78,7 +117,8 @@ public interface IAuthenticationService
     Task<UserSession?> GetCurrentUserAsync();
 
     /// <summary>
-    /// Signs the user out on every device: the sign-in service revokes every session they have, every
+    /// Signs the user out on every device: the sign-in service forgets every remembered device (each is asked for a
+    /// code at its next sign in) and revokes every session they have, every
     /// <see cref="Sessions.Interfaces.ISignOutEverywhereHandler"/> runs (e.g. to tell their other open devices at
     /// once), then they are signed out here as by <see cref="LogoutAsync"/>. Other devices that are not told find out
     /// the next time they use their session (see <see cref="CheckSessionAsync"/>). Needs the sign-in service: when it

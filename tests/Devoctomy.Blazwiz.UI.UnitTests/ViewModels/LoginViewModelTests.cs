@@ -35,9 +35,16 @@ public class LoginViewModelTests
     private readonly Mock<ISessionLifecycle> mockLifecycle = new();
     private readonly SessionEndedNoticeService notice = new();
     private readonly AppSettings appSettings = new() { ApplicationTitle = "Test App", EnablePortalLoginAuthn = true };
+    private readonly Mock<IDeviceNameService> mockDeviceName = new();
+    private readonly Mock<IQrCodeService> mockQrCode = new();
+    private readonly Mock<IClipboardService> mockClipboard = new();
+    private readonly AuthenticatorSetupViewModel mfaSetup;
 
     public LoginViewModelTests()
     {
+        mockDeviceName.Setup(x => x.GetNameAsync()).ReturnsAsync("Work laptop");
+        mockQrCode.Setup(x => x.CreateImageUrl(It.IsAny<string>())).Returns("data:image/svg+xml;base64,QR");
+        mfaSetup = new AuthenticatorSetupViewModel(mockQrCode.Object, mockClipboard.Object, appSettings);
         mockAuth.Setup(x => x.SignInOfflineAsync(It.IsAny<string>(), It.IsAny<OfflineEntryReason>())).ReturnsAsync(new LoginResult { Success = true });
     }
 
@@ -52,7 +59,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("authService", exception.ParamName);
@@ -69,7 +76,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("navigationService", exception.ParamName);
@@ -86,7 +93,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("themeService", exception.ParamName);
@@ -103,7 +110,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("localStorageService", exception.ParamName);
@@ -120,7 +127,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("webAuthnService", exception.ParamName);
@@ -137,7 +144,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("passwordCryptoService", exception.ParamName);
@@ -154,7 +161,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("keyStore", exception.ParamName);
@@ -171,7 +178,7 @@ public class LoginViewModelTests
             null!,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("appSettings", exception.ParamName);
@@ -252,7 +259,9 @@ public class LoginViewModelTests
     public void GivenNullNoticeService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("sessionEndedNoticeService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, null!)).ParamName);
+        Assert.Equal("sessionEndedNoticeService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, null!, mockDeviceName.Object, mfaSetup)).ParamName);
+        Assert.Equal("deviceNameService", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, notice, null!, mfaSetup)).ParamName);
+        Assert.Equal("mfaSetup", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, notice, mockDeviceName.Object, null!)).ParamName);
     }
 
     [Theory]
@@ -623,7 +632,7 @@ public class LoginViewModelTests
         Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
         Assert.Null(sut.LoadingUser);
         Assert.False(sut.IsBusy);
-        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -662,7 +671,7 @@ public class LoginViewModelTests
             appSettings,
 
         // Act
-        testText.Ui, testText.Errors, notice));
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup));
 
         // Assert
         Assert.Equal("offlineModeService", exception.ParamName);
@@ -684,7 +693,7 @@ public class LoginViewModelTests
         // Assert
         mockPasswordCrypto.Verify(x => x.DecryptAsync("enc", It.IsAny<string>()), Times.Once);
         mockAuth.Verify(x => x.SignInOfflineAsync("user@test.com", OfflineEntryReason.Chosen), Times.Once);
-        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
         mockNavigation.Verify(x => x.NavigateTo("/"), Times.Once);
     }
 
@@ -714,7 +723,7 @@ public class LoginViewModelTests
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
         mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
-        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = false, ServiceUnreachable = true });
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret", null)).ReturnsAsync(new LoginResult { Success = false, ServiceUnreachable = true });
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
@@ -732,7 +741,7 @@ public class LoginViewModelTests
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
         mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
-        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = false, ErrorCode = AuthErrorCodes.SignInFailed });
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret", null)).ReturnsAsync(new LoginResult { Success = false, ErrorCode = AuthErrorCodes.SignInFailed });
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
@@ -784,7 +793,7 @@ public class LoginViewModelTests
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
         mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
-        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret")).ReturnsAsync(new LoginResult { Success = true });
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret", null)).ReturnsAsync(new LoginResult { Success = true });
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
@@ -803,7 +812,7 @@ public class LoginViewModelTests
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
         mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("stale");
-        mockAuth.Setup(x => x.LoginAsync("user@test.com", "stale")).ReturnsAsync(new LoginResult { Success = false });
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "stale", null)).ReturnsAsync(new LoginResult { Success = false });
 
         // Act
         await sut.SelectUserCommand.ExecuteAsync(user);
@@ -848,7 +857,7 @@ public class LoginViewModelTests
         // Assert
         Assert.Equal("Biometric login error. Please enter your password manually.", sut.ErrorMessage);
         mockPasswordCrypto.Verify(x => x.DecryptAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        mockAuth.Verify(x => x.LoginAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]
@@ -1098,8 +1107,8 @@ public class LoginViewModelTests
     public void GivenNullTextOrErrorText_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, null!, testText.Errors, notice)).ParamName);
-        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, null!, notice)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, null!, testText.Errors, notice, mockDeviceName.Object, mfaSetup)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, null!, notice, mockDeviceName.Object, mfaSetup)).ParamName);
     }
 
     [Fact]
@@ -1437,7 +1446,7 @@ public class LoginViewModelTests
         var user = CreateWebAuthnUser("user@test.com", "cred1");
         mockWebAuthn.Setup(x => x.AuthenticateAsync("cred1")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = true, KeysDerived = true });
         mockPasswordCrypto.Setup(x => x.DecryptAsync("enc", It.IsAny<string>())).ReturnsAsync("secret");
-        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret"))
+        mockAuth.Setup(x => x.LoginAsync("user@test.com", "secret", null))
             .Callback(() => offlineDuringLogin = offlineMode.IsOffline)
             .ReturnsAsync(new LoginResult { Success = true });
         var sut = CreateSut();
@@ -1518,9 +1527,9 @@ public class LoginViewModelTests
     public void GivenNullExtensionPoints_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("signInOptions", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, null!, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, notice)).ParamName);
-        Assert.Equal("signInOptionRegistrations", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, null!, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, notice)).ParamName);
-        Assert.Equal("sessionLifecycle", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, null!, appSettings, testText.Ui, testText.Errors, notice)).ParamName);
+        Assert.Equal("signInOptions", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, null!, optionRegistrations, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup)).ParamName);
+        Assert.Equal("signInOptionRegistrations", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, null!, mockLifecycle.Object, appSettings, testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup)).ParamName);
+        Assert.Equal("sessionLifecycle", Assert.Throws<ArgumentNullException>(() => new LoginViewModel(mockAuth.Object, mockNavigation.Object, mockTheme.Object, mockLocalStorage.Object, mockWebAuthn.Object, mockPasswordCrypto.Object, mockKeyStore.Object, offlineMode, options, optionRegistrations, null!, appSettings, testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup)).ParamName);
     }
 
     [Fact]
@@ -1689,7 +1698,7 @@ public class LoginViewModelTests
             optionRegistrations,
             mockLifecycle.Object,
             appSettings,
-        testText.Ui, testText.Errors, notice);
+        testText.Ui, testText.Errors, notice, mockDeviceName.Object, mfaSetup);
 
     private class FakeOption : ISignInOption
     {

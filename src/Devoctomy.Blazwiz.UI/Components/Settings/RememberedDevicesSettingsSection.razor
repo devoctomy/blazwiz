@@ -1,0 +1,47 @@
+@inherits MvvmComponentBase<RememberedDevicesViewModel>
+@inject IStringLocalizer<UiText> Text
+
+@if (ViewModel.IsVisible)
+{
+    <div class="panel mb-4" id="remembered-devices">
+        <h2 class="panel-title">@Text["Settings.Devices.Title"]</h2>
+        <p class="panel-text">@Text["Settings.Devices.Text"]</p>
+
+        @if (ViewModel.Devices.Count == 0)
+        {
+            <p class="small mb-0" id="remembered-devices-none">@Text["Settings.Devices.None"]</p>
+        }
+        else
+        {
+            <ul class="list-group" id="remembered-devices-list">
+                @foreach (var device in ViewModel.Devices)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                        <div>
+                            <div class="fw-semibold">
+                                @(device.Name ?? Text["Settings.Devices.Unnamed"])
+                                @if (device.IsThisDevice)
+                                {
+                                    <span class="badge text-bg-secondary ms-1">@Text["Settings.Devices.ThisDevice"]</span>
+                                }
+                            </div>
+                            @if (device.LastSignedInAt is { } last)
+                            {
+                                <div class="small text-body-secondary">@Text["Settings.Devices.LastUsed", last.ToLocalTime().ToString("f")]</div>
+                            }
+                        </div>
+                        <button type="button" class="btn btn-outline-danger btn-sm" disabled="@ViewModel.IsBusy"
+                                @onclick="() => ViewModel.ForgetCommand.ExecuteAsync(device)">@Text["Settings.Devices.Forget"]</button>
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
+        {
+            <div class="alert alert-danger py-2 small mt-3 mb-0" role="alert" id="remembered-devices-error">
+                <i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ErrorMessage
+            </div>
+        }
+    </div>
+}

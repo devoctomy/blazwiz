@@ -1,7 +1,7 @@
 # Deploying the template app from GitHub
 
-Four workflows deploy and check the repository's template app (`template/`, as `myapp`) to AWS from GitHub. This tests the
-framework as it stands, before it is released:
+Five workflows deploy, check and manage the repository's template app (`template/`, as `myapp`) on AWS from GitHub. This
+tests the framework as it stands, before it is released:
 
 - The base stack and its scripts come from `src/Devoctomy.Blazwiz.Aws`.
 - The portal builds against the packages' source (`template/Directory.Build.targets`), not packages from nuget.org.
@@ -13,6 +13,7 @@ Each workflow is run by hand: Actions, then the workflow, then **Run workflow**.
 | **Deploy** (`deploy.yml`) | Creates a new environment: the base stack (`myapp-<environment>`), the app's stack (`myapp-<environment>-app`), the portal, and optionally the deploy tests' user and the deploy tests. Refused if the environment already exists. |
 | **Upgrade** (`upgrade.yml`) | Updates an existing environment to the commit it is run on: both stacks, then the portal (or only the portal), and optionally the deploy tests' user and the deploy tests. Refused if the environment does not exist. |
 | **Deploy tests** (`deploy-tests.yml`) | Runs the deploy tests against an existing environment (below). Also run by Deploy and Upgrade when "Run the deploy tests afterwards" is ticked. |
+| **Create user** (`create-user.yml`) | Creates a user in an existing environment, and Cognito emails them a temporary password; or resends that invitation (below). |
 | **Destroy** (`destroy.yml`) | Deletes an environment, once its name is typed again. |
 
 Deploy and Upgrade only run on a commit the CI workflow (`ci.yml`, on every push) has passed, waiting for it if it is
@@ -104,6 +105,24 @@ Under **Deployment protection rules** on each environment:
 
 These rules hold the job back before it starts: the OIDC token is only issued, and AWS only reached, once they pass.
 Deploy and Upgrade check CI first, so an approval is only asked for once CI has passed.
+
+## Adding users: the Create user workflow
+
+The user pool is invite only, so people can't sign themselves up. To add someone, run **Create user** with the
+environment and their email address. Cognito makes a temporary password and emails it to them, and they choose their
+own password the first time they sign in. The password never passes through GitHub.
+
+- **Resending an invitation.** A temporary password lasts 7 days. If it ran out before they signed in, or the email
+  went astray, run the workflow again with **Resend the invitation** ticked: Cognito makes a new temporary password and
+  sends it again. This only works while they haven't signed in yet. Without the tick, a user who already exists is
+  refused.
+- **Where the email comes from.** The pool sends with Cognito's own email service, from
+  `no-reply@verificationemail.com`, so ask people to check their spam folder. It allows about 50 emails a day, and the
+  invitation doesn't link to the portal, so send them the portal's address yourself.
+- **The email address stays out of the logs.** The repository's run logs are public, so the workflow reads the
+  address from the run's inputs and masks it before anything else runs.
+
+It uses the same role as the other workflows: the deploy policy already allows `AdminGetUser` and `AdminCreateUser`.
 
 ## Checking a deployed environment: the deploy tests
 

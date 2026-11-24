@@ -11,6 +11,8 @@ Main classes:
 - `CognitoAwsCredentialsProvider` and `CognitoIdentityClient` (`src/Devoctomy.Blazwiz.Auth.Cognito/Services/`)
 - `AwsCredentialsSessionHandler` (`src/Devoctomy.Blazwiz.Auth.Cognito/Services/AwsCredentialsSessionHandler.cs`): a session lifecycle handler that fetches and forgets the credentials
 - `CognitoPasswordService` (`src/Devoctomy.Blazwiz.Auth.Cognito/Services/CognitoPasswordService.cs`), behind `IPasswordService` (Auth)
+- `CognitoMfaService` and `CognitoRememberedDeviceService` (`src/Devoctomy.Blazwiz.Auth.Cognito/Services/`), behind `IMfaService` and `IRememberedDeviceService` (Auth), and `CognitoCurrentDevice`, behind `ICognitoCurrentDevice`
+- `MfaSettingsViewModel`, `RememberedDevicesViewModel` and `AuthenticatorSetupViewModel` (`src/Devoctomy.Blazwiz.UI/ViewModels/`)
 - `ChangePasswordViewModel` and `ForgotPasswordViewModel` (`src/Devoctomy.Blazwiz.UI/ViewModels/`)
 - `MainLayoutViewModel` (`src/Devoctomy.Blazwiz.UI/ViewModels/MainLayoutViewModel.cs`) and `SessionLifecycle` (`src/Devoctomy.Blazwiz.Auth/Sessions/SessionLifecycle.cs`)
 
@@ -30,7 +32,11 @@ Storage names below use the template's app name, `myapp`: the storage clients ad
 |---|---|---|---|
 | Session (username, display name, email, `SignedInAt`, `ExpiresAt`, **ID token**, **access token**) | localStorage | `myapp_cognito_session` | Survives reloads. Removed on sign out or expiry |
 | **Refresh token** | Memory | `CognitoAuthenticationService.refreshToken` | This tab only. Lost on reload or close |
-| Pending new-password challenge (username + Cognito session id) | Memory | `CognitoAuthenticationService.pendingNewPassword`, `CognitoUserPoolClient.challengedUser` | Until answered or abandoned |
+| Pending challenge: a new password, the code from the authenticator app, or setting one up (kind, username, Cognito session id) | Memory | `CognitoAuthenticationService.pendingChallenge`, `CognitoUserPoolClient.challengedUser` | Until answered or abandoned |
+| New device from the last sign in (device key, group key), waiting to be remembered | Memory | `CognitoAuthenticationService.newDevice` | Until `RememberDeviceAsync`, the next sign in, or sign out |
+| Key of the remembered device this session signed in from | Memory | `CognitoCurrentDevice.DeviceKey` | Until sign out |
+| Remembered device credential (device key, group key, device password) | localStorage, encrypted | `myapp_saved_users`, `webAuthnCredential.encryptedDevice` (see [prf-remember-me.md](prf-remember-me.md)) | Until the device is forgotten, or the user removed from the list |
+| Who turned two-step verification on (placeholder sign in only) | localStorage | `myapp_placeholder_mfa` | Until turned off |
 | Typed password | Memory | `LoginViewModel.Password` | Cleared by `CompleteLogin()` |
 | Remembered users (email, optional display name, plus passkey data, see [prf-remember-me.md](prf-remember-me.md)) | localStorage | `myapp_saved_users` | Until removed from the list |
 | AWS temporary credentials (identity id, access key, secret, session token, expiration) | Memory | `CognitoAwsCredentialsProvider.cached` | Until 5 minutes before they expire, sign out, offline mode, or `Clear()` |
@@ -65,8 +71,8 @@ sequenceDiagram
     VM->>Mem: Password held in LoginViewModel.Password
     VM->>Mem: offlineModeService.Exit() (offline flag cleared)
     VM->>Auth: LoginAsync(email, password)
-    Auth->>Mem: pendingNewPassword = null
-    Auth->>UPC: SignInAsync(email, password)
+    Auth->>Mem: pendingChallenge = null, newDevice = null
+    Auth->>UPC: SignInAsync(email, password, no device)
     UPC->>UP: StartWithSrpAuthAsync, SRP-6a (the password never leaves the browser)
     UP-->>UPC: IdToken, AccessToken, RefreshToken, ExpiresIn
 
@@ -84,6 +90,8 @@ sequenceDiagram
         end
         VM->>Mem: Password = "" (CompleteLogin)
         VM->>User: Navigate to /, the shell starts the session (session-management.md, diagram 1)
+    else Code from the authenticator app needed (SOFTWARE_TOKEN_MFA or MFA_SETUP)
+        Note over VM,UP: Diagram 8
     else Wrong password, unconfirmed, throttled
         UP-->>UPC: NotAuthorizedException etc.
         UPC-->>Auth: CognitoException
@@ -122,7 +130,7 @@ sequenceDiagram
     UP-->>UPC: Challenge NEW_PASSWORD_REQUIRED + session id
     UPC->>Mem: challengedUser = CognitoUser
     UPC-->>Auth: ChallengeName, SessionId (no tokens)
-    Auth->>Mem: pendingNewPassword = {username, sessionId}
+    Auth->>Mem: pendingChallenge = {NewPassword, username, sessionId}
     Auth-->>VM: NewPasswordRequired = true
     VM->>Mem: Password = "", remember the Remember me choice
     VM->>User: Show new password form
@@ -134,15 +142,19 @@ sequenceDiagram
     alt Accepted
         UP-->>UPC: Tokens
         UPC->>Mem: challengedUser = null
-        Auth->>Mem: pendingNewPassword = null, refreshToken = result.RefreshToken
+        Auth->>Mem: pendingChallenge = null, refreshToken = result.RefreshToken
         Auth->>LS: SET myapp_cognito_session
         Auth-->>VM: Success
         VM->>Mem: Password = NewPassword (the one to remember)
         Note over VM: Continues as in diagram 1 (sign-in options, Remember me, navigate)
+    else Accepted, and the code from the authenticator app is next
+        UP-->>UPC: Challenge SOFTWARE_TOKEN_MFA or MFA_SETUP
+        VM->>Mem: Password = NewPassword
+        Note over VM: Diagram 8
     else Weak password (InvalidPasswordException)
         Auth-->>VM: Failed, challenge kept so the user can try again
     else Challenge expired (NotAuthorizedException)
-        Auth->>Mem: pendingNewPassword = null
+        Auth->>Mem: pendingChallenge = null
         Auth-->>VM: Failed, SignInExpired ("sign in again")
     end
 ```
@@ -284,7 +296,7 @@ sequenceDiagram
     Life->>SyncH: OnSigningOutAsync()
     SyncH->>Mem: Stop the folder monitor and the scheduler, lock every profile (keys zeroed)
     Layout->>Auth: LogoutAsync()
-    Auth->>Mem: pendingNewPassword = null, offline session cleared
+    Auth->>Mem: pendingChallenge, newDevice and this session's device cleared, offline session cleared
     Auth->>Mem: token = refreshToken, refreshToken = null
     Auth->>LS: REMOVE myapp_cognito_session
     opt Had a refresh token and not in offline mode
@@ -388,3 +400,83 @@ sequenceDiagram
     end
     Note over VM: A passkey sign in remembered on this device still holds the old password, so it fails and asks for the password
 ```
+
+## 8. The code from an authenticator app, and remembered devices
+
+With the base stack's `Mfa` parameter `optional` (the default) or `required`, a user with an authenticator app is
+asked for its code after the password, unless they sign in from a remembered device. With `required`, a user without
+one sets it up first (`MFA_SETUP`). Users turn it on and off in their Profile (`MfaSettingsViewModel`, through
+`CognitoMfaService`: `AssociateSoftwareToken`, `VerifySoftwareToken`, `SetUserMFAPreference`).
+
+A device is remembered only when a passkey keeps its credential (see [prf-remember-me.md](prf-remember-me.md)), so a
+typed sign in without one is asked for the code every time.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant VM as LoginViewModel
+    participant Auth as CognitoAuthenticationService
+    participant UPC as CognitoUserPoolClient
+    box rgb(240,240,255) In memory
+        participant Mem as Memory (.NET fields)
+    end
+    box rgb(235,250,235) AWS
+        participant UP as Cognito User Pool
+    end
+
+    VM->>Auth: LoginAsync(email, password, rememberedDevice or null)
+    Auth->>UPC: SignInAsync(email, password, device)
+    UPC->>UP: SRP sign in, with DEVICE_KEY when there is a device
+    alt Remembered device
+        UP-->>UPC: DEVICE_SRP_AUTH, then DEVICE_PASSWORD_VERIFIER (answered by the library)
+        UP-->>UPC: Tokens, no code asked for
+        Auth->>Mem: CognitoCurrentDevice.DeviceKey = device key
+        Auth-->>VM: Success
+    else Device forgotten (ResourceNotFoundException)
+        Auth->>UPC: SignInAsync(email, password, no device)
+        Note over Auth: The result says RememberedDeviceRejected, so the stored credential is dropped
+    else Code needed (SOFTWARE_TOKEN_MFA)
+        UP-->>UPC: Challenge + session id
+        Auth->>Mem: pendingChallenge = {Mfa, username, sessionId}
+        Auth-->>VM: MfaCodeRequired
+        VM->>User: Code step
+        User->>VM: Code from the app
+        VM->>Auth: CompleteMfaAsync(code)
+        Auth->>UPC: RespondToMfaAsync(sessionId, code)
+        UPC->>UP: RespondToMfaAuthAsync
+        alt Right code
+            UP-->>UPC: Tokens + NewDeviceMetadata (device key, group key)
+            Auth->>Mem: newDevice = {key, groupKey}
+            Auth-->>VM: Success
+        else Wrong code (CodeMismatchException)
+            Auth-->>VM: CodeMismatch, the code can be tried again
+        else Session expired (NotAuthorizedException)
+            Auth-->>VM: SignInExpired
+        end
+    else App required, none set up (MFA_SETUP)
+        UP-->>UPC: Challenge + session id
+        Auth->>UPC: BeginMfaSetupAsync(sessionId)
+        UPC->>UP: AssociateSoftwareToken(session)
+        UP-->>Auth: Secret + new session
+        Auth-->>VM: MfaSetupSecret
+        VM->>User: Set-up step: open in app, QR code, key with Copy, then the first code
+        VM->>Auth: CompleteMfaSetupAsync(code)
+        Auth->>UPC: CompleteMfaSetupAsync(session, code)
+        UPC->>UP: VerifySoftwareToken, then RespondToAuthChallenge(MFA_SETUP)
+        UP-->>UPC: Tokens + NewDeviceMetadata
+        Auth-->>VM: Success
+    end
+
+    opt Signed in with a passkey, or setting one up (prf-remember-me.md)
+        VM->>Auth: RememberDeviceAsync(device name)
+        Auth->>UPC: ConfirmDeviceAsync(accessToken, key, groupKey, name)
+        UPC->>UPC: Random device password, GenerateDeviceVerifier (the library)
+        UPC->>UP: ConfirmDevice (verifier and salt only)
+        Auth-->>VM: Credential {device key, group key, device password}, kept encrypted with the passkey
+    end
+```
+
+Settings lists the remembered devices (`RememberedDevicesViewModel`, through `CognitoRememberedDeviceService`:
+`ListDevices`, `ForgetDevice`). Forgetting this device drops its stored credential too. Signing out everywhere forgets
+every device before `GlobalSignOut`.

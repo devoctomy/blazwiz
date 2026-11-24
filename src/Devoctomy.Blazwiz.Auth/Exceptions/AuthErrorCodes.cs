@@ -120,4 +120,24 @@ public static class AuthErrorCodes
     /// The sign-in service refused to reset the password for another reason.
     /// </summary>
     public const string PasswordResetFailed = "Auth.PasswordResetFailed";
+
+    /// <summary>
+    /// No code from the authenticator app was entered.
+    /// </summary>
+    public const string MfaCodeRequired = "Auth.MfaCodeRequired";
+
+    /// <summary>
+    /// Two-step verification or remembered devices cannot be changed in offline mode.
+    /// </summary>
+    public const string AccountChangeOffline = "Auth.AccountChangeOffline";
+
+    /// <summary>
+    /// The sign-in service refused to change two-step verification.
+    /// </summary>
+    public const string MfaChangeFailed = "Auth.MfaChangeFailed";
+
+    /// <summary>
+    /// The sign-in service refused to list or forget remembered devices.
+    /// </summary>
+    public const string DevicesFailed = "Auth.DevicesFailed";
 }

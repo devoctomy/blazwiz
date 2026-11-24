@@ -27,7 +27,21 @@ While no user pool is configured, the placeholder sign in (any credentials) stay
 `allowPlaceholderSignIn` is true, as it is above in development. Anywhere else, missing settings stop the app from
 starting rather than letting anyone in.
 
-Signing out everywhere (`IAuthenticationService.SignOutEverywhereAsync`) calls Cognito's `GlobalSignOut`, which
+Two-step verification uses Cognito's software token MFA: the sign in answers `SOFTWARE_TOKEN_MFA` with the user's
+code, and `MFA_SETUP` (when the pool requires MFA) with `AssociateSoftwareToken` and `VerifySoftwareToken`.
+`CognitoMfaService` turns it on and off with `SetUserMFAPreference`. Whether the pool asks for it is the base stack's
+`Mfa` parameter.
+
+Remembered devices are Cognito's own: after a sign in from a new device, `RememberDeviceAsync` makes up a random
+device password, registers its verifier (`ConfirmDevice`, through the library's `GenerateDeviceVerifier`) and returns
+the device key, group key and password as one credential. A sign in given it answers Cognito's device challenges
+(`DEVICE_SRP_AUTH`, `DEVICE_PASSWORD_VERIFIER`, in the library), so no code is asked for. With the password, it is
+enough to skip the code, so keep it as safely: the sign-in page keeps it only with a passkey, encrypted with the
+remembered password. `CognitoRememberedDeviceService` lists (`ListDevices`) and forgets (`ForgetDevice`) devices,
+and marks the one this session signed in from (`ICognitoCurrentDevice`).
+
+Signing out everywhere (`IAuthenticationService.SignOutEverywhereAsync`) first forgets every remembered device, then
+calls Cognito's `GlobalSignOut`, which
 revokes every refresh token the user has and, because the app client has `EnableTokenRevocation`, their access tokens
 too. The resume check (`CheckSessionAsync`) calls `GetUser` with the session's access token, so a device that missed
 the news finds out as soon as it resumes. In offline mode neither calls Cognito.
