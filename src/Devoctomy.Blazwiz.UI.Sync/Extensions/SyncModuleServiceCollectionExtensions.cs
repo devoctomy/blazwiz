@@ -85,6 +85,7 @@ public static class SyncModuleServiceCollectionExtensions
         services.AddScoped<ISyncProfileDisplayNames, SyncProfileDisplayNames>();
         services.AddScoped<IE2eProfilePresenter, E2eProfilePresenter>();
         services.AddSessionLifecycleHandler<SyncSessionHandler>();
+        services.AddSessionLifecycleHandler<E2eDeviceKeySessionHandler>();
         services.AddErrorText<SyncUiText>();
 
         // End to end encryption: the user's keys in their prefix of the data bucket (<identity id>/keys/<id> for each

@@ -466,6 +466,7 @@ public class E2eUnlockPanelViewModelTests
 
         // Assert
         mockProfiles.Verify(x => x.UnlockWithDeviceAsync(new E2eKeyScope(notes.Id)), Times.Once);
+        mockPasskeys.Verify(x => x.ForgetKey("e2e-kek"), Times.Once);
     }
 
     [Fact]
@@ -552,6 +553,7 @@ public class E2eUnlockPanelViewModelTests
         mockProfiles.Verify(x => x.UnlockWithDeviceAsync(It.IsAny<E2eKeyScope>()), Times.Never);
         Assert.NotNull(sut.Error);
         Assert.True(sut.IsLocked);
+        mockPasskeys.Verify(x => x.ForgetKey("e2e-kek"), Times.Once);
     }
 
     [Fact]
@@ -562,6 +564,7 @@ public class E2eUnlockPanelViewModelTests
         mockManager.Setup(x => x.UnlockAsync(new E2eKeyScope(notes.Id), "pass", It.IsAny<CancellationToken>())).Callback(() => calls.Add("unlock")).Returns(Task.CompletedTask);
         mockPasskeys.Setup(x => x.EnsureKeyAsync("e2e-kek")).Callback(() => calls.Add("passkey")).ReturnsAsync(true);
         mockProfiles.Setup(x => x.EnableDeviceUnlockAsync(new E2eKeyScope(notes.Id))).Callback(() => calls.Add("biometrics on")).Returns(Task.CompletedTask);
+        mockPasskeys.Setup(x => x.ForgetKey("e2e-kek")).Callback(() => calls.Add("forget"));
         using var sut = CreateSut();
         await sut.SetProfileAsync("notes");
         sut.Passphrase = "pass";
@@ -571,7 +574,7 @@ public class E2eUnlockPanelViewModelTests
         await sut.UnlockCommand.ExecuteAsync(null);
 
         // Assert
-        Assert.Equal(["passkey", "unlock", "biometrics on"], calls);
+        Assert.Equal(["passkey", "unlock", "biometrics on", "forget"], calls);
         mockToasts.VerifyNoOtherCalls();
     }
 
@@ -595,6 +598,7 @@ public class E2eUnlockPanelViewModelTests
         Assert.NotNull(sut.Error);
         Assert.True(sut.RememberBiometrics);
         mockToasts.VerifyNoOtherCalls();
+        mockPasskeys.Verify(x => x.ForgetKey("e2e-kek"), Times.Once);
     }
 
     [Fact]
@@ -636,6 +640,7 @@ public class E2eUnlockPanelViewModelTests
         // Assert
         mockPasskeys.Verify(x => x.EnsureKeyAsync(It.IsAny<string>()), Times.Never);
         mockProfiles.Verify(x => x.EnableDeviceUnlockAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+        mockPasskeys.Verify(x => x.ForgetKey(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

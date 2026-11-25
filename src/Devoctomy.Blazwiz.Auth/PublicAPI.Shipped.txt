@@ -141,6 +141,7 @@ Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordService.RequestPasswordReset
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IPasswordService.ResetPasswordAsync(string! email, string! code, string! newPassword) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService.ForgetAsync(string! deviceKey) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService.Forgotten -> System.EventHandler<string!>?
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService.ListAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!>!
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IUserDisplayService
 Devoctomy.Blazwiz.Auth.Services.Interfaces.IUserDisplayService.GetDisplayNameFromUsername(string! username) -> string!
@@ -177,6 +178,7 @@ Devoctomy.Blazwiz.Auth.Services.LocalPasswordService.RequestPasswordResetAsync(s
 Devoctomy.Blazwiz.Auth.Services.LocalPasswordService.ResetPasswordAsync(string! email, string! code, string! newPassword) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService
 Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService.ForgetAsync(string! deviceKey) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService.Forgotten -> System.EventHandler<string!>?
 Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService.ListAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!>!
 Devoctomy.Blazwiz.Auth.Services.LocalRememberedDeviceService.LocalRememberedDeviceService() -> void
 Devoctomy.Blazwiz.Auth.Services.PasswordCryptoService

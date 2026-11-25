@@ -1,9 +1,9 @@
 using Devoctomy.Blazwiz.Auth.Exceptions;
 using Devoctomy.Blazwiz.Auth.Models;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
-using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Core.Exceptions;
 using Devoctomy.Blazwiz.Testing;
+using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.ViewModels;
 using Moq;
 
@@ -14,19 +14,14 @@ public class RememberedDevicesViewModelTests
     private readonly FrameworkText testText = new();
     private readonly Mock<IRememberedDeviceService> mockDevices = new();
     private readonly Mock<IAuthenticationService> mockAuth = new();
-    private readonly Mock<ILocalStorageService> mockLocalStorage = new();
+    private readonly Mock<ISavedDeviceCredentialService> mockSaved = new();
     private readonly RememberedDevice thisDevice = new() { Key = "k1", Name = "Work laptop", IsThisDevice = true };
     private readonly RememberedDevice otherDevice = new() { Key = "k2" };
-    private SavedUsersData? saved;
 
     public RememberedDevicesViewModelTests()
     {
         mockAuth.Setup(x => x.GetCurrentUserAsync()).ReturnsAsync(new UserSession { Username = "bob@example.com", Email = "bob@example.com" });
         mockDevices.Setup(x => x.ListAsync()).ReturnsAsync([thisDevice, otherDevice]);
-        mockLocalStorage
-            .Setup(x => x.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, It.IsAny<SavedUsersData>()))
-            .Callback<string, SavedUsersData>((_, data) => saved = data)
-            .Returns(Task.CompletedTask);
     }
 
     public static TheoryData<UserSession?> NotOnline => new()
@@ -39,10 +34,10 @@ public class RememberedDevicesViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("deviceService", Assert.Throws<ArgumentNullException>(() => new RememberedDevicesViewModel(null!, mockAuth.Object, mockLocalStorage.Object, testText.Errors)).ParamName);
-        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new RememberedDevicesViewModel(mockDevices.Object, null!, mockLocalStorage.Object, testText.Errors)).ParamName);
-        Assert.Equal("localStorageService", Assert.Throws<ArgumentNullException>(() => new RememberedDevicesViewModel(mockDevices.Object, mockAuth.Object, null!, testText.Errors)).ParamName);
-        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new RememberedDevicesViewModel(mockDevices.Object, mockAuth.Object, mockLocalStorage.Object, null!)).ParamName);
+        Assert.Equal("deviceService", Assert.Throws<ArgumentNullException>(() => new RememberedDevicesViewModel(null!, mockAuth.Object, mockSaved.Object, testText.Errors)).ParamName);
+        Assert.Equal("authService", Assert.Throws<ArgumentNullException>(() => new RememberedDevicesViewModel(mockDevices.Object, null!, mockSaved.Object, testText.Errors)).ParamName);
+        Assert.Equal("savedDeviceCredential", Assert.Throws<ArgumentNullException>(() => new RememberedDevicesViewModel(mockDevices.Object, mockAuth.Object, null!, testText.Errors)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new RememberedDevicesViewModel(mockDevices.Object, mockAuth.Object, mockSaved.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -101,7 +96,7 @@ public class RememberedDevicesViewModelTests
         // Assert
         mockDevices.Verify(x => x.ForgetAsync("k2"), Times.Once);
         Assert.Equal([thisDevice], sut.Devices);
-        Assert.Null(saved);
+        mockSaved.Verify(x => x.DropAsync(), Times.Never);
         Assert.False(sut.IsBusy);
     }
 
@@ -109,14 +104,6 @@ public class RememberedDevicesViewModelTests
     public async Task GivenThisDevice_WhenForgetAsync_ThenItsStoredCredentialIsDropped()
     {
         // Arrange
-        var user = new SavedUser
-        {
-            Email = "Bob@Example.com",
-            WebAuthnCredential = new WebAuthnStoredCredential { CredentialID = "cred1", EncryptedPassword = "enc", EncryptedDevice = "enc-device" },
-        };
-        mockLocalStorage
-            .Setup(x => x.GetObjectAsync<SavedUsersData>(LoginViewModel.SavedUsersStorageKey))
-            .ReturnsAsync(new SavedUsersData { Users = [new SavedUser { Email = "alice@example.com" }, user] });
         var sut = await CreateInitializedSutAsync();
 
         // Act
@@ -124,26 +111,38 @@ public class RememberedDevicesViewModelTests
 
         // Assert
         Assert.Equal([otherDevice], sut.Devices);
-        var stored = saved?.Users.Single(u => u.Email == "Bob@Example.com").WebAuthnCredential;
-        Assert.Null(stored?.EncryptedDevice);
-        Assert.Equal("enc", stored?.EncryptedPassword);
+        mockSaved.Verify(x => x.DropAsync(), Times.Once);
     }
 
     [Fact]
-    public async Task GivenThisDeviceWithNothingStored_WhenForgetAsync_ThenNothingSaved()
+    public async Task GivenAListedDevice_WhenItIsForgottenElsewhere_ThenItLeavesTheList()
     {
         // Arrange
-        mockLocalStorage
-            .Setup(x => x.GetObjectAsync<SavedUsersData>(LoginViewModel.SavedUsersStorageKey))
-            .ReturnsAsync(new SavedUsersData { Users = [new SavedUser { Email = "bob@example.com" }] });
+        var sut = await CreateInitializedSutAsync();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        mockDevices.Raise(x => x.Forgotten += null, mockDevices.Object, "k1");
+        mockDevices.Raise(x => x.Forgotten += null, mockDevices.Object, "unknown");
+
+        // Assert
+        Assert.Equal([otherDevice], sut.Devices);
+        Assert.Equal([nameof(RememberedDevicesViewModel.Devices)], changed);
+    }
+
+    [Fact]
+    public async Task GivenDisposed_WhenADeviceIsForgottenElsewhere_ThenTheListIsLeftAlone()
+    {
+        // Arrange
         var sut = await CreateInitializedSutAsync();
 
         // Act
-        await sut.ForgetAsync(thisDevice);
+        sut.Dispose();
+        mockDevices.Raise(x => x.Forgotten += null, mockDevices.Object, "k1");
 
         // Assert
-        Assert.Null(saved);
-        Assert.Equal([otherDevice], sut.Devices);
+        Assert.Equal([thisDevice, otherDevice], sut.Devices);
     }
 
     [Fact]
@@ -180,22 +179,6 @@ public class RememberedDevicesViewModelTests
     }
 
     [Fact]
-    public async Task GivenNotInitialized_WhenForgetAsyncThisDevice_ThenNoStoredUserMatches()
-    {
-        // Arrange
-        mockLocalStorage
-            .Setup(x => x.GetObjectAsync<SavedUsersData>(LoginViewModel.SavedUsersStorageKey))
-            .ReturnsAsync(new SavedUsersData { Users = [new SavedUser { Email = "bob@example.com", WebAuthnCredential = new WebAuthnStoredCredential { EncryptedDevice = "enc-device" } }] });
-        var sut = CreateSut();
-
-        // Act
-        await sut.ForgetAsync(thisDevice);
-
-        // Assert
-        Assert.Null(saved);
-    }
-
-    [Fact]
     public async Task GivenNullDevice_WhenForgetAsync_ThenThrowsArgumentNullException()
     {
         // Act & Assert
@@ -209,5 +192,5 @@ public class RememberedDevicesViewModelTests
         return sut;
     }
 
-    private RememberedDevicesViewModel CreateSut() => new(mockDevices.Object, mockAuth.Object, mockLocalStorage.Object, testText.Errors);
+    private RememberedDevicesViewModel CreateSut() => new(mockDevices.Object, mockAuth.Object, mockSaved.Object, testText.Errors);
 }

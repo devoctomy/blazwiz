@@ -89,13 +89,17 @@ public class CognitoRememberedDeviceServiceTests
         // Arrange
         currentDevice.DeviceKey = "k2";
         mockClient.Setup(x => x.ForgetDeviceAsync("access", "k1")).Returns(Task.CompletedTask);
+        var sut = CreateSut();
+        var forgotten = new List<string>();
+        sut.Forgotten += (_, key) => forgotten.Add(key);
 
         // Act
-        await CreateSut().ForgetAsync("k1");
+        await sut.ForgetAsync("k1");
 
         // Assert
         mockClient.Verify(x => x.ForgetDeviceAsync("access", "k1"), Times.Once);
         Assert.Equal("k2", currentDevice.DeviceKey);
+        Assert.Equal(["k1"], forgotten);
     }
 
     [Fact]
@@ -142,13 +146,17 @@ public class CognitoRememberedDeviceServiceTests
         // Arrange
         currentDevice.DeviceKey = "k2";
         mockClient.Setup(x => x.ForgetDeviceAsync("access", "k2")).ThrowsAsync(new HttpRequestException("offline"));
+        var sut = CreateSut();
+        var raised = false;
+        sut.Forgotten += (_, _) => raised = true;
 
         // Act
-        var exception = await Assert.ThrowsAsync<BlazwizException>(() => CreateSut().ForgetAsync("k2"));
+        var exception = await Assert.ThrowsAsync<BlazwizException>(() => sut.ForgetAsync("k2"));
 
         // Assert
         Assert.Equal(AuthErrorCodes.Unreachable, exception.Code);
         Assert.Equal("k2", currentDevice.DeviceKey);
+        Assert.False(raised);
     }
 
     [Fact]

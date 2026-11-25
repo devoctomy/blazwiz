@@ -58,6 +58,9 @@ public class UiServiceCollectionExtensionsTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ForgotPasswordViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<LanguageSettingsViewModel>());
         Assert.IsType<ToastService>(scope.ServiceProvider.GetRequiredService<IToastService>());
+        Assert.IsType<SavedDeviceCredentialService>(scope.ServiceProvider.GetRequiredService<ISavedDeviceCredentialService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<DeviceSettingsViewModel>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<RememberedDevicesViewModel>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ToastHostViewModel>());
         Assert.Contains(typeof(ToastHost), scope.ServiceProvider.GetRequiredService<IShellRegistry>().GetComponents(ShellRegion.Overlays));
         Assert.IsType<CultureService>(scope.ServiceProvider.GetRequiredService<ICultureService>());

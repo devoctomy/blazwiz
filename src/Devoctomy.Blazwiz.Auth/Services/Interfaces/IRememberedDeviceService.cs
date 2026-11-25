@@ -10,6 +10,12 @@ namespace Devoctomy.Blazwiz.Auth.Services.Interfaces;
 public interface IRememberedDeviceService
 {
     /// <summary>
+    /// Raised once a device has been forgotten, with its <see cref="RememberedDevice.Key"/>, so anything listing the
+    /// devices can drop it.
+    /// </summary>
+    event EventHandler<string>? Forgotten;
+
+    /// <summary>
     /// Lists the remembered devices, most recently used first.
     /// </summary>
     /// <returns>The devices.</returns>

@@ -3,7 +3,8 @@ namespace Devoctomy.Blazwiz.UI.Services.Interfaces;
 /// <summary>
 /// The keys derived from the signed in user's passkey (the WebAuthn PRF), held in memory only: they are there after a
 /// sign in with the passkey, and gone after a reload. This asks for the passkey again when they are needed and not
-/// there. Only a user remembered on this device with a passkey ("Remember me" at sign in) has one.
+/// there, and forgets one that should not stay in memory once it has been used. Only a user remembered on this device
+/// with a passkey ("Remember me" at sign in) has one.
 /// </summary>
 public interface IPasskeyKeysService
 {
@@ -20,4 +21,11 @@ public interface IPasskeyKeysService
     /// <param name="keyName">The key's name, as added to the PRF keys (e.g. <c>e2e-kek</c>).</param>
     /// <returns>True if the key is in memory now; false if there is no passkey, or the user cancelled or it failed.</returns>
     Task<bool> EnsureKeyAsync(string keyName);
+
+    /// <summary>
+    /// Wipes a key derived from the passkey from memory, so the passkey is asked for again the next time it is needed.
+    /// Nothing happens if it is not there.
+    /// </summary>
+    /// <param name="keyName">The key's name, as added to the PRF keys (e.g. <c>e2e-kek</c>).</param>
+    void ForgetKey(string keyName);
 }

@@ -205,9 +205,12 @@ Devoctomy.Blazwiz.UI.Services.Interfaces.INavigationMenuService
 Devoctomy.Blazwiz.UI.Services.Interfaces.INavigationMenuService.GetMainItems() -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.UI.Models.NavigationItem!>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService
 Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService.EnsureKeyAsync(string! keyName) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService.ForgetKey(string! keyName) -> void
 Devoctomy.Blazwiz.UI.Services.Interfaces.IPasskeyKeysService.IsAvailableAsync() -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Services.Interfaces.IQrCodeService
 Devoctomy.Blazwiz.UI.Services.Interfaces.IQrCodeService.CreateImageUrl(string! text) -> string!
+Devoctomy.Blazwiz.UI.Services.Interfaces.ISavedDeviceCredentialService
+Devoctomy.Blazwiz.UI.Services.Interfaces.ISavedDeviceCredentialService.DropAsync() -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.Services.Interfaces.ISessionEndedNoticeService
 Devoctomy.Blazwiz.UI.Services.Interfaces.ISessionEndedNoticeService.Set(Devoctomy.Blazwiz.Auth.Models.SessionEndedEventArgs! args) -> void
 Devoctomy.Blazwiz.UI.Services.Interfaces.ISessionEndedNoticeService.Take() -> Devoctomy.Blazwiz.Auth.Models.SessionEndedEventArgs?
@@ -231,11 +234,15 @@ Devoctomy.Blazwiz.UI.Services.NavigationMenuService.GetMainItems() -> System.Col
 Devoctomy.Blazwiz.UI.Services.NavigationMenuService.NavigationMenuService(System.Collections.Generic.IEnumerable<Devoctomy.Blazwiz.UI.Models.NavigationItem!>! items, Devoctomy.Blazwiz.UI.Shell.Interfaces.IPageRegistry! pageRegistry, Microsoft.Extensions.Localization.IStringLocalizerFactory! localizerFactory) -> void
 Devoctomy.Blazwiz.UI.Services.PasskeyKeysService
 Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.EnsureKeyAsync(string! keyName) -> System.Threading.Tasks.Task<bool>!
+Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.ForgetKey(string! keyName) -> void
 Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.IsAvailableAsync() -> System.Threading.Tasks.Task<bool>!
 Devoctomy.Blazwiz.UI.Services.PasskeyKeysService.PasskeyKeysService(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.Browser.Services.Interfaces.IWebAuthnService! webAuthnService, Devoctomy.Blazwiz.Cryptography.Interfaces.IDerivedKeyStore! keyStore) -> void
 Devoctomy.Blazwiz.UI.Services.QrCodeService
 Devoctomy.Blazwiz.UI.Services.QrCodeService.CreateImageUrl(string! text) -> string!
 Devoctomy.Blazwiz.UI.Services.QrCodeService.QrCodeService() -> void
+Devoctomy.Blazwiz.UI.Services.SavedDeviceCredentialService
+Devoctomy.Blazwiz.UI.Services.SavedDeviceCredentialService.DropAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Services.SavedDeviceCredentialService.SavedDeviceCredentialService(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService) -> void
 Devoctomy.Blazwiz.UI.Services.SessionEndedNoticeService
 Devoctomy.Blazwiz.UI.Services.SessionEndedNoticeService.SessionEndedNoticeService() -> void
 Devoctomy.Blazwiz.UI.Services.SessionEndedNoticeService.Set(Devoctomy.Blazwiz.Auth.Models.SessionEndedEventArgs! args) -> void
@@ -361,8 +368,12 @@ Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.NewPassword.get -> strin
 Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.NewPassword.set -> void
 Devoctomy.Blazwiz.UI.ViewModels.ChangePasswordViewModel.SuccessMessage.get -> string?
 Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel
-Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.DeviceSettingsViewModel(Devoctomy.Blazwiz.Browser.Services.Interfaces.IDeviceNameService! deviceNameService, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISignOutEverywhereNotifier! signOutEverywhereNotifier, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>! text) -> void
+Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.CancelForget() -> void
+Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.ConfirmForgetAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.DeviceSettingsViewModel(Devoctomy.Blazwiz.Browser.Services.Interfaces.IDeviceNameService! deviceNameService, Devoctomy.Blazwiz.Auth.Sessions.Interfaces.ISignOutEverywhereNotifier! signOutEverywhereNotifier, Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService! rememberedDevices, Devoctomy.Blazwiz.UI.Services.Interfaces.ISavedDeviceCredentialService! savedDeviceCredential, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>! text) -> void
 Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.ErrorMessage.get -> string?
+Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.ForgetWarning.get -> string?
+Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.IsBusy.get -> bool
 Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.IsVisible.get -> bool
 Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.MaxLength.get -> int
 Devoctomy.Blazwiz.UI.ViewModels.DeviceSettingsViewModel.Name.get -> string!
@@ -529,7 +540,7 @@ Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.ErrorMessage.get -> s
 Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.ForgetAsync(Devoctomy.Blazwiz.Auth.Models.RememberedDevice! device) -> System.Threading.Tasks.Task!
 Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.IsBusy.get -> bool
 Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.IsVisible.get -> bool
-Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.RememberedDevicesViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService! deviceService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Browser.Services.Interfaces.ILocalStorageService! localStorageService, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
+Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.RememberedDevicesViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IRememberedDeviceService! deviceService, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.UI.Services.Interfaces.ISavedDeviceCredentialService! savedDeviceCredential, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText) -> void
 Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel
 Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.SessionTimerViewModel(Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, System.TimeProvider! timeProvider, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Text.UiText!>! uiText) -> void
 Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.Text.get -> string!
@@ -594,6 +605,7 @@ override Devoctomy.Blazwiz.UI.ViewModels.ModalDialogViewModel.OnAfterRenderAsync
 override Devoctomy.Blazwiz.UI.ViewModels.OfflineBannerViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.OfflineModeSwitchViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.ProfileViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
+override Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.RememberedDevicesViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!
 override Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.Dispose(bool disposing) -> void
 override Devoctomy.Blazwiz.UI.ViewModels.SessionTimerViewModel.OnInitializedAsync() -> System.Threading.Tasks.Task!

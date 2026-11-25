@@ -142,7 +142,9 @@ public interface IE2eProtectedProfileManager
     bool IsRotationInProgress(E2eKeyScope scope);
 
     /// <summary>
-    /// Locks a protected profile: its keys are wiped from memory and its files can no longer be read or written.
+    /// Locks a protected profile: its keys are wiped from memory and its files can no longer be read or written. The
+    /// passkey's key (<see cref="E2eKeyNames.KeyEncryptionKey"/>) is wiped too, so unlocking with biometrics asks for
+    /// the passkey again.
     /// </summary>
     /// <param name="scope">The profile's scope.</param>
     void Lock(E2eKeyScope scope);

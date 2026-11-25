@@ -183,6 +183,11 @@ The Settings page lists the user's remembered devices (`RememberedDevicesSetting
 laptop, say. A forgotten device is asked for a code at its next sign
 in. Signing out everywhere forgets every device too.
 
+A device keeps the name it was remembered under: Cognito sets it once and can't change it. So when the user renames a
+remembered device in the This device section, it warns first, and renaming it forgets it (`IRememberedDeviceService`
+raises `Forgotten`, and the list drops it). The next sign in there asks for a code, then remembers the device under
+its new name. `ISavedDeviceCredentialService` drops this device's stored credential whenever it is forgotten.
+
 Offline sign in never asks for a code: it never reaches Cognito.
 
 **In your own code.** `IMfaService` (`IsEnabledAsync`, `BeginSetupAsync`, `CompleteSetupAsync`, `DisableAsync`) and

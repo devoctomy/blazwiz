@@ -80,6 +80,7 @@ public static class UiServiceCollectionExtensions
         services.TryAddSingleton<IAppBuildInfo, AppBuildInfo>();
         services.TryAddScoped<IToastService, ToastService>();
         services.TryAddScoped<IPasskeyKeysService, PasskeyKeysService>();
+        services.TryAddScoped<ISavedDeviceCredentialService, SavedDeviceCredentialService>();
         services.TryAddSingleton<IQrCodeService, QrCodeService>();
         services.TryAddScoped<IAppUpdateMonitor, AppUpdateMonitor>();
         services.TryAddScoped<ISessionEndedNoticeService, SessionEndedNoticeService>();

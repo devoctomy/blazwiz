@@ -106,6 +106,7 @@ Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoPasswordService.ResetPasswordAsyn
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService.CognitoRememberedDeviceService(Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoUserPoolClient! userPoolClient, Devoctomy.Blazwiz.Auth.Services.Interfaces.IAuthenticationService! authenticationService, Devoctomy.Blazwiz.Core.Offline.Interfaces.IOfflineModeService! offlineModeService, Devoctomy.Blazwiz.Auth.Cognito.Services.Interfaces.ICognitoCurrentDevice! currentDevice) -> void
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService.ForgetAsync(string! deviceKey) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService.Forgotten -> System.EventHandler<string!>?
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoRememberedDeviceService.ListAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Auth.Models.RememberedDevice!>!>!
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient
 Devoctomy.Blazwiz.Auth.Cognito.Services.CognitoUserPoolClient.AssociateSoftwareTokenAsync(string! accessToken) -> System.Threading.Tasks.Task<string!>!

@@ -61,6 +61,15 @@ public class PasskeyKeysService(
         }
     }
 
+    /// <inheritdoc/>
+    public void ForgetKey(string keyName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+
+        // The store zeroes the key as it removes it.
+        keyStore.RemoveKey(keyName);
+    }
+
     private bool HasKey(string keyName)
     {
         if (!keyStore.TryGetKey(keyName, out var key))

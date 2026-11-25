@@ -85,13 +85,14 @@ public class E2eDeviceUnlockServiceTests
         mockScheduler.Setup(x => x.SyncProfileAsync(scope.Id)).Callback(() => calls.Add("sync")).Returns(Task.CompletedTask);
         mockPasskeys.Setup(x => x.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey)).Callback(() => calls.Add("passkey")).ReturnsAsync(true);
         mockProfiles.Setup(x => x.UnlockWithDeviceAsync(scope)).Callback(() => calls.Add("unlock")).Returns(Task.CompletedTask);
+        mockPasskeys.Setup(x => x.ForgetKey(E2eKeyNames.KeyEncryptionKey)).Callback(() => calls.Add("forget"));
 
         // Act
         var unlocked = await CreateSut().UnlockAsync(scope);
 
         // Assert
         Assert.True(unlocked);
-        Assert.Equal(["sync", "passkey", "unlock"], calls);
+        Assert.Equal(["sync", "passkey", "unlock", "forget"], calls);
     }
 
     [Fact]
@@ -106,6 +107,7 @@ public class E2eDeviceUnlockServiceTests
         // Assert
         Assert.True(unlocked);
         mockPasskeys.Verify(x => x.EnsureKeyAsync(It.IsAny<string>()), Times.Never);
+        mockPasskeys.Verify(x => x.ForgetKey(It.IsAny<string>()), Times.Never);
         mockScheduler.Verify(x => x.SyncProfileAsync(It.IsAny<string>()), Times.Never);
     }
 
@@ -121,6 +123,7 @@ public class E2eDeviceUnlockServiceTests
         // Assert
         Assert.False(unlocked);
         mockProfiles.Verify(x => x.UnlockWithDeviceAsync(It.IsAny<E2eKeyScope>()), Times.Never);
+        mockPasskeys.Verify(x => x.ForgetKey(E2eKeyNames.KeyEncryptionKey), Times.Once);
     }
 
     [Fact]
@@ -135,6 +138,7 @@ public class E2eDeviceUnlockServiceTests
 
         // Assert
         Assert.False(unlocked);
+        mockPasskeys.Verify(x => x.ForgetKey(E2eKeyNames.KeyEncryptionKey), Times.Once);
     }
 
     [Fact]
