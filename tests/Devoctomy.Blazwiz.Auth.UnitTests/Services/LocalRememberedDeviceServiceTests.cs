@@ -15,21 +15,29 @@ public class LocalRememberedDeviceServiceTests
     }
 
     [Fact]
-    public async Task GivenKey_WhenForgetAsync_ThenNothingHappens_AndNothingIsRaised()
+    public async Task GivenKey_WhenForgetAsync_ThenNothingFails_AndItIsRaisedWithTheKey()
     {
         // Arrange
         var sut = new LocalRememberedDeviceService();
-        var raised = 0;
-        EventHandler<string> handler = (_, _) => raised++;
-        sut.Forgotten += handler;
+        var forgotten = new List<string>();
+        sut.Forgotten += (_, key) => forgotten.Add(key);
 
         // Act
         var exception = await Record.ExceptionAsync(() => sut.ForgetAsync("k1"));
-        sut.Forgotten -= handler;
 
         // Assert
         Assert.Null(exception);
-        Assert.Equal(0, raised);
+        Assert.Equal(["k1"], forgotten);
+    }
+
+    [Fact]
+    public async Task GivenNoListener_WhenForgetAsync_ThenNothingFails()
+    {
+        // Act
+        var exception = await Record.ExceptionAsync(() => new LocalRememberedDeviceService().ForgetAsync("k1"));
+
+        // Assert
+        Assert.Null(exception);
     }
 
     [Theory]

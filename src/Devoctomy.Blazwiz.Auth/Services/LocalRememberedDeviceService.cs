@@ -10,12 +10,7 @@ namespace Devoctomy.Blazwiz.Auth.Services;
 public class LocalRememberedDeviceService : IRememberedDeviceService
 {
     /// <inheritdoc/>
-    /// <remarks>Never raised: no device is remembered, so none is forgotten.</remarks>
-    public event EventHandler<string>? Forgotten
-    {
-        add { }
-        remove { }
-    }
+    public event EventHandler<string>? Forgotten;
 
     /// <inheritdoc/>
     public Task<IReadOnlyList<RememberedDevice>> ListAsync()
@@ -27,6 +22,9 @@ public class LocalRememberedDeviceService : IRememberedDeviceService
     public Task ForgetAsync(string deviceKey)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(deviceKey);
+
+        // Nothing to forget, but whatever lists the devices is told, as with a real sign-in service.
+        Forgotten?.Invoke(this, deviceKey);
         return Task.CompletedTask;
     }
 }

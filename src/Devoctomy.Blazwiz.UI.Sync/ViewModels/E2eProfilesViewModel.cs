@@ -98,7 +98,8 @@ public partial class E2eProfilesViewModel : ViewModelBase
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.rotation = rotation ?? throw new ArgumentNullException(nameof(rotation));
         this.rotationSignOut = rotationSignOut ?? throw new ArgumentNullException(nameof(rotationSignOut));
-        this.passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
+        ArgumentNullException.ThrowIfNull(passkeys);
+        this.passkeys = passkeys;
         this.profiles.ProfilesChanged += OnProfilesChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
         this.offlineModeService.Changed += OnOfflineModeChanged;
