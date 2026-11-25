@@ -1,5 +1,6 @@
 using Devoctomy.Blazwiz.Core.Offline.Interfaces;
 using Devoctomy.Blazwiz.Cryptography.Configuration;
+using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Cryptography.Interfaces;
 using Devoctomy.Blazwiz.Cryptography.Models;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
@@ -8,6 +9,7 @@ using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Models;
+using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.ViewModels;
@@ -26,6 +28,7 @@ public class E2eProfilesViewModelTests
     private readonly Mock<IOfflineModeService> mockOffline = new();
     private readonly Mock<ISyncKeyRotationService> mockRotation = new();
     private readonly Mock<IE2eRotationSignOut> mockSignOut = new();
+    private readonly Mock<IPasskeyKeysService> mockPasskeys = new();
     private readonly TestText testText = new();
     private readonly E2eProfileRow notes = new() { Name = "notes", Id = Guid.NewGuid().ToString("D"), DisplayName = "Notes", State = E2eProfileState.NotSetUp };
     private readonly E2eProfileRow created;
@@ -51,15 +54,16 @@ public class E2eProfilesViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(null!, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, form)).ParamName);
-        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, null!, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, form)).ParamName);
-        Assert.Equal("presenter", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, null!, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, form)).ParamName);
-        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, null!, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, form)).ParamName);
-        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, null!, testText.Errors, mockRotation.Object, mockSignOut.Object, form)).ParamName);
-        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, null!, mockRotation.Object, mockSignOut.Object, form)).ParamName);
-        Assert.Equal("rotation", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, null!, mockSignOut.Object, form)).ParamName);
-        Assert.Equal("rotationSignOut", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, null!, form)).ParamName);
-        Assert.Equal("passphraseForm", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, null!)).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(null!, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, mockPasskeys.Object, form)).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, null!, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, mockPasskeys.Object, form)).ParamName);
+        Assert.Equal("presenter", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, null!, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, mockPasskeys.Object, form)).ParamName);
+        Assert.Equal("offlineModeService", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, null!, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, mockPasskeys.Object, form)).ParamName);
+        Assert.Equal("text", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, null!, testText.Errors, mockRotation.Object, mockSignOut.Object, mockPasskeys.Object, form)).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, null!, mockRotation.Object, mockSignOut.Object, mockPasskeys.Object, form)).ParamName);
+        Assert.Equal("rotation", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, null!, mockSignOut.Object, mockPasskeys.Object, form)).ParamName);
+        Assert.Equal("rotationSignOut", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, null!, mockPasskeys.Object, form)).ParamName);
+        Assert.Equal("passkeys", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, null!, form)).ParamName);
+        Assert.Equal("passphraseForm", Assert.Throws<ArgumentNullException>(() => new E2eProfilesViewModel(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, mockPasskeys.Object, null!)).ParamName);
     }
 
     [Fact]
@@ -301,6 +305,60 @@ public class E2eProfilesViewModelTests
         Assert.Equal(256 * 1024, used.MemoryKib);
         Assert.Equal(9, used.Iterations);
         Assert.Equal(2, used.Parallelism);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GivenBiometricsOnOrOffHere_WhenThePassphraseIsChanged_ThenThePasskeyIsAskedForFirstOnlyWhenOn_AndItsKeyIsForgottenAfter(bool biometricsOn)
+    {
+        // Arrange
+        var calls = new List<string>();
+        mockManager.Setup(x => x.HasDeviceUnlockAsync(new E2eKeyScope(notes.Id))).ReturnsAsync(biometricsOn);
+        mockPasskeys.Setup(x => x.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey)).Callback(() => calls.Add("passkey")).ReturnsAsync(true);
+        mockPasskeys.Setup(x => x.ForgetKey(E2eKeyNames.KeyEncryptionKey)).Callback(() => calls.Add("forget"));
+        mockRotation.Setup(x => x.PrepareAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncKeyRotationEstimate(0, 0, TimeSpan.Zero));
+        mockRotation.Setup(x => x.RotateAsync(new E2eKeyScope(notes.Id), "old passphrase", Pass, It.IsAny<Argon2idParameters?>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
+            .Callback(() => calls.Add("rotate"))
+            .Returns(Task.CompletedTask);
+        mockSignOut.Setup(x => x.SignOutEverywhereAsync()).ReturnsAsync(true);
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenChangePassphraseCommand.Execute("notes");
+        sut.PassphraseForm.CurrentPassphrase = "old passphrase";
+        EnterNewPassphrase(sut);
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.StartRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        string[] expected = biometricsOn ? ["passkey", "rotate", "forget"] : ["rotate", "forget"];
+        Assert.Equal(expected, calls);
+    }
+
+    [Fact]
+    public async Task GivenTheDevicesKeysUnreadable_WhenThePassphraseIsChanged_ThenItGoesAhead_AndThePasskeysKeyIsForgottenEvenIfItFails()
+    {
+        // Arrange
+        mockManager.Setup(x => x.HasDeviceUnlockAsync(It.IsAny<E2eKeyScope>())).ThrowsAsync(new InvalidOperationException("unreadable"));
+        mockRotation.Setup(x => x.PrepareAsync(It.IsAny<E2eKeyScope>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncKeyRotationEstimate(0, 0, TimeSpan.Zero));
+        mockRotation.Setup(x => x.RotateAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Argon2idParameters?>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("rotation failed"));
+        using var sut = await CreateInitializedSutAsync();
+        sut.OpenChangePassphraseCommand.Execute("notes");
+        sut.PassphraseForm.CurrentPassphrase = "old passphrase";
+        EnterNewPassphrase(sut);
+        await sut.ConfirmDialogCommand.ExecuteAsync(null);
+
+        // Act
+        await sut.StartRotationCommand.ExecuteAsync(null);
+
+        // Assert
+        mockRotation.Verify(x => x.RotateAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Argon2idParameters?>(), It.IsAny<IProgress<E2eProgress>?>(), It.IsAny<CancellationToken>()), Times.Once);
+        mockPasskeys.Verify(x => x.EnsureKeyAsync(It.IsAny<string>()), Times.Never);
+        mockPasskeys.Verify(x => x.ForgetKey(E2eKeyNames.KeyEncryptionKey), Times.Once);
     }
 
     [Fact]
@@ -1268,5 +1326,5 @@ public class E2eProfilesViewModelTests
         return sut;
     }
 
-    private E2eProfilesViewModel CreateSut() => new(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, form);
+    private E2eProfilesViewModel CreateSut() => new(mockProfiles.Object, mockManager.Object, mockPresenter.Object, mockOffline.Object, testText.Sync, testText.Errors, mockRotation.Object, mockSignOut.Object, mockPasskeys.Object, form);
 }

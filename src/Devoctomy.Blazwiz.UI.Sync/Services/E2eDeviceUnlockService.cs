@@ -70,6 +70,11 @@ public class E2eDeviceUnlockService(
             // E.g. another passkey than the one it was turned on with: the passphrase unlocks it.
             return false;
         }
+        finally
+        {
+            // The key that unwraps every profile's keys on this device is not kept: the next unlock asks again.
+            passkeys.ForgetKey(E2eKeyNames.KeyEncryptionKey);
+        }
     }
 
     /// <inheritdoc/>

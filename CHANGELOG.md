@@ -8,6 +8,33 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.9.5
+
+### Added
+- `IPasskeyKeysService.ForgetKey(keyName)` wipes a key derived from the passkey from memory.
+- `IRememberedDeviceService.Forgotten`, raised once a device has been forgotten. `RememberedDevicesViewModel` drops it
+  from the list.
+- `ISavedDeviceCredentialService` (`DropAsync`): drops the signed in user's stored credential for this device once it
+  has been forgotten. `RememberedDevicesViewModel` takes it in place of `ILocalStorageService`.
+
+### Changed
+- **Renaming a remembered device warns first, and forgets it.** Cognito can't change the name a device was remembered
+  under, so the This device section now says so before saving a new name for a remembered device: renaming it forgets
+  it, and the next sign in there asks for a code, then remembers it under the new name. `DeviceSettingsViewModel` takes
+  `IRememberedDeviceService`, `ISavedDeviceCredentialService` and `IErrorText`, and has `ForgetWarning`, `IsBusy`,
+  `ConfirmForgetCommand` and `CancelForgetCommand`. New text: `Settings.Device.Forget.Text` and
+  `Settings.Device.Forget.Confirm`.
+- `E2eProfilesViewModel` takes `IPasskeyKeysService`, to ask for the passkey before a passphrase change.
+
+### Security
+- **The passkey's key encryption key (`e2e-kek`) no longer stays in memory.** Signing in with the passkey left it there
+  for the whole session, so unlocking a protected profile with biometrics, even after locking it, never asked for the
+  passkey. It is now wiped once the session has started (`E2eDeviceKeySessionHandler`), after every unlock with
+  biometrics (`E2eDeviceUnlockService`, `E2eUnlockPanel`), when a profile locks (`E2eProtectedProfileManager.Lock`),
+  and after a passphrase change, which asks for the passkey first when biometrics are on for the profile here so they
+  stay on. Every unlock with biometrics now asks for the fingerprint, face or PIN. The `e2e-labels` key is kept, so
+  profile labels still show while locked.
+
 ## 0.9.4
 
 ### Added

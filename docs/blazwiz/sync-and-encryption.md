@@ -282,11 +282,17 @@ If a profile's settings have `AllowDeviceUnlock`, a user remembered on this devi
 sign in) can tick "Unlock with biometrics next time on this device" when unlocking it in the panel. Next time, the
 passkey unlocks it.
 
+The key the passkey gives, which unwraps every profile's keys on this device, is not kept in memory: it is wiped once
+the session has started (signing in with the passkey derives it), after each unlock with biometrics, and whenever a
+profile locks. So every unlock with biometrics asks for the fingerprint, face or PIN again. Changing a profile's
+passphrase asks for it first too, when biometrics are on for that profile here, so they stay on.
+
 To offer that from elsewhere, such as a list of profiles, inject `IE2eDeviceUnlockService`:
 
 - `CanUnlockAsync(scope)`: whether biometrics can unlock it on this device. Show it on locked profiles, e.g. with a
   fingerprint icon.
-- `UnlockAsync(scope)`: syncs the profile first when online, asks for the passkey, and unlocks it. It returns false if
+- `UnlockAsync(scope)`: syncs the profile first when online, asks for the passkey, unlocks it, and wipes the passkey's
+  key again. It returns false if
   the passkey was cancelled or could not unlock it; open the profile's page anyway, and the panel asks for the
   passphrase.
 - `ForgetAsync(scope)`: stops unlocking it with biometrics on this device. Ask the user to confirm first.

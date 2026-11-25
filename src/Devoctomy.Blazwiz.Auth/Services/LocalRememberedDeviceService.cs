@@ -10,6 +10,14 @@ namespace Devoctomy.Blazwiz.Auth.Services;
 public class LocalRememberedDeviceService : IRememberedDeviceService
 {
     /// <inheritdoc/>
+    /// <remarks>Never raised: no device is remembered, so none is forgotten.</remarks>
+    public event EventHandler<string>? Forgotten
+    {
+        add { }
+        remove { }
+    }
+
+    /// <inheritdoc/>
     public Task<IReadOnlyList<RememberedDevice>> ListAsync()
     {
         return Task.FromResult<IReadOnlyList<RememberedDevice>>([]);

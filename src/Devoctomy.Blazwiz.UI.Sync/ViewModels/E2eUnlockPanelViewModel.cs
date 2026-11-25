@@ -308,10 +308,21 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
             // The passkey is asked for before the profile opens, so the prompt comes with the unlock rather than after
             // it. Deriving the device key does not need the profile's keys; wrapping them with it does.
             var deviceKeyReady = remember && await EnsureDeviceKeyAsync();
-            await manager.UnlockAsync(scope, value);
-            if (remember)
+            try
             {
-                await TurnOnBiometricsAsync(scope, deviceKeyReady);
+                await manager.UnlockAsync(scope, value);
+                if (remember)
+                {
+                    await TurnOnBiometricsAsync(scope, deviceKeyReady);
+                }
+            }
+            finally
+            {
+                if (remember)
+                {
+                    // Not kept once biometrics are turned on (or the passphrase was wrong): unlocking asks for it again.
+                    passkeys.ForgetKey(E2eKeyNames.KeyEncryptionKey);
+                }
             }
         });
     }
@@ -325,13 +336,21 @@ public partial class E2eUnlockPanelViewModel : ViewModelBase
     {
         return RunAsync(async scope =>
         {
-            if (!await passkeys.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey))
+            try
             {
-                // Cancelled, or no passkey here: the passphrase is still asked for.
-                throw new E2ePassphraseRequiredException();
-            }
+                if (!await passkeys.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey))
+                {
+                    // Cancelled, or no passkey here: the passphrase is still asked for.
+                    throw new E2ePassphraseRequiredException();
+                }
 
-            await profiles.UnlockWithDeviceAsync(scope);
+                await profiles.UnlockWithDeviceAsync(scope);
+            }
+            finally
+            {
+                // The key that unwraps every profile's keys on this device is not kept: the next unlock asks again.
+                passkeys.ForgetKey(E2eKeyNames.KeyEncryptionKey);
+            }
         });
     }
 

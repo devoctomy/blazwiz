@@ -350,6 +350,10 @@ public class E2eProtectedProfileManager(
         CheckProtected(scope);
 
         keyRings.Get(scope).Clear();
+
+        // The passkey's key unwraps every profile's keys on this device, so it is not left in memory either: unlocking
+        // with biometrics asks for the passkey again.
+        derivedKeyStore.RemoveKey(E2eKeyNames.KeyEncryptionKey);
         SetRotating(scope, false);
         SetUnlocked(scope, false);
     }

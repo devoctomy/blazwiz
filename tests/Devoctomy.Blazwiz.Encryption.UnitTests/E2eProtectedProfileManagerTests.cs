@@ -288,6 +288,21 @@ public class E2eProtectedProfileManagerTests
     }
 
     [Fact]
+    public async Task GivenThePasskeysKeyInMemory_WhenAProfileIsLocked_ThenTheKeyIsWiped_ButTheOtherDerivedKeysStay()
+    {
+        // Arrange
+        var scope = await device.Manager.CreateAsync(Passphrase, Settings);
+        device.DerivedKeys.SetKey(E2eKeyNames.LabelKey, new byte[32]);
+
+        // Act
+        device.Manager.Lock(scope);
+
+        // Assert
+        Assert.False(device.DerivedKeys.TryGetKey(E2eKeyNames.KeyEncryptionKey, out _));
+        Assert.True(device.DerivedKeys.TryGetKey(E2eKeyNames.LabelKey, out _));
+    }
+
+    [Fact]
     public async Task GivenUnlockedProfiles_WhenAllLocked_ThenNoneAreUnlocked()
     {
         // Arrange
@@ -393,6 +408,7 @@ public class E2eProtectedProfileManagerTests
         await other.Manager.UnlockAsync(scope, Passphrase);
         await other.Manager.EnableDeviceUnlockAsync(scope);
         other.Manager.Lock(scope);
+        other.UsePasskey();
 
         // Act
         await device.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
@@ -414,6 +430,7 @@ public class E2eProtectedProfileManagerTests
         var scope = await device.Manager.CreateAsync(Passphrase, Settings);
         await device.Manager.EnableDeviceUnlockAsync(scope);
         device.Manager.Lock(scope);
+        device.UsePasskey();
         var other = new Device(this);
         await other.Manager.UnlockAsync(scope, Passphrase);
         var document = documents.Parse(userKeys.Values[scope.Id]);
@@ -437,6 +454,7 @@ public class E2eProtectedProfileManagerTests
         var scope = await device.Manager.CreateAsync(Passphrase, Settings);
         await device.Manager.EnableDeviceUnlockAsync(scope);
         device.Manager.Lock(scope);
+        device.UsePasskey();
         var etag = device.LocalKeys.Get(scope)!.CachedDocumentETag;
 
         // Act
@@ -457,6 +475,7 @@ public class E2eProtectedProfileManagerTests
         await device.Manager.EnableDeviceUnlockAsync(scope);
         var oldKeyId = device.Rings.Get(scope).ActiveKeyId;
         device.Manager.Lock(scope);
+        device.UsePasskey();
         var other = new Device(this);
         await other.Manager.UnlockAsync(scope, Passphrase);
         await other.Manager.ChangePassphraseAsync(scope, Passphrase, "battery staple", Settings);
@@ -691,6 +710,7 @@ public class E2eProtectedProfileManagerTests
         var scope = await device.Manager.CreateAsync(Passphrase, Settings);
         await device.Manager.EnableDeviceUnlockAsync(scope);
         device.Manager.Lock(scope);
+        device.UsePasskey();
 
         // Act
         var can = await device.Manager.CanUnlockWithDeviceAsync(scope);
@@ -742,6 +762,7 @@ public class E2eProtectedProfileManagerTests
         await device.Manager.EnableDeviceUnlockAsync(scope);
         await device.Manager.DisableDeviceUnlockAsync(scope);
         device.Manager.Lock(scope);
+        device.UsePasskey();
 
         // Act & Assert
         Assert.False(await device.Manager.CanUnlockWithDeviceAsync(scope));
@@ -759,6 +780,7 @@ public class E2eProtectedProfileManagerTests
         await device.Manager.EnableDeviceUnlockAsync(b);
         device.Manager.Lock(a);
         device.Manager.Lock(b);
+        device.UsePasskey();
         var localA = (await device.LocalKeys.GetAsync(a))!;
         var localB = (await device.LocalKeys.GetAsync(b))!;
         localB.WrappedMasterKey = localA.WrappedMasterKey;
@@ -780,6 +802,7 @@ public class E2eProtectedProfileManagerTests
         var other = new Device(this);
         await other.Manager.UnlockAsync(scope, Passphrase);
         other.Manager.Lock(scope);
+        other.UsePasskey();
 
         // Act & Assert
         Assert.False(await other.Manager.CanUnlockWithDeviceAsync(scope));
@@ -809,6 +832,7 @@ public class E2eProtectedProfileManagerTests
         device.Manager.Lock(scope);
         await device.Manager.UnlockAsync(scope, "battery staple");
         device.Manager.Lock(scope);
+        device.UsePasskey();
         await device.Manager.UnlockWithDeviceAsync(scope);
 
         // Assert
@@ -1246,12 +1270,14 @@ public class E2eProtectedProfileManagerTests
     /// </summary>
     private sealed class Device
     {
+        private readonly byte[] passkeyKey = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+
         public Device(E2eProtectedProfileManagerTests owner)
         {
             LocalKeys = new FakeE2eLocalKeyStore();
             LocalIndex = new FakeE2eLocalProfileIndexStore();
             DerivedKeys = new InMemoryDerivedKeyStore();
-            DerivedKeys.SetKey(E2eKeyNames.KeyEncryptionKey, System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            UsePasskey();
             Rings = new E2eKeyRings(DerivedKeys);
             Manager = new E2eProtectedProfileManager(owner.userKeys, LocalKeys, owner.index, LocalIndex, Rings, owner.documents, owner.clock, DerivedKeys, owner.keyWrap);
         }
@@ -1265,5 +1291,11 @@ public class E2eProtectedProfileManagerTests
         public E2eKeyRings Rings { get; }
 
         public E2eProtectedProfileManager Manager { get; }
+
+        /// <summary>
+        /// Puts this device's passkey key in memory, as using the passkey (signing in, or unlocking with biometrics)
+        /// does. Locking a profile wipes it.
+        /// </summary>
+        public void UsePasskey() => DerivedKeys.SetKey(E2eKeyNames.KeyEncryptionKey, [.. passkeyKey]);
     }
 }

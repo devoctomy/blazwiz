@@ -107,9 +107,12 @@ list of the user's profiles, inject `IE2eDeviceUnlockService`:
 
 - `CanUnlockAsync(scope)`: whether biometrics can unlock the profile here (turned on here, and the user has a passkey
   here). Show it on locked profiles, e.g. with a fingerprint icon.
-- `UnlockAsync(scope)`: syncs the profile first when online, asks for the passkey if its key is not in memory, and
-  unlocks it. It returns false when the passkey is cancelled or cannot unlock it; open the profile's page anyway, and
-  the panel asks for the passphrase.
+- `UnlockAsync(scope)`: syncs the profile first when online, asks for the passkey, unlocks it, and wipes the passkey's
+  key from memory again. It returns false when the passkey is cancelled or cannot unlock it; open the profile's page
+  anyway, and the panel asks for the passphrase.
+
+The passkey's key is never left in memory: it is wiped once the session has started, after each unlock with
+biometrics, and whenever a profile locks, so every unlock with biometrics asks for the passkey.
 - `ForgetAsync(scope)`: stops unlocking it with biometrics on this device. Its passphrase still unlocks it. Ask the
   user to confirm first.
 

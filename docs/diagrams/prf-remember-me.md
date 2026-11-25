@@ -13,7 +13,8 @@ Main classes:
 - `InMemoryDerivedKeyStore` (`src/Devoctomy.Blazwiz.Cryptography/InMemoryDerivedKeyStore.cs`), behind `IDerivedKeyStore`
 - `PasswordCryptoService` (`src/Devoctomy.Blazwiz.Auth/Services/PasswordCryptoService.cs`): AES-GCM
 - `ChangePasswordViewModel` (`src/Devoctomy.Blazwiz.UI/ViewModels/ChangePasswordViewModel.cs`): keeps the saved password in step with a password change
-- `PasskeyKeysService` (`src/Devoctomy.Blazwiz.UI/Services/PasskeyKeysService.cs`): asks for the passkey again when a feature needs a derived key that is not in memory
+- `PasskeyKeysService` (`src/Devoctomy.Blazwiz.UI/Services/PasskeyKeysService.cs`): asks for the passkey again when a feature needs a derived key that is not in memory, and wipes one that must not stay there (`ForgetKey`)
+- `E2eDeviceKeySessionHandler` (`src/Devoctomy.Blazwiz.UI.Sync/Services/E2eDeviceKeySessionHandler.cs`): wipes `e2e-kek` once the session has started, so a passkey sign in does not leave it in memory
 - `E2eUnlockPanelViewModel` (`src/Devoctomy.Blazwiz.UI.Sync/ViewModels/`), `SyncProtectedProfileService` (`src/Devoctomy.Blazwiz.Sync/Encryption/`) and `E2eProtectedProfileManager` (`src/Devoctomy.Blazwiz.Encryption/`): unlocking a profile with the passkey
 
 Storage names use the template's app name, `myapp`, which the storage clients add (`IAppStorageKeys`).
@@ -24,7 +25,8 @@ Storage names use the template's app name, `myapp`, which the storage clients ad
 |---|---|---|---|
 | PRF output (32 bytes from the authenticator) | Memory, briefly | `WebAuthnService.DeriveKeys` local | Zeroed straight after the keys are derived |
 | `rememberme` key (HKDF of the PRF output), added by Auth | Memory | `InMemoryDerivedKeyStore["rememberme"]` | Until `Clear()`: the login page with nobody signed in, a failed passkey sign in, or a reload |
-| `e2e-kek` and `e2e-labels` keys, added by UI.Sync | Memory | `InMemoryDerivedKeyStore["e2e-kek"]`, `["e2e-labels"]` | Same as above |
+| `e2e-labels` key, added by UI.Sync | Memory | `InMemoryDerivedKeyStore["e2e-labels"]` | Same as above |
+| `e2e-kek` key, added by UI.Sync | Memory | `InMemoryDerivedKeyStore["e2e-kek"]` | Only while it is used: wiped (`PasskeyKeysService.ForgetKey`) once the session starts after a passkey sign in (`E2eDeviceKeySessionHandler`), after each biometric unlock or passphrase change, and whenever a profile locks |
 | Saved user: email, optional display name (`AppSettings.EnableRememberMeName`), credential id, user id, created at, **encrypted password**, **encrypted device credential** (`encryptedDevice`) | localStorage | `myapp_saved_users` | Until the user is removed from the list, or the password is changed without the key. The device credential also goes when the device is forgotten |
 | Decrypted password and device credential | Memory, briefly | `AttemptWebAuthnLoginAsync` locals | Passed to `LoginAsync`, then dropped |
 | A profile's master key wrapped by `e2e-kek`, and a copy of its keys document | localStorage | `myapp_e2e_keys_{profile id}_{user}` | Until device unlock is turned off, or the profile is deleted |
@@ -227,7 +229,7 @@ sequenceDiagram
     OMS-)OMS: Changed(true) to ConnectivityService, SessionTimerViewModel, ...
     VM->>VM: Sign-in options (e.g. "Start with sync off"), SessionLifecycle.SignedInAsync()
     VM->>VM: Navigate to /
-    Note over DKS: The derived keys stay in memory, so profiles that allow it unlock from this device's copies (diagram 4)
+    Note over DKS: Once the session starts, e2e-kek is wiped: unlocking a profile with biometrics asks for the passkey (diagram 4)
 ```
 
 ## 4. Unlocking a sync profile with the passkey
@@ -272,6 +274,8 @@ sequenceDiagram
     Mgr->>DKS: TryGetKey("e2e-kek")
     Mgr->>LS: SET myapp_e2e_keys_{profile id}_{user} {wrappedMasterKey = wrap(kek, master key), cachedDocument}
     Mgr->>Mgr: Zero the kek and master key copies
+    Panel->>PKS: ForgetKey("e2e-kek")
+    PKS->>DKS: RemoveKey("e2e-kek")
     Note over Panel: Without a passkey here it says so, and the profile is unlocked all the same
     end
 
@@ -279,7 +283,7 @@ sequenceDiagram
     Note over User,LS: Unlocking with it, e.g. after a reload or the idle lock
     User->>Panel: "Unlock with biometrics"
     Panel->>Panel: Sync the profile first (SyncProfileAsync, skipped offline)
-    Panel->>PKS: EnsureKeyAsync("e2e-kek") (asks for the passkey only if the key is not in memory)
+    Panel->>PKS: EnsureKeyAsync("e2e-kek") (the key is wiped after every use, so this asks for the passkey)
     Panel->>Prof: UnlockWithDeviceAsync(scope)
     Prof->>Mgr: UnlockWithDeviceAsync(scope)
     Mgr->>LS: GET myapp_e2e_keys_{profile id}_{user}
@@ -301,14 +305,21 @@ sequenceDiagram
         Mgr-->>Panel: E2ePassphraseRequiredException
         Panel->>User: Asks for the passphrase
     end
+    Panel->>PKS: ForgetKey("e2e-kek") (whether it unlocked or not)
+    PKS->>DKS: RemoveKey("e2e-kek")
     end
 ```
+
+Locking a profile (`E2eProtectedProfileManager.Lock`, by hand or on idle) wipes `e2e-kek` too, in case anything left it
+in memory. A passphrase change (`E2eProfilesViewModel.StartRotationAsync`) asks for the passkey first when biometrics
+are on for the profile here, so the new master key is wrapped for them, and wipes the key afterwards; cancelled, or
+without a passkey, biometrics are turned off here.
 
 Offline, the store cannot be reached and the copy on this device is used, as before. Files edited that way after a
 passphrase change elsewhere are written under the retired key, which the keys document keeps, so they stay readable.
 
 `E2eDeviceUnlockService` (UI.Sync) does the same from anywhere else in the app: `UnlockAsync` syncs the profile first,
-calls `EnsureKeyAsync("e2e-kek")` and then `UnlockWithDeviceAsync`, as the panel does above, and returns false where the
+calls `EnsureKeyAsync("e2e-kek")`, then `UnlockWithDeviceAsync`, then `ForgetKey("e2e-kek")`, as the panel does above, and returns false where the
 panel asks for the passphrase. The template's Notebooks page uses it: a locked notebook that biometrics can unlock shows
 a fingerprint, and Open unlocks it with the passkey before showing its pages.
 

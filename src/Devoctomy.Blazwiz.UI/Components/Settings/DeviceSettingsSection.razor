@@ -20,6 +20,19 @@
             </div>
         </EditForm>
 
+        @if (ViewModel.ForgetWarning != null)
+        {
+            <div class="alert alert-warning small mt-3" role="alert" id="device-name-forget">
+                <p class="mb-2"><i class="bi bi-exclamation-triangle me-1"></i>@ViewModel.ForgetWarning</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-warning btn-sm" id="device-name-forget-confirm" disabled="@ViewModel.IsBusy"
+                            @onclick="() => ViewModel.ConfirmForgetCommand.ExecuteAsync(null)">@Text["Settings.Device.Forget.Confirm"]</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="device-name-forget-cancel" disabled="@ViewModel.IsBusy"
+                            @onclick="() => ViewModel.CancelForgetCommand.Execute(null)">@Text["Common.Cancel"]</button>
+                </div>
+            </div>
+        }
+
         @if (!string.IsNullOrEmpty(ViewModel.ErrorMessage))
         {
             <div class="alert alert-danger py-2 small mt-3" role="alert" id="device-name-error">

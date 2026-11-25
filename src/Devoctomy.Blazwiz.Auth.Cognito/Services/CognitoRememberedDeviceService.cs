@@ -25,6 +25,9 @@ public class CognitoRememberedDeviceService(
     private readonly ICognitoCurrentDevice currentDevice = currentDevice ?? throw new ArgumentNullException(nameof(currentDevice));
 
     /// <inheritdoc/>
+    public event EventHandler<string>? Forgotten;
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<RememberedDevice>> ListAsync()
     {
         var accessToken = await GetAccessTokenAsync();
@@ -53,6 +56,8 @@ public class CognitoRememberedDeviceService(
         {
             currentDevice.DeviceKey = null;
         }
+
+        Forgotten?.Invoke(this, deviceKey);
     }
 
     private static async Task<T> CallAsync<T>(Func<Task<T>> call)

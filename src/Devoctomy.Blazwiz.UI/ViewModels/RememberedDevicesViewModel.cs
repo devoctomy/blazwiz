@@ -2,7 +2,7 @@ using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Auth.Models;
 using Devoctomy.Blazwiz.Auth.Services.Interfaces;
-using Devoctomy.Blazwiz.Browser.Services.Interfaces;
+using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Text.Interfaces;
 
 namespace Devoctomy.Blazwiz.UI.ViewModels;
@@ -10,15 +10,15 @@ namespace Devoctomy.Blazwiz.UI.ViewModels;
 /// <summary>
 /// ViewModel for the Remembered devices section of the Settings page: the devices that skip the code from the
 /// authenticator app, each of which can be forgotten (e.g. a lost laptop), so it is asked for a code again. Shown only
-/// for an online session, since it needs the sign-in service.
+/// for an online session, since it needs the sign-in service. A device forgotten elsewhere on the page (e.g. by
+/// renaming this one) leaves the list too.
 /// </summary>
 public partial class RememberedDevicesViewModel : ViewModelBase
 {
     private readonly IRememberedDeviceService deviceService;
     private readonly IAuthenticationService authService;
-    private readonly ILocalStorageService localStorageService;
+    private readonly ISavedDeviceCredentialService savedDeviceCredential;
     private readonly IErrorText errorText;
-    private UserSession? session;
     private IReadOnlyList<RememberedDevice> devices = [];
     private bool isVisible;
     private bool isBusy;
@@ -29,18 +29,19 @@ public partial class RememberedDevicesViewModel : ViewModelBase
     /// </summary>
     /// <param name="deviceService">Lists and forgets the devices.</param>
     /// <param name="authService">The signed-in user.</param>
-    /// <param name="localStorageService">The remembered users, whose stored device credential goes with this device.</param>
+    /// <param name="savedDeviceCredential">This device's stored credential, which goes when this device is forgotten.</param>
     /// <param name="errorText">Describes errors.</param>
     public RememberedDevicesViewModel(
         IRememberedDeviceService deviceService,
         IAuthenticationService authService,
-        ILocalStorageService localStorageService,
+        ISavedDeviceCredentialService savedDeviceCredential,
         IErrorText errorText)
     {
         this.deviceService = deviceService ?? throw new ArgumentNullException(nameof(deviceService));
         this.authService = authService ?? throw new ArgumentNullException(nameof(authService));
-        this.localStorageService = localStorageService ?? throw new ArgumentNullException(nameof(localStorageService));
+        this.savedDeviceCredential = savedDeviceCredential ?? throw new ArgumentNullException(nameof(savedDeviceCredential));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
+        this.deviceService.Forgotten += OnForgotten;
     }
 
     /// <summary>
@@ -82,7 +83,7 @@ public partial class RememberedDevicesViewModel : ViewModelBase
     /// <inheritdoc/>
     public override async Task OnInitializedAsync()
     {
-        session = await authService.GetCurrentUserAsync();
+        var session = await authService.GetCurrentUserAsync();
         if (session == null || session.IsOffline)
         {
             return;
@@ -120,10 +121,10 @@ public partial class RememberedDevicesViewModel : ViewModelBase
             await deviceService.ForgetAsync(device.Key);
             if (device.IsThisDevice)
             {
-                await DropStoredDeviceAsync();
+                await savedDeviceCredential.DropAsync();
             }
 
-            Devices = Devices.Where(d => d.Key != device.Key).ToList();
+            Remove(device.Key);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -135,17 +136,24 @@ public partial class RememberedDevicesViewModel : ViewModelBase
         }
     }
 
-    // The remembered user's copy of this device's credential is no use once Cognito has forgotten the device.
-    private async Task DropStoredDeviceAsync()
+    /// <inheritdoc/>
+    protected override void Dispose(bool disposing)
     {
-        var saved = await localStorageService.GetObjectAsync<SavedUsersData>(LoginViewModel.SavedUsersStorageKey);
-        var credential = saved?.Users.FirstOrDefault(u => u.IsFor(session?.Username, session?.Email))?.WebAuthnCredential;
-        if (credential?.EncryptedDevice == null)
+        if (disposing)
         {
-            return;
+            deviceService.Forgotten -= OnForgotten;
         }
 
-        credential.EncryptedDevice = null;
-        await localStorageService.SetObjectAsync(LoginViewModel.SavedUsersStorageKey, saved!);
+        base.Dispose(disposing);
+    }
+
+    private void OnForgotten(object? sender, string key) => Remove(key);
+
+    private void Remove(string key)
+    {
+        if (Devices.Any(d => d.Key == key))
+        {
+            Devices = Devices.Where(d => d.Key != key).ToList();
+        }
     }
 }

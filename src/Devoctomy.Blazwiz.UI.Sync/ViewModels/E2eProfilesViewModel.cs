@@ -2,11 +2,13 @@ using System.ComponentModel;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Core.Offline.Interfaces;
+using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
+using Devoctomy.Blazwiz.UI.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.Models;
 using Devoctomy.Blazwiz.UI.Sync.Services.Interfaces;
 using Devoctomy.Blazwiz.UI.Sync.Text;
@@ -43,6 +45,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
     private readonly IErrorText errorText;
     private readonly ISyncKeyRotationService rotation;
     private readonly IE2eRotationSignOut rotationSignOut;
+    private readonly IPasskeyKeysService passkeys;
 
     private IReadOnlyList<E2eProfileRow> rows = [];
     private string? error;
@@ -72,6 +75,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
     /// <param name="errorText">Describes errors.</param>
     /// <param name="rotation">Changes a passphrase: syncs, estimates, rotates the keys and encrypts the files again.</param>
     /// <param name="rotationSignOut">Signs every device out once a passphrase change has encrypted the files again.</param>
+    /// <param name="passkeys">Asks for the passkey before a passphrase change, so biometrics stay on through it.</param>
     /// <param name="passphraseForm">The form a new passphrase is entered in, with its Argon2id settings.</param>
     public E2eProfilesViewModel(
         ISyncProtectedProfileService profiles,
@@ -82,6 +86,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
         IErrorText errorText,
         ISyncKeyRotationService rotation,
         IE2eRotationSignOut rotationSignOut,
+        IPasskeyKeysService passkeys,
         E2ePassphraseFormViewModel passphraseForm)
     {
         PassphraseForm = passphraseForm ?? throw new ArgumentNullException(nameof(passphraseForm));
@@ -93,6 +98,7 @@ public partial class E2eProfilesViewModel : ViewModelBase
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
         this.rotation = rotation ?? throw new ArgumentNullException(nameof(rotation));
         this.rotationSignOut = rotationSignOut ?? throw new ArgumentNullException(nameof(rotationSignOut));
+        this.passkeys = passkeys ?? throw new ArgumentNullException(nameof(passkeys));
         this.profiles.ProfilesChanged += OnProfilesChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
         this.offlineModeService.Changed += OnOfflineModeChanged;
@@ -427,9 +433,20 @@ public partial class E2eProfilesViewModel : ViewModelBase
         var current = PassphraseForm.CurrentPassphrase;
         var argon2 = PassphraseForm.GetArgon2Parameters();
         Estimate = null;
-        if (await RunStepsAsync(RotationSteps, reporter => rotation.RotateAsync(scope, current, value, argon2, reporter), finish: false))
+
+        // The new keys are wrapped for biometrics only while the passkey's key is in memory, so it is asked for before
+        // the change, not kept after it. Without it (cancelled, or no passkey) biometrics are turned off here.
+        await EnsurePasskeyForBiometricsAsync(scope);
+        try
         {
-            await SignOutEverywhereAsync();
+            if (await RunStepsAsync(RotationSteps, reporter => rotation.RotateAsync(scope, current, value, argon2, reporter), finish: false))
+            {
+                await SignOutEverywhereAsync();
+            }
+        }
+        finally
+        {
+            passkeys.ForgetKey(E2eKeyNames.KeyEncryptionKey);
         }
     }
 
@@ -715,6 +732,22 @@ public partial class E2eProfilesViewModel : ViewModelBase
             IsWorking = false;
             RefreshDialog();
             await RefreshAsync();
+        }
+    }
+
+    // Asks for the passkey when biometrics are on for the profile here, so its new keys can be wrapped for them.
+    private async Task EnsurePasskeyForBiometricsAsync(E2eKeyScope scope)
+    {
+        try
+        {
+            if (await manager.HasDeviceUnlockAsync(scope))
+            {
+                await passkeys.EnsureKeyAsync(E2eKeyNames.KeyEncryptionKey);
+            }
+        }
+        catch (Exception)
+        {
+            // This device's copy of its keys cannot be read: the change goes ahead, and biometrics are turned off here.
         }
     }
 

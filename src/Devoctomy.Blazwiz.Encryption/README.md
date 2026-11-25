@@ -40,7 +40,8 @@ lanes, less than 8 KiB of memory for each lane) and a key length other than the 
   again still decrypt. Retired keys are kept.
 - The keys document is marked `rotation_in_progress` (`UserKeysDocument.RotationInProgress`).
 - The profile is left unlocked with the new keys. This device's passkey copy of the master key is replaced when the
-  passkey's key is in memory, and otherwise removed.
+  passkey's key is in memory, and otherwise removed. (The passkey's key is only in memory while it is used: the
+  passphrase change in UI.Sync asks for the passkey first when biometrics are on, and `Lock` wipes the key.)
 
 Someone who had the old passphrase and a copy of the old keys document, or who once held the old master key, can
 still read what they could read before. They cannot unwrap the new keys, so they cannot read anything encrypted after

@@ -184,6 +184,49 @@ public class PasskeyKeysServiceTests
         await Assert.ThrowsAnyAsync<ArgumentException>(() => CreateSut().EnsureKeyAsync(keyName!));
     }
 
+    [Fact]
+    public async Task GivenTheKeyInMemory_WhenForgotten_ThenItIsGone_AndThePasskeyIsAskedForNextTime()
+    {
+        // Arrange
+        RememberBob(withPasskey: true);
+        keys.SetKey(KeyName, new byte[32]);
+        keys.SetKey("other", new byte[32]);
+        mockWebAuthn.Setup(x => x.AuthenticateAsync("bob-cred")).ReturnsAsync(new WebAuthnAuthenticateResult { Success = false });
+        var sut = CreateSut();
+
+        // Act
+        sut.ForgetKey(KeyName);
+
+        // Assert
+        Assert.False(keys.TryGetKey(KeyName, out _));
+        Assert.True(keys.TryGetKey("other", out _));
+        Assert.False(await sut.EnsureKeyAsync(KeyName));
+        mockWebAuthn.Verify(x => x.AuthenticateAsync("bob-cred"), Times.Once);
+    }
+
+    [Fact]
+    public void GivenTheKeyNotInMemory_WhenForgotten_ThenNothingHappens()
+    {
+        // Arrange
+        var sut = CreateSut();
+
+        // Act
+        sut.ForgetKey(KeyName);
+
+        // Assert
+        Assert.False(keys.TryGetKey(KeyName, out _));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void GivenNoKeyName_WhenForgotten_ThenThrows(string? keyName)
+    {
+        // Act & Assert
+        Assert.ThrowsAny<ArgumentException>(() => CreateSut().ForgetKey(keyName!));
+    }
+
     private void RememberBob(bool withPasskey) => saved = new SavedUsersData
     {
         Users = [new SavedUser { Email = "BOB@example.com", WebAuthnCredential = withPasskey ? new WebAuthnStoredCredential { CredentialID = "bob-cred" } : null }],
