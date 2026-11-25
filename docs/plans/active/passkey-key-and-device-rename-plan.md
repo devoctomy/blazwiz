@@ -42,8 +42,8 @@ key on this device stays in memory long after it was needed.
   - [ ] turning on device unlock (`E2eProtectedProfileManager.EnableDeviceUnlockAsync`, which now throws without it);
   - [ ] rewrapping after a passphrase change or key rotation (`SaveRotatedLocalKeysAsync`, which turns device unlock
         off when the key isn't in memory). It must not turn device unlock off silently because the key was dropped.
-- [ ] Decide whether `E2eKeyNames.LabelKey`, also derived from the passkey at sign-in, stays in memory (labels are read
-      while locked) or follows the same rule. Agree it with the maintainer.
+- `E2eKeyNames.LabelKey`, also derived from the passkey at sign-in, stays in memory for the session: labels are read
+  while profiles are locked. Agreed with the maintainer; only the key encryption key is dropped.
 - [ ] Unit tests (`Given…_When…_Then…`): the key is gone after a biometric unlock, after a failed one and after a
       lock; a biometric unlock after a lock asks for the passkey again; turning on device unlock and changing the
       passphrase ask for it when it isn't in memory.
