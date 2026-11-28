@@ -88,9 +88,12 @@ public sealed class ProtectedDevice
             format,
             new BouncyCastleAesGcmAeadCipher(),
             TimeProvider.System);
+        History = new SyncFileHistoryService(Registry, target.Object, user.Object);
     }
 
     public SyncKeyRotationService Rotation { get; }
+
+    public SyncFileHistoryService History { get; }
 
     public EncryptedFileFormat Format => format;
 
@@ -137,7 +140,7 @@ public sealed class ProtectedDevice
         return files;
     }
 
-    internal ISyncFileStore CreateAppFiles(SyncProfileOptions profile, ISyncFileStore stored, ISyncIndexStore index)
+    internal EncryptingSyncFileStore CreateAppFiles(SyncProfileOptions profile, ISyncFileStore stored, ISyncIndexStore index)
     {
         var tracked = new TrackingSyncFileStore(profile.Name, stored, index, user.Object, Mock.Of<ISyncScheduler>(), TimeProvider.System, format);
         return new EncryptingSyncFileStore(tracked, Rings.Get(profile.KeyScope!), format);

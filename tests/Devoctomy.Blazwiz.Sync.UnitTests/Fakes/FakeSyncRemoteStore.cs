@@ -5,13 +5,16 @@ using Devoctomy.Blazwiz.Sync.Models;
 namespace Devoctomy.Blazwiz.Sync.UnitTests.Fakes;
 
 /// <summary>
-/// An in-memory remote store with S3's conditional write semantics, call recording and failure injection.
+/// An in-memory remote store with S3's conditional write semantics and versioning, call recording and failure injection.
 /// </summary>
 public sealed class FakeSyncRemoteStore : ISyncRemoteStore
 {
     private int nextETag = 1;
 
     public Dictionary<string, RemoteObject> Objects { get; } = new(StringComparer.Ordinal);
+
+    // Every version uploaded of each key, newest first; a delete keeps them.
+    public Dictionary<string, List<(string VersionId, RemoteObject Object)>> Versions { get; } = new(StringComparer.Ordinal);
 
     public List<string> Calls { get; } = [];
 
@@ -29,7 +32,7 @@ public sealed class FakeSyncRemoteStore : ISyncRemoteStore
     public string Seed(string key, byte[] content, DateTimeOffset? modifiedAt)
     {
         var etag = $"\"{nextETag++}\"";
-        Objects[key] = new RemoteObject
+        var uploaded = new RemoteObject
         {
             Key = key,
             ETag = etag,
@@ -38,7 +41,44 @@ public sealed class FakeSyncRemoteStore : ISyncRemoteStore
             ModifiedAt = modifiedAt,
             Size = content.Length,
         };
+        Objects[key] = uploaded;
+        if (!Versions.TryGetValue(key, out var versions))
+        {
+            versions = [];
+            Versions[key] = versions;
+        }
+
+        versions.Insert(0, ($"v{etag.Trim('"')}", uploaded));
         return etag;
+    }
+
+    public Task<IReadOnlyList<RemoteObjectVersion>> ListVersionsAsync(string key, CancellationToken ct = default)
+    {
+        Calls.Add($"versions {key}");
+        if (FailList != null)
+        {
+            throw FailList;
+        }
+
+        IReadOnlyList<RemoteObjectVersion> result = Versions.TryGetValue(key, out var versions)
+            ? versions.Select(v => new RemoteObjectVersion
+            {
+                Key = key,
+                VersionId = v.VersionId,
+                ETag = v.Object.ETag,
+                LastModified = v.Object.LastModified,
+                Size = v.Object.Size,
+                IsLatest = Objects.TryGetValue(key, out var current) && ReferenceEquals(current, v.Object),
+            }).ToList()
+            : [];
+        return Task.FromResult(result);
+    }
+
+    public Task<RemoteObject?> GetVersionAsync(string key, string versionId, CancellationToken ct = default)
+    {
+        Calls.Add($"get {key} {versionId}");
+        var found = Versions.TryGetValue(key, out var versions) ? versions.FirstOrDefault(v => v.VersionId == versionId).Object : null;
+        return Task.FromResult(found == null ? null : Copy(found));
     }
 
     public Task<IReadOnlyList<RemoteObjectInfo>> ListAsync(CancellationToken ct = default)

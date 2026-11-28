@@ -70,7 +70,7 @@ public class S3SyncRemoteStoreTests
             ResponseStream = new MemoryStream([1, 2, 3]),
         };
         response.Metadata[S3SyncRemoteStore.ModifiedAtMetadata] = "2026-10-01T10:00:00.0000000+00:00";
-        mockS3.Setup(x => x.GetObjectAsync(Bucket, Root + "notes/a.md", It.IsAny<CancellationToken>())).ReturnsAsync(response);
+        mockS3.Setup(x => x.GetObjectAsync(It.Is<GetObjectRequest>(r => r.BucketName == Bucket && r.Key == Root + "notes/a.md" && r.VersionId == null), It.IsAny<CancellationToken>())).ReturnsAsync(response);
         var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
 
         // Act
@@ -87,7 +87,7 @@ public class S3SyncRemoteStoreTests
     public async Task GivenMissingObject_WhenGetAsyncOrGetInfoAsync_ThenNull()
     {
         // Arrange
-        mockS3.Setup(x => x.GetObjectAsync(Bucket, It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(S3Error(HttpStatusCode.NotFound));
+        mockS3.Setup(x => x.GetObjectAsync(It.IsAny<GetObjectRequest>(), It.IsAny<CancellationToken>())).ThrowsAsync(S3Error(HttpStatusCode.NotFound));
         mockS3.Setup(x => x.GetObjectMetadataAsync(Bucket, It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(S3Error(HttpStatusCode.NotFound));
         var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
 
@@ -282,6 +282,141 @@ public class S3SyncRemoteStoreTests
         // Act & Assert
         await Assert.ThrowsAsync<SyncNetworkException>(() => new S3SyncRemoteStore(mockTargets.Object, matcher).ListAsync());
     }
+
+    [Fact]
+    public async Task GivenPagedVersions_WhenListVersionsAsync_ThenEveryVersionOfExactlyThatKeyIsListedNewestFirstWithoutDeleteMarkers()
+    {
+        // Arrange
+        var older = Version("notes/a.md", "v1", Uploaded.AddHours(-2), isLatest: false);
+        older.Size = null;
+        mockS3.SetupSequence(x => x.ListVersionsAsync(It.IsAny<ListVersionsRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ListVersionsResponse
+            {
+                Versions =
+                [
+                    Version("notes/a.md", "v3", Uploaded, isLatest: true),
+                    Version("notes/a.md", "dm", Uploaded.AddHours(-1), isLatest: false, isDeleteMarker: true),
+                ],
+                IsTruncated = true,
+                NextKeyMarker = Root + "notes/a.md",
+                NextVersionIdMarker = "dm",
+            })
+            .ReturnsAsync(new ListVersionsResponse
+            {
+                Versions = [older, Version("notes/a.md.bak", "b1", Uploaded, isLatest: true)],
+                IsTruncated = false,
+            });
+        var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
+
+        // Act
+        var result = await sut.ListVersionsAsync("notes/a.md");
+
+        // Assert
+        Assert.Equal(["v3", "v1"], result.Select(v => v.VersionId));
+        Assert.All(result, v => Assert.Equal("notes/a.md", v.Key));
+        Assert.True(result[0].IsLatest);
+        Assert.False(result[1].IsLatest);
+        Assert.Equal("\"etag-v3\"", result[0].ETag);
+        Assert.Equal(new DateTimeOffset(Uploaded), result[0].LastModified);
+        Assert.Equal(5, result[0].Size);
+        Assert.Equal(0, result[1].Size);
+        mockS3.Verify(x => x.ListVersionsAsync(It.Is<ListVersionsRequest>(r => r.BucketName == Bucket && r.Prefix == Root + "notes/a.md"), It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenAListingOfVersionsThatIsCutShort_WhenListVersionsAsync_ThenTheNextPageStartsWhereItEnded()
+    {
+        // Arrange
+        var markers = new List<(string? Key, string? VersionId)>();
+        mockS3.Setup(x => x.ListVersionsAsync(It.IsAny<ListVersionsRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<ListVersionsRequest, CancellationToken>((r, _) => markers.Add((r.KeyMarker, r.VersionIdMarker)))
+            .Returns(() => Task.FromResult(markers.Count == 1
+                ? new ListVersionsResponse { Versions = [Version("notes/a.md", "v2", Uploaded, true)], IsTruncated = true, NextKeyMarker = Root + "notes/a.md", NextVersionIdMarker = "v2" }
+                : new ListVersionsResponse { Versions = null, IsTruncated = null }));
+        var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
+
+        // Act
+        var result = await sut.ListVersionsAsync("notes/a.md");
+
+        // Assert
+        Assert.Equal("v2", Assert.Single(result).VersionId);
+        Assert.Equal([(null, null), (Root + "notes/a.md", "v2")], markers);
+    }
+
+    [Fact]
+    public async Task GivenAVersion_WhenGetVersionAsync_ThenThatVersionIsDownloaded()
+    {
+        // Arrange
+        var response = new GetObjectResponse
+        {
+            ETag = "\"old\"",
+            LastModified = Uploaded,
+            ResponseStream = new MemoryStream([4, 5]),
+        };
+        mockS3.Setup(x => x.GetObjectAsync(It.Is<GetObjectRequest>(r => r.BucketName == Bucket && r.Key == Root + "notes/a.md" && r.VersionId == "v1"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+        var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
+
+        // Act
+        var result = await sut.GetVersionAsync("notes/a.md", "v1");
+
+        // Assert
+        Assert.Equal([4, 5], result!.Content);
+        Assert.Equal("\"old\"", result.ETag);
+        Assert.Equal("notes/a.md", result.Key);
+        Assert.Equal(2, result.Size);
+    }
+
+    [Fact]
+    public async Task GivenAVersionNoLongerThere_WhenGetVersionAsync_ThenNull()
+    {
+        // Arrange
+        mockS3.Setup(x => x.GetObjectAsync(It.IsAny<GetObjectRequest>(), It.IsAny<CancellationToken>())).ThrowsAsync(S3Error(HttpStatusCode.NotFound));
+        var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
+
+        // Act
+        var result = await sut.GetVersionAsync("notes/a.md", "gone");
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task GivenForbiddenOrUnreachable_WhenListingOrGettingVersions_ThenAccessDeniedOrNetworkException()
+    {
+        // Arrange
+        mockS3.Setup(x => x.ListVersionsAsync(It.IsAny<ListVersionsRequest>(), It.IsAny<CancellationToken>())).ThrowsAsync(S3Error(HttpStatusCode.Forbidden));
+        mockS3.Setup(x => x.GetObjectAsync(It.IsAny<GetObjectRequest>(), It.IsAny<CancellationToken>())).ThrowsAsync(new HttpRequestException());
+        var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<SyncAccessDeniedException>(() => sut.ListVersionsAsync("notes/a.md"));
+        await Assert.ThrowsAsync<SyncNetworkException>(() => sut.GetVersionAsync("notes/a.md", "v1"));
+    }
+
+    [Fact]
+    public async Task GivenNoKeyOrVersion_WhenListingOrGettingVersions_ThenThrowsArgumentException()
+    {
+        // Arrange
+        var sut = new S3SyncRemoteStore(mockTargets.Object, matcher);
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.ListVersionsAsync(string.Empty));
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.GetVersionAsync(string.Empty, "v1"));
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => sut.GetVersionAsync("notes/a.md", string.Empty));
+        mockS3.VerifyNoOtherCalls();
+    }
+
+    private static S3ObjectVersion Version(string key, string versionId, DateTime uploaded, bool isLatest, bool isDeleteMarker = false) => new()
+    {
+        Key = Root + key,
+        VersionId = versionId,
+        ETag = $"\"etag-{versionId}\"",
+        LastModified = uploaded,
+        Size = 5,
+        IsLatest = isLatest,
+        IsDeleteMarker = isDeleteMarker,
+    };
 
     private static S3Object S3Object(string key) => new()
     {

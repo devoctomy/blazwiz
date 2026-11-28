@@ -29,7 +29,7 @@ public class EncryptingSyncFileStore(
     IEncryptedFileFormat encryptedFileFormat,
     IE2eIdleLock? idleLock = null,
     IEnumerable<ISyncKeyMissingHandler>? keyMissingHandlers = null)
-    : ISyncFileStore
+    : ISyncFileStore, ISyncFileDecryptor
 {
     private readonly ISyncFileStore inner = inner ?? throw new ArgumentNullException(nameof(inner));
     private readonly IE2eKeyRing keyRing = keyRing ?? throw new ArgumentNullException(nameof(keyRing));
@@ -49,12 +49,26 @@ public class EncryptingSyncFileStore(
             return null;
         }
 
-        if (file.Content.Length == 0)
+        return new SyncFile
+        {
+            Key = file.Key,
+            Content = await DecryptAsync(key, file.Content),
+            ModifiedAt = file.ModifiedAt,
+        };
+    }
+
+    /// <inheritdoc/>
+    public async Task<byte[]> DecryptAsync(string key, byte[] content)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        ArgumentNullException.ThrowIfNull(content);
+
+        if (content.Length == 0)
         {
             if (key.EndsWith('/'))
             {
                 // A folder marker has no content.
-                return file;
+                return content;
             }
 
             // An encrypted file is never empty (it has a header and a tag), so this one was truncated: the one change
@@ -62,7 +76,7 @@ public class EncryptingSyncFileStore(
             throw new InvalidDataException($"'{key}' is empty, so it is not an encrypted file of this profile.");
         }
 
-        if (!encryptedFileFormat.TryGetKeyId(file.Content, out var keyId))
+        if (!encryptedFileFormat.TryGetKeyId(content, out var keyId))
         {
             // Every profile is encrypted: plaintext there was not written by this app.
             throw new InvalidDataException($"'{key}' is not an encrypted file of this profile.");
@@ -82,12 +96,7 @@ public class EncryptingSyncFileStore(
         try
         {
             idleLock?.Touch(keyRing.Scope);
-            return new SyncFile
-            {
-                Key = file.Key,
-                Content = encryptedFileFormat.Decrypt(file.Content, fileKey, new E2eFileBinding(keyRing.Scope.Id, key)),
-                ModifiedAt = file.ModifiedAt,
-            };
+            return encryptedFileFormat.Decrypt(content, fileKey, new E2eFileBinding(keyRing.Scope.Id, key));
         }
         finally
         {

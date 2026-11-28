@@ -25,6 +25,7 @@ Main classes (all in `src/Devoctomy.Blazwiz.Sync/` unless noted):
 - `SyncKeyRotationService` (`Encryption/`): changing a profile's passphrase, which rotates its keys and encrypts its files again (diagram 8), with `S3SyncScratchStore` (`S3/`) for the upload it times first
 - `SwitchableSyncFileStore` and `SyncStorageResolver` (`Storage/`): the storage chosen on this device (IndexedDB, OPFS or a folder), and `SyncStorageMigrationService` to move between them
 - `S3SyncRemoteStore` (`S3/`), with `CognitoS3TargetProvider` (`src/Devoctomy.Blazwiz.UI.Sync/Services/`) for the client
+- `SyncFileHistoryService`: a file's past versions from the bucket's versioning, read with the profile's keys and restored as an ordinary write through `EncryptingSyncFileStore` (shown by `FileHistoryPicker` in `src/Devoctomy.Blazwiz.UI.Sync/Components/`)
 - `WebLockSyncLockService`: one pass per profile across all tabs
 - `S3UserKeysStore` (`S3/`): the keys documents and the index, in the data bucket under `keys/`, written conditionally (`LocalStorageUserKeysStore`, in `Encryption/`, without a data bucket)
 

@@ -2,12 +2,15 @@ using Devoctomy.Blazwiz.Browser.Services.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Encryption.Models;
+using Devoctomy.Blazwiz.Sync.Connectivity;
 using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
 using Devoctomy.Blazwiz.Testing;
 using Devoctomy.Blazwiz.UI.Sync.Text;
+using Devoctomy.Blazwiz.UI.Sync.ViewModels;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.JSInterop;
 using Moq;
 using MyApp.Portal.Application.Exceptions;
@@ -37,6 +40,8 @@ public class NoteEditorViewModelTests
     private readonly Notebook notes = new() { Name = "notes", Id = NotesSyncProfile.KeyId, Root = "notes/", Title = "Notes", IsDefault = true, HasPassphrase = true };
     private readonly E2eKeyScope notesScope = new(NotesSyncProfile.KeyId);
     private readonly NoteEntry note = new() { Id = "n1", Name = "todo.md", Kind = NoteEntryKind.Note };
+    private readonly Mock<ISyncFileHistoryService> mockHistory = new();
+    private readonly SyncFileVersion pastVersion = new() { Profile = "notes", Key = "n1", VersionId = "v1", ETag = "\"e1\"", UploadedAt = SavedAt };
 
     public NoteEditorViewModelTests()
     {
@@ -55,13 +60,13 @@ public class NoteEditorViewModelTests
     public void GivenNullDependencies_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("notebookService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
-        Assert.Equal("noteServiceFactory", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, null!, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
-        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
-        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
-        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
-        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
-        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object, mockManager.Object, testText.Errors)).ParamName);
+        Assert.Equal("notebookService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(null!, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors, CreateHistory())).ParamName);
+        Assert.Equal("noteServiceFactory", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, null!, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors, CreateHistory())).ParamName);
+        Assert.Equal("profiles", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, null!, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors, CreateHistory())).ParamName);
+        Assert.Equal("markdownRenderer", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, null!, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors, CreateHistory())).ParamName);
+        Assert.Equal("markdownFormatService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, null!, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors, CreateHistory())).ParamName);
+        Assert.Equal("editorInteropService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, null!, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors, CreateHistory())).ParamName);
+        Assert.Equal("navigationService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, null!, mockSync.Object, mockManager.Object, testText.Errors, CreateHistory())).ParamName);
     }
 
     [Fact]
@@ -442,9 +447,10 @@ public class NoteEditorViewModelTests
     public void GivenNullSyncService_WhenConstructing_ThenThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!, mockManager.Object, testText.Errors)).ParamName);
-        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, null!, testText.Errors)).ParamName);
-        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, null!)).ParamName);
+        Assert.Equal("syncService", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, null!, mockManager.Object, testText.Errors, CreateHistory())).ParamName);
+        Assert.Equal("manager", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, null!, testText.Errors, CreateHistory())).ParamName);
+        Assert.Equal("errorText", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, null!, CreateHistory())).ParamName);
+        Assert.Equal("history", Assert.Throws<ArgumentNullException>(() => new NoteEditorViewModel(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors, null!)).ParamName);
     }
 
     [Fact]
@@ -861,7 +867,233 @@ public class NoteEditorViewModelTests
         mockNotes.Verify(x => x.SaveNoteAsync("n1", "changed"), Times.Once);
     }
 
-    private NoteEditorViewModel CreateSut() => new(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors);
+    [Fact]
+    public async Task GivenALoadedNote_WhenItsHistoryIsExpanded_ThenTheNotesVersionsAreListedOnlyThen()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        var listedBefore = mockHistory.Invocations.Count(i => i.Method.Name == nameof(ISyncFileHistoryService.GetVersionsAsync));
+
+        // Act
+        await sut.History.ToggleCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal(0, listedBefore);
+        Assert.True(sut.History.IsAvailable);
+        Assert.Equal([pastVersion], sut.History.Versions);
+        mockHistory.Verify(x => x.GetVersionsAsync("notes", "n1", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAPastVersionPicked_WhenItIsShown_ThenTheEditorShowsItReadOnlyWithItsPreview()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+
+        // Assert
+        Assert.True(sut.IsViewingVersion);
+        Assert.Equal("old", sut.VersionContent);
+        Assert.Equal("old", sut.EditorText);
+        Assert.Equal("<p>old</p>", sut.ShownPreviewHtml);
+        Assert.Equal("saved", sut.Content);
+        Assert.False(sut.IsDirty);
+        Assert.Contains(nameof(NoteEditorViewModel.History), changed);
+        Assert.Contains(nameof(NoteEditorViewModel.IsViewingVersion), changed);
+    }
+
+    [Fact]
+    public async Task GivenAPastVersionShown_WhenTypedIntoFormattedOrSaved_ThenNothingChanges()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+
+        // Act
+        sut.EditorText = "typed";
+        await sut.FormatCommand.ExecuteAsync(MarkdownFormat.Bold);
+        await sut.SaveCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("old", sut.EditorText);
+        Assert.Equal("saved", sut.Content);
+        mockEditor.Verify(x => x.GetSelectionAsync(It.IsAny<string>()), Times.Never);
+        mockNotes.Verify(x => x.SaveNoteAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenTheCurrentVersion_WhenTypedIntoTheEditor_ThenTheNoteIsEdited()
+    {
+        // Arrange
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        sut.EditorText = "typed";
+
+        // Assert
+        Assert.Equal("typed", sut.Content);
+        Assert.Equal("<p>typed</p>", sut.ShownPreviewHtml);
+        Assert.True(sut.IsDirty);
+    }
+
+    [Fact]
+    public async Task GivenAPastVersionShown_WhenBackToCurrent_ThenTheNoteIsReadAgainAndEditable()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+
+        // Act
+        sut.History.BackToCurrentCommand.Execute(null);
+
+        // Assert
+        Assert.False(sut.IsViewingVersion);
+        Assert.Equal(string.Empty, sut.VersionContent);
+        Assert.Equal("saved", sut.EditorText);
+        Assert.Equal("<p>saved</p>", sut.ShownPreviewHtml);
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task GivenAPastVersionShown_WhenRestored_ThenTheRestoredNoteIsShownAsCurrent()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ReturnsAsync(new NoteDocument { Entry = note, Content = "old", FolderPath = ["Work"] });
+        sut.History.OpenRestoreCommand.Execute(null);
+
+        // Act
+        await sut.History.RestoreCommand.ExecuteAsync(null);
+
+        // Assert
+        mockHistory.Verify(x => x.RestoreAsync(It.Is<SyncFileVersionContent>(c => c.Version == pastVersion), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.False(sut.IsViewingVersion);
+        Assert.Equal("old", sut.Content);
+        Assert.False(sut.IsDirty);
+    }
+
+    [Fact]
+    public async Task GivenUnsavedEdits_WhenAPastVersionIsPickedAndSaveChosen_ThenTheEditsAreSavedFirst()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "edited";
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+        var asked = sut.History.IsUnsavedDialogOpen;
+
+        // Act
+        await sut.History.SaveAndViewCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.True(asked);
+        Assert.False(sut.HasUnsavedChanges);
+        mockNotes.Verify(x => x.SaveNoteAsync("n1", "edited"), Times.Once);
+        Assert.True(sut.IsViewingVersion);
+    }
+
+    [Fact]
+    public async Task GivenUnsavedEdits_WhenAPastVersionIsPickedAndDontSaveChosen_ThenTheEditsAreDropped()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        sut.Content = "edited";
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+
+        // Act
+        await sut.History.DiscardAndViewCommand.ExecuteAsync(null);
+
+        // Assert
+        Assert.Equal("saved", sut.Content);
+        Assert.False(sut.IsDirty);
+        Assert.True(sut.CanLeave("/anywhere"));
+        Assert.True(sut.IsViewingVersion);
+        mockNotes.Verify(x => x.SaveNoteAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenAPastVersionShown_WhenGoingBackAndTheNoteCannotBeRead_ThenThePageDoesNotCrash()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+        mockNotes.Setup(x => x.GetNoteAsync("n1")).ThrowsAsync(new InvalidOperationException("unexpected"));
+
+        // Act
+        sut.History.BackToCurrentCommand.Execute(null);
+        await WaitForAsync(() => mockNotes.Invocations.Count(i => i.Method.Name == nameof(INoteService.GetNoteAsync)) >= 2);
+
+        // Assert
+        Assert.False(sut.IsViewingVersion);
+        Assert.Same(note, sut.Note);
+    }
+
+    [Fact]
+    public async Task GivenADisposedEditor_WhenItsHistoryChanges_ThenTheNoteIsNotReadAgain()
+    {
+        // Arrange
+        SetUpHistory();
+        var sut = await CreateLoadedSutAsync();
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // Act
+        sut.Dispose();
+        sut.History.BackToCurrentCommand.Execute(null);
+
+        // Assert
+        Assert.Empty(changed);
+        mockNotes.Verify(x => x.GetNoteAsync("n1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenAPastVersionThisDeviceCannotDecrypt_WhenPicked_ThenTheNoteStaysShownAndEditable()
+    {
+        // Arrange: e.g. encrypted with a key this device does not hold.
+        SetUpHistory();
+        mockHistory.Setup(x => x.ReadVersionAsync(pastVersion, It.IsAny<CancellationToken>())).ThrowsAsync(new E2eLockedException());
+        var sut = await CreateLoadedSutAsync();
+
+        // Act
+        await sut.History.SelectCommand.ExecuteAsync(pastVersion);
+        sut.EditorText = "still editing";
+
+        // Assert
+        Assert.False(sut.IsViewingVersion);
+        Assert.NotNull(sut.History.Error);
+        Assert.Equal("still editing", sut.Content);
+        Assert.Equal("<p>still editing</p>", sut.ShownPreviewHtml);
+    }
+
+    private void SetUpHistory()
+    {
+        mockHistory.SetupGet(x => x.IsAvailable).Returns(true);
+        mockHistory.Setup(x => x.GetVersionsAsync("notes", "n1", It.IsAny<CancellationToken>())).ReturnsAsync([pastVersion]);
+        mockHistory.Setup(x => x.ReadVersionAsync(pastVersion, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SyncFileVersionContent { Version = pastVersion, Content = "old"u8.ToArray() });
+    }
+
+    private FileHistoryViewModel CreateHistory()
+    {
+        var connectivity = new Mock<IConnectivityService>();
+        connectivity.SetupGet(x => x.Status).Returns(new ConnectivityStatus { IsOnline = true });
+        return new FileHistoryViewModel(mockHistory.Object, connectivity.Object, testText.For<SyncUiText>(), testText.Errors, new FakeTimeProvider());
+    }
+
+    private NoteEditorViewModel CreateSut() => new(mockNotebooks.Object, mockFactory.Object, mockProfiles.Object, mockRenderer.Object, mockFormat.Object, mockEditor.Object, mockNavigation.Object, mockSync.Object, mockManager.Object, testText.Errors, CreateHistory());
 
     private async Task<NoteEditorViewModel> CreateLoadedSutAsync()
     {

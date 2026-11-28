@@ -1,4 +1,5 @@
 using Devoctomy.Blazwiz.Sync.Configuration;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 
 namespace Devoctomy.Blazwiz.Sync.Interfaces;
 
@@ -63,6 +64,15 @@ public interface ISyncProfileRegistry
     /// <returns>The file store.</returns>
     /// <exception cref="ArgumentException">There is no such profile.</exception>
     ISyncFileStore GetFileStore(string name);
+
+    /// <summary>
+    /// Gets what decrypts the profile's stored content as <see cref="GetFileStore"/> reads it, e.g. a past version of a
+    /// file downloaded from the bucket.
+    /// </summary>
+    /// <param name="name">The profile name.</param>
+    /// <returns>The decryptor.</returns>
+    /// <exception cref="ArgumentException">There is no such profile.</exception>
+    ISyncFileDecryptor GetFileDecryptor(string name);
 
     /// <summary>
     /// Gets the profile's file store without change tracking or encryption, as the sync engine uses it.

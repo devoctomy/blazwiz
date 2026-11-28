@@ -46,6 +46,10 @@ Content-Security-Policy's `connect-src` (`https:` and `wss:`).
   `s3:DeleteObjectVersion`, `s3:PutBucketVersioning` and `s3:PutLifecycleConfiguration`. So a deleted or overwritten
   keys document, too, can be restored by an operator for 30 days; the app treats a deleted profile as gone.
   `remove.ps1` deletes every version when the environment goes.
+- **Users can see their own files' history, and only theirs.** The role may list the versions under the user's own
+  prefix (`s3:ListBucketVersions`, with the same prefix condition as listing) and read them (`s3:GetObjectVersion`),
+  so the portal can show a file's past versions and restore one. Restoring uploads it again as a new version; reading
+  a version removes nothing.
 - **Two devices cannot both change a user's keys.** The portal writes keys documents and the index only conditionally
   (`If-None-Match: *` to create, `If-Match` with the version read to replace), so of two writes made from the same
   version, S3 refuses the second (412) and the portal reads it again and reapplies its change.

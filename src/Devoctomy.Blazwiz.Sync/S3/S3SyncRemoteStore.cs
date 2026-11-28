@@ -12,7 +12,7 @@ namespace Devoctomy.Blazwiz.Sync.S3;
 /// <summary>
 /// The remote side of a profile in S3 (AWSSDK.S3), under the user's root prefix. Uploads and deletes are conditional
 /// (<c>If-Match</c> / <c>If-None-Match</c>), and each upload records the file's edit time in
-/// <c>x-amz-meta-modified-at</c>.
+/// <c>x-amz-meta-modified-at</c>. A file's past versions are listed and read from the bucket's versioning.
 /// </summary>
 public class S3SyncRemoteStore(IS3SyncTargetProvider targetProvider, ISyncPathMatcher matcher)
     : ISyncRemoteStore
@@ -68,28 +68,7 @@ public class S3SyncRemoteStore(IS3SyncTargetProvider targetProvider, ISyncPathMa
     {
         ArgumentException.ThrowIfNullOrEmpty(key);
 
-        return CallAsync(async target =>
-        {
-            try
-            {
-                using var response = await target.Client.GetObjectAsync(target.Bucket, target.RootPrefix + key, ct);
-                using var buffer = new MemoryStream();
-                await response.ResponseStream.CopyToAsync(buffer, ct);
-                return new RemoteObject
-                {
-                    Key = key,
-                    ETag = response.ETag,
-                    LastModified = ToOffset(response.LastModified),
-                    ModifiedAt = ReadModifiedAt(response.Metadata),
-                    Size = buffer.Length,
-                    Content = buffer.ToArray(),
-                };
-            }
-            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return null;
-            }
-        });
+        return DownloadAsync(key, null, ct);
     }
 
     /// <inheritdoc/>
@@ -183,6 +162,61 @@ public class S3SyncRemoteStore(IS3SyncTargetProvider targetProvider, ISyncPathMa
         });
     }
 
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<RemoteObjectVersion>> ListVersionsAsync(string key, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(key);
+
+        return CallAsync<IReadOnlyList<RemoteObjectVersion>>(async target =>
+        {
+            var fullKey = target.RootPrefix + key;
+            var results = new List<RemoteObjectVersion>();
+            var request = new ListVersionsRequest
+            {
+                BucketName = target.Bucket,
+                Prefix = fullKey,
+            };
+
+            do
+            {
+                var response = await target.Client.ListVersionsAsync(request, ct);
+
+                // The prefix also matches longer keys (notes/a.md.bak); only this key's versions are wanted.
+                foreach (var item in response.Versions ?? [])
+                {
+                    if (item.Key == fullKey && item.IsDeleteMarker != true)
+                    {
+                        results.Add(new RemoteObjectVersion
+                        {
+                            Key = key,
+                            VersionId = item.VersionId,
+                            ETag = item.ETag,
+                            LastModified = ToOffset(item.LastModified),
+                            Size = item.Size ?? 0,
+                            IsLatest = item.IsLatest == true,
+                        });
+                    }
+                }
+
+                var more = response.IsTruncated == true;
+                request.KeyMarker = more ? response.NextKeyMarker : null;
+                request.VersionIdMarker = more ? response.NextVersionIdMarker : null;
+            }
+            while (request.KeyMarker != null);
+
+            return results.OrderByDescending(v => v.IsLatest).ThenByDescending(v => v.LastModified).ToList();
+        });
+    }
+
+    /// <inheritdoc/>
+    public Task<RemoteObject?> GetVersionAsync(string key, string versionId, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(key);
+        ArgumentException.ThrowIfNullOrEmpty(versionId);
+
+        return DownloadAsync(key, versionId, ct);
+    }
+
     private static DateTimeOffset ToOffset(DateTime? value)
     {
         return value == null
@@ -196,6 +230,39 @@ public class S3SyncRemoteStore(IS3SyncTargetProvider targetProvider, ISyncPathMa
         return DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed)
             ? parsed
             : null;
+    }
+
+    // The current version (versionId null), or the one asked for.
+    private Task<RemoteObject?> DownloadAsync(string key, string? versionId, CancellationToken ct)
+    {
+        return CallAsync(async target =>
+        {
+            try
+            {
+                var request = new GetObjectRequest
+                {
+                    BucketName = target.Bucket,
+                    Key = target.RootPrefix + key,
+                    VersionId = versionId,
+                };
+                using var response = await target.Client.GetObjectAsync(request, ct);
+                using var buffer = new MemoryStream();
+                await response.ResponseStream.CopyToAsync(buffer, ct);
+                return new RemoteObject
+                {
+                    Key = key,
+                    ETag = response.ETag,
+                    LastModified = ToOffset(response.LastModified),
+                    ModifiedAt = ReadModifiedAt(response.Metadata),
+                    Size = buffer.Length,
+                    Content = buffer.ToArray(),
+                };
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+        });
     }
 
     private async Task<T> CallAsync<T>(Func<S3SyncTarget, Task<T>> call)

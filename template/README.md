@@ -134,6 +134,10 @@ the data bucket.
 - **Editor**: the toolbar's formatting (`MarkdownFormatService`) toggles, like a word processor. The
   preview is rendered by [Markdig](https://github.com/xoofx/markdig) with raw HTML disabled and unsafe
   link URLs removed. `Ctrl+S` saves, and leaving with unsaved changes asks what to do with them.
+- **History**: the History dropdown at the top right of the editor lists the page's past versions in the data bucket
+  (the framework's `FileHistoryPicker`). Picking one shows it read only, and **Restore this version** makes it the
+  current version again. With unsaved changes, picking a version asks whether to save them first.
+  `NoteEditorViewModel` owns the history (`FileHistoryViewModel`) and answers its questions (`IFileHistoryHost`).
 <!--#endif-->
 
 <!--#if (IncludeSync)-->

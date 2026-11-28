@@ -1,0 +1,18 @@
+@inject IStringLocalizer<UiText> Text
+@inject IStringLocalizer<SyncUiText> SyncText
+
+@if (Model.IsViewingVersion)
+{
+    <div class="alert alert-info file-history-bar" role="status" id="@(IdPrefix)-bar">
+        <span class="file-history-bar-text" id="@(IdPrefix)-viewing"><i class="bi bi-clock-history me-2"></i>@Model.ViewingText</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="@(IdPrefix)-back" @onclick="() => Model.BackToCurrentCommand.Execute(null)">@SyncText["Sync.History.BackToCurrent"]</button>
+        <button type="button" class="btn btn-sm btn-primary" id="@(IdPrefix)-restore" @onclick="() => Model.OpenRestoreCommand.Execute(null)">@SyncText["Sync.History.Restore"]</button>
+    </div>
+}
+@if (Model.Error != null)
+{
+    <div class="alert alert-danger alert-dismissible" role="alert" id="@(IdPrefix)-error">
+        <i class="bi bi-exclamation-triangle me-2"></i>@Model.Error
+        <button type="button" class="btn-close" aria-label="@Text["Common.Close"]" @onclick="() => Model.DismissErrorCommand.Execute(null)"></button>
+    </div>
+}

@@ -219,5 +219,49 @@ public class EncryptingSyncFileStoreTests
         handler.Verify(x => x.OnKeyMissingAsync(It.IsAny<E2eKeyScope>(), It.IsAny<string>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GivenContentStoredAtAKey_WhenDecryptAsync_ThenItDecryptsAsReadingItWould()
+    {
+        // Arrange: e.g. a past version of the file, downloaded from the bucket.
+        Unlock();
+        var stored = format.Encrypt(Bytes("old milk"), "k_1", fileKey, new E2eFileBinding(scope.Id, Key));
+
+        // Act
+        var plaintext = await sut.DecryptAsync(Key, stored);
+
+        // Assert
+        Assert.Equal("old milk", Encoding.UTF8.GetString(plaintext));
+        mockIdle.Verify(x => x.Touch(scope), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenContentOfAnotherKey_WhenDecryptAsync_ThenItFailsToDecrypt()
+    {
+        // Arrange
+        Unlock();
+        var stored = format.Encrypt(Bytes("milk"), "k_1", fileKey, new E2eFileBinding(scope.Id, "notes/Other.md"));
+
+        // Act & Assert
+        await Assert.ThrowsAnyAsync<CryptographicException>(() => sut.DecryptAsync(Key, stored));
+    }
+
+    [Fact]
+    public async Task GivenAFolderMarkersEmptyContent_WhenDecryptAsync_ThenItIsReturnedAsItIs()
+    {
+        // Act
+        var content = await sut.DecryptAsync("notes/Work/", []);
+
+        // Assert
+        Assert.Empty(content);
+    }
+
+    [Fact]
+    public async Task GivenNoKeyOrContent_WhenDecryptAsync_ThenThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Equal("key", (await Assert.ThrowsAsync<ArgumentNullException>(() => sut.DecryptAsync(null!, []))).ParamName);
+        Assert.Equal("content", (await Assert.ThrowsAsync<ArgumentNullException>(() => sut.DecryptAsync(Key, null!))).ParamName);
+    }
+
     private void Unlock() => ring.Load(RandomNumberGenerator.GetBytes(32), new Dictionary<string, byte[]> { ["k_1"] = fileKey }, "k_1");
 }

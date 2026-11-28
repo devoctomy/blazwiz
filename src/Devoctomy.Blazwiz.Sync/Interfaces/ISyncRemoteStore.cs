@@ -56,4 +56,26 @@ public interface ISyncRemoteStore
     /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
     /// <exception cref="SyncPreconditionFailedException">The object changed since it was listed (412).</exception>
     Task DeleteAsync(string key, string? ifMatch, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lists every version of exactly one key (S3 versioning), newest first, without their content. Delete markers are
+    /// not versions and are not listed.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>The versions; empty when there are none.</returns>
+    /// <exception cref="SyncNetworkException">The remote could not be reached.</exception>
+    /// <exception cref="SyncAccessDeniedException">The credentials were refused.</exception>
+    Task<IReadOnlyList<RemoteObjectVersion>> ListVersionsAsync(string key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Downloads one version of an object.
+    /// </summary>
+    /// <param name="key">The key.</param>
+    /// <param name="versionId">The version id, from <see cref="ListVersionsAsync"/>.</param>
+    /// <param name="ct">A cancellation token.</param>
+    /// <returns>The version, or null if the remote no longer has it.</returns>
+    /// <exception cref="SyncNetworkException">The remote could not be reached.</exception>
+    /// <exception cref="SyncAccessDeniedException">The credentials were refused.</exception>
+    Task<RemoteObject?> GetVersionAsync(string key, string versionId, CancellationToken ct = default);
 }

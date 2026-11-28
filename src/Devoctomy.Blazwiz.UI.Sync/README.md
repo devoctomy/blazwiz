@@ -149,6 +149,28 @@ unlocks it next, and Settings shows the profile as "Passphrase change unfinished
 A device that unlocks with the passkey is asked for the new passphrase, and told why, once the keys have been changed
 on another device.
 
+### A file's history
+
+`FileHistoryPicker` is a History dropdown for the header of a page showing a synced file: **Current**, then every
+version the bucket has, each as its ETag and upload time, listed each time it is expanded. `FileHistoryBar` goes above
+the file's content: while a past version is shown, it says which, with **Back to current** and **Restore this
+version**. Both take a `FileHistoryViewModel`, owned by the page's view model:
+
+```razor
+<FileHistoryPicker Model="ViewModel.History" />
+<FileHistoryBar Model="ViewModel.History" />
+```
+
+The page's view model injects `FileHistoryViewModel`, calls `SetFile(profile, key, host)` once the file has loaded,
+raises `PropertyChanged` for it when it changes, and shows `SelectedContent` (decrypted) read only while
+`IsViewingVersion`. `ShownChanged` says when that changes; back on the current version, the page reads the file again,
+as it may have been restored. The host (`IFileHistoryHost`, usually the page's view model) says whether there are
+unsaved changes, and saves or drops them: with unsaved changes, picking a version first asks Save, Don't save or
+Cancel. Restoring asks to confirm, then saves the version's content as the file's new current version
+(`ISyncFileHistoryService.RestoreAsync`). While the app is offline (`IConnectivityService` gives a reason) the
+dropdown is disabled. A version that can't be decrypted on this device is not shown, and the bar says so. Without a
+data bucket, both show nothing. Text is under `Sync.History.*`.
+
 ## Versions
 
 Every `Devoctomy.Blazwiz.*` package and the `Devoctomy.Blazwiz.Templates` template are released together at one
