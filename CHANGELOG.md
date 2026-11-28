@@ -8,6 +8,8 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+## 0.9.6
+
 ### Added
 - **File history.** A synced file's past versions, from the data bucket's versioning, can be listed, viewed and
   restored. `ISyncFileHistoryService` (`GetVersionsAsync`, `ReadVersionAsync`, `RestoreAsync`, `IsAvailable`) does
