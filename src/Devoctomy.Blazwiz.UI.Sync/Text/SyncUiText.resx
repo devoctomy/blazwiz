@@ -402,6 +402,54 @@
   <data name="Sync.Folder.ReconnectFailed" xml:space="preserve">
     <value>The folder could not be reconnected: {0}</value>
   </data>
+  <data name="Sync.History" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="Sync.History.BackToCurrent" xml:space="preserve">
+    <value>Back to current</value>
+  </data>
+  <data name="Sync.History.CannotDecrypt" xml:space="preserve">
+    <value>This version can't be opened on this device. It may be encrypted with a key this device doesn't have.</value>
+  </data>
+  <data name="Sync.History.Current" xml:space="preserve">
+    <value>Current</value>
+  </data>
+  <data name="Sync.History.Empty" xml:space="preserve">
+    <value>No past versions yet.</value>
+  </data>
+  <data name="Sync.History.Gone" xml:space="preserve">
+    <value>That version is no longer available.</value>
+  </data>
+  <data name="Sync.History.Offline" xml:space="preserve">
+    <value>History isn't available while you're offline.</value>
+  </data>
+  <data name="Sync.History.Restore" xml:space="preserve">
+    <value>Restore this version</value>
+  </data>
+  <data name="Sync.History.Restore.Text" xml:space="preserve">
+    <value>{0} becomes the current version. The current version stays in the history, so you can restore it again later.</value>
+  </data>
+  <data name="Sync.History.Restore.Title" xml:space="preserve">
+    <value>Restore this version?</value>
+  </data>
+  <data name="Sync.History.Unsaved.DontSave" xml:space="preserve">
+    <value>Don't save</value>
+  </data>
+  <data name="Sync.History.Unsaved.Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Sync.History.Unsaved.Text" xml:space="preserve">
+    <value>You have unsaved changes. Do you want to save them before viewing another version?</value>
+  </data>
+  <data name="Sync.History.Unsaved.Title" xml:space="preserve">
+    <value>Unsaved changes</value>
+  </data>
+  <data name="Sync.History.Version" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="Sync.History.Viewing" xml:space="preserve">
+    <value>Viewing {0}. It can't be edited.</value>
+  </data>
   <data name="Sync.LastSynced" xml:space="preserve">
     <value>Last synced</value>
   </data>

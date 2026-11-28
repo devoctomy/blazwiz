@@ -8,6 +8,25 @@ Before 1.0 any release may break, and nothing is kept for earlier builds: no dat
 
 ## Unreleased
 
+### Added
+- **File history.** A synced file's past versions, from the data bucket's versioning, can be listed, viewed and
+  restored. `ISyncFileHistoryService` (`GetVersionsAsync`, `ReadVersionAsync`, `RestoreAsync`, `IsAvailable`) does
+  the work; restoring is an ordinary save of the version's content, so nothing in the bucket is deleted or overwritten.
+  `FileHistoryPicker` (a History dropdown, listing the versions each time it is expanded) and `FileHistoryBar` (the bar
+  above a past version shown) put it on a page, over a `FileHistoryViewModel` the page's view model owns; with unsaved
+  changes, picking a version asks whether to save them first (`IFileHistoryHost`). The dropdown is disabled while the
+  app is offline, and a version that can't be decrypted on this device (e.g. under a key it doesn't hold) is not
+  shown: the bar says why. New text: `Sync.History.*`. The template's note editor has it.
+- `ISyncRemoteStore.ListVersionsAsync` and `GetVersionAsync` (with `RemoteObjectVersion`), implemented by
+  `S3SyncRemoteStore`. A custom remote store implements them too.
+- `ISyncProfileRegistry.GetFileDecryptor` and `ISyncFileDecryptor`, which `EncryptingSyncFileStore` implements:
+  decrypts a profile's stored content as reading its files does.
+
+### Changed
+- The base stack lets signed in users list and read the versions under their own prefix (`s3:ListBucketVersions`,
+  `s3:GetObjectVersion`). They still cannot delete a version (`NoVersionPurge`).
+- `NoteEditorViewModel` (template) takes a `FileHistoryViewModel`.
+
 ## 0.9.5
 
 ### Added

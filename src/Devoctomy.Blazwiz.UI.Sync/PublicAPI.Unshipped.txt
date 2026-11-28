@@ -1,1 +1,54 @@
 #nullable enable
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryBar
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryBar.FileHistoryBar() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryBar.IdPrefix.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryBar.IdPrefix.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryBar.Model.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel!
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryBar.Model.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryPicker
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryPicker.FileHistoryPicker() -> void
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryPicker.IdPrefix.get -> string!
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryPicker.IdPrefix.set -> void
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryPicker.Model.get -> Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel!
+Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryPicker.Model.set -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.BackToCurrent() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.CancelRestore() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.CancelView() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.Close() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.DiscardAndViewAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.DismissError() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.Error.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.FileHistoryViewModel(Devoctomy.Blazwiz.Sync.Interfaces.ISyncFileHistoryService! history, Devoctomy.Blazwiz.Sync.Interfaces.IConnectivityService! connectivity, Microsoft.Extensions.Localization.IStringLocalizer<Devoctomy.Blazwiz.UI.Sync.Text.SyncUiText!>! text, Devoctomy.Blazwiz.UI.Text.Interfaces.IErrorText! errorText, System.TimeProvider! timeProvider) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.Format(Devoctomy.Blazwiz.Sync.Models.SyncFileVersion! version) -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsAvailable.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsEmpty.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsLoading.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsOffline.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsOpen.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.OfflineText.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsReading.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsRestoreDialogOpen.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsRestoring.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsUnsavedDialogOpen.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.IsViewingVersion.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.ListError.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.OpenRestore() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.RestoreAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.RestoreText.get -> string!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.SaveAndViewAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.SelectAsync(Devoctomy.Blazwiz.Sync.Models.SyncFileVersion? version) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.Selected.get -> Devoctomy.Blazwiz.Sync.Models.SyncFileVersion?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.SelectedContent.get -> Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.SetFile(string! profileName, string! fileKey, Devoctomy.Blazwiz.UI.Sync.ViewModels.IFileHistoryHost! fileHost) -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.ShownChanged -> System.EventHandler?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.ToggleAsync() -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.Versions.get -> System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncFileVersion!>!
+Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.ViewingText.get -> string?
+Devoctomy.Blazwiz.UI.Sync.ViewModels.IFileHistoryHost
+Devoctomy.Blazwiz.UI.Sync.ViewModels.IFileHistoryHost.DiscardChanges() -> void
+Devoctomy.Blazwiz.UI.Sync.ViewModels.IFileHistoryHost.HasUnsavedChanges.get -> bool
+Devoctomy.Blazwiz.UI.Sync.ViewModels.IFileHistoryHost.SaveChangesAsync() -> System.Threading.Tasks.Task<bool>!
+override Devoctomy.Blazwiz.UI.Sync.ViewModels.FileHistoryViewModel.Dispose(bool disposing) -> void
+~override Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryBar.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void
+~override Devoctomy.Blazwiz.UI.Sync.Components.FileHistoryPicker.BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder) -> void

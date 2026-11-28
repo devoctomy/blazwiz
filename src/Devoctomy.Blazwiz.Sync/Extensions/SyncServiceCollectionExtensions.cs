@@ -94,6 +94,7 @@ public static class SyncServiceCollectionExtensions
 
         // Every profile's stores come from the registry, so profiles added while the app runs work the same way.
         services.TryAddScoped<ISyncProfileRegistry>(sp => new SyncProfileRegistry(sp, options));
+        services.TryAddScoped<ISyncFileHistoryService, SyncFileHistoryService>();
         foreach (var profile in options.Profiles)
         {
             AddProfile(services, profile.Name);

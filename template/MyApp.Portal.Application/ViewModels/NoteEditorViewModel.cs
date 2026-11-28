@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Text;
 using Blazing.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Devoctomy.Blazwiz.Browser.Services.Interfaces;
@@ -8,6 +10,7 @@ using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Exceptions;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 using Devoctomy.Blazwiz.Sync.Models;
+using Devoctomy.Blazwiz.UI.Sync.ViewModels;
 using Devoctomy.Blazwiz.UI.Text.Interfaces;
 using Microsoft.JSInterop;
 using MyApp.Portal.Application.Exceptions;
@@ -21,9 +24,10 @@ namespace MyApp.Portal.Application.ViewModels;
 /// <summary>
 /// ViewModel for the note editor: markdown text with formatting buttons, a live preview and saving. When a sync changes
 /// the open note, it is reloaded, or (with unsaved edits) the user is asked whether to keep their version or take the
-/// synced one.
+/// synced one. The note's past versions are in <see cref="History"/>: one picked there is shown read only, in place of
+/// the note, until the user goes back to the current version or restores it.
 /// </summary>
-public partial class NoteEditorViewModel : ViewModelBase
+public partial class NoteEditorViewModel : ViewModelBase, IFileHistoryHost
 {
     /// <summary>
     /// The id of the editor's textarea.
@@ -81,6 +85,8 @@ public partial class NoteEditorViewModel : ViewModelBase
     private DateTimeOffset? lastSavedAt;
     private bool isRemoteChangeDialogOpen;
     private bool isRemoteDeleted;
+    private string versionContent = string.Empty;
+    private string versionPreviewHtml = string.Empty;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="NoteEditorViewModel"/> class.
@@ -95,6 +101,7 @@ public partial class NoteEditorViewModel : ViewModelBase
     /// <param name="syncService">The sync service, to notice when a sync changes the open note.</param>
     /// <param name="manager">Says whether the note's notebook is unlocked, and when that changes.</param>
     /// <param name="errorText">Describes the framework's errors (storage, encryption) for the user.</param>
+    /// <param name="history">The note's past versions.</param>
     public NoteEditorViewModel(
         INotebookService notebookService,
         INoteServiceFactory noteServiceFactory,
@@ -105,7 +112,8 @@ public partial class NoteEditorViewModel : ViewModelBase
         INavigationService navigationService,
         ISyncService syncService,
         IE2eProtectedProfileManager manager,
-        IErrorText errorText)
+        IErrorText errorText,
+        FileHistoryViewModel history)
     {
         // #lizard forgives: only checks and stores the injected services.
         this.notebookService = notebookService ?? throw new ArgumentNullException(nameof(notebookService));
@@ -118,10 +126,62 @@ public partial class NoteEditorViewModel : ViewModelBase
         this.syncService = syncService ?? throw new ArgumentNullException(nameof(syncService));
         this.manager = manager ?? throw new ArgumentNullException(nameof(manager));
         this.errorText = errorText ?? throw new ArgumentNullException(nameof(errorText));
+        History = history ?? throw new ArgumentNullException(nameof(history));
         this.syncService.FilesChanged += OnFilesChanged;
         this.manager.LockStateChanged += OnLockStateChanged;
         this.profiles.ProfilesChanged += OnProfilesChanged;
+        History.PropertyChanged += OnHistoryChanged;
+        History.ShownChanged += OnShownVersionChanged;
     }
+
+    /// <summary>
+    /// Gets the note's past versions: the History dropdown, and the bar above a past version shown.
+    /// </summary>
+    public FileHistoryViewModel History { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether a past version of the note is shown, read only, in place of the note.
+    /// </summary>
+    public bool IsViewingVersion => History.IsViewingVersion;
+
+    /// <summary>
+    /// Gets the markdown of the past version shown.
+    /// </summary>
+    public string VersionContent
+    {
+        get => versionContent;
+        private set
+        {
+            if (SetProperty(ref versionContent, value))
+            {
+                OnPropertyChanged(nameof(EditorText));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets what the editor shows: the note being edited, or, read only, the past version shown. Edits are
+    /// ignored while a past version is shown.
+    /// </summary>
+    public string EditorText
+    {
+        get => IsViewingVersion ? VersionContent : Content;
+        set
+        {
+            if (!IsViewingVersion)
+            {
+                Content = value;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the preview of the past version shown, or of the note, as HTML.
+    /// </summary>
+    public string ShownPreviewHtml => IsViewingVersion ? versionPreviewHtml : PreviewHtml;
+
+    /// <inheritdoc/>
+    public bool HasUnsavedChanges => IsDirty;
 
     /// <summary>
     /// Gets the note's notebook, or null until it is loaded.
@@ -173,6 +233,7 @@ public partial class NoteEditorViewModel : ViewModelBase
             {
                 PreviewHtml = markdownRenderer.ToHtml(content);
                 OnPropertyChanged(nameof(IsDirty));
+                OnPropertyChanged(nameof(EditorText));
             }
         }
     }
@@ -183,7 +244,13 @@ public partial class NoteEditorViewModel : ViewModelBase
     public string PreviewHtml
     {
         get => previewHtml;
-        private set => SetProperty(ref previewHtml, value);
+        private set
+        {
+            if (SetProperty(ref previewHtml, value))
+            {
+                OnPropertyChanged(nameof(ShownPreviewHtml));
+            }
+        }
     }
 
     /// <summary>
@@ -341,6 +408,7 @@ public partial class NoteEditorViewModel : ViewModelBase
             Content = document.Content;
             PreviewHtml = markdownRenderer.ToHtml(Content);
             OnPropertyChanged(nameof(IsDirty));
+            History.SetFile(Notebook!.Name, noteId, this);
         }
         catch (Exception ex) when (ex is NotesException or SyncStorageAccessException or SyncStorageMigrationException or E2eLockedException)
         {
@@ -354,6 +422,15 @@ public partial class NoteEditorViewModel : ViewModelBase
         {
             IsLoading = false;
         }
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> SaveChangesAsync() => TrySaveAsync();
+
+    /// <inheritdoc/>
+    public void DiscardChanges()
+    {
+        Content = savedContent;
     }
 
     /// <summary>
@@ -374,6 +451,12 @@ public partial class NoteEditorViewModel : ViewModelBase
     [RelayCommand]
     public async Task FormatAsync(MarkdownFormat format)
     {
+        if (IsViewingVersion)
+        {
+            // A past version is read only.
+            return;
+        }
+
         var selection = await editorInteropService.GetSelectionAsync(EditorElementId);
         if (selection == null)
         {
@@ -503,9 +586,46 @@ public partial class NoteEditorViewModel : ViewModelBase
             syncService.FilesChanged -= OnFilesChanged;
             manager.LockStateChanged -= OnLockStateChanged;
             profiles.ProfilesChanged -= OnProfilesChanged;
+            History.PropertyChanged -= OnHistoryChanged;
+            History.ShownChanged -= OnShownVersionChanged;
         }
 
         base.Dispose(disposing);
+    }
+
+    // The page shows the history's dropdown and bar, so it is shown again whenever they change.
+    private void OnHistoryChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(History));
+        if (e.PropertyName == nameof(FileHistoryViewModel.IsViewingVersion))
+        {
+            OnPropertyChanged(nameof(IsViewingVersion));
+            OnPropertyChanged(nameof(ShownPreviewHtml));
+            OnPropertyChanged(nameof(EditorText));
+        }
+    }
+
+    private async void OnShownVersionChanged(object? sender, EventArgs e)
+    {
+        if (History.SelectedContent is { } shown)
+        {
+            VersionContent = Encoding.UTF8.GetString(shown.Content);
+            versionPreviewHtml = markdownRenderer.ToHtml(VersionContent);
+            OnPropertyChanged(nameof(ShownPreviewHtml));
+            return;
+        }
+
+        // Back to the current version, which may have been restored: read it again.
+        VersionContent = string.Empty;
+        versionPreviewHtml = string.Empty;
+        try
+        {
+            await ReloadAsync();
+        }
+        catch (Exception)
+        {
+            // A background reload must not crash the page; opening the note again reads it.
+        }
     }
 
     private async void OnLockStateChanged(object? sender, E2eKeyScope scope)
@@ -625,8 +745,9 @@ public partial class NoteEditorViewModel : ViewModelBase
 
     private async Task<bool> TrySaveAsync()
     {
-        if (Note == null || IsSaving)
+        if (Note == null || IsSaving || IsViewingVersion)
         {
+            // Nothing to save while a past version is shown: the editor is read only.
             return false;
         }
 

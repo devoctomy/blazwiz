@@ -19,6 +19,8 @@ public sealed class UserDataStepDefinitions(DeployTestContext context) : IDispos
 
     private string Content => $"deploy tests {context.RunId}";
 
+    private string NewContent => $"deploy tests {context.RunId}, changed";
+
     [When("they write a test file in their own prefix")]
     public Task WhenTheyWriteATestFile() =>
         S3.PutObjectAsync(new PutObjectRequest { BucketName = Bucket, Key = OwnKey, ContentBody = Content });
@@ -45,6 +47,48 @@ public sealed class UserDataStepDefinitions(DeployTestContext context) : IDispos
         var gone = await Assert.ThrowsAnyAsync<AmazonS3Exception>(() => S3.GetObjectAsync(Bucket, OwnKey));
         Assert.Equal(HttpStatusCode.NotFound, gone.StatusCode);
     }
+
+    [When("they write it again with new content")]
+    public Task WhenTheyWriteItAgain() =>
+        S3.PutObjectAsync(new PutObjectRequest { BucketName = Bucket, Key = OwnKey, ContentBody = NewContent });
+
+    // The test file's key is the same in every scenario of a run, and versions are kept after a delete, so other
+    // scenarios' versions of it may be listed too: every earlier one holds the first content.
+    [Then("they can list both versions of it")]
+    public async Task ThenTheyCanListBothVersionsOfIt()
+    {
+        var versions = await ListOwnVersionsAsync();
+        Assert.True(versions.Count >= 2);
+        Assert.Single(versions, v => v.IsLatest == true);
+    }
+
+    [Then("they can read an earlier version of it")]
+    public async Task ThenTheyCanReadAnEarlierVersionOfIt()
+    {
+        var earlier = await EarlierVersionIdAsync();
+        using var response = await S3.GetObjectAsync(new GetObjectRequest { BucketName = Bucket, Key = OwnKey, VersionId = earlier });
+        using var reader = new StreamReader(response.ResponseStream);
+        Assert.Equal(Content, await reader.ReadToEndAsync());
+    }
+
+    [Then("they cannot delete a version of it")]
+    public async Task ThenTheyCannotDeleteAVersionOfIt()
+    {
+        var earlier = await EarlierVersionIdAsync();
+        await AssertDenied(() => S3.DeleteObjectAsync(new DeleteObjectRequest { BucketName = Bucket, Key = OwnKey, VersionId = earlier }));
+    }
+
+    [Then("they cannot list the versions in another user's prefix")]
+    public Task ThenTheyCannotListTheVersionsInAnotherUsersPrefix() => AssertDenied(() =>
+        S3.ListVersionsAsync(new ListVersionsRequest { BucketName = Bucket, Prefix = $"{OtherUser}/" }));
+
+    [Then("they cannot read a version from another user's prefix")]
+    public Task ThenTheyCannotReadAVersionFromAnotherUsersPrefix() => AssertDenied(() =>
+        S3.GetObjectAsync(new GetObjectRequest { BucketName = Bucket, Key = $"{OtherUser}/deploytests-{context.RunId}.txt", VersionId = "null" }));
+
+    [Then("they cannot list the versions in the whole bucket")]
+    public Task ThenTheyCannotListTheVersionsInTheWholeBucket() => AssertDenied(() =>
+        S3.ListVersionsAsync(new ListVersionsRequest { BucketName = Bucket }));
 
     [Then("they cannot write in another user's prefix")]
     public Task ThenTheyCannotWriteInAnotherUsersPrefix() => AssertDenied(() =>
@@ -81,6 +125,15 @@ public sealed class UserDataStepDefinitions(DeployTestContext context) : IDispos
     }
 
     public void Dispose() => s3?.Dispose();
+
+    private async Task<List<S3ObjectVersion>> ListOwnVersionsAsync()
+    {
+        var listing = await S3.ListVersionsAsync(new ListVersionsRequest { BucketName = Bucket, Prefix = OwnKey });
+        return (listing.Versions ?? []).Where(v => v.Key == OwnKey && v.IsDeleteMarker != true).ToList();
+    }
+
+    private async Task<string> EarlierVersionIdAsync() =>
+        (await ListOwnVersionsAsync()).First(v => v.IsLatest != true).VersionId;
 
     internal static async Task AssertDenied(Func<Task> call)
     {

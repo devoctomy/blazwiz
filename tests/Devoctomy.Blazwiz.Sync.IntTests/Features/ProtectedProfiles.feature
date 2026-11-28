@@ -97,6 +97,52 @@ Scenario: Changing the passphrase encrypts every file again with new keys
 	And device "B" reads "list.md" in "Work" as "groceries"
 	And the passphrase change of "Work" is not unfinished on device "B"
 
+Scenario: A file's past versions are listed, read and restored, and the restore reaches the other device
+	Given device "A" creates a protected profile "Work" with the passphrase "work passphrase"
+	And device "A" writes "plan.md" containing "v1" in "Work"
+	And device "A" syncs
+	And device "A" writes "plan.md" containing "v2" in "Work"
+	And device "A" syncs
+	And device "A" writes "plan.md" containing "v3" in "Work"
+	And device "A" syncs
+	When device "A" lists the versions of "plan.md" in "Work"
+	Then the versions read, newest first, "v3", "v2" and "v1"
+	When device "A" restores the oldest version of "plan.md" in "Work"
+	Then device "A" reads "plan.md" in "Work" as "v1"
+	When device "A" syncs
+	And device "B" loads its protected profiles
+	And device "B" syncs
+	And device "B" unlocks "Work" with the passphrase "work passphrase"
+	Then device "B" reads "plan.md" in "Work" as "v1"
+	When device "B" lists the versions of "plan.md" in "Work"
+	Then the versions read, newest first, "v1", "v3", "v2" and "v1"
+
+Scenario: A past version under a key this device does not hold cannot be read, and the file is not affected
+	Given device "A" creates a protected profile "Work" with the passphrase "work passphrase"
+	And device "A" writes "plan.md" containing "v1" in "Work"
+	And device "A" syncs
+	And the bucket has an older version of "plan.md" in "Work" under a key nobody has
+	When device "A" lists the versions of "plan.md" in "Work"
+	Then device "A" cannot read the oldest version, because it does not hold its key
+	And device "A" reads "plan.md" in "Work" as "v1"
+
+Scenario: A restore does not overwrite a change made meanwhile on another device unseen
+	Given device "A" creates a protected profile "Work" with the passphrase "work passphrase"
+	And device "A" writes "plan.md" containing "v1" in "Work"
+	And device "A" syncs
+	And device "A" writes "plan.md" containing "v2" in "Work"
+	And device "A" syncs
+	And device "B" loads its protected profiles
+	And device "B" syncs
+	And device "B" unlocks "Work" with the passphrase "work passphrase"
+	When device "A" lists the versions of "plan.md" in "Work"
+	And device "A" restores the oldest version of "plan.md" in "Work"
+	And device "B" writes "plan.md" containing "v3 from B" in "Work"
+	And device "B" syncs
+	And device "A" syncs
+	Then device "A" reads "plan.md" in "Work" as "v3 from B"
+	And the bucket's current "plan.md" in "Work" reads "v3 from B" on device "A"
+
 Scenario: A passphrase change cut short is finished on another device
 	Given device "A" creates a protected profile "Work" with the passphrase "old passphrase"
 	And device "A" writes "plan.md" containing "work plan" in "Work"

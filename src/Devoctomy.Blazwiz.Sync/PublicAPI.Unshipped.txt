@@ -1,1 +1,59 @@
 #nullable enable
+Devoctomy.Blazwiz.Sync.Encryption.EncryptingSyncFileStore.DecryptAsync(string! key, byte[]! content) -> System.Threading.Tasks.Task<byte[]!>!
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncFileDecryptor
+Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncFileDecryptor.DecryptAsync(string! key, byte[]! content) -> System.Threading.Tasks.Task<byte[]!>!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncFileHistoryService
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncFileHistoryService.GetVersionsAsync(string! profile, string! key, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncFileVersion!>!>!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncFileHistoryService.IsAvailable.get -> bool
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncFileHistoryService.ReadVersionAsync(Devoctomy.Blazwiz.Sync.Models.SyncFileVersion! version, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent?>!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncFileHistoryService.RestoreAsync(Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent! version, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry.GetFileDecryptor(string! name) -> Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncFileDecryptor!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncRemoteStore.GetVersionAsync(string! key, string! versionId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.RemoteObject?>!
+Devoctomy.Blazwiz.Sync.Interfaces.ISyncRemoteStore.ListVersionsAsync(string! key, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion!>!>!
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.ETag.get -> string!
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.ETag.set -> void
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.IsLatest.get -> bool
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.IsLatest.set -> void
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.Key.get -> string!
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.Key.set -> void
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.LastModified.get -> System.DateTimeOffset
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.LastModified.set -> void
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.RemoteObjectVersion() -> void
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.Size.get -> long
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.Size.set -> void
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.VersionId.get -> string!
+Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion.VersionId.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.ETag.get -> string!
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.ETag.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.IsLatest.get -> bool
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.IsLatest.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.IsSynced.get -> bool
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.IsSynced.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.Key.get -> string!
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.Key.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.Profile.get -> string!
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.Profile.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.Size.get -> long
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.Size.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.SyncFileVersion() -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.UploadedAt.get -> System.DateTimeOffset
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.UploadedAt.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.VersionId.get -> string!
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersion.VersionId.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent.Content.get -> byte[]!
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent.Content.set -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent.SyncFileVersionContent() -> void
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent.Version.get -> Devoctomy.Blazwiz.Sync.Models.SyncFileVersion!
+Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent.Version.set -> void
+Devoctomy.Blazwiz.Sync.S3.S3SyncRemoteStore.GetVersionAsync(string! key, string! versionId, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.RemoteObject?>!
+Devoctomy.Blazwiz.Sync.S3.S3SyncRemoteStore.ListVersionsAsync(string! key, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.RemoteObjectVersion!>!>!
+Devoctomy.Blazwiz.Sync.SyncFileHistoryService
+Devoctomy.Blazwiz.Sync.SyncFileHistoryService.GetVersionsAsync(string! profile, string! key, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Devoctomy.Blazwiz.Sync.Models.SyncFileVersion!>!>!
+Devoctomy.Blazwiz.Sync.SyncFileHistoryService.IsAvailable.get -> bool
+Devoctomy.Blazwiz.Sync.SyncFileHistoryService.ReadVersionAsync(Devoctomy.Blazwiz.Sync.Models.SyncFileVersion! version, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent?>!
+Devoctomy.Blazwiz.Sync.SyncFileHistoryService.RestoreAsync(Devoctomy.Blazwiz.Sync.Models.SyncFileVersionContent! version, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+Devoctomy.Blazwiz.Sync.SyncFileHistoryService.SyncFileHistoryService(Devoctomy.Blazwiz.Sync.Interfaces.ISyncProfileRegistry! registry, Devoctomy.Blazwiz.Sync.Interfaces.IS3SyncTargetProvider! targetProvider, Devoctomy.Blazwiz.Sync.Interfaces.ISyncUserContext! userContext) -> void
+Devoctomy.Blazwiz.Sync.SyncProfileRegistry.GetFileDecryptor(string! name) -> Devoctomy.Blazwiz.Sync.Encryption.Interfaces.ISyncFileDecryptor!

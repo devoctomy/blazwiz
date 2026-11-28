@@ -155,6 +155,22 @@ that missed the sign out finds out.
 
 Without a sync target (local development) nothing is synced or uploaded: the files on the device are encrypted again.
 
+### A file's history
+
+The data bucket is versioned, so each upload keeps the version it replaces. `ISyncFileHistoryService` reads that
+history:
+
+- `GetVersionsAsync(profile, key)` lists every version of one file the bucket has, newest first (`SyncFileVersion`),
+  without downloading any. `ISyncRemoteStore.ListVersionsAsync` lists them (S3 `ListObjectVersions`, exactly that key,
+  delete markers left out).
+- `ReadVersionAsync(version)` downloads one (`ISyncRemoteStore.GetVersionAsync`) and decrypts it with the profile's
+  keys, the same way reading the file does (`ISyncProfileRegistry.GetFileDecryptor`).
+- `RestoreAsync(version)` writes its content through the profile's file store, as an ordinary save: encrypted with the
+  active key, uploaded by the next sync, and through the usual conflict handling.
+
+`IsAvailable` is false without a data bucket. The bucket's role must allow `s3:ListBucketVersions` and
+`s3:GetObjectVersion` on the user's prefix (the base stack does). How long versions are kept is the bucket's business.
+
 ## Versions
 
 Every `Devoctomy.Blazwiz.*` package and the `Devoctomy.Blazwiz.Templates` template are released together at one

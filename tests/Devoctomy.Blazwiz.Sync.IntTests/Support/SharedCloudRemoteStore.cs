@@ -42,4 +42,30 @@ public sealed class SharedCloudRemoteStore(SharedCloud cloud, ISyncPathMatcher m
         cloud.Delete(key, ifMatch);
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<RemoteObjectVersion>> ListVersionsAsync(string key, CancellationToken ct = default)
+    {
+        IReadOnlyList<RemoteObjectVersion> result = cloud.Versions.TryGetValue(key, out var versions)
+            ? versions.Select(v => new RemoteObjectVersion
+            {
+                Key = key,
+                VersionId = v.VersionId,
+                ETag = v.Object.ETag,
+                LastModified = v.Object.LastModified,
+                Size = v.Object.Size,
+                IsLatest = cloud.Objects.TryGetValue(key, out var current) && ReferenceEquals(current, v.Object),
+            }).ToList()
+            : [];
+        return Task.FromResult(result);
+    }
+
+    public Task<RemoteObject?> GetVersionAsync(string key, string versionId, CancellationToken ct = default)
+    {
+        var found = cloud.Versions.TryGetValue(key, out var versions)
+            ? versions.FirstOrDefault(v => v.VersionId == versionId).Object
+            : null;
+        return Task.FromResult(found == null
+            ? null
+            : new RemoteObject { Key = found.Key, ETag = found.ETag, Content = [.. found.Content], LastModified = found.LastModified, ModifiedAt = found.ModifiedAt, Size = found.Size });
+    }
 }

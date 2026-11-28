@@ -1,4 +1,5 @@
 using Devoctomy.Blazwiz.Sync.Configuration;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 
 namespace Devoctomy.Blazwiz.Sync.UnitTests;
@@ -12,6 +13,7 @@ internal sealed class FakeSyncProfileRegistry : ISyncProfileRegistry
     private readonly List<SyncProfileOptions> added = [];
     private readonly Dictionary<string, SyncProfile> syncProfiles = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (ISyncFileStore Store, ISyncFileStore Untracked)> fileStores = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ISyncFileDecryptor> decryptors = new(StringComparer.Ordinal);
 
     private FakeSyncProfileRegistry(List<SyncProfileOptions> configured)
     {
@@ -75,6 +77,12 @@ internal sealed class FakeSyncProfileRegistry : ISyncProfileRegistry
 
     public ISyncFileStore GetFileStore(string name) =>
         fileStores.TryGetValue(name, out var stores) ? stores.Store : throw new NotSupportedException();
+
+    // Gives a profile what decrypts its stored content.
+    public void SetFileDecryptor(string name, ISyncFileDecryptor decryptor) => decryptors[name] = decryptor;
+
+    public ISyncFileDecryptor GetFileDecryptor(string name) =>
+        decryptors.TryGetValue(name, out var decryptor) ? decryptor : throw new NotSupportedException();
 
     public ISyncFileStore GetUntrackedFileStore(string name) =>
         fileStores.TryGetValue(name, out var stores) ? stores.Untracked : throw new NotSupportedException();

@@ -1,4 +1,6 @@
 using Devoctomy.Blazwiz.Sync.Configuration;
+using Devoctomy.Blazwiz.Sync.Encryption;
+using Devoctomy.Blazwiz.Sync.Encryption.Interfaces;
 using Devoctomy.Blazwiz.Sync.InMemory;
 using Devoctomy.Blazwiz.Sync.Interfaces;
 
@@ -11,7 +13,7 @@ namespace Devoctomy.Blazwiz.Sync.IntTests.Support;
 public sealed class DeviceProfileRegistry(ProtectedDevice device, SharedCloud cloud)
     : ISyncProfileRegistry
 {
-    private readonly Dictionary<string, (SyncProfileOptions Options, SyncProfile SyncProfile, ISyncFileStore AppFiles)> profiles = [];
+    private readonly Dictionary<string, (SyncProfileOptions Options, SyncProfile SyncProfile, EncryptingSyncFileStore AppFiles)> profiles = [];
 
     public event EventHandler<string>? ProfileAdded;
 
@@ -45,6 +47,8 @@ public sealed class DeviceProfileRegistry(ProtectedDevice device, SharedCloud cl
     public SyncProfile GetSyncProfile(string name) => profiles[name].SyncProfile;
 
     public ISyncFileStore GetFileStore(string name) => profiles[name].AppFiles;
+
+    public ISyncFileDecryptor GetFileDecryptor(string name) => profiles[name].AppFiles;
 
     public ISyncFileStore GetUntrackedFileStore(string name) => profiles[name].SyncProfile.FileStore;
 

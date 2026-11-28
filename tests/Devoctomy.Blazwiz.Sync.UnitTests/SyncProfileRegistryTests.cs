@@ -184,6 +184,7 @@ public class SyncProfileRegistryTests
         Assert.Same(sut.GetIndexStore("notes"), engine.IndexStore);
         Assert.Same(sut.GetMatcher("notes"), engine.Matcher);
         Assert.Same(sut.GetFileStore("notes"), sut.GetFileStore("notes"));
+        Assert.Same(sut.GetFileStore("notes"), sut.GetFileDecryptor("notes"));
         Assert.IsType<S3SyncRemoteStore>(engine.RemoteStore);
         Assert.Throws<ArgumentException>(() => sut.GetSyncProfile("unknown"));
     }

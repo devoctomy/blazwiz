@@ -88,6 +88,30 @@
     right: 0;
 }
 
+/* A file's History dropdown (in a page header) and the bar above a past version it shows. */
+.file-history { position: relative; }
+
+.file-history-menu {
+    top: 100%;
+    right: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.file-history-version {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.85rem;
+}
+
+.file-history-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.file-history-bar-text { flex: 1 1 16rem; }
+
 .sync-popover {
     position: relative;
     width: min(20rem, calc(100vw - 2rem));

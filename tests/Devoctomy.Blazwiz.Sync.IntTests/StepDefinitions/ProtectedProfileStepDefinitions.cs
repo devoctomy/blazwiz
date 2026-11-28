@@ -1,8 +1,10 @@
+using System.Security.Cryptography;
 using System.Text;
 using Devoctomy.Blazwiz.Encryption;
 using Devoctomy.Blazwiz.Encryption.Exceptions;
 using Devoctomy.Blazwiz.Encryption.Models;
 using Devoctomy.Blazwiz.Sync.IntTests.Support;
+using Devoctomy.Blazwiz.Sync.Models;
 
 namespace Devoctomy.Blazwiz.Sync.IntTests.StepDefinitions;
 
@@ -13,6 +15,8 @@ public sealed class ProtectedProfileStepDefinitions
     private readonly SharedCloud cloud = new();
     private readonly Dictionary<string, ProtectedDevice> devices = [];
     private readonly Dictionary<string, E2eKeyScope> profiles = [];
+    private ProtectedDevice? listingDevice;
+    private IReadOnlyList<SyncFileVersion> listed = [];
 
     [Given("two devices with protected profiles, signed in as the same user")]
     public void GivenTwoDevicesWithProtectedProfiles()
@@ -213,6 +217,71 @@ public sealed class ProtectedProfileStepDefinitions
     public void ThenThePassphraseChangeIsNotUnfinishedOnDevice(string profile, string device)
     {
         Assert.False(devices[device].Manager.IsRotationInProgress(profiles[profile]));
+    }
+
+    [When("device {string} lists the versions of {string} in {string}")]
+    public async Task WhenDeviceListsTheVersions(string device, string file, string profile)
+    {
+        listingDevice = devices[device];
+        listed = await listingDevice.History.GetVersionsAsync(Name(profile), Key(profile, file));
+    }
+
+    [When("device {string} restores the oldest version of {string} in {string}")]
+    public async Task WhenDeviceRestoresTheOldestVersion(string device, string file, string profile)
+    {
+        var oldest = listed.Last();
+        Assert.Equal(Key(profile, file), oldest.Key);
+        var history = devices[device].History;
+        var read = await history.ReadVersionAsync(oldest);
+        Assert.NotNull(read);
+        await history.RestoreAsync(read);
+    }
+
+    [Given("the bucket has an older version of {string} in {string} under a key nobody has")]
+    public void GivenTheBucketHasAnOlderVersionUnderAKeyNobodyHas(string file, string profile)
+    {
+        var key = Key(profile, file);
+        var content = devices["A"].Format.Encrypt(Encoding.UTF8.GetBytes("lost"), "k_lost", RandomNumberGenerator.GetBytes(32), new E2eFileBinding(Name(profile), key));
+        cloud.Versions[key].Add(("v-lost", new RemoteObject { Key = key, ETag = "\"lost\"", Content = content, LastModified = DateTimeOffset.UnixEpoch, Size = content.Length }));
+    }
+
+    [Then("device {string} cannot read the oldest version, because it does not hold its key")]
+    public async Task ThenDeviceCannotReadTheOldestVersion(string device)
+    {
+        var oldest = listed.Last();
+        Assert.Equal("v-lost", oldest.VersionId);
+        var ex = await Assert.ThrowsAsync<E2eLockedException>(() => devices[device].History.ReadVersionAsync(oldest));
+        Assert.Equal(E2eErrorCodes.CannotDecrypt, ex.Code);
+    }
+
+    [Then("the versions read, newest first, {string}, {string} and {string}")]
+    public Task ThenTheVersionsRead(string first, string second, string third) => AssertVersionsReadAsync(first, second, third);
+
+    [Then("the versions read, newest first, {string}, {string}, {string} and {string}")]
+    public Task ThenTheVersionsRead(string first, string second, string third, string fourth) => AssertVersionsReadAsync(first, second, third, fourth);
+
+    [Then("the bucket's current {string} in {string} reads {string} on device {string}")]
+    public async Task ThenTheBucketsCurrentFileReads(string file, string profile, string expected, string device)
+    {
+        var key = Key(profile, file);
+        var stored = cloud.Objects[key].Content;
+        var plaintext = await devices[device].Registry.GetFileDecryptor(Name(profile)).DecryptAsync(key, stored);
+        Assert.Equal(expected, Encoding.UTF8.GetString(plaintext));
+    }
+
+    private async Task AssertVersionsReadAsync(params string[] expected)
+    {
+        Assert.NotNull(listingDevice);
+        var read = new List<string>();
+        foreach (var version in listed)
+        {
+            var content = await listingDevice.History.ReadVersionAsync(version);
+            read.Add(Encoding.UTF8.GetString(content!.Content));
+        }
+
+        Assert.Equal(expected, read);
+        Assert.True(listed[0].IsLatest);
+        Assert.All(listed.Skip(1), v => Assert.False(v.IsLatest));
     }
 
     private string Name(string profile) => profiles[profile].Id;

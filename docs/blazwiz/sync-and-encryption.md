@@ -223,6 +223,98 @@ records the conflict.
   credentials, S3 unreachable), and turns sync on or off (`SetSyncEnabledAsync`).
 - The Sync page (`/sync`) shows the log.
 
+## File history
+
+The data bucket is versioned, so every upload keeps the version it replaces. Users can look back through a file's past
+versions, view any of them, and restore one. How long versions are kept is up to the bucket; the history shows
+whatever versions it has.
+
+### Adding it to a page
+
+Put a History dropdown in the header of the page that shows the file, and a bar above its content. Both are given a
+`FileHistoryViewModel`, which your page's view model owns (inject it), and which holds all the logic:
+
+```razor
+<PageHeader Title="@ViewModel.Name">
+    <FileHistoryPicker Model="ViewModel.History" />
+</PageHeader>
+<FileHistoryBar Model="ViewModel.History" />
+```
+
+In your view model, tell it which file it's for once the file has loaded, and pass on its changes so the page is shown
+again:
+
+```csharp
+public partial class DocumentViewModel : ViewModelBase, IFileHistoryHost
+{
+    public DocumentViewModel(FileHistoryViewModel history /* , ... */)
+    {
+        History = history;
+        History.PropertyChanged += (_, _) => OnPropertyChanged(nameof(History));
+        History.ShownChanged += OnShownVersionChanged;
+    }
+
+    public FileHistoryViewModel History { get; }
+
+    public async Task LoadAsync(string key)
+    {
+        // ... read the file ...
+        History.SetFile("documents", key, this);
+    }
+
+    // What IFileHistoryHost asks: picking a version with unsaved changes asks whether to save them first.
+    public bool HasUnsavedChanges => IsDirty;
+
+    public Task<bool> SaveChangesAsync() => TrySaveAsync();
+
+    public void DiscardChanges() => Text = savedText;
+}
+```
+
+While `History.IsViewingVersion`, show `History.SelectedContent.Content` (the version, decrypted) in place of the
+file, read only. When `ShownChanged` says the current version is back (`SelectedContent` is null), read the file again:
+it may have just been restored. Unsubscribe in `Dispose`.
+
+What the user sees:
+
+- **Current** first, then every version in the bucket, newest first, each as its ETag and upload time. The versions
+  are listed each time the dropdown is expanded, and never otherwise; only their details are fetched, not their
+  content.
+- Picking one downloads and decrypts it, and the bar says which version is shown, with **Back to current** and
+  **Restore this version**. Picking another, going back, or leaving the page changes nothing.
+- With unsaved changes, picking a version first asks: **Save**, **Don't save** or **Cancel**.
+- **Restore this version** asks to confirm, then saves that version's content as the file's new current version. The
+  version it replaces stays in the history, so a restore can be undone the same way.
+- While the app is offline (offline mode, sync turned off, no network or no credentials) the dropdown is disabled,
+  and says why when hovered. A version already shown can still be restored: that's a save on the device.
+- A version this device can't decrypt (for example, encrypted with a key it doesn't hold) isn't shown: the bar says it
+  can't be opened here, and the current version stays on the page.
+
+Without a data bucket (local development) there is no history, and both components show nothing.
+
+### Under the hood
+
+`ISyncFileHistoryService` does the work, and you can use it directly:
+
+| Member | What it does |
+|---|---|
+| `IsAvailable` | Whether there's a bucket to keep history in. |
+| `GetVersionsAsync(profile, key)` | Every version of the file in the bucket, newest first (`SyncFileVersion`: `VersionId`, `ETag`, `UploadedAt`, `Size`, `IsLatest`, `IsSynced`), without downloading them. |
+| `ReadVersionAsync(version)` | Downloads one and decrypts it with the profile's keys (`SyncFileVersionContent`), or null if the bucket no longer has it. If it can't be decrypted it throws, as reading a file does: `E2eLockedException` for a key this device doesn't hold, `CryptographicException` or `InvalidDataException` for content that isn't the file's. |
+| `RestoreAsync(version)` | Saves its content through the profile's file store, as your own save would. |
+
+A restore is an ordinary save: it's encrypted with the profile's current key, works offline, and is uploaded by the
+next sync like any other change. If the file changed on another device meanwhile, the usual conflict handling decides,
+so nothing is overwritten unseen. Nothing ever deletes a version: users can't (`NoVersionPurge` in the base stack).
+
+Things to know:
+
+- **History follows the path.** Renaming or moving a file writes it under a new key, so its history starts again
+  there.
+- **A version is an upload, not a save.** Several saves between two syncs make one version.
+- **A passphrase change uploads every file again**, so each gains a version with the same content as the one before.
+- **Deleted files** can't be brought back this way: the history is shown for a file that exists.
+
 ## Passphrases and unlocking
 
 Every profile is encrypted with its own keys, under its own passphrase. Encryption is AES-256-GCM, and each file is
@@ -402,6 +494,7 @@ framework. It shows most of this page in use:
 | A file service per notebook, over the profile's file store | `Services/NoteServiceFactory.cs` (`registry.GetFileStore(notebook.Name)`), `Services/NoteService.cs` |
 | Its own IndexedDB record per user | `Services/IndexedDbNotesStateStore.cs` |
 | A page wrapped in the unlock panel | `MyApp.Portal/Pages/Files.razor` (`<E2eUnlockPanel Profile="@ViewModel.Notebook.Name">`) |
+| A file's history, with unsaved changes asked about first | `MyApp.Portal/Pages/NoteEditor.razor` (`FileHistoryPicker`, `FileHistoryBar`), `ViewModels/NoteEditorViewModel.cs` (`IFileHistoryHost`) |
 | A new-notebook dialog built on the framework's passphrase form | `MyApp.Portal/Pages/Notebooks.razor`, `ViewModels/NotebooksViewModel.cs` |
 | Biometric unlock from a list | `NotebooksViewModel` with `IE2eDeviceUnlockService` (through `INotebookService`) |
 | A session lifecycle handler | `Services/NotebookLabelHandler.cs` |

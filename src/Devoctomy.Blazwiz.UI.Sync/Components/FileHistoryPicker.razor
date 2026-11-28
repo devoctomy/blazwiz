@@ -1,0 +1,79 @@
+@inject IStringLocalizer<UiText> Text
+@inject IStringLocalizer<SyncUiText> SyncText
+
+@if (Model.IsAvailable)
+{
+    <div class="file-history" id="@IdPrefix">
+        @if (Model.IsOpen)
+        {
+            <div class="sync-popover-backdrop" @onclick="() => Model.CloseCommand.Execute(null)"></div>
+        }
+        <button type="button" class="btn btn-outline-secondary dropdown-toggle" id="@(IdPrefix)-toggle" aria-expanded="@Model.IsOpen.ToString().ToLowerInvariant()"
+                disabled="@(Model.IsOffline || Model.IsReading || Model.IsRestoring)" title="@Model.OfflineText" @onclick="() => Model.ToggleCommand.ExecuteAsync(null)">
+            <i class="bi bi-clock-history me-1"></i>@SyncText["Sync.History"]
+        </button>
+        @if (Model.IsOpen)
+        {
+            <ul class="dropdown-menu show file-history-menu" id="@(IdPrefix)-menu">
+                <li>
+                    <button type="button" class="dropdown-item @(Model.IsViewingVersion ? null : "active")" id="@(IdPrefix)-current"
+                            @onclick="() => Model.SelectCommand.ExecuteAsync(null)">@SyncText["Sync.History.Current"]</button>
+                </li>
+                @if (Model.IsLoading)
+                {
+                    <li><span class="dropdown-item-text text-body-secondary" id="@(IdPrefix)-loading">@Text["Common.Loading"]</span></li>
+                }
+                else if (Model.ListError != null)
+                {
+                    <li><span class="dropdown-item-text text-danger" id="@(IdPrefix)-list-error">@Model.ListError</span></li>
+                }
+                else if (Model.IsEmpty)
+                {
+                    <li><span class="dropdown-item-text text-body-secondary" id="@(IdPrefix)-empty">@SyncText["Sync.History.Empty"]</span></li>
+                }
+                @foreach (var version in Model.Versions)
+                {
+                    <li>
+                        <button type="button" class="dropdown-item file-history-version @(version.VersionId == Model.Selected?.VersionId ? "active" : null)"
+                                @onclick="() => Model.SelectCommand.ExecuteAsync(version)">@Model.Format(version)</button>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+@if (Model.IsUnsavedDialogOpen)
+{
+    <ModalDialog Id="@($"{IdPrefix}-unsaved-dialog")" Title="@SyncText["Sync.History.Unsaved.Title"]" Icon="bi-exclamation-circle"
+                 FocusMode="ModalDialogFocusMode.Dialog" OnClose="() => Model.CancelViewCommand.Execute(null)">
+        <ChildContent>
+            <p class="mb-0">@SyncText["Sync.History.Unsaved.Text"]</p>
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" id="@(IdPrefix)-unsaved-cancel" @onclick="() => Model.CancelViewCommand.Execute(null)">@Text["Common.Cancel"]</button>
+            <button type="button" class="btn btn-outline-danger" id="@(IdPrefix)-unsaved-discard" @onclick="() => Model.DiscardAndViewCommand.ExecuteAsync(null)">@SyncText["Sync.History.Unsaved.DontSave"]</button>
+            <button type="button" class="btn btn-primary" id="@(IdPrefix)-unsaved-save" @onclick="() => Model.SaveAndViewCommand.ExecuteAsync(null)">@SyncText["Sync.History.Unsaved.Save"]</button>
+        </Footer>
+    </ModalDialog>
+}
+
+@if (Model.IsRestoreDialogOpen)
+{
+    <ModalDialog Id="@($"{IdPrefix}-restore-dialog")" Title="@SyncText["Sync.History.Restore.Title"]" Icon="bi-clock-history"
+                 FocusMode="ModalDialogFocusMode.Dialog" OnClose="() => Model.CancelRestoreCommand.Execute(null)">
+        <ChildContent>
+            <p class="mb-0">@Model.RestoreText</p>
+        </ChildContent>
+        <Footer>
+            <button type="button" class="btn btn-secondary" id="@(IdPrefix)-restore-cancel" disabled="@Model.IsRestoring" @onclick="() => Model.CancelRestoreCommand.Execute(null)">@Text["Common.Cancel"]</button>
+            <button type="button" class="btn btn-primary" id="@(IdPrefix)-restore-confirm" disabled="@Model.IsRestoring" @onclick="() => Model.RestoreCommand.ExecuteAsync(null)">
+                @if (Model.IsRestoring)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                }
+                @SyncText["Sync.History.Restore"]
+            </button>
+        </Footer>
+    </ModalDialog>
+}

@@ -36,11 +36,12 @@
                     <span class="text-success"><i class="bi bi-check2 me-1"></i>Saved at @ViewModel.LastSavedAt.Value.ToLocalTime().ToString("t")</span>
                 }
             </span>
+            <FileHistoryPicker Model="ViewModel.History" />
             <button type="button" class="btn btn-outline-primary" id="close-note-button" @onclick="() => ViewModel.CloseCommand.Execute(null)">
                 <i class="bi bi-x-lg me-1"></i>Close
             </button>
             <button type="button" class="btn btn-primary" id="save-note-button" title="Save (Ctrl+S)"
-                    disabled="@(!ViewModel.IsDirty || ViewModel.IsSaving)"
+                    disabled="@(!ViewModel.IsDirty || ViewModel.IsSaving || ViewModel.IsViewingVersion)"
                     @onclick="() => ViewModel.SaveCommand.ExecuteAsync(null)">
                 @if (ViewModel.IsSaving)
                 {
@@ -61,6 +62,8 @@
                 <button type="button" class="btn-close" aria-label="Close" @onclick="() => ViewModel.DismissErrorCommand.Execute(null)"></button>
             </div>
         }
+
+        <FileHistoryBar Model="ViewModel.History" />
 
         <div class="note-editor @(ViewModel.IsPreviewCollapsed ? "preview-collapsed" : null)">
             <div class="editor-toolbar" role="toolbar" aria-label="Formatting">
@@ -105,14 +108,15 @@
                               aria-label="Note content"
                               spellcheck="true"
                               placeholder="Start writing..."
-                              @bind="ViewModel.Content"
+                              readonly="@ViewModel.IsViewingVersion"
+                              @bind="ViewModel.EditorText"
                               @bind:event="oninput"></textarea>
                 </div>
                 @if (!ViewModel.IsPreviewCollapsed)
                 {
                     <div class="preview-pane">
                         <div class="preview-label">Preview</div>
-                        <div class="markdown-body" id="note-preview">@((MarkupString)ViewModel.PreviewHtml)</div>
+                        <div class="markdown-body" id="note-preview">@((MarkupString)ViewModel.ShownPreviewHtml)</div>
                     </div>
                 }
             </div>
@@ -164,6 +168,7 @@
                  id="format-@format.ToString().ToLowerInvariant()"
                  title="@title"
                  aria-label="@title"
+                 disabled="@ViewModel.IsViewingVersion"
                  @onmousedown:preventDefault
                  @onclick="() => ViewModel.FormatCommand.ExecuteAsync(format)">
             <i class="bi @icon"></i>

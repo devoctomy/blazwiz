@@ -389,9 +389,12 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              # Listing the user's files, and each file's past versions (its history), only under their own prefix.
               - Sid: ListOwnPrefix
                 Effect: Allow
-                Action: s3:ListBucket
+                Action:
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
                 Resource: !GetAtt DataBucket.Arn
                 Condition:
                   StringLike:
@@ -406,6 +409,12 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                   - s3:DeleteObject
+                Resource: !Sub '${DataBucket.Arn}/${!cognito-identity.amazonaws.com:sub}/*'
+              # Reading a past version of one of their own files, to show or restore it. Restoring writes it again as a
+              # new version (s3:PutObject); nothing removes a version.
+              - Sid: ReadOwnVersions
+                Effect: Allow
+                Action: s3:GetObjectVersion
                 Resource: !Sub '${DataBucket.Arn}/${!cognito-identity.amazonaws.com:sub}/*'
               # A delete only adds a delete marker and an overwrite keeps the old version (the bucket is versioned), and
               # these keep it that way: a hijacked session, or a bug, cannot purge a version, so a deleted or

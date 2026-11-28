@@ -128,6 +128,9 @@ public class SyncProfileRegistry(IServiceProvider services, SyncOptions options)
     public ISyncFileStore GetFileStore(string name) => GetParts(name).FileStore.Value;
 
     /// <inheritdoc/>
+    public ISyncFileDecryptor GetFileDecryptor(string name) => GetParts(name).FileStore.Value;
+
+    /// <inheritdoc/>
     public ISyncFileStore GetUntrackedFileStore(string name) => GetParts(name).UntrackedFileStore.Value;
 
     /// <inheritdoc/>
@@ -177,7 +180,7 @@ public class SyncProfileRegistry(IServiceProvider services, SyncOptions options)
                     sp.GetRequiredService<TimeProvider>(),
                     IndexedDbSyncFileStore.DescribeStore(profile.FileDatabase, profile.ResolvedFileStoreName)));
 
-            FileStore = new Lazy<ISyncFileStore>(() =>
+            FileStore = new Lazy<EncryptingSyncFileStore>(() =>
             {
                 ISyncFileStore store = new TrackingSyncFileStore(
                     name,
@@ -212,7 +215,8 @@ public class SyncProfileRegistry(IServiceProvider services, SyncOptions options)
 
         public Lazy<ISyncFileStore> UntrackedFileStore { get; }
 
-        public Lazy<ISyncFileStore> FileStore { get; }
+        // The store app code is given, which also decrypts content read some other way (a past version).
+        public Lazy<EncryptingSyncFileStore> FileStore { get; }
 
         public Lazy<SyncProfile> SyncProfile { get; }
     }
